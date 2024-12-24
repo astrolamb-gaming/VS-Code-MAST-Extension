@@ -9,10 +9,12 @@
 	"engines": {
 		"vscode": "^1.75.0"
 	},
+	"repository": "https://github.com/astrolamb-gaming/VS-Code-MAST-Extension",
 	"categories": [
 		"Programming Languages"
 	],
 	"main": "./client/out/extension",
+	"activationEvents": [],
 	"contributes": {
 		"languages": [
 			{
