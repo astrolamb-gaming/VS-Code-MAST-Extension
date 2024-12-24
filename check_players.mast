@@ -1,0 +1,39 @@
+#------------------------------------------------------------------------------------------------------------
+# main area
+# add values here
+shared next_pos = Vec3(0,0,0)
+
+
+#------------------------------------------------------------------------------------------------------------
+
+======= check_players======= 
+
+my_players = to_object_list(role("__player__") & role("tsn"))
+if len(my_players) <= 0:
+
+	textLine = f"All TSN ships have been destroyed!  Your mission has come to a glorious conclusion.  You fought for the safety of {num_stations_spawned} stations!  You will be remembered."
+#	sbs.send_story_dialog(0, "Admiral Harkin", textLine, 		admiral_face, "#744")
+	send_general_message("Admiral Harkin", textLine, admiral_face, 0)
+
+	#delay a bit
+	await delay_sim(10)
+
+	# do the end screen
+	start_text = f"All TSN ships destroyed. You saved {num_stations_spawned-1} stations at difficulty {difficulty}."
+	#start_text = "Game Over."
+	game_started = False
+	game_ended = True
+
+	sbs.play_music_file(0,"music/default/failure")
+	signal_emit("show_game_results", None)
+	->END
+
+
+======= check_for_new_players ======
+
+
+await delay_sim(seconds=3)
+jump check_players
+#------------------------------------------------------------------------------------------------------------
+
+

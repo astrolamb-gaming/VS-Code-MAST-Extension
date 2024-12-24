@@ -1,0 +1,369 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.hasDiagnosticRelatedInformationCapability = void 0;
+/* --------------------------------------------------------------------------------------------
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License. See License.txt in the project root for license information.
+ * ------------------------------------------------------------------------------------------ */
+//// <reference path="../src/sbs.pyi" />
+const node_1 = require("vscode-languageserver/node");
+const vscode_languageserver_textdocument_1 = require("vscode-languageserver-textdocument");
+//import fetch from 'node-fetch';
+const fileFunctions_1 = require("./fileFunctions");
+const errorChecking_1 = require("./errorChecking");
+// Create a connection for the server, using Node's IPC as a transport.
+// Also include all preview / proposed LSP features.
+const connection = (0, node_1.createConnection)(node_1.ProposedFeatures.all);
+// Create a simple text document manager.
+const documents = new node_1.TextDocuments(vscode_languageserver_textdocument_1.TextDocument);
+let hasConfigurationCapability = false;
+let hasWorkspaceFolderCapability = false;
+exports.hasDiagnosticRelatedInformationCapability = false;
+const completionStrings = [];
+let debugStrs = ""; //Debug: ${workspaceFolder}\n";
+let pyTypings = [];
+let classTypings = [];
+let typingsDone = false;
+let files = [
+    "sbs/__init__",
+    "sbs_utils/agent",
+    "sbs_utils/consoledispatcher",
+    "sbs_utils/damagedispatcher",
+    "sbs_utils/extra_dispatcher",
+    "sbs_utils/faces",
+    "sbs_utils/fs",
+    "sbs_utils/futures",
+    "sbs_utils/griddispatcher",
+    "sbs_utils/gridobject",
+    "sbs_utils/gui",
+    "sbs_utils/handlerhooks",
+    "sbs_utils/helpers",
+    "sbs_utils/layout",
+    "sbs_utils/lifetimedispatchers",
+    "sbs_utils/objects",
+    "sbs_utils/scatter",
+    "sbs_utils/spaceobject",
+    "sbs_utils/tickdispatcher",
+    "sbs_utils/vec",
+    "sbs_utils/mast/label",
+    "sbs_utils/mast/mast",
+    "sbs_utils/mast/mast_sbs_procedural",
+    "sbs_utils/mast/mastmission",
+    "sbs_utils/mast/mastobjects",
+    "sbs_utils/mast/mastscheduler",
+    "sbs_utils/mast/maststory",
+    "sbs_utils/mast/maststorypage",
+    "sbs_utils/mast/maststoryscheduler",
+    "sbs_utils/mast/parsers",
+    "sbs_utils/mast/pollresults",
+    "sbs_utils/pages/avatar",
+    "sbs_utils/pages/shippicker",
+    "sbs_utils/pages/start",
+    "sbs_utils/pages/layout/layout",
+    "sbs_utils/pages/layout/text_area",
+    "sbs_utils/pages/widgets/control",
+    "sbs_utils/pages/widgets/layout_listbox",
+    "sbs_utils/pages/widgets/listbox",
+    "sbs_utils/pages/widgets/shippicker",
+    "sbs_utils/procedural/behavior",
+    "sbs_utils/procedural/comms",
+    "sbs_utils/procedural/cosmos",
+    "sbs_utils/procedural/execution",
+    "sbs_utils/procedural/grid",
+    "sbs_utils/procedural/gui",
+    "sbs_utils/procedural/internal_damage",
+    "sbs_utils/procedural/inventory",
+    "sbs_utils/procedural/links",
+    "sbs_utils/procedural/maps",
+    "sbs_utils/procedural/query",
+    "sbs_utils/procedural/roles",
+    "sbs_utils/procedural/routes",
+    "sbs_utils/procedural/science",
+    "sbs_utils/procedural/screen_shot",
+    "sbs_utils/procedural/ship_data",
+    "sbs_utils/procedural/signal",
+    "sbs_utils/procedural/space_objects",
+    "sbs_utils/procedural/spawn",
+    "sbs_utils/procedural/style",
+    "sbs_utils/procedural/timers"
+];
+function parseWholeFile(text) {
+    let className = /^class (.+?):/gm; // Look for "class ClassName:" to parse class names.
+    let checkText;
+    let classIndices = [];
+    let m;
+    //debug("\n Checking parser...");
+    // Iterate over all classes to get their indices
+    while (m = className.exec(text)) {
+        classIndices.push(m.index);
+        //debug("" + m.index + ": " +m[0]);
+    }
+    let len = classIndices.length;
+    //debug("There are " + len + " indices found");
+    for (let i = 0; i < len; i++) {
+        //debug("index: "+i);
+        let t;
+        if (i === 0) {
+            t = text.substring(0, classIndices[0]);
+        }
+        else {
+            t = text.substring(classIndices[i - 1], classIndices[i]);
+        }
+        const name = (0, fileFunctions_1.getRegExMatch)(t, className).replace("class ", "").replace("(object):", "");
+        const typings = (0, fileFunctions_1.parseTyping)(t);
+        if (name !== "") {
+            const ct = {
+                name: name,
+                completionItems: typings
+            };
+            classTypings.push(ct);
+            // debug(JSON.stringify(ct));
+        }
+        else {
+            pyTypings = pyTypings.concat(typings);
+        }
+    }
+}
+async function loadTypings() {
+    try {
+        //const { default: fetch } = await import("node-fetch");
+        //const fetch = await import('node-fetch');
+        //let github : string = "https://github.com/artemis-sbs/sbs_utils/raw/refs/heads/master/mock/sbs.py";
+        let gh = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/typings/";
+        for (const page in files) {
+            //debug(files[page]);
+            let url = gh + files[page] + ".pyi";
+            //debug("\nPulling from: " + url);
+            const data = await fetch(url);
+            const textData = await data.text();
+            //debug("\nText Gotten");
+            parseWholeFile(textData);
+            ////////////////////////////
+            // JUST CHECKING SBS FOR NOW
+            ////////////////////////////
+            //break;
+        }
+    }
+    catch (err) {
+        (0, fileFunctions_1.debug)("\nFailed to load\n" + err);
+    }
+}
+connection.onInitialize((params) => {
+    loadTypings().then(() => { typingsDone = true; });
+    //const zip : Promise<void> = extractZip("","./sbs");
+    //pyTypings = pyTypings.concat(parseTyping(fs.readFileSync("sbs.pyi","utf-8")));
+    //debug(JSON.stringify(pyTypings));
+    const capabilities = params.capabilities;
+    // Does the client support the `workspace/configuration` request?
+    // If not, we fall back using global settings.
+    hasConfigurationCapability = !!(capabilities.workspace && !!capabilities.workspace.configuration);
+    hasWorkspaceFolderCapability = !!(capabilities.workspace && !!capabilities.workspace.workspaceFolders);
+    exports.hasDiagnosticRelatedInformationCapability = !!(capabilities.textDocument &&
+        capabilities.textDocument.publishDiagnostics &&
+        capabilities.textDocument.publishDiagnostics.relatedInformation);
+    //debugStrs += capabilities.textDocument?.documentLink + "\n";
+    const result = {
+        capabilities: {
+            textDocumentSync: node_1.TextDocumentSyncKind.Incremental,
+            // Tell the client that this server supports code completion.
+            completionProvider: {
+                resolveProvider: true
+            },
+            diagnosticProvider: {
+                interFileDependencies: false,
+                workspaceDiagnostics: false
+            }
+        }
+    };
+    if (hasWorkspaceFolderCapability) {
+        result.capabilities.workspace = {
+            workspaceFolders: {
+                supported: true
+            }
+        };
+    }
+    return result;
+});
+connection.onInitialized(() => {
+    if (hasConfigurationCapability) {
+        // Register for all configuration changes.
+        connection.client.register(node_1.DidChangeConfigurationNotification.type, undefined);
+    }
+    if (hasWorkspaceFolderCapability) {
+        connection.workspace.onDidChangeWorkspaceFolders(_event => {
+            connection.console.log('Workspace folder change event received.');
+        });
+    }
+});
+// The global settings, used when the `workspace/configuration` request is not supported by the client.
+// Please note that this is not the case when using this server with the client provided in this example
+// but could happen with other clients.
+const defaultSettings = { maxNumberOfProblems: 1000 };
+let globalSettings = defaultSettings;
+// Cache the settings of all open documents
+const documentSettings = new Map();
+connection.onDidChangeConfiguration(change => {
+    if (hasConfigurationCapability) {
+        // Reset all cached document settings
+        documentSettings.clear();
+    }
+    else {
+        globalSettings = ((change.settings.languageServerExample || defaultSettings));
+    }
+    // Refresh the diagnostics since the `maxNumberOfProblems` could have changed.
+    // We could optimize things here and re-fetch the setting first can compare it
+    // to the existing setting, but this is out of scope for this example.
+    connection.languages.diagnostics.refresh();
+});
+function getDocumentSettings(resource) {
+    if (!hasConfigurationCapability) {
+        return Promise.resolve(globalSettings);
+    }
+    let result = documentSettings.get(resource);
+    if (!result) {
+        result = connection.workspace.getConfiguration({
+            scopeUri: resource,
+            section: 'languageServerExample'
+        });
+        documentSettings.set(resource, result);
+    }
+    return result;
+}
+// Only keep settings for open documents
+documents.onDidClose(e => {
+    documentSettings.delete(e.document.uri);
+});
+connection.languages.diagnostics.on(async (params) => {
+    //TODO: get info from other files in same directory
+    const document = documents.get(params.textDocument.uri);
+    if (document !== undefined) {
+        return {
+            kind: node_1.DocumentDiagnosticReportKind.Full,
+            items: await validateTextDocument(document)
+        };
+    }
+    else {
+        // We don't know the document. We can either try to read it from disk
+        // or we don't report problems for it.
+        return {
+            kind: node_1.DocumentDiagnosticReportKind.Full,
+            items: []
+        };
+    }
+});
+// The content of a text document has changed. This event is emitted
+// when the text document first opened or when its content has changed.
+documents.onDidChangeContent(change => {
+    validateTextDocument(change.document);
+});
+async function validateTextDocument(textDocument) {
+    // In this simple example we get the settings for every validate run.
+    const settings = await getDocumentSettings(textDocument.uri);
+    // The validator creates diagnostics for all uppercase words length 2 and more
+    const text = textDocument.getText();
+    const pattern = /\b[A-Z]{2,}\b/g;
+    let m;
+    let problems = 0;
+    let diagnostics = [];
+    let errorSources = [];
+    let e1 = {
+        pattern: /(^(=|-){2,}([0-9A-Za-z _]+?)(-|=)([0-9A-Za-z _]+?)(=|-){2,})/gm,
+        severity: node_1.DiagnosticSeverity.Error,
+        message: "Label Definition: Cannot use '-' or '=' inside label name.",
+        source: "sbs",
+        relatedMessage: "Only A-Z, a-z, 0-9, and _ are allowed to be used in a label name."
+    };
+    errorSources.push(e1);
+    e1 = {
+        pattern: /\b[A-Z]{2,}\b/g,
+        severity: node_1.DiagnosticSeverity.Information,
+        source: "mast",
+        message: "CAPS " + debugStrs,
+        relatedMessage: "Is all caps intentional?"
+    };
+    //errorSources.push(e1);
+    for (let i = 0; i < errorSources.length; i++) {
+        let d1 = (0, errorChecking_1.findDiagnostic)(errorSources[i].pattern, textDocument, errorSources[i].severity, errorSources[i].message, errorSources[i].source, errorSources[i].relatedMessage, settings.maxNumberOfProblems, problems);
+        diagnostics = diagnostics.concat(d1);
+    }
+    //let d1: Diagnostic[] = findDiagnostic(pattern, textDocument, DiagnosticSeverity.Error, "Message", "Source", "Testing", settings.maxNumberOfProblems, 0);
+    //diagnostics = diagnostics.concat(d1);
+    let d1 = (0, errorChecking_1.checkLabels)(textDocument);
+    diagnostics = diagnostics.concat(d1);
+    return diagnostics;
+}
+connection.onDidChangeWatchedFiles(_change => {
+    // Monitored files have change in VSCode
+    connection.console.log('We received a file change event');
+});
+// This handler provides the initial list of the completion items.
+connection.onCompletion((_textDocumentPosition) => {
+    // The pass parameter contains the position of the text document in
+    // which code complete got requested. For the example we ignore this
+    // info and always provide the same completion items.
+    let ci = [
+    // {
+    // 	label: 'TypeScript',
+    // 	kind: CompletionItemKind.Text,
+    // 	data: 1
+    // },
+    // {
+    // 	label: 'JavaScript',
+    // 	kind: CompletionItemKind.Text,
+    // 	data: 2
+    // },
+    // {
+    // 	label: 'artemis_sbs',
+    // 	kind: CompletionItemKind.Text
+    // }
+    ];
+    if (!typingsDone) {
+        (0, fileFunctions_1.debug)("TYPINGS NOT READY");
+        return ci;
+    }
+    let items = [
+        "sbs",
+        "change_console",
+        "MoreThings",
+        "sbs.something",
+        "sbs.target",
+        "sbs.functions"
+    ];
+    items.forEach((i) => {
+        //ci.push({label: "sbs: #" + _textDocumentPosition.position.character, kind: CompletionItemKind.Text});
+        if (i.indexOf(".") < _textDocumentPosition.position.character - 1) {
+            ci.push({ label: i, kind: node_1.CompletionItemKind.Text });
+        }
+    });
+    completionStrings.forEach((i) => {
+        if (i.indexOf(".") < _textDocumentPosition.position.character - 1) {
+            ci.push({ label: i, kind: node_1.CompletionItemKind.Text });
+        }
+    });
+    ci = ci.concat(pyTypings);
+    // We could just return pyTypings, but we don't want to add things to pyTypings over and over
+    return ci;
+});
+// This handler resolves additional information for the item selected in
+// the completion list.
+connection.onCompletionResolve((item) => {
+    if (item.data === 1) {
+        item.detail = 'TypeScript details';
+        item.documentation = 'TypeScript documentation';
+    }
+    else if (item.data === 2) {
+        item.detail = 'JavaScript details';
+        item.documentation = 'JavaScript documentation';
+    }
+    if (item.label === "sbs") {
+        item.detail = "artemis_sbs details",
+            item.documentation = "artemis_sbs details";
+    }
+    return item;
+});
+// Make the text document manager listen on the connection
+// for open, change and close text document events
+documents.listen(connection);
+// Listen on the connection
+connection.listen();
+//# sourceMappingURL=server.js.map
