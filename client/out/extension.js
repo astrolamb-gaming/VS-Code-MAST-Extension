@@ -29,6 +29,17 @@ function activate(context) {
         synchronize: {
             // Notify the server about file changes to '.clientrc files contained in the workspace
             fileEvents: vscode_1.workspace.createFileSystemWatcher('**/.mast')
+        },
+        middleware: {
+            executeCommand: async (command, args, next) => {
+                const selected = await vscode_1.window.showQuickPick(['Visual Studio', 'Visual Studio Code']);
+                if (selected === undefined) {
+                    return next(command, args);
+                }
+                args = args.slice(0);
+                args.push(selected);
+                return next(command, args);
+            }
         }
     };
     // Create the language client and start the client.

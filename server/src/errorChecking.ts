@@ -1,5 +1,5 @@
-import { TextDocument } from 'vscode-languageserver-textdocument';
-import { Diagnostic, DiagnosticSeverity, integer } from 'vscode-languageserver/node';
+import { Range, TextDocument } from 'vscode-languageserver-textdocument';
+import { Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, integer } from 'vscode-languageserver/node';
 import { debug } from './fileFunctions';
 import {hasDiagnosticRelatedInformationCapability} from './server';
 
@@ -37,72 +37,20 @@ export function findDiagnostic(pattern: RegExp, textDocument: TextDocument, seve
 	return diagnostics;
 }
 
-/**
- * 
- * @param textDocument 
- * @returns array of all defined labels in the current document
- */
-function getLabels(textDocument: TextDocument): string[] {
-	const definedLabel : RegExp = /(^(=|-){2,}([0-9A-Za-z _]+?)(=|-){2,})/gm
-	let m: RegExpExecArray | null;
-	const text = textDocument.getText();
-	const labels : string[] = [];
-	labels.push("END");
-	debug("Iterating over defined labels");
-	while (m = definedLabel.exec(text)) {
-		const str = m[0].replace(/(=|-)/g,"").trim();
-		debug(str);
-		labels.push(str);
-	}
-	return labels
-}
 
-export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
-	const text = textDocument.getText();
-	const diagnostics : Diagnostic[] = [];
-	const calledLabel : RegExp = /(^ *?-> *?[0-9A-Za-z_]{1,})|(^ *?jump *?[0-9A-Za-z_]{1,})/gm;
-	let m: RegExpExecArray | null;
-	const labels : string[] = getLabels(textDocument);
-	debug("Iterating over called labels");
-	while (m = calledLabel.exec(text)) {
-		const str = m[0].replace(/(->)|(jump )/g,"").trim();
-		debug(str);
-		let found: boolean = false;
-		for (const label in labels) {
-			if (str === labels[label]) {
-				found = true;
-			}
-		}
-		if (!found) {
-			const d: Diagnostic = {
-				range: {
-					start: textDocument.positionAt(m.index),
-					end: textDocument.positionAt(m.index + m[0].length)
+
+export function relatedMessage(t: TextDocument, range: Range, rm: string): DiagnosticRelatedInformation[] | undefined {
+	if (hasDiagnosticRelatedInformationCapability) {
+		const dri: DiagnosticRelatedInformation[] = [
+			{
+				location: {
+					uri: t.uri,
+					range: Object.assign({}, range)
 				},
-				severity: DiagnosticSeverity.Error,
-				message: "Specified label does not exist. Define this label before use.",
-				source: "mast"
+				message: rm
 			}
-			if (hasDiagnosticRelatedInformationCapability) {
-				d.relatedInformation = [
-					{
-						location: {
-							uri: textDocument.uri,
-							range: Object.assign({}, d.range)
-						},
-						message: "Labels must be defined in a format beginning and ending with two or more = or - signs. They may use A-Z, a-z, 0-9, and _ in their names. Other characters are not allowed."
-					}
-				];
-			}
-			diagnostics.push(d);
-		}
+		];
+		return dri;
 	}
-	
-	const diagnostic = {
-		severity: DiagnosticSeverity.Error,
-		source: "mast",
-		message: "Specified label does not exist",
-		relatedMessage: "Define this label before use."
-	}
-	return diagnostics;
+	return undefined;
 }

@@ -18,7 +18,13 @@ import {
 	InitializeResult,
 	DocumentDiagnosticReportKind,
 	type DocumentDiagnosticReport,
-	integer
+	integer,
+	TextDocumentEdit,
+	TextEdit,
+	Position,
+	CodeAction,
+	CodeActionKind,
+	Command
 } from 'vscode-languageserver/node';
 
 import {
@@ -26,7 +32,8 @@ import {
 } from 'vscode-languageserver-textdocument';
 //import fetch from 'node-fetch';
 import {findSubfolderByName, getRootFolder, parseTyping, debug, getRegExMatch} from "./fileFunctions";
-import { checkLabels, findDiagnostic } from './errorChecking';
+import { findDiagnostic } from './errorChecking';
+import { checkLabels } from './labels';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -118,6 +125,10 @@ let files: string[] = [
 	"sbs_utils/procedural/timers"
 ];
 
+const supportedRoutes: string[][] = [];
+
+let routeDefSource = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/mast.py";
+
 function parseWholeFile(text: string) {
 	let className : RegExp = /^class (.+?):/gm; // Look for "class ClassName:" to parse class names.
 	let checkText: string;
@@ -157,6 +168,30 @@ function parseWholeFile(text: string) {
 	
 }
 
+async function loadRouteLabels(): Promise<void> {
+	try {
+		const data = await fetch(routeDefSource);
+		const textData = await data.text();
+		// Get the text of function that defines route labels
+		const pattern = /RouteDecoratorLabel\(DecoratorLabel\):.+?generate_label_begin_cmds.+?[\s](def |class)/gs;
+		let m: RegExpExecArray | null;
+		while (m = pattern.exec(textData)) {
+			let t = m[0];
+			const casePattern = / case [^_.]*?:/gm;
+			let n: RegExpExecArray | null;
+			// Iterate over each "case...:" to find possible routes
+			while (n = casePattern.exec(t)) {
+				let routes = n[0].replace(/ (case \[)|\]:|"| /gm,"").trim();
+				let arr = routes.split(",");
+				//debug(arr.join("/"));
+				supportedRoutes.push(arr);
+			}
+		}
+	} catch (e) {
+		debug("Error in loadRouteLabels(): " + e as string);
+	}
+}
+
 async function loadTypings(): Promise<void> {
 	try {
 		//const { default: fetch } = await import("node-fetch");
@@ -185,6 +220,7 @@ async function loadTypings(): Promise<void> {
 
 connection.onInitialize((params: InitializeParams) => {
 	loadTypings().then(()=>{ typingsDone = true; });
+	loadRouteLabels().then(()=>{ debug("Routes Loaded") });
 	//const zip : Promise<void> = extractZip("","./sbs");
 
 	//pyTypings = pyTypings.concat(parseTyping(fs.readFileSync("sbs.pyi","utf-8")));
@@ -216,6 +252,13 @@ connection.onInitialize((params: InitializeParams) => {
 			diagnosticProvider: {
 				interFileDependencies: false,
 				workspaceDiagnostics: false
+			},
+			codeActionProvider: true,
+			executeCommandProvider: {
+				commands: [
+					// TODO: Here we add the command names
+					//'labels.fix'
+				]
 			}
 		}
 	};
@@ -240,6 +283,36 @@ connection.onInitialized(() => {
 			connection.console.log('Workspace folder change event received.');
 		});
 	}
+});
+connection.onCodeAction((params) => {
+	const textDocument = documents.get(params.textDocument.uri);
+	if (textDocument === undefined) {
+		return undefined;
+	}
+	const title = 'With User Input';
+	return [
+		// TODO: Here we add CodeActions (i.e. commands) for QuickFixes
+		//CodeAction.create(title, Command.create(title, 'sample.fixMe', textDocument.uri), CodeActionKind.QuickFix)
+	];
+});
+connection.onExecuteCommand(async (params) => {
+	//TODO: Here we execute the commands
+	if (params.command !== 'labels.fix' || params.arguments === undefined) {
+		return;
+	}
+
+	// const textDocument = documents.get(params.arguments[0]);
+	// if (textDocument === undefined) {
+	// 	return;
+	// }
+	// const newText = typeof params.arguments[1] === 'string' ? params.arguments[1] : 'Eclipse';
+	// connection.workspace.applyEdit({
+	// 	documentChanges: [
+	// 		TextDocumentEdit.create({ uri: textDocument.uri, version: textDocument.version }, [
+	// 			TextEdit.insert(Position.create(0, 0), newText)
+	// 		])
+	// 	]
+	// });
 });
 
 interface AutocompleteEntries {

@@ -258,8 +258,20 @@
             "match": "(?x)\n  \\b(?<!\\.)(\n    async | continue | del | assert | break | finally | for\n    | from | elif | else | if | except | pass | raise\n    | return | try | while | with\n  )\\b\n"
           },
 		  {
-			"name": "keyword.control.flow.label.mast",
-			"match": "(^(=|-){2,}([0-9A-Za-z _]+?)(=|-){2,})|(->.{1,})|(jump)|((^ *?\/\/ *?[0-9A-Za-z_\/]{1,}))"
+			"name": "keyword.control.flow.label.main.mast",
+			"match": "^ *?={2,}[0-9A-Za-z _]+?={2,} *?$"
+		  },
+		  {
+			"name": "keyword.control.flow.label.sub.mast",
+			"match": "^ *?-{2,}[0-9A-Za-z _]+?-{2,} *?$"
+		  },
+		  {
+			  "name": "keyword.control.flow.label.jump.mast",
+			  "match": "jump|(->.{1,})"
+		  },
+		  {
+			  "name": "keyword.control.flow.label.route.mast",
+			  "match": "((^ *?\/\/ *?[0-9A-Za-z_\/]{1,}))"
 		  },
           {
             "name": "storage.modifier.declaration.python",

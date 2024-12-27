@@ -4,7 +4,7 @@
  * ------------------------------------------------------------------------------------------ */
 
 import * as path from 'path';
-import { workspace, ExtensionContext } from 'vscode';
+import { workspace, ExtensionContext , window as Window} from 'vscode';
 
 import {
 	LanguageClient,
@@ -38,6 +38,17 @@ export function activate(context: ExtensionContext) {
 		synchronize: {
 			// Notify the server about file changes to '.clientrc files contained in the workspace
 			fileEvents: workspace.createFileSystemWatcher('**/.mast')
+		},
+		middleware: {
+			executeCommand: async (command, args, next) => {
+				const selected = await Window.showQuickPick(['Visual Studio', 'Visual Studio Code']);
+				if (selected === undefined) {
+					return next(command, args);
+				}
+				args = args.slice(0);
+				args.push(selected);
+				return next(command, args);
+			}
 		}
 	};
 

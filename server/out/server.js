@@ -11,6 +11,7 @@ const vscode_languageserver_textdocument_1 = require("vscode-languageserver-text
 //import fetch from 'node-fetch';
 const fileFunctions_1 = require("./fileFunctions");
 const errorChecking_1 = require("./errorChecking");
+const labels_1 = require("./labels");
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 const connection = (0, node_1.createConnection)(node_1.ProposedFeatures.all);
@@ -87,6 +88,8 @@ let files = [
     "sbs_utils/procedural/style",
     "sbs_utils/procedural/timers"
 ];
+const supportedRoutes = [];
+let routeDefSource = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/mast.py";
 function parseWholeFile(text) {
     let className = /^class (.+?):/gm; // Look for "class ClassName:" to parse class names.
     let checkText;
@@ -124,6 +127,30 @@ function parseWholeFile(text) {
         }
     }
 }
+async function loadRouteLabels() {
+    try {
+        const data = await fetch(routeDefSource);
+        const textData = await data.text();
+        // Get the text of function that defines route labels
+        const pattern = /RouteDecoratorLabel\(DecoratorLabel\):.+?generate_label_begin_cmds.+?[\s](def |class)/gs;
+        let m;
+        while (m = pattern.exec(textData)) {
+            let t = m[0];
+            const casePattern = / case [^_.]*?:/gm;
+            let n;
+            // Iterate over each "case...:" to find possible routes
+            while (n = casePattern.exec(t)) {
+                let routes = n[0].replace(/ (case \[)|\]:|"| /gm, "").trim();
+                let arr = routes.split(",");
+                //debug(arr.join("/"));
+                supportedRoutes.push(arr);
+            }
+        }
+    }
+    catch (e) {
+        (0, fileFunctions_1.debug)("Error in loadRouteLabels(): " + e);
+    }
+}
 async function loadTypings() {
     try {
         //const { default: fetch } = await import("node-fetch");
@@ -150,6 +177,7 @@ async function loadTypings() {
 }
 connection.onInitialize((params) => {
     loadTypings().then(() => { typingsDone = true; });
+    loadRouteLabels().then(() => { (0, fileFunctions_1.debug)("Routes Loaded"); });
     //const zip : Promise<void> = extractZip("","./sbs");
     //pyTypings = pyTypings.concat(parseTyping(fs.readFileSync("sbs.pyi","utf-8")));
     //debug(JSON.stringify(pyTypings));
@@ -172,6 +200,13 @@ connection.onInitialize((params) => {
             diagnosticProvider: {
                 interFileDependencies: false,
                 workspaceDiagnostics: false
+            },
+            codeActionProvider: true,
+            executeCommandProvider: {
+                commands: [
+                // TODO: Here we add the command names
+                //'labels.fix'
+                ]
             }
         }
     };
@@ -194,6 +229,35 @@ connection.onInitialized(() => {
             connection.console.log('Workspace folder change event received.');
         });
     }
+});
+connection.onCodeAction((params) => {
+    const textDocument = documents.get(params.textDocument.uri);
+    if (textDocument === undefined) {
+        return undefined;
+    }
+    const title = 'With User Input';
+    return [
+    // TODO: Here we add CodeActions (i.e. commands) for QuickFixes
+    //CodeAction.create(title, Command.create(title, 'sample.fixMe', textDocument.uri), CodeActionKind.QuickFix)
+    ];
+});
+connection.onExecuteCommand(async (params) => {
+    //TODO: Here we execute the commands
+    if (params.command !== 'labels.fix' || params.arguments === undefined) {
+        return;
+    }
+    // const textDocument = documents.get(params.arguments[0]);
+    // if (textDocument === undefined) {
+    // 	return;
+    // }
+    // const newText = typeof params.arguments[1] === 'string' ? params.arguments[1] : 'Eclipse';
+    // connection.workspace.applyEdit({
+    // 	documentChanges: [
+    // 		TextDocumentEdit.create({ uri: textDocument.uri, version: textDocument.version }, [
+    // 			TextEdit.insert(Position.create(0, 0), newText)
+    // 		])
+    // 	]
+    // });
 });
 // The global settings, used when the `workspace/configuration` request is not supported by the client.
 // Please note that this is not the case when using this server with the client provided in this example
@@ -288,7 +352,7 @@ async function validateTextDocument(textDocument) {
     }
     //let d1: Diagnostic[] = findDiagnostic(pattern, textDocument, DiagnosticSeverity.Error, "Message", "Source", "Testing", settings.maxNumberOfProblems, 0);
     //diagnostics = diagnostics.concat(d1);
-    let d1 = (0, errorChecking_1.checkLabels)(textDocument);
+    let d1 = (0, labels_1.checkLabels)(textDocument);
     diagnostics = diagnostics.concat(d1);
     return diagnostics;
 }

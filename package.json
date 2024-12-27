@@ -15,6 +15,9 @@
 	],
 	"main": "./client/out/extension",
 	"activationEvents": [],
+	"capabilities": {
+		"workspaceSymbolProvider" : "true"
+	},
 	"contributes": {
 		"languages": [
 			{
@@ -90,11 +93,8 @@
 	"devDependencies": {
 		"@eslint/js": "^9.13.0",
 		"@stylistic/eslint-plugin": "^2.9.0",
-		"@types/decompress": "^4.2.7",
-		"@types/file-saver": "^2.0.7",
 		"@types/mocha": "^10.0.6",
 		"@types/node": "^20",
-		"@types/unzipper": "^0.10.10",
 		"eslint": "^9.13.0",
 		"mocha": "^10.3.0",
 		"node-fetch": "^3.3.2",
@@ -102,10 +102,5 @@
 		"typescript-eslint": "^8.16.0"
 	},
 	"dependencies": {
-		"adm-zip": "^0.5.16",
-		"decompress": "^4.2.1",
-		"file-saver": "^2.0.5",
-		"jszip": "^3.10.1",
-		"unzipper": "^0.12.3"
 	}
 }
