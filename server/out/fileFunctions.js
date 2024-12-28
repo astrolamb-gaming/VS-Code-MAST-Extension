@@ -8,6 +8,7 @@ exports.getRegExMatch = getRegExMatch;
 const path = require("path");
 const fs = require("fs");
 const node_1 = require("vscode-languageserver/node");
+const server_1 = require("./server");
 const console_1 = require("console");
 function getRootFolder() {
     // let initialDir = "./";
@@ -98,7 +99,8 @@ function parseTyping(text, className = "") {
             command: { command: 'editor.action.triggerSuggest', title: 'Re-trigger completions...' },
             documentation: comments,
             detail: ci_details,
-            labelDetails: labelDetails
+            labelDetails: labelDetails,
+            commitCharacters: ["("]
         };
         typings.push(ci);
         const si = {
@@ -133,7 +135,7 @@ function parseTyping(text, className = "") {
                 (0, console_1.debug)("Error parsing parameter for function " + name + ", Parameter: " + paramArr[i] + "\n" + e);
             }
         }
-        //appendFunctionData(si);
+        (0, server_1.appendFunctionData)(si);
         //debug(JSON.stringify(ci));
     }
     //debug(JSON.stringify(typings));

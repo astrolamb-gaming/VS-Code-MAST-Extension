@@ -33,13 +33,16 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	]
 
 	if(iStr.includes("//")) {
-		for (const i in getSupportedRoutes()) {
-			let r = getSupportedRoutes()[i].join("/").replace("*b","");
-			ci.push({label: r, kind: CompletionItemKind.Event});
+		let routes = getSupportedRoutes();
+		for (const i in routes) {
+			let r = routes[i].join("/").replace("*b","");
+			if ((r + "//").includes(iStr.trim())) {
+				ci.push({label: r, kind: CompletionItemKind.Event});
+			}
 		}
 		return ci;
 	}
-	if (iStr.endsWith("->") || iStr.endsWith("jump ")) {
+	if (iStr.endsWith("-> ") || iStr.endsWith("jump ") || iStr.endsWith("task_schedule( ")) {
 		for (const i in labelNames) {
 			ci.push({label: labelNames[i].name, kind: CompletionItemKind.Event});
 		}

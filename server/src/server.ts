@@ -27,7 +27,9 @@ import {
 	Command,
 	CompletionItemTag,
 	SignatureHelp,
-	SignatureInformation
+	SignatureInformation,
+	SignatureHelpParams,
+	ServerRequestHandler
 } from 'vscode-languageserver/node';
 
 import {
@@ -55,8 +57,10 @@ export let hasDiagnosticRelatedInformationCapability = false;
 let debugStrs : string = "";//Debug: ${workspaceFolder}\n";
 
 let pyTypings : CompletionItem[] = [];
+let workspacePyTypings : CompletionItem[] = [];
 export function getPyTypings(): CompletionItem[] { return pyTypings; }
 let classTypings : ClassTypings[] = [];
+let workspaceClassTypings : ClassTypings[] = [];
 export function getClassTypings(): ClassTypings[] { return classTypings; }
 export let labelNames : LabelInfo[] = [];
 let typingsDone: boolean = false;
@@ -172,12 +176,12 @@ function parseWholeFile(text: string, sbs: boolean = false) {
 		}
 		// TODO: Could pull the class parent and interfaces (if any). Would this be useful?
 		let name = getRegExMatch(t,className).replace("class ","").replace(/\(.*?\):/,"");
-		
-		let comments = getRegExMatch(t, comment).replace("\"\"\"","").replace("\"\"\"","");
-		const typings : CompletionItem[] = parseTyping(t);
 		if (sbs) {
 			name = "sbs";
 		}
+		let comments = getRegExMatch(t, comment).replace("\"\"\"","").replace("\"\"\"","");
+		const typings : CompletionItem[] = parseTyping(t,name);
+		
 		const classCompItem: CompletionItem = {
 			label: name,
 			kind: CompletionItemKind.Class,
@@ -218,6 +222,7 @@ async function loadRouteLabels(): Promise<void> {
 				let arr = routes.split(",");
 				//debug(arr.join("/"));
 				supportedRoutes.push(arr);
+				debug(arr);
 			}
 		}
 	} catch (e) {
@@ -246,6 +251,7 @@ async function loadTypings(): Promise<void> {
 }
 
 connection.onInitialize((params: InitializeParams) => {
+	// These are only executed on startup
 	loadTypings().then(()=>{ typingsDone = true; });
 	loadRouteLabels().then(()=>{ debug("Routes Loaded") });
 	//const zip : Promise<void> = extractZip("","./sbs");
@@ -471,6 +477,13 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 	};
 	errorSources.push(e1);
 	e1 = {
+		pattern: /[\w\(]+?\/\//g,
+		severity: DiagnosticSeverity.Error,
+		message: "Route labels can only be at the start of a line.",
+		source: "sbs",
+		relatedMessage: "See https://artemis-sbs.github.io/sbs_utils/mast/routes/ for more details on routes."
+	}
+	e1 = {
 		pattern: /\b[A-Z]{2,}\b/g,
 		severity: DiagnosticSeverity.Information,
 		source: "mast",
@@ -500,7 +513,7 @@ connection.onDidChangeWatchedFiles(_change => {
 /**
  * Triggered when ending a function name with an open parentheses, e.g. "functionName( "
  */
-connection.onSignatureHelp((_textDocPos: TextDocumentPositionParams): SignatureHelp =>{
+connection.onSignatureHelp((_textDocPos: SignatureHelpParams): SignatureHelp =>{
 	let sh : SignatureHelp = {
 		signatures: []
 	}
@@ -532,7 +545,6 @@ connection.onSignatureHelp((_textDocPos: TextDocumentPositionParams): SignatureH
 connection.onCompletion(
 	(_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
 		const text = documents.get(_textDocumentPosition.textDocument.uri);
-		// We could just return pyTypings, but we don't want to add things to pyTypings over and over
 		if (text === undefined) {
 			return [];
 		}

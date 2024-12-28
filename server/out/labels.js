@@ -156,6 +156,7 @@ function findBadLabels(t) {
     const good = /(^ *?={2,}([0-9A-Za-z _]+?)={2,} *?$)|(^ *?-{2,}([0-9A-Za-z _]+?)-{2,} *?$)/m;
     const bad = /[\!\@\$\%\^\&\*\(\)\.\,\>\<\?`\[\]\\\/\+\~\{\}\|\'\"\;\:]+?/m;
     let m;
+    // Iterate over regular labels
     while (m = any.exec(text)) {
         let lbl = m[0].trim();
         if (lbl.startsWith("->")) {
@@ -191,6 +192,52 @@ function findBadLabels(t) {
                 source: "mast"
             };
             d.relatedInformation = (0, errorChecking_1.relatedMessage)(t, d.range, "Label declarations can cause Mast compiler errors under some circumstances when there are spaces prior to label declaration.");
+            diagnostics.push(d);
+        }
+    }
+    // Iterate over possible route labels to check for errors
+    const routes = /^.*?\/\/.*?$/gm; // every line that contains "//"
+    const badRoute = /[\w\(]+?\/\//; // check for text before the "//"
+    const slashCheck = / *?\/\/.+?\/\//; // contains two or more sets of "//"
+    const formatCheck = / *?\/\/\w+?(\/(\w+?))*?[ \n]/gm; // checks for proper //something/something/something format
+    while (m = routes.exec(text)) {
+        if (badRoute.test(m[0])) {
+            const d = {
+                range: {
+                    start: t.positionAt(m.index),
+                    end: t.positionAt(m.index + m[0].length)
+                },
+                severity: vscode_languageserver_1.DiagnosticSeverity.Error,
+                message: "Route labels can be used only at the beginning of a line.",
+                source: "mast"
+            };
+            d.relatedInformation = (0, errorChecking_1.relatedMessage)(t, d.range, "See https://artemis-sbs.github.io/sbs_utils/mast/routes/ for more details on routes.");
+            diagnostics.push(d);
+        }
+        if (slashCheck.test(m[0])) {
+            const d = {
+                range: {
+                    start: t.positionAt(m.index),
+                    end: t.positionAt(m.index + m[0].length)
+                },
+                severity: vscode_languageserver_1.DiagnosticSeverity.Error,
+                message: "Route label designator (//) may only be used at the beginning of the line.",
+                source: "mast"
+            };
+            d.relatedInformation = (0, errorChecking_1.relatedMessage)(t, d.range, "See https://artemis-sbs.github.io/sbs_utils/mast/routes/ for more details on routes.");
+            diagnostics.push(d);
+        }
+        if (!formatCheck.test(m[0])) {
+            const d = {
+                range: {
+                    start: t.positionAt(m.index),
+                    end: t.positionAt(m.index + m[0].length)
+                },
+                severity: vscode_languageserver_1.DiagnosticSeverity.Error,
+                message: "Route label format is incorrect. Proper formats include: \n//comms\n//spawn/grid\n//enable/science if has_roles(COMMS_SELECTED_ID, \"raider\")",
+                source: "mast"
+            };
+            d.relatedInformation = (0, errorChecking_1.relatedMessage)(t, d.range, "See https://artemis-sbs.github.io/sbs_utils/mast/routes/ for more details on routes.");
             diagnostics.push(d);
         }
     }

@@ -30,8 +30,10 @@ exports.hasDiagnosticRelatedInformationCapability = false;
 //const completionStrings : string[] = [];
 let debugStrs = ""; //Debug: ${workspaceFolder}\n";
 let pyTypings = [];
+let workspacePyTypings = [];
 function getPyTypings() { return pyTypings; }
 let classTypings = [];
+let workspaceClassTypings = [];
 function getClassTypings() { return classTypings; }
 exports.labelNames = [];
 let typingsDone = false;
@@ -132,11 +134,11 @@ function parseWholeFile(text, sbs = false) {
         }
         // TODO: Could pull the class parent and interfaces (if any). Would this be useful?
         let name = (0, fileFunctions_1.getRegExMatch)(t, className).replace("class ", "").replace(/\(.*?\):/, "");
-        let comments = (0, fileFunctions_1.getRegExMatch)(t, comment).replace("\"\"\"", "").replace("\"\"\"", "");
-        const typings = (0, fileFunctions_1.parseTyping)(t);
         if (sbs) {
             name = "sbs";
         }
+        let comments = (0, fileFunctions_1.getRegExMatch)(t, comment).replace("\"\"\"", "").replace("\"\"\"", "");
+        const typings = (0, fileFunctions_1.parseTyping)(t, name);
         const classCompItem = {
             label: name,
             kind: node_1.CompletionItemKind.Class,
@@ -174,6 +176,7 @@ async function loadRouteLabels() {
                 let arr = routes.split(",");
                 //debug(arr.join("/"));
                 supportedRoutes.push(arr);
+                (0, console_1.debug)(arr);
             }
         }
     }
@@ -201,6 +204,7 @@ async function loadTypings() {
     }
 }
 connection.onInitialize((params) => {
+    // These are only executed on startup
     loadTypings().then(() => { typingsDone = true; });
     loadRouteLabels().then(() => { (0, console_1.debug)("Routes Loaded"); });
     //const zip : Promise<void> = extractZip("","./sbs");
@@ -371,6 +375,13 @@ async function validateTextDocument(textDocument) {
     };
     errorSources.push(e1);
     e1 = {
+        pattern: /[\w\(]+?\/\//g,
+        severity: node_1.DiagnosticSeverity.Error,
+        message: "Route labels can only be at the start of a line.",
+        source: "sbs",
+        relatedMessage: "See https://artemis-sbs.github.io/sbs_utils/mast/routes/ for more details on routes."
+    };
+    e1 = {
         pattern: /\b[A-Z]{2,}\b/g,
         severity: node_1.DiagnosticSeverity.Information,
         source: "mast",
@@ -423,7 +434,6 @@ connection.onSignatureHelp((_textDocPos) => {
 // This handler provides the initial list of the completion items.
 connection.onCompletion((_textDocumentPosition) => {
     const text = documents.get(_textDocumentPosition.textDocument.uri);
-    // We could just return pyTypings, but we don't want to add things to pyTypings over and over
     if (text === undefined) {
         return [];
     }

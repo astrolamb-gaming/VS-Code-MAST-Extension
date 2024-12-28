@@ -130,7 +130,8 @@ export function parseTyping(text: string, className: string = "") : CompletionIt
 			command: { command: 'editor.action.triggerSuggest', title: 'Re-trigger completions...' },
 			documentation: comments,
 			detail: ci_details,
-			labelDetails: labelDetails
+			labelDetails: labelDetails,
+			commitCharacters: ["("]
 		}
 		
 		typings.push(ci);
@@ -166,7 +167,7 @@ export function parseTyping(text: string, className: string = "") : CompletionIt
 			}
 		}
 		
-		//appendFunctionData(si);
+		appendFunctionData(si);
 
 		//debug(JSON.stringify(ci));
 
