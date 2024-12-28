@@ -42,6 +42,7 @@ function activate(context) {
             }
         }
     };
+    // context.subscriptions.push(vscode.languages.registerCompletionItemProvider(GO_MODE, new GoCompletionItemProvider(), ".", "\""));
     // Create the language client and start the client.
     client = new node_1.LanguageClient('languageServerExample', 'Language Server Example', serverOptions, clientOptions);
     // Start the client. This will also launch the server
@@ -53,4 +54,11 @@ function deactivate() {
     }
     return client.stop();
 }
+// class GoCompletionItemProvider implements vscode.CompletionItemProvider {
+//     public provideCompletionItems(
+//         document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken):
+//         Thenable<vscode.CompletionItem[]> {
+// 			vscode.execute
+//     }
+// }
 //# sourceMappingURL=extension.js.map

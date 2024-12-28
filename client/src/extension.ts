@@ -5,6 +5,7 @@
 
 import * as path from 'path';
 import { workspace, ExtensionContext , window as Window} from 'vscode';
+import * as vscode from 'vscode';
 
 import {
 	LanguageClient,
@@ -52,6 +53,8 @@ export function activate(context: ExtensionContext) {
 		}
 	};
 
+	// context.subscriptions.push(vscode.languages.registerCompletionItemProvider(GO_MODE, new GoCompletionItemProvider(), ".", "\""));
+
 	// Create the language client and start the client.
 	client = new LanguageClient(
 		'languageServerExample',
@@ -70,3 +73,11 @@ export function deactivate(): Thenable<void> | undefined {
 	}
 	return client.stop();
 }
+
+// class GoCompletionItemProvider implements vscode.CompletionItemProvider {
+//     public provideCompletionItems(
+//         document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken):
+//         Thenable<vscode.CompletionItem[]> {
+// 			vscode.execute
+//     }
+// }

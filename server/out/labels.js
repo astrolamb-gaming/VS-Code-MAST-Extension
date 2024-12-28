@@ -1,9 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.checkLabels = checkLabels;
+exports.getMainLabelAtPos = getMainLabelAtPos;
 const vscode_languageserver_1 = require("vscode-languageserver");
 const errorChecking_1 = require("./errorChecking");
-const fileFunctions_1 = require("./fileFunctions");
+const server_1 = require("./server");
+const console_1 = require("console");
 /**
  * Get valid labels, but only main or sublabels, not both.
  * @param textDocument
@@ -89,6 +91,7 @@ function checkLabels(textDocument) {
             }
         }
     }
+    (0, server_1.updateLabelNames)(mainLabels);
     //debug("Iterating over called labels");
     while (m = calledLabel.exec(text)) {
         const str = m[0].replace(/(->)|(jump )/g, "").trim();
@@ -162,7 +165,7 @@ function findBadLabels(t) {
         let tr = good.test(lbl);
         //debug("  Result: " + tr as string);
         if (!tr) {
-            (0, fileFunctions_1.debug)("    Bad result");
+            (0, console_1.debug)("    Bad result");
             const d = {
                 range: {
                     start: t.positionAt(m.index),
@@ -177,7 +180,7 @@ function findBadLabels(t) {
         }
         tr = whiteSpaceWarning.test(m[0]);
         if (tr) {
-            (0, fileFunctions_1.debug)("WARNING: Best practice to start the line with label declaration");
+            //debug("WARNING: Best practice to start the line with label declaration");
             const d = {
                 range: {
                     start: t.positionAt(m.index),
@@ -192,5 +195,15 @@ function findBadLabels(t) {
         }
     }
     return diagnostics;
+}
+function getMainLabelAtPos(pos, labels) {
+    let closestLabel = labels[0];
+    for (const i in labels) {
+        if (labels[i].start < pos && labels[i].end > pos) {
+            closestLabel = labels[i];
+            return closestLabel;
+        }
+    }
+    return closestLabel;
 }
 //# sourceMappingURL=labels.js.map

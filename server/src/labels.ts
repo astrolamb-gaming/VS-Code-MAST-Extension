@@ -1,10 +1,11 @@
 import { Diagnostic, DiagnosticSeverity, integer } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { relatedMessage } from './errorChecking';
-import { debug } from './fileFunctions';
+import { updateLabelNames } from "./server";
+import { debug } from 'console';
 
 
-interface LabelInfo {
+export interface LabelInfo {
 	main: boolean,
 	name: string,
 	start: integer,
@@ -103,6 +104,7 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 			}
 		}
 	}
+	updateLabelNames(mainLabels);
 	//debug("Iterating over called labels");
 	while (m = calledLabel.exec(text)) {
 		const str = m[0].replace(/(->)|(jump )/g,"").trim();
@@ -196,7 +198,7 @@ function findBadLabels(t: TextDocument) : Diagnostic[] {
 
 		tr = whiteSpaceWarning.test(m[0]);
 		if (tr) {
-			debug("WARNING: Best practice to start the line with label declaration");
+			//debug("WARNING: Best practice to start the line with label declaration");
 			const d: Diagnostic = {
 				range: {
 					start: t.positionAt(m.index),
@@ -215,4 +217,15 @@ function findBadLabels(t: TextDocument) : Diagnostic[] {
 
 
 	return diagnostics;
+}
+
+export function getMainLabelAtPos(pos: integer, labels: LabelInfo[]): LabelInfo {
+	let closestLabel = labels[0];
+	for (const i in labels) {
+		if (labels[i].start < pos && labels[i].end > pos) {
+			closestLabel = labels[i];
+			return closestLabel
+		}
+	}
+	return closestLabel;
 }

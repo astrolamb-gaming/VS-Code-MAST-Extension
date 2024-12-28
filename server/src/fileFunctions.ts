@@ -15,8 +15,14 @@ import {
 	InitializeResult,
 	DocumentDiagnosticReportKind,
 	type DocumentDiagnosticReport,
-	integer
+	integer,
+	SignatureInformation,
+	ParameterInformation,
+	CompletionItemLabelDetails
 } from 'vscode-languageserver/node';
+import { appendFunctionData } from './server';
+import { checkServerIdentity } from 'tls';
+import { debug } from 'console';
 
 export function getRootFolder() : string | null{
 	// let initialDir = "./";
@@ -75,20 +81,22 @@ export function getFolders(dir: string) : string[] {
  * @param text string to parse
  * @returns List of CompletionItems
  */
-export function parseTyping(text: string) : CompletionItem[] {
+export function parseTyping(text: string, partOfClass: boolean = false) : CompletionItem[] {
 	let m: RegExpExecArray | null;
 
 	const typings : CompletionItem[] = [];
 
 	let testStr = 'def add_client_tag() -> None:\n    """stub; does nothing yet."""';
 
-	let wholeFunction : RegExp = /((def)(.+?)([\.]{3,3}|((\"){3,3}(.*?)(\"){3,3})))/gms;
+	let wholeFunction : RegExp = /((@property|\.setter)?([\n\t\r ]*?)(def)(.+?)([\.]{3,3}|((\"){3,3}(.*?)(\"){3,3})))/gms;
 
 	let functionName : RegExp = /((def\s)(.+?)\()/gm; // Look for "def functionName(" to parse function names.
 	let className : RegExp = /class (.+?):/gm; // Look for "class ClassName:" to parse class names.
-	let functionParam : RegExp = /\((.*?)\)/gm; // Find parameters of function, if any.
+	let functionParam : RegExp = /\((.*?)\)/m; // Find parameters of function, if any.
 	let returnValue : RegExp = /->(.+?):/gm; // Get the return value (None, boolean, int, etc)
 	let comment : RegExp = /((\"){3,3}(.*?)(\"){3,3})|(\.\.\.)/gm;
+	let isProperty : RegExp = /(@property)/;
+	let isSetter : RegExp = /\.setter/;
 
 	while ((m = wholeFunction.exec(text))) {
 		// if (m[0] === testStr) {
@@ -96,21 +104,65 @@ export function parseTyping(text: string) : CompletionItem[] {
 		// }
 
 		let name = getRegExMatch(m[0], functionName).replace("def ","").replace("(","");
-
 		let params = getRegExMatch(m[0], functionParam).replace("(","").replace(")","");
-
-		let retVal = getRegExMatch(m[0], returnValue).replace("->", "").trim();
-
+		let retVal = getRegExMatch(m[0], returnValue).replace(/(:|->)/g, "").trim();
 		let comments = getRegExMatch(m[0], comment).replace("\"\"\"","").replace("\"\"\"","");
+		let cik: CompletionItemKind = CompletionItemKind.Method;
+		if (isProperty.test(m[0])) {
+			cik = CompletionItemKind.Property;
+		}
+		if (name === "__init__") {
+			cik = CompletionItemKind.Constructor;
+		}
 
+		let labelDetails: CompletionItemLabelDetails = {
+			detail: "(" + params + ")",
+			description: retVal
+		}
 		let ci : CompletionItem = {
 			label: name,
-			kind: CompletionItemKind.Text,
+			kind: cik,
 			command: { command: 'editor.action.triggerSuggest', title: 'Re-trigger completions...' },
 			//documentation: comments,
-			detail: comments
+			detail: comments,
+			labelDetails: labelDetails
 		}
+		
 		typings.push(ci);
+		const si: SignatureInformation = {
+			label: name,
+			documentation: comments,
+			parameters: []
+		}
+		//debug(name);
+		//debug(params);
+		if (params === "") {
+			continue;
+		}
+		const paramArr: string[] = params.split(",");
+		for (const i in paramArr) {
+			try {
+				if (paramArr[i].includes("*args") || paramArr[i].includes("**kwargs")) {
+					const pi: ParameterInformation = {
+						label: paramArr[i].trim(),
+						documentation: comments
+					}
+					si.parameters?.push(pi);
+					continue;
+				}
+				const paramDef: string[] = paramArr[i].split(":");
+				const pi: ParameterInformation = {
+					label: paramDef[0].trim(),
+					documentation: (paramDef.length === 2) ? paramDef[1].trim() : comments
+				}
+				si.parameters?.push(pi);
+			} catch (e) {
+				debug("Error parsing parameter for function " + name + ", Parameter: "+ paramArr[i] + "\n" + e as string);
+			}
+		}
+		
+		appendFunctionData(si);
+
 		//debug(JSON.stringify(ci));
 
 	}
@@ -129,10 +181,10 @@ export function getRegExMatch(sourceString : string, pattern : RegExp) : string 
 	return ret;
 }
 
-export function debug(str : string | undefined) {
-	if (str === undefined) {
-		str = "UNDEFINED";
-	}
-	str = "\n" + str;
-	fs.writeFileSync('outputLog.txt', str, {flag: "a+"});
-}
+// export function debug(str : string | undefined) {
+// 	if (str === undefined) {
+// 		str = "UNDEFINED";
+// 	}
+// 	str = "\n" + str;
+// 	fs.writeFileSync('outputLog.txt', str, {flag: "a+"});
+// }

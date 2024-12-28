@@ -24,16 +24,21 @@ import {
 	Position,
 	CodeAction,
 	CodeActionKind,
-	Command
+	Command,
+	CompletionItemTag,
+	SignatureHelp,
+	SignatureInformation
 } from 'vscode-languageserver/node';
 
 import {
 	TextDocument
 } from 'vscode-languageserver-textdocument';
 //import fetch from 'node-fetch';
-import {findSubfolderByName, getRootFolder, parseTyping, debug, getRegExMatch} from "./fileFunctions";
+import {findSubfolderByName, getRootFolder, parseTyping, getRegExMatch} from "./fileFunctions";
 import { findDiagnostic } from './errorChecking';
-import { checkLabels } from './labels';
+import { checkLabels, getMainLabelAtPos, LabelInfo } from './labels';
+import { onCompletion } from './autocompletion';
+import { debug } from 'console';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -45,17 +50,24 @@ const documents = new TextDocuments(TextDocument);
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
 export let hasDiagnosticRelatedInformationCapability = false;
-const completionStrings : string[] = [];
+//const completionStrings : string[] = [];
 
 let debugStrs : string = "";//Debug: ${workspaceFolder}\n";
 
 let pyTypings : CompletionItem[] = [];
+export function getPyTypings(): CompletionItem[] { return pyTypings; }
 let classTypings : ClassTypings[] = [];
+export function getClassTypings(): ClassTypings[] { return classTypings; }
+export let labelNames : LabelInfo[] = [];
 let typingsDone: boolean = false;
+let currentDocument: TextDocument;
 
+let functionData : SignatureInformation[] = [];
+export function appendFunctionData(si: SignatureInformation) {functionData.push(si);}
 
-interface ClassTypings {
+export interface ClassTypings {
 	name: string,
+	classCompItem: CompletionItem,
 	completionItems: CompletionItem[]
 }
 
@@ -126,15 +138,18 @@ let files: string[] = [
 ];
 
 const supportedRoutes: string[][] = [];
+export function getSupportedRoutes(): string[][] { return supportedRoutes; }
 
-let routeDefSource = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/mast.py";
+const routeDefSource = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/mast.py";
 
-function parseWholeFile(text: string) {
+function parseWholeFile(text: string, sbs: boolean = false) {
 	let className : RegExp = /^class (.+?):/gm; // Look for "class ClassName:" to parse class names.
+	let comment : RegExp = /((\"){3,3}(.*?)(\"){3,3})|(\.\.\.)/m;
 	let checkText: string;
 	let classIndices : integer[] = [];
 	let m: RegExpExecArray | null;
 	//debug("\n Checking parser...");
+
 	// Iterate over all classes to get their indices
 	while(m = className.exec(text)) {
 		classIndices.push(m.index);
@@ -144,6 +159,9 @@ function parseWholeFile(text: string) {
 	let len = classIndices.length;
 	//debug("There are " + len + " indices found");
 	
+	// Here we go over all the indices and get all functions between the last index (or 0) and the current index.
+	// So if the file doesn't start with a class definition, all function prior to a class definition are added to pyTypings
+	// while class functions are addded to a ClassTypings object.
 	for (let i = 0; i < len; i++) {
 		//debug("index: "+i);
 		let t: string;
@@ -152,16 +170,31 @@ function parseWholeFile(text: string) {
 		} else {
 			t = text.substring(classIndices[i-1],classIndices[i]);
 		}
-		const name = getRegExMatch(t,className).replace("class ","").replace("(object):","");
+		// TODO: Could pull the class parent and interfaces (if any). Would this be useful?
+		let name = getRegExMatch(t,className).replace("class ","").replace(/\(.*?\):/,"");
+		
+		let comments = getRegExMatch(t, comment).replace("\"\"\"","").replace("\"\"\"","");
 		const typings : CompletionItem[] = parseTyping(t);
+		if (sbs) {
+			name = "sbs";
+		}
+		const classCompItem: CompletionItem = {
+			label: name,
+			kind: CompletionItemKind.Class,
+			detail: comments
+		}
 		if (name !== "") {
 			const ct : ClassTypings = {
 				name: name,
+				classCompItem: classCompItem,
 				completionItems: typings
 			};
 			classTypings.push(ct);
 			// debug(JSON.stringify(ct));
 		} else {
+			
+
+			// Only acceptable because these are only loaded on startup
 			pyTypings = pyTypings.concat(typings);
 		}
 	}
@@ -205,12 +238,10 @@ async function loadTypings(): Promise<void> {
 			const data = await fetch(url);
 			const textData = await data.text();
 			//debug("\nText Gotten");
-			parseWholeFile(textData);
-
-			////////////////////////////
-			// JUST CHECKING SBS FOR NOW
-			////////////////////////////
-			//break;
+			// check for sbs/__init__ is for if sbs is needed prior to function call (e.g. sbs.add_particle_emittor(...))
+			let sbs = files[page].includes("sbs/__init__");
+			debug("SBS: " + sbs);
+			parseWholeFile(textData, sbs);
 		}
 	} catch (err) {
 		debug("\nFailed to load\n"+err as string);
@@ -246,8 +277,13 @@ connection.onInitialize((params: InitializeParams) => {
 		capabilities: {
 			textDocumentSync: TextDocumentSyncKind.Incremental,
 			// Tell the client that this server supports code completion.
+			inlineCompletionProvider: {
+				
+			},
 			completionProvider: {
-				resolveProvider: true
+				resolveProvider: true,
+				// TODO: The /, >, and especially the space are hopefully temporary workarounds.
+				triggerCharacters: [".","/",">"," "]
 			},
 			diagnosticProvider: {
 				interFileDependencies: false,
@@ -256,9 +292,12 @@ connection.onInitialize((params: InitializeParams) => {
 			codeActionProvider: true,
 			executeCommandProvider: {
 				commands: [
-					// TODO: Here we add the command names
+					// TODO: Here we add the command names - for QuickFix
 					//'labels.fix'
 				]
+			},
+			signatureHelpProvider: {
+				triggerCharacters: ['(']
 			}
 		}
 	};
@@ -282,7 +321,9 @@ connection.onInitialized(() => {
 		connection.workspace.onDidChangeWorkspaceFolders(_event => {
 			connection.console.log('Workspace folder change event received.');
 		});
+
 	}
+	
 });
 connection.onCodeAction((params) => {
 	const textDocument = documents.get(params.textDocument.uri);
@@ -314,10 +355,6 @@ connection.onExecuteCommand(async (params) => {
 	// 	]
 	// });
 });
-
-interface AutocompleteEntries {
-
-}
 
 // The example settings
 interface ExampleSettings {
@@ -422,6 +459,7 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 	
 	// The validator creates diagnostics for all uppercase words length 2 and more
 	const text = textDocument.getText();
+	currentDocument = textDocument;
 	const pattern = /\b[A-Z]{2,}\b/g;
 	let m: RegExpExecArray | null;
 
@@ -463,63 +501,52 @@ connection.onDidChangeWatchedFiles(_change => {
 	connection.console.log('We received a file change event');
 });
 
+/**
+ * Triggered when ending a function name with an open parentheses, e.g. "functionName( "
+ */
+connection.onSignatureHelp((_textDocPos: TextDocumentPositionParams): SignatureHelp =>{
+	let sh : SignatureHelp = {
+		signatures: []
+	}
+	const text = documents.get(_textDocPos.textDocument.uri);
+	const t = text?.getText();
+	if (text === undefined) {
+		debug("Document ref is undefined");
+		return sh;
+	}
+	if (t === undefined) {
+		debug("Document text is undefined");
+		return sh;
+	}
+	// Calculate the position in the text's string value using the Position value.
+	const pos : integer = text.offsetAt(_textDocPos.position);
+	const startOfLine : integer = pos - _textDocPos.position.character;
+	const iStr : string = t.substring(startOfLine,pos);
+
+	for (const i in functionData) {
+		if (iStr.includes(functionData[i].label)) {
+			sh.signatures.push(functionData[i]);
+		}
+	}
+	
+	return sh;
+});
+
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
 	(_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
-		
-		// The pass parameter contains the position of the text document in
-		// which code complete got requested. For the example we ignore this
-		// info and always provide the same completion items.
-		let ci : CompletionItem[] = 
-		[
-			// {
-			// 	label: 'TypeScript',
-			// 	kind: CompletionItemKind.Text,
-			// 	data: 1
-			// },
-			// {
-			// 	label: 'JavaScript',
-			// 	kind: CompletionItemKind.Text,
-			// 	data: 2
-			// },
-			// {
-			// 	label: 'artemis_sbs',
-			// 	kind: CompletionItemKind.Text
-			// }
-		];
-		if (!typingsDone) {
-			debug("TYPINGS NOT READY");
-			return ci;
-		}
-		let items : string[] = [
-			"sbs",
-			"change_console",
-			"MoreThings",
-			"sbs.something",
-			"sbs.target",
-			"sbs.functions"
-		]
-
-		
-
-		items.forEach((i)=>{
-			//ci.push({label: "sbs: #" + _textDocumentPosition.position.character, kind: CompletionItemKind.Text});
-			if (i.indexOf(".")< _textDocumentPosition.position.character-1) {
-				ci.push({label: i, kind: CompletionItemKind.Text});
-			}
-			
-		});
-		completionStrings.forEach((i)=>{
-			if (i.indexOf(".")< _textDocumentPosition.position.character-1) {
-				ci.push({label: i, kind: CompletionItemKind.Text});
-			}
-		})
-
-		ci = ci.concat(pyTypings);
+		const text = documents.get(_textDocumentPosition.textDocument.uri);
 		// We could just return pyTypings, but we don't want to add things to pyTypings over and over
-		return ci;
+		if (text === undefined) {
+			return [];
+		}
+		return onCompletion(_textDocumentPosition,text);
 	}
 );
+
+export function updateLabelNames(li: LabelInfo[]) {
+	labelNames = li;
+}
 
 // This handler resolves additional information for the item selected in
 // the completion list.
