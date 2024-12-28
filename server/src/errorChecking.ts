@@ -1,6 +1,5 @@
 import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 import { Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, integer } from 'vscode-languageserver/node';
-import { debug } from './fileFunctions';
 import {hasDiagnosticRelatedInformationCapability} from './server';
 
 export function findDiagnostic(pattern: RegExp, textDocument: TextDocument, severity: DiagnosticSeverity, message: string, source: string, relatedInfo: string, maxProblems: integer, problems: integer): Diagnostic[] {

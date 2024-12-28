@@ -8,7 +8,6 @@ exports.getRegExMatch = getRegExMatch;
 const path = require("path");
 const fs = require("fs");
 const node_1 = require("vscode-languageserver/node");
-const server_1 = require("./server");
 const console_1 = require("console");
 function getRootFolder() {
     // let initialDir = "./";
@@ -57,13 +56,13 @@ function getFolders(dir) {
  * @param text string to parse
  * @returns List of CompletionItems
  */
-function parseTyping(text, partOfClass = false) {
+function parseTyping(text, className = "") {
     let m;
     const typings = [];
     let testStr = 'def add_client_tag() -> None:\n    """stub; does nothing yet."""';
     let wholeFunction = /((@property|\.setter)?([\n\t\r ]*?)(def)(.+?)([\.]{3,3}|((\"){3,3}(.*?)(\"){3,3})))/gms;
     let functionName = /((def\s)(.+?)\()/gm; // Look for "def functionName(" to parse function names.
-    let className = /class (.+?):/gm; // Look for "class ClassName:" to parse class names.
+    //let className : RegExp = /class (.+?):/gm; // Look for "class ClassName:" to parse class names.
     let functionParam = /\((.*?)\)/m; // Find parameters of function, if any.
     let returnValue = /->(.+?):/gm; // Get the return value (None, boolean, int, etc)
     let comment = /((\"){3,3}(.*?)(\"){3,3})|(\.\.\.)/gm;
@@ -78,22 +77,27 @@ function parseTyping(text, partOfClass = false) {
         let retVal = getRegExMatch(m[0], returnValue).replace(/(:|->)/g, "").trim();
         let comments = getRegExMatch(m[0], comment).replace("\"\"\"", "").replace("\"\"\"", "");
         let cik = node_1.CompletionItemKind.Method;
+        let cikStr = "function";
         if (isProperty.test(m[0])) {
             cik = node_1.CompletionItemKind.Property;
+            cikStr = "property";
         }
         if (name === "__init__") {
             cik = node_1.CompletionItemKind.Constructor;
+            cikStr = "constructor";
         }
         let labelDetails = {
-            detail: "(" + params + ")",
+            // Decided that this clutters up the UI too much. Same information is displayed in the CompletionItem details.
+            //detail: "(" + params + ")",
             description: retVal
         };
+        let ci_details = "(" + cikStr + ") " + ((className === "") ? "" : className + ".") + name + "(" + params + "): " + retVal;
         let ci = {
             label: name,
             kind: cik,
             command: { command: 'editor.action.triggerSuggest', title: 'Re-trigger completions...' },
-            //documentation: comments,
-            detail: comments,
+            documentation: comments,
+            detail: ci_details,
             labelDetails: labelDetails
         };
         typings.push(ci);
@@ -129,7 +133,7 @@ function parseTyping(text, partOfClass = false) {
                 (0, console_1.debug)("Error parsing parameter for function " + name + ", Parameter: " + paramArr[i] + "\n" + e);
             }
         }
-        (0, server_1.appendFunctionData)(si);
+        //appendFunctionData(si);
         //debug(JSON.stringify(ci));
     }
     //debug(JSON.stringify(typings));

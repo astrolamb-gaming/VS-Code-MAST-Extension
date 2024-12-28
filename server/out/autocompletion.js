@@ -50,8 +50,6 @@ function onCompletion(_textDocumentPosition, text) {
     }
     const ct = (0, server_1.getClassTypings)();
     for (const i in ct) {
-        (0, console_1.debug)(i);
-        (0, console_1.debug)(ct[i]);
         if (iStr.endsWith(ct[i].name + ".")) {
             const cf = ct[i].completionItems;
             for (const j in cf) {

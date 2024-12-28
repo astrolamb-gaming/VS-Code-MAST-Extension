@@ -188,15 +188,11 @@ async function loadTypings() {
         //let github : string = "https://github.com/artemis-sbs/sbs_utils/raw/refs/heads/master/mock/sbs.py";
         let gh = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/typings/";
         for (const page in files) {
-            //debug(files[page]);
             let url = gh + files[page] + ".pyi";
-            //debug("\nPulling from: " + url);
             const data = await fetch(url);
             const textData = await data.text();
-            //debug("\nText Gotten");
             // check for sbs/__init__ is for if sbs is needed prior to function call (e.g. sbs.add_particle_emittor(...))
             let sbs = files[page].includes("sbs/__init__");
-            (0, console_1.debug)("SBS: " + sbs);
             parseWholeFile(textData, sbs);
         }
     }

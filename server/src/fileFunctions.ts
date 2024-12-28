@@ -81,7 +81,7 @@ export function getFolders(dir: string) : string[] {
  * @param text string to parse
  * @returns List of CompletionItems
  */
-export function parseTyping(text: string, partOfClass: boolean = false) : CompletionItem[] {
+export function parseTyping(text: string, className: string = "") : CompletionItem[] {
 	let m: RegExpExecArray | null;
 
 	const typings : CompletionItem[] = [];
@@ -91,7 +91,7 @@ export function parseTyping(text: string, partOfClass: boolean = false) : Comple
 	let wholeFunction : RegExp = /((@property|\.setter)?([\n\t\r ]*?)(def)(.+?)([\.]{3,3}|((\"){3,3}(.*?)(\"){3,3})))/gms;
 
 	let functionName : RegExp = /((def\s)(.+?)\()/gm; // Look for "def functionName(" to parse function names.
-	let className : RegExp = /class (.+?):/gm; // Look for "class ClassName:" to parse class names.
+	//let className : RegExp = /class (.+?):/gm; // Look for "class ClassName:" to parse class names.
 	let functionParam : RegExp = /\((.*?)\)/m; // Find parameters of function, if any.
 	let returnValue : RegExp = /->(.+?):/gm; // Get the return value (None, boolean, int, etc)
 	let comment : RegExp = /((\"){3,3}(.*?)(\"){3,3})|(\.\.\.)/gm;
@@ -108,23 +108,28 @@ export function parseTyping(text: string, partOfClass: boolean = false) : Comple
 		let retVal = getRegExMatch(m[0], returnValue).replace(/(:|->)/g, "").trim();
 		let comments = getRegExMatch(m[0], comment).replace("\"\"\"","").replace("\"\"\"","");
 		let cik: CompletionItemKind = CompletionItemKind.Method;
+		let cikStr: string = "function";
 		if (isProperty.test(m[0])) {
 			cik = CompletionItemKind.Property;
+			cikStr = "property";
 		}
 		if (name === "__init__") {
 			cik = CompletionItemKind.Constructor;
+			cikStr = "constructor";
 		}
 
 		let labelDetails: CompletionItemLabelDetails = {
-			detail: "(" + params + ")",
+			// Decided that this clutters up the UI too much. Same information is displayed in the CompletionItem details.
+			//detail: "(" + params + ")",
 			description: retVal
 		}
+		let ci_details: string = "(" + cikStr + ") " + ((className === "") ? "" : className + ".") + name + "(" + params + "): " + retVal;
 		let ci : CompletionItem = {
 			label: name,
 			kind: cik,
 			command: { command: 'editor.action.triggerSuggest', title: 'Re-trigger completions...' },
-			//documentation: comments,
-			detail: comments,
+			documentation: comments,
+			detail: ci_details,
 			labelDetails: labelDetails
 		}
 		
@@ -161,7 +166,7 @@ export function parseTyping(text: string, partOfClass: boolean = false) : Comple
 			}
 		}
 		
-		appendFunctionData(si);
+		//appendFunctionData(si);
 
 		//debug(JSON.stringify(ci));
 

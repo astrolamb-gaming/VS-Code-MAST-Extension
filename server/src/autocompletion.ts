@@ -52,8 +52,6 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 
 	const ct: ClassTypings[] = getClassTypings();
 	for (const i in ct) {
-		debug(i);
-		debug(ct[i]);
 		if (iStr.endsWith(ct[i].name + ".")) {
 			const cf: CompletionItem[] = ct[i].completionItems;
 			for (const j in cf) {
