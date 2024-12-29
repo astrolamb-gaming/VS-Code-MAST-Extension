@@ -4,6 +4,7 @@ exports.labelNames = exports.hasDiagnosticRelatedInformationCapability = void 0;
 exports.getPyTypings = getPyTypings;
 exports.getClassTypings = getClassTypings;
 exports.appendFunctionData = appendFunctionData;
+exports.getFunctionData = getFunctionData;
 exports.getSupportedRoutes = getSupportedRoutes;
 exports.updateLabelNames = updateLabelNames;
 /* --------------------------------------------------------------------------------------------
@@ -19,6 +20,8 @@ const errorChecking_1 = require("./errorChecking");
 const labels_1 = require("./labels");
 const autocompletion_1 = require("./autocompletion");
 const console_1 = require("console");
+const hover_1 = require("./hover");
+const signatureHelp_1 = require("./signatureHelp");
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 const connection = (0, node_1.createConnection)(node_1.ProposedFeatures.all);
@@ -40,6 +43,7 @@ let typingsDone = false;
 let currentDocument;
 let functionData = [];
 function appendFunctionData(si) { functionData.push(si); }
+function getFunctionData() { return functionData; }
 let files = [
     "sbs/__init__",
     "sbs_utils/agent",
@@ -114,11 +118,13 @@ function parseWholeFile(text, sbs = false) {
     let m;
     //debug("\n Checking parser...");
     // Iterate over all classes to get their indices
+    //classIndices.push(0);
     while (m = className.exec(text)) {
         classIndices.push(m.index);
         //debug("" + m.index + ": " +m[0]);
     }
-    let len = classIndices.length;
+    classIndices.push(text.length - 1);
+    let len = classIndices.length; // How many indices there are - NOT the same as number of classes (should be # of classes - 1)
     //debug("There are " + len + " indices found");
     // Here we go over all the indices and get all functions between the last index (or 0) and the current index.
     // So if the file doesn't start with a class definition, all function prior to a class definition are added to pyTypings
@@ -132,13 +138,24 @@ function parseWholeFile(text, sbs = false) {
         else {
             t = text.substring(classIndices[i - 1], classIndices[i]);
         }
+        //let co = new ClassObject(t);
         // TODO: Could pull the class parent and interfaces (if any). Would this be useful?
         let name = (0, fileFunctions_1.getRegExMatch)(t, className).replace("class ", "").replace(/\(.*?\):/, "");
-        if (sbs) {
+        // TODO: This might be causing issues. Might be good to have sbs functions visible to autocomplete, and add the sbs. to the start upon completion?
+        // Several "sbs" options show up when you start typing s...
+        //debug(name);
+        if (sbs && i == 0) {
             name = "sbs";
+            (0, console_1.debug)("IS SBS");
         }
-        let comments = (0, fileFunctions_1.getRegExMatch)(t, comment).replace("\"\"\"", "").replace("\"\"\"", "");
+        let comments = (0, fileFunctions_1.getRegExMatch)(t, comment).replace(/\"\"\"/g, "");
+        //.replace("\"\"\"","").replace("\"\"\"","");
         const typings = (0, fileFunctions_1.parseTyping)(t, name);
+        // if (name === "sbs") {
+        // 	for (const i in typings) {
+        // 		debug(typings[i].label);
+        // 	}
+        // }
         const classCompItem = {
             label: name,
             kind: node_1.CompletionItemKind.Class,
@@ -148,7 +165,8 @@ function parseWholeFile(text, sbs = false) {
             const ct = {
                 name: name,
                 classCompItem: classCompItem,
-                completionItems: typings
+                completionItems: typings,
+                documentation: comments
             };
             classTypings.push(ct);
             // debug(JSON.stringify(ct));
@@ -159,6 +177,9 @@ function parseWholeFile(text, sbs = false) {
         }
     }
 }
+/**
+ * Parse the sbs_utils/mast/mast.py file to find all the valid route labels
+ */
 async function loadRouteLabels() {
     try {
         const data = await fetch(routeDefSource);
@@ -174,9 +195,7 @@ async function loadRouteLabels() {
             while (n = casePattern.exec(t)) {
                 let routes = n[0].replace(/ (case \[)|\]:|"| /gm, "").trim();
                 let arr = routes.split(",");
-                //debug(arr.join("/"));
                 supportedRoutes.push(arr);
-                (0, console_1.debug)(arr);
             }
         }
     }
@@ -223,11 +242,11 @@ connection.onInitialize((params) => {
         capabilities: {
             textDocumentSync: node_1.TextDocumentSyncKind.Incremental,
             // Tell the client that this server supports code completion.
-            inlineCompletionProvider: {},
+            inlineCompletionProvider: true,
             completionProvider: {
-                resolveProvider: true,
+                resolveProvider: false, // FOR NOW - MAY USE LATER
                 // TODO: The /, >, and especially the space are hopefully temporary workarounds.
-                triggerCharacters: [".", "/", ">", " "]
+                triggerCharacters: [".", "/", ">", " ", "("]
             },
             diagnosticProvider: {
                 interFileDependencies: false,
@@ -241,8 +260,9 @@ connection.onInitialize((params) => {
                 ]
             },
             signatureHelpProvider: {
-                triggerCharacters: ['(']
-            }
+                triggerCharacters: ['(', ',']
+            },
+            //hoverProvider: true
         }
     };
     if (hasWorkspaceFolderCapability) {
@@ -407,29 +427,12 @@ connection.onDidChangeWatchedFiles(_change => {
  * Triggered when ending a function name with an open parentheses, e.g. "functionName( "
  */
 connection.onSignatureHelp((_textDocPos) => {
-    let sh = {
-        signatures: []
-    };
+    //debug(functionData.length);
     const text = documents.get(_textDocPos.textDocument.uri);
-    const t = text?.getText();
     if (text === undefined) {
-        (0, console_1.debug)("Document ref is undefined");
-        return sh;
+        return undefined;
     }
-    if (t === undefined) {
-        (0, console_1.debug)("Document text is undefined");
-        return sh;
-    }
-    // Calculate the position in the text's string value using the Position value.
-    const pos = text.offsetAt(_textDocPos.position);
-    const startOfLine = pos - _textDocPos.position.character;
-    const iStr = t.substring(startOfLine, pos);
-    for (const i in functionData) {
-        if (iStr.includes(functionData[i].label)) {
-            sh.signatures.push(functionData[i]);
-        }
-    }
-    return sh;
+    return (0, signatureHelp_1.onSignatureHelp)(_textDocPos, text);
 });
 // This handler provides the initial list of the completion items.
 connection.onCompletion((_textDocumentPosition) => {
@@ -437,27 +440,40 @@ connection.onCompletion((_textDocumentPosition) => {
     if (text === undefined) {
         return [];
     }
-    return (0, autocompletion_1.onCompletion)(_textDocumentPosition, text);
+    try {
+        return (0, autocompletion_1.onCompletion)(_textDocumentPosition, text);
+    }
+    catch (e) {
+        return undefined;
+    }
 });
 function updateLabelNames(li) {
     exports.labelNames = li;
 }
 // This handler resolves additional information for the item selected in
 // the completion list.
-connection.onCompletionResolve((item) => {
-    if (item.data === 1) {
-        item.detail = 'TypeScript details';
-        item.documentation = 'TypeScript documentation';
+// connection.onCompletionResolve(
+// 	(item: CompletionItem): CompletionItem => {
+// 		if (item.data === 1) {
+// 			item.detail = 'TypeScript details';
+// 			item.documentation = 'TypeScript documentation';
+// 		} else if (item.data === 2) {
+// 			item.detail = 'JavaScript details';
+// 			item.documentation = 'JavaScript documentation';
+// 		}
+// 		if (item.label === "sbs") {
+// 			item.detail = "artemis_sbs details",
+// 			item.documentation = "artemis_sbs details"
+// 		}
+// 		return item;
+// 	}
+// );
+connection.onHover((_textDocumentPosition) => {
+    const text = documents.get(_textDocumentPosition.textDocument.uri);
+    if (text === undefined) {
+        return undefined;
     }
-    else if (item.data === 2) {
-        item.detail = 'JavaScript details';
-        item.documentation = 'JavaScript documentation';
-    }
-    if (item.label === "sbs") {
-        item.detail = "artemis_sbs details",
-            item.documentation = "artemis_sbs details";
-    }
-    return item;
+    return (0, hover_1.onHover)(_textDocumentPosition, text);
 });
 // Make the text document manager listen on the connection
 // for open, change and close text document events

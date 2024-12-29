@@ -18,7 +18,8 @@ import {
 	integer,
 	SignatureInformation,
 	ParameterInformation,
-	CompletionItemLabelDetails
+	CompletionItemLabelDetails,
+	InsertTextFormat
 } from 'vscode-languageserver/node';
 import { appendFunctionData } from './server';
 import { checkServerIdentity } from 'tls';
@@ -94,7 +95,7 @@ export function parseTyping(text: string, className: string = "") : CompletionIt
 	//let className : RegExp = /class (.+?):/gm; // Look for "class ClassName:" to parse class names.
 	let functionParam : RegExp = /\((.*?)\)/m; // Find parameters of function, if any.
 	let returnValue : RegExp = /->(.+?):/gm; // Get the return value (None, boolean, int, etc)
-	let comment : RegExp = /((\"){3,3}(.*?)(\"){3,3})|(\.\.\.)/gm;
+	let comment : RegExp = /((\"){3,3}(.*?)(\"){3,3})|(\.\.\.)/gms;
 	let isProperty : RegExp = /(@property)/;
 	let isSetter : RegExp = /\.setter/;
 
@@ -103,7 +104,8 @@ export function parseTyping(text: string, className: string = "") : CompletionIt
 		// 	debug("Strings idential");
 		// }
 
-		let name = getRegExMatch(m[0], functionName).replace("def ","").replace("(","");
+		let name = getRegExMatch(m[0], functionName).replace("def ","").replace("(","").trim();
+		//debug(name);
 		let params = getRegExMatch(m[0], functionParam).replace("(","").replace(")","");
 		let retVal = getRegExMatch(m[0], returnValue).replace(/(:|->)/g, "").trim();
 		let comments = getRegExMatch(m[0], comment).replace("\"\"\"","").replace("\"\"\"","");
@@ -118,6 +120,9 @@ export function parseTyping(text: string, className: string = "") : CompletionIt
 			cikStr = "constructor";
 		}
 
+
+		
+
 		let labelDetails: CompletionItemLabelDetails = {
 			// Decided that this clutters up the UI too much. Same information is displayed in the CompletionItem details.
 			//detail: "(" + params + ")",
@@ -127,41 +132,52 @@ export function parseTyping(text: string, className: string = "") : CompletionIt
 		let ci : CompletionItem = {
 			label: name,
 			kind: cik,
-			command: { command: 'editor.action.triggerSuggest', title: 'Re-trigger completions...' },
+			//command: { command: 'editor.action.triggerSuggest', title: 'Re-trigger completions...' },
 			documentation: comments,
 			detail: ci_details,
 			labelDetails: labelDetails,
-			commitCharacters: ["("]
+			insertText: name
 		}
 		
 		typings.push(ci);
 		const si: SignatureInformation = {
-			label: name,
-			documentation: comments,
+			label: ci_details,
+			documentation: ci_details + "\n" + comments,
+			// TODO: Make this more Markup style instead of just text
 			parameters: []
 		}
-		//debug(name);
-		//debug(params);
+		if (name === "add_role") {
+			debug(params);
+		}
 		if (params === "") {
 			continue;
 		}
 		const paramArr: string[] = params.split(",");
 		for (const i in paramArr) {
+			if (paramArr[i].trim() === "self") {
+				continue;
+			}
 			try {
-				if (paramArr[i].includes("*args") || paramArr[i].includes("**kwargs")) {
+				//debug(paramArr[i]);
+				let paramDef: string[] = paramArr[i].split(":");
+
+				// paramDef[0] is the name of the variable.
+				// paramDef[1] is the type, which often is not specified in the function definition.
+				// Usually the type is in the comments somewhere, but I don't want to try and parse comments which may not always have the same format.
+				if (paramDef.length === 1) {
 					const pi: ParameterInformation = {
-						label: paramArr[i].trim(),
-						documentation: comments
+						label: paramDef[0],
+						//documentation: comments
 					}
 					si.parameters?.push(pi);
-					continue;
+				} else {
+					const pi: ParameterInformation = {
+						label: paramDef[0],
+						documentation: paramDef[1]
+					}
+					si.parameters?.push(pi);
+					si.parameters?.push()
 				}
-				const paramDef: string[] = paramArr[i].split(":");
-				const pi: ParameterInformation = {
-					label: paramDef[0].trim(),
-					documentation: (paramDef.length === 2) ? paramDef[1].trim() : comments
-				}
-				si.parameters?.push(pi);
 			} catch (e) {
 				debug("Error parsing parameter for function " + name + ", Parameter: "+ paramArr[i] + "\n" + e as string);
 			}
@@ -169,7 +185,7 @@ export function parseTyping(text: string, className: string = "") : CompletionIt
 		
 		appendFunctionData(si);
 
-		//debug(JSON.stringify(ci));
+		//debug(JSON.stringify(si));
 
 	}
 	//debug(JSON.stringify(typings));

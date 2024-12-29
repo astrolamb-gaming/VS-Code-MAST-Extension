@@ -183,7 +183,7 @@ function findBadLabels(t: TextDocument) : Diagnostic[] {
 		//debug("  Result: " + tr as string);
 
 		if (!tr) {
-			debug("    Bad result");
+			//debug("    Bad result");
 			const d: Diagnostic = {
 				range: {
 					start: t.positionAt(m.index),

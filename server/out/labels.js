@@ -5,7 +5,6 @@ exports.getMainLabelAtPos = getMainLabelAtPos;
 const vscode_languageserver_1 = require("vscode-languageserver");
 const errorChecking_1 = require("./errorChecking");
 const server_1 = require("./server");
-const console_1 = require("console");
 /**
  * Get valid labels, but only main or sublabels, not both.
  * @param textDocument
@@ -166,7 +165,7 @@ function findBadLabels(t) {
         let tr = good.test(lbl);
         //debug("  Result: " + tr as string);
         if (!tr) {
-            (0, console_1.debug)("    Bad result");
+            //debug("    Bad result");
             const d = {
                 range: {
                     start: t.positionAt(m.index),

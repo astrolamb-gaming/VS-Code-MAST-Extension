@@ -29,7 +29,9 @@ import {
 	SignatureHelp,
 	SignatureInformation,
 	SignatureHelpParams,
-	ServerRequestHandler
+	ServerRequestHandler,
+	ParameterInformation,
+	Hover
 } from 'vscode-languageserver/node';
 
 import {
@@ -39,8 +41,10 @@ import {
 import {findSubfolderByName, getRootFolder, parseTyping, getRegExMatch} from "./fileFunctions";
 import { findDiagnostic } from './errorChecking';
 import { checkLabels, getMainLabelAtPos, LabelInfo } from './labels';
-import { onCompletion } from './autocompletion';
+import { ClassTypings, onCompletion } from './autocompletion';
 import { debug } from 'console';
+import { onHover } from './hover';
+import { onSignatureHelp } from './signatureHelp';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -68,17 +72,14 @@ let currentDocument: TextDocument;
 
 let functionData : SignatureInformation[] = [];
 export function appendFunctionData(si: SignatureInformation) {functionData.push(si);}
+export function getFunctionData(): SignatureInformation[] { return functionData; }
 
-export interface ClassTypings {
-	name: string,
-	classCompItem: CompletionItem,
-	completionItems: CompletionItem[]
-}
+
 
 
 
 let files: string[] = [
-	"sbs/__init__",
+	 "sbs/__init__",
 	"sbs_utils/agent",
 	"sbs_utils/consoledispatcher",
 	"sbs_utils/damagedispatcher",
@@ -155,12 +156,14 @@ function parseWholeFile(text: string, sbs: boolean = false) {
 	//debug("\n Checking parser...");
 
 	// Iterate over all classes to get their indices
+	//classIndices.push(0);
 	while(m = className.exec(text)) {
 		classIndices.push(m.index);
 		//debug("" + m.index + ": " +m[0]);
 	}
+	classIndices.push(text.length-1);
 
-	let len = classIndices.length;
+	let len = classIndices.length; // How many indices there are - NOT the same as number of classes (should be # of classes - 1)
 	//debug("There are " + len + " indices found");
 	
 	// Here we go over all the indices and get all functions between the last index (or 0) and the current index.
@@ -174,14 +177,26 @@ function parseWholeFile(text: string, sbs: boolean = false) {
 		} else {
 			t = text.substring(classIndices[i-1],classIndices[i]);
 		}
+		//let co = new ClassObject(t);
+		
+
 		// TODO: Could pull the class parent and interfaces (if any). Would this be useful?
 		let name = getRegExMatch(t,className).replace("class ","").replace(/\(.*?\):/,"");
-		if (sbs) {
+		// TODO: This might be causing issues. Might be good to have sbs functions visible to autocomplete, and add the sbs. to the start upon completion?
+		// Several "sbs" options show up when you start typing s...
+		//debug(name);
+		if (sbs && i == 0) {
 			name = "sbs";
+			debug("IS SBS");
 		}
-		let comments = getRegExMatch(t, comment).replace("\"\"\"","").replace("\"\"\"","");
+		let comments = getRegExMatch(t, comment).replace(/\"\"\"/g,"");
+		//.replace("\"\"\"","").replace("\"\"\"","");
 		const typings : CompletionItem[] = parseTyping(t,name);
-		
+		// if (name === "sbs") {
+		// 	for (const i in typings) {
+		// 		debug(typings[i].label);
+		// 	}
+		// }
 		const classCompItem: CompletionItem = {
 			label: name,
 			kind: CompletionItemKind.Class,
@@ -191,7 +206,8 @@ function parseWholeFile(text: string, sbs: boolean = false) {
 			const ct : ClassTypings = {
 				name: name,
 				classCompItem: classCompItem,
-				completionItems: typings
+				completionItems: typings,
+				documentation: comments
 			};
 			classTypings.push(ct);
 			// debug(JSON.stringify(ct));
@@ -204,7 +220,9 @@ function parseWholeFile(text: string, sbs: boolean = false) {
 	}
 	
 }
-
+/**
+ * Parse the sbs_utils/mast/mast.py file to find all the valid route labels
+ */
 async function loadRouteLabels(): Promise<void> {
 	try {
 		const data = await fetch(routeDefSource);
@@ -220,9 +238,7 @@ async function loadRouteLabels(): Promise<void> {
 			while (n = casePattern.exec(t)) {
 				let routes = n[0].replace(/ (case \[)|\]:|"| /gm,"").trim();
 				let arr = routes.split(",");
-				//debug(arr.join("/"));
 				supportedRoutes.push(arr);
-				debug(arr);
 			}
 		}
 	} catch (e) {
@@ -279,13 +295,11 @@ connection.onInitialize((params: InitializeParams) => {
 		capabilities: {
 			textDocumentSync: TextDocumentSyncKind.Incremental,
 			// Tell the client that this server supports code completion.
-			inlineCompletionProvider: {
-				
-			},
+			inlineCompletionProvider: true,
 			completionProvider: {
-				resolveProvider: true,
+				resolveProvider: false, // FOR NOW - MAY USE LATER
 				// TODO: The /, >, and especially the space are hopefully temporary workarounds.
-				triggerCharacters: [".","/",">"," "]
+				triggerCharacters: [".","/",">"," ","("]
 			},
 			diagnosticProvider: {
 				interFileDependencies: false,
@@ -299,8 +313,9 @@ connection.onInitialize((params: InitializeParams) => {
 				]
 			},
 			signatureHelpProvider: {
-				triggerCharacters: ['(']
-			}
+				triggerCharacters: ['(',',']
+			},
+			//hoverProvider: true
 		}
 	};
 	if (hasWorkspaceFolderCapability) {
@@ -513,42 +528,27 @@ connection.onDidChangeWatchedFiles(_change => {
 /**
  * Triggered when ending a function name with an open parentheses, e.g. "functionName( "
  */
-connection.onSignatureHelp((_textDocPos: SignatureHelpParams): SignatureHelp =>{
-	let sh : SignatureHelp = {
-		signatures: []
-	}
+connection.onSignatureHelp((_textDocPos: SignatureHelpParams): SignatureHelp | undefined =>{
+	//debug(functionData.length);
 	const text = documents.get(_textDocPos.textDocument.uri);
-	const t = text?.getText();
 	if (text === undefined) {
-		debug("Document ref is undefined");
-		return sh;
+		return undefined;
 	}
-	if (t === undefined) {
-		debug("Document text is undefined");
-		return sh;
-	}
-	// Calculate the position in the text's string value using the Position value.
-	const pos : integer = text.offsetAt(_textDocPos.position);
-	const startOfLine : integer = pos - _textDocPos.position.character;
-	const iStr : string = t.substring(startOfLine,pos);
-
-	for (const i in functionData) {
-		if (iStr.includes(functionData[i].label)) {
-			sh.signatures.push(functionData[i]);
-		}
-	}
-	
-	return sh;
+	return onSignatureHelp(_textDocPos,text);
 });
 
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
-	(_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
+	(_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] | undefined => {
 		const text = documents.get(_textDocumentPosition.textDocument.uri);
 		if (text === undefined) {
 			return [];
 		}
-		return onCompletion(_textDocumentPosition,text);
+		try {
+			return onCompletion(_textDocumentPosition,text);
+		} catch (e) {
+			return undefined;
+		}
 	}
 );
 
@@ -559,22 +559,30 @@ export function updateLabelNames(li: LabelInfo[]) {
 // This handler resolves additional information for the item selected in
 // the completion list.
 
-connection.onCompletionResolve(
-	(item: CompletionItem): CompletionItem => {
-		if (item.data === 1) {
-			item.detail = 'TypeScript details';
-			item.documentation = 'TypeScript documentation';
-		} else if (item.data === 2) {
-			item.detail = 'JavaScript details';
-			item.documentation = 'JavaScript documentation';
-		}
-		if (item.label === "sbs") {
-			item.detail = "artemis_sbs details",
-			item.documentation = "artemis_sbs details"
-		}
-		return item;
+// connection.onCompletionResolve(
+// 	(item: CompletionItem): CompletionItem => {
+// 		if (item.data === 1) {
+// 			item.detail = 'TypeScript details';
+// 			item.documentation = 'TypeScript documentation';
+// 		} else if (item.data === 2) {
+// 			item.detail = 'JavaScript details';
+// 			item.documentation = 'JavaScript documentation';
+// 		}
+// 		if (item.label === "sbs") {
+// 			item.detail = "artemis_sbs details",
+// 			item.documentation = "artemis_sbs details"
+// 		}
+// 		return item;
+// 	}
+// );
+
+connection.onHover((_textDocumentPosition: TextDocumentPositionParams): Hover | undefined => {
+	const text = documents.get(_textDocumentPosition.textDocument.uri);
+	if (text === undefined) {
+		return undefined;
 	}
-);
+	return onHover(_textDocumentPosition,text);
+});
 
 // Make the text document manager listen on the connection
 // for open, change and close text document events
