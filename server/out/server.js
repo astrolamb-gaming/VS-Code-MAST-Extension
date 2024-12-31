@@ -151,6 +151,7 @@ async function loadTypings() {
             sourceFiles.push((0, data_1.parseWholeFile)(textData, files[page]));
         }
         (0, autocompletion_1.prepCompletions)(sourceFiles);
+        (0, signatureHelp_1.prepSignatures)(sourceFiles);
     }
     catch (err) {
         (0, console_1.debug)("\nFailed to load\n" + err);

@@ -43,13 +43,13 @@ class ClassObject {
             description: this.name
         };
         let cik = vscode_languageserver_1.CompletionItemKind.Class;
-        let ci_details = this.name + "(" + this.constructorFunction?.rawParams + "): " + this.name;
+        let ci_details = this.name + "(" + ((this.constructorFunction === undefined) ? "" : this.constructorFunction?.rawParams) + "): " + this.name;
         let ci = {
             label: this.name,
             kind: cik,
             //command: { command: 'editor.action.triggerSuggest', title: 'Re-trigger completions...' },
             documentation: this.documentation,
-            detail: "CompletionItem detail", //this.documentation as string,
+            detail: ci_details, //(this.constructorFunction) ? this.constructorFunction.documentation : this.documentation, //this.documentation as string,
             labelDetails: labelDetails,
             insertText: this.name
         };
@@ -97,7 +97,7 @@ class Function {
         }
         this.functionType = cikStr;
         this.parameters = this.buildParams(params);
-        this.completionItem = this.buildCompletionItems();
+        this.completionItem = this.buildCompletionItem(cik);
         this.signatureInformation = this.buildSignatureInformation();
         return this;
     }
@@ -128,7 +128,7 @@ class Function {
      * Helper function, should only be called by constructor.
      * @returns
      */
-    buildCompletionItems() {
+    buildCompletionItem(cik) {
         //const ci: CompletionItem;
         let labelDetails = {
             // Decided that this clutters up the UI too much. Same information is displayed in the CompletionItem details.
@@ -136,17 +136,8 @@ class Function {
             description: this.returnType
         };
         let label = this.name;
-        let cik = vscode_languageserver_1.CompletionItemKind.Function;
         let retType = this.returnType;
         let funcType = this.functionType;
-        if (this.functionType === "property") {
-            cik = vscode_languageserver_1.CompletionItemKind.Property;
-        }
-        if (this.name == "__init__") {
-            cik = vscode_languageserver_1.CompletionItemKind.Constructor;
-            label = this.className;
-            retType = this.className;
-        }
         let classRef = ((this.className === "") ? "" : this.className + ".");
         // For constructor functions, we don't want something like vec2.vec2(args). We just want vec2(args).
         if (cik === vscode_languageserver_1.CompletionItemKind.Constructor) {

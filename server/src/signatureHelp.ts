@@ -2,7 +2,19 @@ import { debug } from 'console';
 import { SignatureHelpParams, SignatureHelp, integer, SignatureInformation, ParameterInformation } from 'vscode-languageserver';
 import { getFunctionData } from './server';
 import { TextDocument } from 'vscode-languageserver-textdocument';
+import { PyFile } from './data';
 
+let functionSigs: SignatureInformation[] = [];
+
+export function prepSignatures(files: PyFile[]) {
+	for (const i in files) {
+		const pyFile = files[i];
+		for (const f in pyFile.defaultFunctions) {
+			const func = pyFile.defaultFunctions[f];
+			functionSigs.push(func.buildSignatureInformation());
+		}
+	}
+}
 
 export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocument): SignatureHelp | undefined {
 	let sh : SignatureHelp = {
@@ -43,21 +55,15 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 	//m = func.exec(res);
 	//let f = res?.replace(/[\(\)]/g,"");
 	//debug("Starting WHile loop");
-	const functionData = getFunctionData();
 	while (m = lastFunc.exec(res)) {
 		const f = m[0];
 		debug(f);
-		for (const i in functionData) {
-			if (functionData[i].label === m[0]) {
-				let s2: SignatureInformation ={
-					label: functionData[i].label,
-					parameters: functionData[i].parameters,
-					documentation: functionData[i].documentation,
-				}
-				sh.signatures.push(s2);
+		for (const i in functionSigs) {
+			if (functionSigs[i].label === f) {
+			
+				sh.signatures.push(functionSigs[i]);
 				//debug(m[0]);
-				debug(JSON.stringify(functionData[i]));
-				break;
+				debug(JSON.stringify(functionSigs[i]));
 			}
 		}
 	}

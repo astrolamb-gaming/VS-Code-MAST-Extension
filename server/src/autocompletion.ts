@@ -71,7 +71,8 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	}
 
 	// Handle label autocompletion
-	if (iStr.endsWith("-> ") || iStr.endsWith("jump ") || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (")) {
+	let jump: RegExp = /(->|jump) *?$/;
+	if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (")) {
 		for (const i in labelNames) {
 			ci.push({label: labelNames[i].name, kind: CompletionItemKind.Event});
 		}
@@ -83,44 +84,29 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	}
 	
 
-	if (iStr.endsWith("(")) {
-		// const func: RegExp = /[\w. ]+?\(/g
-		// let m: RegExpExecArray | null;
-		// while (m = func.exec(iStr)) {
+	// if (iStr.endsWith("(")) {
+	// 	// const func: RegExp = /[\w. ]+?\(/g
+	// 	// let m: RegExpExecArray | null;
+	// 	// while (m = func.exec(iStr)) {
 		
-		// }
-		return ci;
-	}
+	// 	// }
+	// 	return ci;
+	// }
 
 	// First we check if it should be just stuff from a particular class
 	for (const i in classes) {
-		let found = false;
 		if (iStr.endsWith(classes[i].name + ".")) {
-			const cf: CompletionItem[] = classes[i].methodCompletionItems;
-			for (const j in cf) {
-				ci.push(cf[j]);
-			}
-			found = true;
-		}
-		if (found) {
-			return ci;
+			return ci.concat(classes[i].methodCompletionItems);
 		}
 	}
-	// If it doesn't belong to a particular class, add class name to the list of completion items
+	// If it doesn't belong to a particular class, add class constructor to the list of completion items
 	for (const i in classes) {
-		if (classes[i].constructorFunction !== undefined) {
-			ci.push(classes[i].constructorFunction?.completionItem);
-		}
+		//if (classes[i].constructorFunction !== undefined) {
+			ci.push(classes[i].completionItem);
+		//}
 	}
 
 	ci = ci.concat(defaultFunctionCompletionItems);
-	
-	for (const i in ci) {
-		debug(ci[i].label);
-	}
-
-	// depracated
-	// ci = ci.concat(getPyTypings());
 	return ci;
 }
 

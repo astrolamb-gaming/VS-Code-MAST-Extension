@@ -123,13 +123,13 @@ export class ClassObject implements IClassObject {
 			description: this.name
 		}
 		let cik: CompletionItemKind = CompletionItemKind.Class;
-		let ci_details: string = this.name + "(" + this.constructorFunction?.rawParams + "): " + this.name;
+		let ci_details: string = this.name + "(" + ((this.constructorFunction === undefined) ? "" : this.constructorFunction?.rawParams) + "): " + this.name;
 		let ci : CompletionItem = {
 			label: this.name,
 			kind: cik,
 			//command: { command: 'editor.action.triggerSuggest', title: 'Re-trigger completions...' },
 			documentation: this.documentation,
-			detail: "CompletionItem detail", //this.documentation as string,
+			detail: ci_details, //(this.constructorFunction) ? this.constructorFunction.documentation : this.documentation, //this.documentation as string,
 			labelDetails: labelDetails,
 			insertText: this.name
 		}
@@ -195,7 +195,7 @@ export class Function implements IFunction {
 		}
 		this.functionType = cikStr;
 		this.parameters = this.buildParams(params);
-		this.completionItem = this.buildCompletionItems();
+		this.completionItem = this.buildCompletionItem(cik);
 		this.signatureInformation = this.buildSignatureInformation();
 		return this;
 	}
@@ -227,7 +227,7 @@ export class Function implements IFunction {
 	 * Helper function, should only be called by constructor.
 	 * @returns 
 	 */
-	buildCompletionItems(): CompletionItem {
+	buildCompletionItem(cik: CompletionItemKind): CompletionItem {
 		//const ci: CompletionItem;
 		let labelDetails: CompletionItemLabelDetails = {
 			// Decided that this clutters up the UI too much. Same information is displayed in the CompletionItem details.
@@ -235,17 +235,8 @@ export class Function implements IFunction {
 			description: this.returnType
 		}
 		let label = this.name;
-		let cik: CompletionItemKind = CompletionItemKind.Function;
 		let retType = this.returnType;
 		let funcType = this.functionType;
-		if (this.functionType === "property") {
-			cik = CompletionItemKind.Property;
-		}
-		if (this.name == "__init__") {
-			cik = CompletionItemKind.Constructor;
-			label = this.className;
-			retType = this.className;
-		}
 		
 		let classRef = ((this.className === "") ? "" : this.className + ".");
 		// For constructor functions, we don't want something like vec2.vec2(args). We just want vec2(args).

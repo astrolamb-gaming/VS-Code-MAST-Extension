@@ -1,8 +1,18 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.prepSignatures = prepSignatures;
 exports.onSignatureHelp = onSignatureHelp;
 const console_1 = require("console");
-const server_1 = require("./server");
+let functionSigs = [];
+function prepSignatures(files) {
+    for (const i in files) {
+        const pyFile = files[i];
+        for (const f in pyFile.defaultFunctions) {
+            const func = pyFile.defaultFunctions[f];
+            functionSigs.push(func.buildSignatureInformation());
+        }
+    }
+}
 function onSignatureHelp(_textDocPos, text) {
     let sh = {
         signatures: []
@@ -36,21 +46,14 @@ function onSignatureHelp(_textDocPos, text) {
     //m = func.exec(res);
     //let f = res?.replace(/[\(\)]/g,"");
     //debug("Starting WHile loop");
-    const functionData = (0, server_1.getFunctionData)();
     while (m = lastFunc.exec(res)) {
         const f = m[0];
         (0, console_1.debug)(f);
-        for (const i in functionData) {
-            if (functionData[i].label === m[0]) {
-                let s2 = {
-                    label: functionData[i].label,
-                    parameters: functionData[i].parameters,
-                    documentation: functionData[i].documentation,
-                };
-                sh.signatures.push(s2);
+        for (const i in functionSigs) {
+            if (functionSigs[i].label === f) {
+                sh.signatures.push(functionSigs[i]);
                 //debug(m[0]);
-                (0, console_1.debug)(JSON.stringify(functionData[i]));
-                break;
+                (0, console_1.debug)(JSON.stringify(functionSigs[i]));
             }
         }
     }

@@ -64,7 +64,8 @@ function onCompletion(_textDocumentPosition, text) {
         return ci;
     }
     // Handle label autocompletion
-    if (iStr.endsWith("-> ") || iStr.endsWith("jump ") || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (")) {
+    let jump = /(->|jump) *?$/;
+    if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (")) {
         for (const i in server_1.labelNames) {
             ci.push({ label: server_1.labelNames[i].name, kind: vscode_languageserver_1.CompletionItemKind.Event });
         }
@@ -74,39 +75,26 @@ function onCompletion(_textDocumentPosition, text) {
         }
         return ci;
     }
-    if (iStr.endsWith("(")) {
-        // const func: RegExp = /[\w. ]+?\(/g
-        // let m: RegExpExecArray | null;
-        // while (m = func.exec(iStr)) {
-        // }
-        return ci;
-    }
+    // if (iStr.endsWith("(")) {
+    // 	// const func: RegExp = /[\w. ]+?\(/g
+    // 	// let m: RegExpExecArray | null;
+    // 	// while (m = func.exec(iStr)) {
+    // 	// }
+    // 	return ci;
+    // }
     // First we check if it should be just stuff from a particular class
     for (const i in classes) {
-        let found = false;
         if (iStr.endsWith(classes[i].name + ".")) {
-            const cf = classes[i].methodCompletionItems;
-            for (const j in cf) {
-                ci.push(cf[j]);
-            }
-            found = true;
-        }
-        if (found) {
-            return ci;
+            return ci.concat(classes[i].methodCompletionItems);
         }
     }
-    // If it doesn't belong to a particular class, add class name to the list of completion items
+    // If it doesn't belong to a particular class, add class constructor to the list of completion items
     for (const i in classes) {
-        if (classes[i].constructorFunction !== undefined) {
-            ci.push(classes[i].constructorFunction?.completionItem);
-        }
+        //if (classes[i].constructorFunction !== undefined) {
+        ci.push(classes[i].completionItem);
+        //}
     }
     ci = ci.concat(defaultFunctionCompletionItems);
-    for (const i in ci) {
-        (0, console_1.debug)(ci[i].label);
-    }
-    // depracated
-    // ci = ci.concat(getPyTypings());
     return ci;
 }
 //# sourceMappingURL=autocompletion.js.map

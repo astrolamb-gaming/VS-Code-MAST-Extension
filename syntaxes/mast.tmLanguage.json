@@ -267,7 +267,7 @@
 		  },
 		  {
 			  "name": "keyword.control.flow.label.jump.mast",
-			  "match": "jump|(->.{1,})"
+			  "match": "(jump|->).*"
 		  },
 		  {
 			  "name": "keyword.control.flow.label.route.mast",

@@ -40,7 +40,7 @@ import { checkLabels, getMainLabelAtPos, LabelInfo } from './labels';
 import { onCompletion, prepCompletions } from './autocompletion';
 import { debug } from 'console';
 import { onHover } from './hover';
-import { onSignatureHelp } from './signatureHelp';
+import { onSignatureHelp, prepSignatures } from './signatureHelp';
 import { ClassTypings, parseWholeFile, PyFile } from './data';
 
 // Create a connection for the server, using Node's IPC as a transport.
@@ -187,6 +187,7 @@ async function loadTypings(): Promise<void> {
 			sourceFiles.push(parseWholeFile(textData, files[page]));
 		}
 		prepCompletions(sourceFiles);
+		prepSignatures(sourceFiles);
 	} catch (err) {
 		debug("\nFailed to load\n"+err as string);
 	}
