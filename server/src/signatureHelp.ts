@@ -1,6 +1,7 @@
 import { debug } from 'console';
-import { SignatureHelpParams, SignatureHelp, integer, SignatureInformation, TextDocument, ParameterInformation } from 'vscode-languageserver';
+import { SignatureHelpParams, SignatureHelp, integer, SignatureInformation, ParameterInformation } from 'vscode-languageserver';
 import { getFunctionData } from './server';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 
 
 export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocument): SignatureHelp | undefined {

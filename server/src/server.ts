@@ -34,17 +34,14 @@ import {
 	Hover
 } from 'vscode-languageserver/node';
 
-import {
-	TextDocument
-} from 'vscode-languageserver-textdocument';
-//import fetch from 'node-fetch';
-import {findSubfolderByName, getRootFolder, parseTyping, getRegExMatch} from "./fileFunctions";
+import { TextDocument } from 'vscode-languageserver-textdocument';
 import { findDiagnostic } from './errorChecking';
 import { checkLabels, getMainLabelAtPos, LabelInfo } from './labels';
-import { ClassTypings, onCompletion } from './autocompletion';
+import { onCompletion, prepCompletions } from './autocompletion';
 import { debug } from 'console';
 import { onHover } from './hover';
 import { onSignatureHelp } from './signatureHelp';
+import { ClassTypings, parseWholeFile, PyFile } from './data';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -79,67 +76,67 @@ export function getFunctionData(): SignatureInformation[] { return functionData;
 
 
 let files: string[] = [
-	 "sbs/__init__",
-	"sbs_utils/agent",
-	"sbs_utils/consoledispatcher",
-	"sbs_utils/damagedispatcher",
-	"sbs_utils/extra_dispatcher",
-	"sbs_utils/faces",
-	"sbs_utils/fs",
-	"sbs_utils/futures",
-	"sbs_utils/griddispatcher",
-	"sbs_utils/gridobject",
-	"sbs_utils/gui",
-	"sbs_utils/handlerhooks",
-	"sbs_utils/helpers",
-	"sbs_utils/layout",
-	"sbs_utils/lifetimedispatchers",
-	"sbs_utils/objects",
-	"sbs_utils/scatter",
-	"sbs_utils/spaceobject",
-	"sbs_utils/tickdispatcher",
-	"sbs_utils/vec",
-	"sbs_utils/mast/label",
-	"sbs_utils/mast/mast",
-	"sbs_utils/mast/mast_sbs_procedural",
-	"sbs_utils/mast/mastmission",
-	"sbs_utils/mast/mastobjects",
-	"sbs_utils/mast/mastscheduler",
-	"sbs_utils/mast/maststory",
-	"sbs_utils/mast/maststorypage",
-	"sbs_utils/mast/maststoryscheduler",
-	"sbs_utils/mast/parsers",
-	"sbs_utils/mast/pollresults",
-	"sbs_utils/pages/avatar",
-	"sbs_utils/pages/shippicker",
-	"sbs_utils/pages/start",
-	"sbs_utils/pages/layout/layout",
-	"sbs_utils/pages/layout/text_area",
-	"sbs_utils/pages/widgets/control",
-	"sbs_utils/pages/widgets/layout_listbox",
-	"sbs_utils/pages/widgets/listbox",
-	"sbs_utils/pages/widgets/shippicker",
-	"sbs_utils/procedural/behavior",
-	"sbs_utils/procedural/comms",
-	"sbs_utils/procedural/cosmos",
-	"sbs_utils/procedural/execution",
-	"sbs_utils/procedural/grid",
-	"sbs_utils/procedural/gui",
-	"sbs_utils/procedural/internal_damage",
-	"sbs_utils/procedural/inventory",
-	"sbs_utils/procedural/links",
-	"sbs_utils/procedural/maps",
-	"sbs_utils/procedural/query",
-	"sbs_utils/procedural/roles",
-	"sbs_utils/procedural/routes",
-	"sbs_utils/procedural/science",
-	"sbs_utils/procedural/screen_shot",
-	"sbs_utils/procedural/ship_data",
-	"sbs_utils/procedural/signal",
-	"sbs_utils/procedural/space_objects",
-	"sbs_utils/procedural/spawn",
-	"sbs_utils/procedural/style",
-	"sbs_utils/procedural/timers"
+	"sbs/__init__",
+	// "sbs_utils/agent",
+	// "sbs_utils/consoledispatcher",
+	// "sbs_utils/damagedispatcher",
+	// "sbs_utils/extra_dispatcher",
+	// "sbs_utils/faces",
+	// "sbs_utils/fs",
+	// "sbs_utils/futures",
+	// "sbs_utils/griddispatcher",
+	// "sbs_utils/gridobject",
+	// "sbs_utils/gui",
+	// "sbs_utils/handlerhooks",
+	// "sbs_utils/helpers",
+	// "sbs_utils/layout",
+	// "sbs_utils/lifetimedispatchers",
+	// "sbs_utils/objects",
+	// "sbs_utils/scatter",
+	// "sbs_utils/spaceobject",
+	// "sbs_utils/tickdispatcher",
+	// "sbs_utils/vec",
+	// "sbs_utils/mast/label",
+	// "sbs_utils/mast/mast",
+	// "sbs_utils/mast/mast_sbs_procedural",
+	// "sbs_utils/mast/mastmission",
+	// "sbs_utils/mast/mastobjects",
+	// "sbs_utils/mast/mastscheduler",
+	// "sbs_utils/mast/maststory",
+	// "sbs_utils/mast/maststorypage",
+	// "sbs_utils/mast/maststoryscheduler",
+	// "sbs_utils/mast/parsers",
+	// "sbs_utils/mast/pollresults",
+	// "sbs_utils/pages/avatar",
+	// "sbs_utils/pages/shippicker",
+	// "sbs_utils/pages/start",
+	// "sbs_utils/pages/layout/layout",
+	// "sbs_utils/pages/layout/text_area",
+	// "sbs_utils/pages/widgets/control",
+	// "sbs_utils/pages/widgets/layout_listbox",
+	// "sbs_utils/pages/widgets/listbox",
+	// "sbs_utils/pages/widgets/shippicker",
+	// "sbs_utils/procedural/behavior",
+	// "sbs_utils/procedural/comms",
+	// "sbs_utils/procedural/cosmos",
+	// "sbs_utils/procedural/execution",
+	// "sbs_utils/procedural/grid",
+	// "sbs_utils/procedural/gui",
+	// "sbs_utils/procedural/internal_damage",
+	// "sbs_utils/procedural/inventory",
+	// "sbs_utils/procedural/links",
+	// "sbs_utils/procedural/maps",
+	// "sbs_utils/procedural/query",
+	// "sbs_utils/procedural/roles",
+	// "sbs_utils/procedural/routes",
+	// "sbs_utils/procedural/science",
+	// "sbs_utils/procedural/screen_shot",
+	// "sbs_utils/procedural/ship_data",
+	// "sbs_utils/procedural/signal",
+	// "sbs_utils/procedural/space_objects",
+	// "sbs_utils/procedural/spawn",
+	// "sbs_utils/procedural/style",
+	// "sbs_utils/procedural/timers"
 ];
 
 const supportedRoutes: string[][] = [];
@@ -147,79 +144,7 @@ export function getSupportedRoutes(): string[][] { return supportedRoutes; }
 
 const routeDefSource = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/mast.py";
 
-function parseWholeFile(text: string, sbs: boolean = false) {
-	let className : RegExp = /^class (.+?):/gm; // Look for "class ClassName:" to parse class names.
-	let comment : RegExp = /((\"){3,3}(.*?)(\"){3,3})|(\.\.\.)/m;
-	let checkText: string;
-	let classIndices : integer[] = [];
-	let m: RegExpExecArray | null;
-	//debug("\n Checking parser...");
 
-	// Iterate over all classes to get their indices
-	//classIndices.push(0);
-	while(m = className.exec(text)) {
-		classIndices.push(m.index);
-		//debug("" + m.index + ": " +m[0]);
-	}
-	classIndices.push(text.length-1);
-
-	let len = classIndices.length; // How many indices there are - NOT the same as number of classes (should be # of classes - 1)
-	//debug("There are " + len + " indices found");
-	
-	// Here we go over all the indices and get all functions between the last index (or 0) and the current index.
-	// So if the file doesn't start with a class definition, all function prior to a class definition are added to pyTypings
-	// while class functions are addded to a ClassTypings object.
-	for (let i = 0; i < len; i++) {
-		//debug("index: "+i);
-		let t: string;
-		if (i === 0) {
-			t = text.substring(0,classIndices[0]);
-		} else {
-			t = text.substring(classIndices[i-1],classIndices[i]);
-		}
-		//let co = new ClassObject(t);
-		
-
-		// TODO: Could pull the class parent and interfaces (if any). Would this be useful?
-		let name = getRegExMatch(t,className).replace("class ","").replace(/\(.*?\):/,"");
-		// TODO: This might be causing issues. Might be good to have sbs functions visible to autocomplete, and add the sbs. to the start upon completion?
-		// Several "sbs" options show up when you start typing s...
-		//debug(name);
-		if (sbs && i == 0) {
-			name = "sbs";
-			debug("IS SBS");
-		}
-		let comments = getRegExMatch(t, comment).replace(/\"\"\"/g,"");
-		//.replace("\"\"\"","").replace("\"\"\"","");
-		const typings : CompletionItem[] = parseTyping(t,name);
-		// if (name === "sbs") {
-		// 	for (const i in typings) {
-		// 		debug(typings[i].label);
-		// 	}
-		// }
-		const classCompItem: CompletionItem = {
-			label: name,
-			kind: CompletionItemKind.Class,
-			detail: comments
-		}
-		if (name !== "") {
-			const ct : ClassTypings = {
-				name: name,
-				classCompItem: classCompItem,
-				completionItems: typings,
-				documentation: comments
-			};
-			classTypings.push(ct);
-			// debug(JSON.stringify(ct));
-		} else {
-			
-
-			// Only acceptable because these are only loaded on startup
-			pyTypings = pyTypings.concat(typings);
-		}
-	}
-	
-}
 /**
  * Parse the sbs_utils/mast/mast.py file to find all the valid route labels
  */
@@ -246,6 +171,9 @@ async function loadRouteLabels(): Promise<void> {
 	}
 }
 
+const sourceFiles: PyFile[] = []
+export function getSourceFiles(): PyFile[] { return sourceFiles; }
+
 async function loadTypings(): Promise<void> {
 	try {
 		//const { default: fetch } = await import("node-fetch");
@@ -256,10 +184,9 @@ async function loadTypings(): Promise<void> {
 			let url = gh+files[page]+".pyi";
 			const data = await fetch(url);
 			const textData = await data.text();
-			// check for sbs/__init__ is for if sbs is needed prior to function call (e.g. sbs.add_particle_emittor(...))
-			let sbs = files[page].includes("sbs/__init__");
-			parseWholeFile(textData, sbs);
+			sourceFiles.push(parseWholeFile(textData, files[page]));
 		}
+		prepCompletions(sourceFiles);
 	} catch (err) {
 		debug("\nFailed to load\n"+err as string);
 	}
@@ -547,6 +474,7 @@ connection.onCompletion(
 		try {
 			return onCompletion(_textDocumentPosition,text);
 		} catch (e) {
+			debug("onCompletion failure\n" + e);
 			return undefined;
 		}
 	}
