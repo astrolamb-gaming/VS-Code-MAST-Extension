@@ -9,8 +9,9 @@ Includes:
 * Basic formatting and coloring, based on Python
 * Error checking
 	* Checks if labels are defined, and defined properly
+	* Checks for proper route label usage
 * Autocompetion for functions within the sbs and sbs_utils packages
-	* NOT for class functions yet
+* Function signature information (i.e. notes on argument types)
 
 ## Requirements
 
@@ -32,7 +33,7 @@ No known bugs
 
 ## Planned Features
 
-* Implement autocompletion for class functions
+* ~~Implement autocompletion for class functions~~
 * Additional error checking
 * Variable type checking in functions
 * Autocompletion for variables etc in current file
@@ -40,6 +41,12 @@ No known bugs
 * Autocompletion based on modules (e.g. Legendary Missions)
 
 ## Release Notes
+
+### 0.2.0
+
+- Added additional label and route label error checking
+- Added autocompletion for class functions (can't yet determine variable types though)
+- Added SignatureInformation for functions
 
 ### 0.1.0
 
