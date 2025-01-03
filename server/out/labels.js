@@ -158,6 +158,9 @@ function findBadLabels(t) {
     // Iterate over regular labels
     while (m = any.exec(text)) {
         let lbl = m[0].trim();
+        if (lbl.startsWith("#")) {
+            continue;
+        }
         if (lbl.startsWith("->")) {
             continue;
         }
@@ -198,7 +201,7 @@ function findBadLabels(t) {
     const routes = /^.*?\/\/.*?$/gm; // every line that contains "//"
     const badRoute = /[\w\(]+?\/\//; // check for text before the "//"
     const slashCheck = / *?\/\/.+?\/\//; // contains two or more sets of "//"
-    const formatCheck = / *?\/\/\w+?(\/(\w+?))*?[ \n]/gm; // checks for proper //something/something/something format
+    const formatCheck = /.*?\/\/\w+(\/(\w+))*.*/m; // checks for proper //something/something/something format
     while (m = routes.exec(text)) {
         if (badRoute.test(m[0])) {
             const d = {
@@ -227,13 +230,17 @@ function findBadLabels(t) {
             diagnostics.push(d);
         }
         if (!formatCheck.test(m[0])) {
+            let message = "Route label format is incorrect. Proper formats include: \n//comms\n//spawn/grid\n//enable/science if has_roles(COMMS_SELECTED_ID, \"raider\")";
+            if (m[0].endsWith("/")) {
+                message = "Route labels cannot end with a slash. ";
+            }
             const d = {
                 range: {
                     start: t.positionAt(m.index),
                     end: t.positionAt(m.index + m[0].length)
                 },
                 severity: vscode_languageserver_1.DiagnosticSeverity.Error,
-                message: "Route label format is incorrect. Proper formats include: \n//comms\n//spawn/grid\n//enable/science if has_roles(COMMS_SELECTED_ID, \"raider\")",
+                message: message,
                 source: "mast"
             };
             d.relatedInformation = (0, errorChecking_1.relatedMessage)(t, d.range, "See https://artemis-sbs.github.io/sbs_utils/mast/routes/ for more details on routes.");

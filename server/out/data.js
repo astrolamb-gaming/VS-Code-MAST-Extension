@@ -3,11 +3,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Parameter = exports.Function = exports.ClassObject = void 0;
 exports.getRegExMatch = getRegExMatch;
 exports.parseWholeFile = parseWholeFile;
+const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
 class ClassObject {
     constructor(raw, sourceFile) {
         this.methods = [];
         this.methodCompletionItems = [];
+        this.methodSignatureInformation = [];
         let className = /^class .+?:/gm; // Look for "class ClassName:" to parse class names.
         const parentClass = /\(\w*?\):/;
         let comment = /((\"){3,3}(.*?)(\"){3,3})|(\.\.\.)/m;
@@ -27,6 +29,7 @@ class ClassObject {
                 this.constructorFunction = this.methods[i];
             }
             this.methodCompletionItems.push(this.methods[i].completionItem);
+            this.methodSignatureInformation.push(this.methods[i].buildSignatureInformation());
         }
         this.completionItem = this.buildCompletionItem();
         return this;
@@ -61,6 +64,7 @@ class Function {
     constructor(raw, className) {
         this.name = "";
         this.className = className;
+        this.parameters = [];
         const functionName = /((def\s)(.+?)\()/gm; // Look for "def functionName(" to parse function names.
         //let className : RegExp = /class (.+?):/gm; // Look for "class ClassName:" to parse class names.
         const functionParam = /\((.*?)\)/m; // Find parameters of function, if any.
@@ -70,7 +74,7 @@ class Function {
         let isClassMethod = /@classmethod/;
         const isSetter = /\.setter/;
         this.name = getRegExMatch(raw, functionName).replace("def ", "").replace("(", "").trim();
-        let params = getRegExMatch(raw, functionParam).replace("(", "").replace(")", "");
+        let params = getRegExMatch(raw, functionParam).replace(/\(|\)/g, "").replace(/self(.*?,|.*?$)/m, "").trim();
         this.rawParams = params;
         let retVal = getRegExMatch(raw, returnValue).replace(/(:|->)/g, "").trim();
         this.returnType = retVal;
@@ -107,6 +111,7 @@ class Function {
      * @returns
      */
     buildParams(raw) {
+        //debug("buildParams: " + this.name + "\n" + raw);
         const paramList = [];
         switch (raw) {
             case "":
@@ -115,13 +120,16 @@ class Function {
                 return paramList;
         }
         const arr = raw.split(",");
+        let parameterCounter = 0;
         for (const i in arr) {
             if (arr[i].trim().startsWith("self")) {
                 continue;
             }
-            const param = new Parameter(arr[i]);
+            const param = new Parameter(arr[i], 0);
+            parameterCounter += 1;
             paramList.push(param);
         }
+        //debug(paramList);
         return paramList;
     }
     /**
@@ -130,7 +138,7 @@ class Function {
      */
     buildCompletionItem(cik) {
         //const ci: CompletionItem;
-        let labelDetails = {
+        const labelDetails = {
             // Decided that this clutters up the UI too much. Same information is displayed in the CompletionItem details.
             //detail: "(" + params + ")",
             description: this.returnType
@@ -157,8 +165,9 @@ class Function {
     }
     buildSignatureInformation() {
         let ci_details = "(" + this.functionType + ") " + ((this.className === "") ? "" : this.className + ".") + this.name + "(" + this.rawParams + "): " + (this.functionType === "constructor") ? this.className : this.name;
+        const params = [];
         const si = {
-            label: ci_details,
+            label: this.name,
             documentation: ci_details + "\n" + this.documentation,
             // TODO: Make this more Markup style instead of just text
             parameters: []
@@ -166,25 +175,27 @@ class Function {
         for (const i in this.parameters) {
             const pi = {
                 label: this.parameters[i].name,
-                documentation: this.documentation
+                documentation: this.parameters[i].name + "\nType: " + this.parameters[i].type
             };
-            si.parameters?.push(pi);
+            params.push(pi);
         }
+        si.parameters = params;
+        (0, console_1.debug)(si);
         return si;
     }
 }
 exports.Function = Function;
 class Parameter {
-    constructor(raw, docs) {
+    constructor(raw, pos, docs) {
         this.name = "";
-        this.documentation = docs;
+        this.documentation = (docs === undefined) ? "" : docs;
         const pDef = raw.split(":");
         this.name = pDef[0];
         if (pDef.length === 1) {
             this.type = "any?";
         }
         else {
-            this.type = pDef[1];
+            this.type = pDef[1].trim();
         }
         return this;
     }

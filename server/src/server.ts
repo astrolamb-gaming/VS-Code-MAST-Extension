@@ -42,6 +42,7 @@ import { debug } from 'console';
 import { onHover } from './hover';
 import { onSignatureHelp, prepSignatures } from './signatureHelp';
 import { ClassTypings, parseWholeFile, PyFile } from './data';
+import { loadRouteLabels } from './routeLabels';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -77,99 +78,72 @@ export function getFunctionData(): SignatureInformation[] { return functionData;
 
 let files: string[] = [
 	"sbs/__init__",
-	// "sbs_utils/agent",
-	// "sbs_utils/consoledispatcher",
-	// "sbs_utils/damagedispatcher",
-	// "sbs_utils/extra_dispatcher",
-	// "sbs_utils/faces",
-	// "sbs_utils/fs",
-	// "sbs_utils/futures",
-	// "sbs_utils/griddispatcher",
-	// "sbs_utils/gridobject",
-	// "sbs_utils/gui",
-	// "sbs_utils/handlerhooks",
-	// "sbs_utils/helpers",
-	// "sbs_utils/layout",
-	// "sbs_utils/lifetimedispatchers",
-	// "sbs_utils/objects",
-	// "sbs_utils/scatter",
-	// "sbs_utils/spaceobject",
-	// "sbs_utils/tickdispatcher",
-	// "sbs_utils/vec",
-	// "sbs_utils/mast/label",
-	// "sbs_utils/mast/mast",
-	// "sbs_utils/mast/mast_sbs_procedural",
-	// "sbs_utils/mast/mastmission",
-	// "sbs_utils/mast/mastobjects",
-	// "sbs_utils/mast/mastscheduler",
-	// "sbs_utils/mast/maststory",
-	// "sbs_utils/mast/maststorypage",
-	// "sbs_utils/mast/maststoryscheduler",
-	// "sbs_utils/mast/parsers",
-	// "sbs_utils/mast/pollresults",
-	// "sbs_utils/pages/avatar",
-	// "sbs_utils/pages/shippicker",
-	// "sbs_utils/pages/start",
-	// "sbs_utils/pages/layout/layout",
-	// "sbs_utils/pages/layout/text_area",
-	// "sbs_utils/pages/widgets/control",
-	// "sbs_utils/pages/widgets/layout_listbox",
-	// "sbs_utils/pages/widgets/listbox",
-	// "sbs_utils/pages/widgets/shippicker",
-	// "sbs_utils/procedural/behavior",
-	// "sbs_utils/procedural/comms",
-	// "sbs_utils/procedural/cosmos",
-	// "sbs_utils/procedural/execution",
-	// "sbs_utils/procedural/grid",
-	// "sbs_utils/procedural/gui",
-	// "sbs_utils/procedural/internal_damage",
-	// "sbs_utils/procedural/inventory",
-	// "sbs_utils/procedural/links",
-	// "sbs_utils/procedural/maps",
-	// "sbs_utils/procedural/query",
-	// "sbs_utils/procedural/roles",
-	// "sbs_utils/procedural/routes",
-	// "sbs_utils/procedural/science",
-	// "sbs_utils/procedural/screen_shot",
-	// "sbs_utils/procedural/ship_data",
-	// "sbs_utils/procedural/signal",
-	// "sbs_utils/procedural/space_objects",
-	// "sbs_utils/procedural/spawn",
-	// "sbs_utils/procedural/style",
-	// "sbs_utils/procedural/timers"
+	"sbs_utils/agent",
+	"sbs_utils/consoledispatcher",
+	"sbs_utils/damagedispatcher",
+	"sbs_utils/extra_dispatcher",
+	"sbs_utils/faces",
+	"sbs_utils/fs",
+	"sbs_utils/futures",
+	"sbs_utils/griddispatcher",
+	"sbs_utils/gridobject",
+	"sbs_utils/gui",
+	"sbs_utils/handlerhooks",
+	"sbs_utils/helpers",
+	"sbs_utils/layout",
+	"sbs_utils/lifetimedispatchers",
+	"sbs_utils/objects",
+	"sbs_utils/scatter",
+	"sbs_utils/spaceobject",
+	"sbs_utils/tickdispatcher",
+	"sbs_utils/vec",
+	"sbs_utils/mast/label",
+	"sbs_utils/mast/mast",
+	"sbs_utils/mast/mast_sbs_procedural",
+	"sbs_utils/mast/mastmission",
+	"sbs_utils/mast/mastobjects",
+	"sbs_utils/mast/mastscheduler",
+	"sbs_utils/mast/maststory",
+	"sbs_utils/mast/maststorypage",
+	"sbs_utils/mast/maststoryscheduler",
+	"sbs_utils/mast/parsers",
+	"sbs_utils/mast/pollresults",
+	"sbs_utils/pages/avatar",
+	"sbs_utils/pages/shippicker",
+	"sbs_utils/pages/start",
+	"sbs_utils/pages/layout/layout",
+	"sbs_utils/pages/layout/text_area",
+	"sbs_utils/pages/widgets/control",
+	"sbs_utils/pages/widgets/layout_listbox",
+	"sbs_utils/pages/widgets/listbox",
+	"sbs_utils/pages/widgets/shippicker",
+	"sbs_utils/procedural/behavior",
+	"sbs_utils/procedural/comms",
+	"sbs_utils/procedural/cosmos",
+	"sbs_utils/procedural/execution",
+	"sbs_utils/procedural/grid",
+	"sbs_utils/procedural/gui",
+	"sbs_utils/procedural/internal_damage",
+	"sbs_utils/procedural/inventory",
+	"sbs_utils/procedural/links",
+	"sbs_utils/procedural/maps",
+	"sbs_utils/procedural/query",
+	"sbs_utils/procedural/roles",
+	"sbs_utils/procedural/routes",
+	"sbs_utils/procedural/science",
+	"sbs_utils/procedural/screen_shot",
+	"sbs_utils/procedural/ship_data",
+	"sbs_utils/procedural/signal",
+	"sbs_utils/procedural/space_objects",
+	"sbs_utils/procedural/spawn",
+	"sbs_utils/procedural/style",
+	"sbs_utils/procedural/timers"
 ];
 
 const supportedRoutes: string[][] = [];
 export function getSupportedRoutes(): string[][] { return supportedRoutes; }
 
-const routeDefSource = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/mast.py";
 
-
-/**
- * Parse the sbs_utils/mast/mast.py file to find all the valid route labels
- */
-async function loadRouteLabels(): Promise<void> {
-	try {
-		const data = await fetch(routeDefSource);
-		const textData = await data.text();
-		// Get the text of function that defines route labels
-		const pattern = /RouteDecoratorLabel\(DecoratorLabel\):.+?generate_label_begin_cmds.+?[\s](def |class)/gs;
-		let m: RegExpExecArray | null;
-		while (m = pattern.exec(textData)) {
-			let t = m[0];
-			const casePattern = / case [^_.]*?:/gm;
-			let n: RegExpExecArray | null;
-			// Iterate over each "case...:" to find possible routes
-			while (n = casePattern.exec(t)) {
-				let routes = n[0].replace(/ (case \[)|\]:|"| /gm,"").trim();
-				let arr = routes.split(",");
-				supportedRoutes.push(arr);
-			}
-		}
-	} catch (e) {
-		debug("Error in loadRouteLabels(): " + e as string);
-	}
-}
 
 const sourceFiles: PyFile[] = []
 export function getSourceFiles(): PyFile[] { return sourceFiles; }
@@ -227,7 +201,7 @@ connection.onInitialize((params: InitializeParams) => {
 			completionProvider: {
 				resolveProvider: false, // FOR NOW - MAY USE LATER
 				// TODO: The /, >, and especially the space are hopefully temporary workarounds.
-				triggerCharacters: [".","/",">"," ","("]
+				triggerCharacters: [".","/",">"," "]
 			},
 			diagnosticProvider: {
 				interFileDependencies: false,
@@ -420,9 +394,9 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 	};
 	errorSources.push(e1);
 	e1 = {
-		pattern: /[\w\(]+?\/\//g,
+		pattern: /^[\w ][^+][^\"][\w\(\) ]+?\/\//g,
 		severity: DiagnosticSeverity.Error,
-		message: "Route labels can only be at the start of a line.",
+		message: "Route labels can only be at the start of a line, unless used as label that runs when button is pressed.",
 		source: "sbs",
 		relatedMessage: "See https://artemis-sbs.github.io/sbs_utils/mast/routes/ for more details on routes."
 	}

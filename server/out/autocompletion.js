@@ -6,6 +6,7 @@ const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
 const labels_1 = require("./labels");
 const server_1 = require("./server");
+const routeLabels_1 = require("./routeLabels");
 let classes = [];
 let defaultFunctionCompletionItems = [];
 /**
@@ -54,15 +55,26 @@ function onCompletion(_textDocumentPosition, text) {
     }
     // Route Label autocompletion
     if (iStr.includes("//")) {
-        let routes = (0, server_1.getSupportedRoutes)();
-        for (const i in routes) {
-            let r = routes[i].join("/").replace("*b", "");
-            if ((r + "//").includes(iStr.trim())) {
-                ci.push({ label: r, kind: vscode_languageserver_1.CompletionItemKind.Event });
-            }
-        }
-        return ci;
+        return (0, routeLabels_1.getRouteLabelAutocompletions)(iStr);
     }
+    // TODO: Add variables provided by routes to autocompletion
+    /**
+     * //science
+     * SCIENCE_ORIGIN_ID - The engine ID of the player ship doing the scan
+     * SCIENCE_ORIGIN - The python Agent of the player ship doing the scan
+     * SCIENCE_SELECTED_ID - The engine ID of the Agent being scanned
+     * SCIENCE_SELECTED - The python Agent of being scanned
+     *
+     * //comms
+     * COMMS_ORIGIN_ID - The engine ID of the player ship for the comms console
+     * COMMS_ORIGIN - The python Agent of the player ship for the comms console
+     * COMMS_SELECTED_ID - The engine ID of the Agent being communicated with
+     * COMMS_SELECTED - The python Agent of being communicated with
+     *
+     * //spawn
+     * SPAWNED_ID
+     * SPAWNED
+     */
     // Handle label autocompletion
     let jump = /(->|jump) *?$/;
     if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (")) {
@@ -95,6 +107,8 @@ function onCompletion(_textDocumentPosition, text) {
         //}
     }
     ci = ci.concat(defaultFunctionCompletionItems);
+    // TODO: Account for text that's already present
+    // - Remove the text from the start of the completion item label
     return ci;
 }
 //# sourceMappingURL=autocompletion.js.map

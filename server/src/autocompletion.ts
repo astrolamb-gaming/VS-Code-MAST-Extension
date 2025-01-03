@@ -4,6 +4,7 @@ import { getMainLabelAtPos } from './labels';
 import { getClassTypings, getPyTypings, getSourceFiles, getSupportedRoutes, labelNames } from './server';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { ClassObject, ClassTypings, IClassObject, PyFile } from './data';
+import { getRouteLabelAutocompletions } from './routeLabels';
 
 let classes: IClassObject[] = [];
 let defaultFunctionCompletionItems: CompletionItem[] = [];
@@ -60,15 +61,26 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 
 	// Route Label autocompletion
 	if(iStr.includes("//")) {
-		let routes = getSupportedRoutes();
-		for (const i in routes) {
-			let r = routes[i].join("/").replace("*b","");
-			if ((r + "//").includes(iStr.trim())) {
-				ci.push({label: r, kind: CompletionItemKind.Event});
-			}
-		}
-		return ci;
+		return getRouteLabelAutocompletions(iStr);
 	}
+	// TODO: Add variables provided by routes to autocompletion
+	/**
+	 * //science
+	 * SCIENCE_ORIGIN_ID - The engine ID of the player ship doing the scan
+	 * SCIENCE_ORIGIN - The python Agent of the player ship doing the scan
+	 * SCIENCE_SELECTED_ID - The engine ID of the Agent being scanned
+	 * SCIENCE_SELECTED - The python Agent of being scanned
+	 * 
+	 * //comms
+	 * COMMS_ORIGIN_ID - The engine ID of the player ship for the comms console
+	 * COMMS_ORIGIN - The python Agent of the player ship for the comms console
+	 * COMMS_SELECTED_ID - The engine ID of the Agent being communicated with
+	 * COMMS_SELECTED - The python Agent of being communicated with
+	 * 
+	 * //spawn
+	 * SPAWNED_ID
+	 * SPAWNED
+	 */
 
 	// Handle label autocompletion
 	let jump: RegExp = /(->|jump) *?$/;
@@ -107,6 +119,8 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	}
 
 	ci = ci.concat(defaultFunctionCompletionItems);
+	// TODO: Account for text that's already present
+	// - Remove the text from the start of the completion item label
 	return ci;
 }
 

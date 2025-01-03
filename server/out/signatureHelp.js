@@ -5,11 +5,16 @@ exports.onSignatureHelp = onSignatureHelp;
 const console_1 = require("console");
 let functionSigs = [];
 function prepSignatures(files) {
+    (0, console_1.debug)("Prepping signatures");
     for (const i in files) {
         const pyFile = files[i];
         for (const f in pyFile.defaultFunctions) {
             const func = pyFile.defaultFunctions[f];
-            functionSigs.push(func.buildSignatureInformation());
+            let si = func.buildSignatureInformation();
+            functionSigs.push(si);
+        }
+        for (const c in pyFile.classes) {
+            functionSigs = functionSigs.concat(pyFile.classes[c].methodSignatureInformation);
         }
     }
 }
@@ -30,36 +35,22 @@ function onSignatureHelp(_textDocPos, text) {
     // Calculate the position in the text's string value using the Position value.
     const pos = text.offsetAt(_textDocPos.position);
     const startOfLine = pos - _textDocPos.position.character;
-    // Somehow a +1 to pos helps with things. Makes it not necessary to have a space after the comma following a parameter. But messes up other stuff
     const iStr = t.substring(startOfLine, pos);
     // Calculate which parameter is the active one
     let m;
     let last = iStr.lastIndexOf("(");
-    let sub = iStr.substring(last, iStr.length - 1).replace(/ /g, "");
+    let sub = iStr.substring(last + 1, pos).replace(/ /g, "");
     let arr = sub.split(",");
+    (0, console_1.debug)(arr);
     sh.activeParameter = arr.length - 1;
-    //if (iStr.endsWith("(")) {
-    let res = iStr.substring(0, last);
-    (0, console_1.debug)("RES: ");
-    (0, console_1.debug)(res);
-    const lastFunc = /\w+?$/g;
-    //m = func.exec(res);
-    //let f = res?.replace(/[\(\)]/g,"");
-    //debug("Starting WHile loop");
-    while (m = lastFunc.exec(res)) {
-        const f = m[0];
-        (0, console_1.debug)(f);
-        for (const i in functionSigs) {
-            if (functionSigs[i].label === f) {
-                sh.signatures.push(functionSigs[i]);
-                //debug(m[0]);
-                (0, console_1.debug)(JSON.stringify(functionSigs[i]));
-            }
+    // Check for the current function name and get SignatureInformation for that function.
+    let f = getCurrentMethodName(iStr);
+    for (const i in functionSigs) {
+        if (functionSigs[i].label === f) {
+            sh.signatures.push(functionSigs[i]);
         }
     }
-    (0, console_1.debug)(sh);
-    // debug("WHile loop done");
-    // //sh.signatures.push(si);
+    // This is just for testing
     let p = {
         label: "Parameter 1",
         documentation: "Param 1 Documentation"
@@ -78,5 +69,20 @@ function onSignatureHelp(_textDocPos, text) {
     //sh.signatures.push(si);
     return sh;
     // debug(JSON.stringify(sh));
+}
+function getCurrentMethodName(iStr) {
+    const last = iStr.lastIndexOf("(");
+    const priorCheck = iStr.substring(0, last - 1);
+    let prior = priorCheck.lastIndexOf("(");
+    if (prior === -1) {
+        prior = priorCheck.lastIndexOf(".");
+    }
+    if (prior === -1) {
+        prior = priorCheck.lastIndexOf(" ");
+    }
+    if (prior === -1) {
+        prior = 0;
+    }
+    return iStr.substring(prior, last).replace(/\.|\(| /g, "");
 }
 //# sourceMappingURL=signatureHelp.js.map

@@ -31,6 +31,7 @@ export interface IClassObject {
 	parent?: string,
 	methods: Function[],
 	methodCompletionItems: CompletionItem[],
+	methodSignatureInformation: SignatureInformation[],
 	constructorFunction?: Function,
 	documentation: string | MarkupContent,
 	completionItem: CompletionItem,
@@ -78,6 +79,7 @@ export class ClassObject implements IClassObject {
 	parent?: string;
 	methods: Function[] = [];
 	methodCompletionItems: CompletionItem[] = [];
+	methodSignatureInformation: SignatureInformation[] = [];
 	constructorFunction?: Function;
 	documentation: string | MarkupContent;
 	completionItem: CompletionItem;
@@ -105,6 +107,7 @@ export class ClassObject implements IClassObject {
 				this.constructorFunction = this.methods[i];
 			}
 			this.methodCompletionItems.push(this.methods[i].completionItem);
+			this.methodSignatureInformation.push(this.methods[i].buildSignatureInformation());
 		}
 		this.completionItem = this.buildCompletionItem();
 		return this;
@@ -154,6 +157,7 @@ export class Function implements IFunction {
 
 	constructor(raw: string, className: string) {
 		this.className = className;
+		this.parameters = [];
 		const functionName : RegExp = /((def\s)(.+?)\()/gm; // Look for "def functionName(" to parse function names.
 		//let className : RegExp = /class (.+?):/gm; // Look for "class ClassName:" to parse class names.
 		const functionParam : RegExp = /\((.*?)\)/m; // Find parameters of function, if any.
@@ -165,7 +169,7 @@ export class Function implements IFunction {
 
 		this.name = getRegExMatch(raw, functionName).replace("def ","").replace("(","").trim();
 
-		let params = getRegExMatch(raw, functionParam).replace("(","").replace(")","");
+		let params = getRegExMatch(raw, functionParam).replace(/\(|\)/g,"").replace(/self(.*?,|.*?$)/m,"").trim();
 		this.rawParams = params;
 
 		let retVal = getRegExMatch(raw, returnValue).replace(/(:|->)/g, "").trim();
@@ -205,6 +209,7 @@ export class Function implements IFunction {
 	 * @returns 
 	 */
 	buildParams(raw: string) {
+		//debug("buildParams: " + this.name + "\n" + raw);
 		const paramList: Parameter[] = [];
 		switch (raw) {
 			case "":
@@ -213,13 +218,16 @@ export class Function implements IFunction {
 				return paramList
 		}
 		const arr: string[] = raw.split(",");
+		let parameterCounter = 0;
 		for (const i in arr) {
 			if (arr[i].trim().startsWith("self")) {
 				continue;
 			}
-			const param: Parameter = new Parameter(arr[i]);
+			const param: Parameter = new Parameter(arr[i], 0);
+			parameterCounter += 1;
 			paramList.push(param);
 		}
+		//debug(paramList);
 		return paramList;
 	}
 
@@ -229,7 +237,7 @@ export class Function implements IFunction {
 	 */
 	buildCompletionItem(cik: CompletionItemKind): CompletionItem {
 		//const ci: CompletionItem;
-		let labelDetails: CompletionItemLabelDetails = {
+		const labelDetails: CompletionItemLabelDetails = {
 			// Decided that this clutters up the UI too much. Same information is displayed in the CompletionItem details.
 			//detail: "(" + params + ")",
 			description: this.returnType
@@ -256,8 +264,9 @@ export class Function implements IFunction {
 
 	buildSignatureInformation(): SignatureInformation {
 		let ci_details: string = "(" + this.functionType + ") " + ((this.className === "") ? "" : this.className + ".") + this.name + "(" + this.rawParams + "): " + (this.functionType === "constructor") ? this.className : this.name;
+		const params:ParameterInformation[] = [];
 		const si: SignatureInformation = {
-			label: ci_details,
+			label: this.name,
 			documentation: ci_details + "\n" + this.documentation,
 			// TODO: Make this more Markup style instead of just text
 			parameters: []
@@ -265,10 +274,12 @@ export class Function implements IFunction {
 		for (const i in this.parameters) {
 			const pi: ParameterInformation = {
 				label: this.parameters[i].name,
-				documentation: this.documentation
+				documentation: this.parameters[i].name + "\nType: " + this.parameters[i].type
 			}
-			si.parameters?.push(pi);
+			params.push(pi);
 		}
+		si.parameters = params;
+		debug(si);
 		return si;
 	}
 	
@@ -278,15 +289,15 @@ export class Parameter implements IParameter {
 	name: string;
 	type?: string;
 	documentation?: string | MarkupContent | undefined;
-	constructor(raw: string, docs?: string) {
+	constructor(raw: string, pos: integer, docs?: string) {
 		this.name = "";
-		this.documentation = docs;
+		this.documentation = (docs === undefined) ? "" : docs;
 		const pDef: string[] = raw.split(":");
 		this.name = pDef[0];
 		if (pDef.length === 1) {
 			this.type = "any?";
 		} else {
-			this.type = pDef[1];
+			this.type = pDef[1].trim();
 		}
 		return this;
 	}

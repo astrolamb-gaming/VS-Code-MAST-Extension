@@ -1,1 +1,1 @@
-{"root":["./src/autocompletion.ts","./src/data.ts","./src/errorchecking.ts","./src/filefunctions.ts","./src/hover.ts","./src/labels.ts","./src/server.ts","./src/signaturehelp.ts"],"version":"5.7.2"}
+{"root":["./src/autocompletion.ts","./src/data.ts","./src/errorchecking.ts","./src/filefunctions.ts","./src/hover.ts","./src/labels.ts","./src/routelabels.ts","./src/server.ts","./src/signaturehelp.ts"],"version":"5.7.2"}
