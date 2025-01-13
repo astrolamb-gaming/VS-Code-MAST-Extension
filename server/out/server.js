@@ -23,6 +23,7 @@ const hover_1 = require("./hover");
 const signatureHelp_1 = require("./signatureHelp");
 const data_1 = require("./data");
 const routeLabels_1 = require("./routeLabels");
+const rx_1 = require("./rx");
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 const connection = (0, node_1.createConnection)(node_1.ProposedFeatures.all);
@@ -131,10 +132,20 @@ async function loadTypings() {
         (0, console_1.debug)("\nFailed to load\n" + err);
     }
 }
+const expressions = [];
+const defSource = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/mast.py";
+const defSource2 = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/maststory.py";
+async function getRexEx(src) {
+    const data = await fetch(src);
+    const txt = await data.text();
+    (0, rx_1.parse)(txt);
+}
 connection.onInitialize((params) => {
     // These are only executed on startup
     loadTypings().then(() => { typingsDone = true; });
     (0, routeLabels_1.loadRouteLabels)().then(() => { (0, console_1.debug)("Routes Loaded"); });
+    getRexEx(defSource).then(() => { (0, console_1.debug)("Regular Expressions gotten"); });
+    getRexEx(defSource2).then(() => { (0, console_1.debug)("Regular Expressions 2 gotten"); });
     //const zip : Promise<void> = extractZip("","./sbs");
     //pyTypings = pyTypings.concat(parseTyping(fs.readFileSync("sbs.pyi","utf-8")));
     //debug(JSON.stringify(pyTypings));
@@ -155,7 +166,7 @@ connection.onInitialize((params) => {
             completionProvider: {
                 resolveProvider: false, // FOR NOW - MAY USE LATER
                 // TODO: The /, >, and especially the space are hopefully temporary workarounds.
-                triggerCharacters: [".", "/", ">", " "]
+                triggerCharacters: [".", "/", ">", " ", "\""]
             },
             diagnosticProvider: {
                 interFileDependencies: false,
@@ -171,7 +182,7 @@ connection.onInitialize((params) => {
             signatureHelpProvider: {
                 triggerCharacters: ['(', ',']
             },
-            //hoverProvider: true
+            hoverProvider: true
         }
     };
     if (hasWorkspaceFolderCapability) {
@@ -381,6 +392,7 @@ function updateLabelNames(li) {
 connection.onHover((_textDocumentPosition) => {
     const text = documents.get(_textDocumentPosition.textDocument.uri);
     if (text === undefined) {
+        (0, console_1.debug)("Undefined");
         return undefined;
     }
     return (0, hover_1.onHover)(_textDocumentPosition, text);

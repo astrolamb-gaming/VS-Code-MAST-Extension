@@ -21,7 +21,7 @@ async function loadRouteLabels() {
         const data = await fetch(routeDefSource);
         const textData = await data.text();
         // Get the text of function that defines route labels
-        const pattern = /RouteDecoratorLabel\(DecoratorLabel\):.+?generate_label_begin_cmds.+?[\s](def |class)/gs;
+        let pattern = /RouteDecoratorLabel\(DecoratorLabel\):.+?generate_label_begin_cmds.+?[\s](def |class)/gs;
         let m;
         while (m = pattern.exec(textData)) {
             let t = m[0];
@@ -52,13 +52,6 @@ async function loadRouteLabels() {
                 else if (label.startsWith("console/mainscreen/change")) {
                     docs = "This label runs when the user changes the camera mode.";
                 }
-                else if (label.startsWith("enable")) {
-                    let l = arr[1];
-                    if (label.includes("grid/comms")) {
-                        l = "grid comms";
-                    }
-                    docs = "This label enables " + l + " labels to run. \nDue to the potential of large numbers of objects triggering these types of label, limit using 'if has_roles()' or similar.";
-                }
                 else if (label.startsWith("shared/signal")) {
                     docs = "Signals are script defined events, emitted using the 'signal_emit()' function. \nOnly the server receives shared signals.";
                 }
@@ -85,6 +78,40 @@ async function loadRouteLabels() {
                 }
                 else if (label.startsWith("damage")) {
                     docs = "This label runs whenever an object takes damage.";
+                }
+                const ci = {
+                    label: label,
+                    kind: vscode_languageserver_1.CompletionItemKind.Event,
+                    labelDetails: labelDetails,
+                    documentation: docs
+                };
+                const ri = {
+                    route: label,
+                    labels: arr,
+                    completionItem: ci
+                };
+                routeLabels.push(ri);
+            }
+        }
+        pattern = /RouteDecoratorLabel\(DecoratorLabel\):.+?generate_label_end_cmds.+?[\s](def |class)/gs;
+        while (m = pattern.exec(textData)) {
+            let t = m[0];
+            const casePattern = / case [^_.]*?:/gm;
+            let n;
+            // Iterate over each "case...:" to find possible routes
+            while (n = casePattern.exec(t)) {
+                let routes = n[0].replace(/ (case \[)|\]:|"| /gm, "").trim();
+                let arr = routes.split(",");
+                supportedRoutes.push(arr);
+                const label = arr.join("/").replace("*b", "");
+                let docs = "";
+                if (label.startsWith("enable")) {
+                    let l = arr[1];
+                    if (label.includes("grid/comms")) {
+                        l = "grid comms";
+                    }
+                    l = label.replace(/\//g, "");
+                    docs = "This label enables " + l + " labels to run. \nDue to the potential of large numbers of objects triggering these types of label, use 'if has_roles()' or similar to limit how often it is triggered.";
                 }
                 const ci = {
                     label: label,

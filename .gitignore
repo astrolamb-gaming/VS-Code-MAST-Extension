@@ -399,3 +399,6 @@ FodyWeavers.xsd
 
 # Visual Stuido Code Package
 *.vsix
+
+# js.map files
+*.map

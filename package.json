@@ -53,6 +53,9 @@
 			"[MAST]": {
 				"diffEditor.ignoreTrimWhitespace": false,
 				"editor.defaultColorDecorators": "auto"
+			},
+			"editor.tokenColorCustomizations": {
+				"textMateRules": []
 			}
 		},
 		"configuration": {

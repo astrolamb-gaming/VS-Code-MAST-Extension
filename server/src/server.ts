@@ -43,6 +43,7 @@ import { onHover } from './hover';
 import { onSignatureHelp, prepSignatures } from './signatureHelp';
 import { ClassTypings, parseWholeFile, PyFile } from './data';
 import { loadRouteLabels } from './routeLabels';
+import { parse, RX } from './rx';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -168,10 +169,21 @@ async function loadTypings(): Promise<void> {
 
 }
 
+const expressions: RX[] = [];
+const defSource = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/mast.py";
+const defSource2 = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/maststory.py";
+async function getRexEx(src: string) :Promise<void> {
+	const data = await fetch(src);
+	const txt = await data.text();
+	parse(txt);
+}
+
 connection.onInitialize((params: InitializeParams) => {
 	// These are only executed on startup
 	loadTypings().then(()=>{ typingsDone = true; });
 	loadRouteLabels().then(()=>{ debug("Routes Loaded") });
+	getRexEx(defSource).then(()=>{ debug("Regular Expressions gotten")});
+	getRexEx(defSource2).then(()=>{ debug("Regular Expressions 2 gotten")});
 	//const zip : Promise<void> = extractZip("","./sbs");
 
 	//pyTypings = pyTypings.concat(parseTyping(fs.readFileSync("sbs.pyi","utf-8")));
@@ -201,7 +213,7 @@ connection.onInitialize((params: InitializeParams) => {
 			completionProvider: {
 				resolveProvider: false, // FOR NOW - MAY USE LATER
 				// TODO: The /, >, and especially the space are hopefully temporary workarounds.
-				triggerCharacters: [".","/",">"," "]
+				triggerCharacters: [".","/",">"," ","\""]
 			},
 			diagnosticProvider: {
 				interFileDependencies: false,
@@ -217,7 +229,7 @@ connection.onInitialize((params: InitializeParams) => {
 			signatureHelpProvider: {
 				triggerCharacters: ['(',',']
 			},
-			//hoverProvider: true
+			hoverProvider: true
 		}
 	};
 	if (hasWorkspaceFolderCapability) {
@@ -482,6 +494,7 @@ export function updateLabelNames(li: LabelInfo[]) {
 connection.onHover((_textDocumentPosition: TextDocumentPositionParams): Hover | undefined => {
 	const text = documents.get(_textDocumentPosition.textDocument.uri);
 	if (text === undefined) {
+		debug("Undefined");
 		return undefined;
 	}
 	return onHover(_textDocumentPosition,text);

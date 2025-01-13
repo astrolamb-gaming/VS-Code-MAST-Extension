@@ -259,11 +259,11 @@
           },
 		  {
 			"name": "keyword.control.flow.label.main.mast",
-			"match": "^ *?={2,}[0-9A-Za-z _]+?={2,} *?$"
+			"match": "={2,}\\s*[ \\t]*(\\w+)[ \\t]*(={2,})?"
 		  },
 		  {
 			"name": "keyword.control.flow.label.sub.mast",
-			"match": "^ *?-{2,}[0-9A-Za-z _]+?-{2,} *?$"
+			"match": "-{2,}\\s*[ \\t]*(\\w+)[ \\t]*(-{2,})?"
 		  },
 		  {
 			  "name": "keyword.control.flow.label.jump.mast",
@@ -271,7 +271,7 @@
 		  },
 		  {
 			  "name": "keyword.control.flow.label.route.mast",
-			  "match": "((^ *?\/\/ *?[0-9A-Za-z_\/]{1,}))"
+			  "match": "(\\/{2,}([\\w\\/]+))"
 		  },
           {
             "name": "storage.modifier.declaration.python",

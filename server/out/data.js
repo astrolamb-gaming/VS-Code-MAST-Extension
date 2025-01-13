@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Parameter = exports.Function = exports.ClassObject = void 0;
 exports.getRegExMatch = getRegExMatch;
 exports.parseWholeFile = parseWholeFile;
-const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
 class ClassObject {
     constructor(raw, sourceFile) {
@@ -180,7 +179,7 @@ class Function {
             params.push(pi);
         }
         si.parameters = params;
-        (0, console_1.debug)(si);
+        //debug(si);
         return si;
     }
 }

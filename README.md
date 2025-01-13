@@ -10,7 +10,7 @@ Includes:
 * Error checking
 	* Checks if labels are defined, and defined properly
 	* Checks for proper route label usage
-* Autocompetion for functions within the sbs and sbs_utils packages
+* Autocompletion for functions within the sbs and sbs_utils packages
 * Function signature information (i.e. notes on argument types)
 
 ## Requirements
@@ -29,7 +29,7 @@ This extension contributes the following settings:
 
 ## Known Issues
 
-No known bugs
+See [GitHub](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues) for issues.
 
 ## Planned Features
 

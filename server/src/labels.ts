@@ -23,9 +23,9 @@ export interface LabelInfo {
 function getLabels(textDocument: TextDocument, main: boolean = true): LabelInfo[] {
 	let definedLabel : RegExp;
 	if (main) {
-		definedLabel = /^ *?={2,}([0-9A-Za-z _]+?)={2,} *?$/gm
+		definedLabel = /^ *?={2,}([\w ]+?)={2,} *?$/gm
 	} else {
-		definedLabel = /^ *?-{2,}([0-9A-Za-z _]+?)-{2,} *?$/gm
+		definedLabel = /^ *?-{2,}([\w ]+?)-{2,} *?$/gm
 	}
 	let m: RegExpExecArray | null;
 	const text = textDocument.getText();

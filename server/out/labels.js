@@ -14,10 +14,10 @@ const server_1 = require("./server");
 function getLabels(textDocument, main = true) {
     let definedLabel;
     if (main) {
-        definedLabel = /^ *?={2,}([0-9A-Za-z _]+?)={2,} *?$/gm;
+        definedLabel = /^ *?={2,}([\w ]+?)={2,} *?$/gm;
     }
     else {
-        definedLabel = /^ *?-{2,}([0-9A-Za-z _]+?)-{2,} *?$/gm;
+        definedLabel = /^ *?-{2,}([\w ]+?)-{2,} *?$/gm;
     }
     let m;
     const text = textDocument.getText();

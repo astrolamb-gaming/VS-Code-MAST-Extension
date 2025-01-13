@@ -279,7 +279,7 @@ export class Function implements IFunction {
 			params.push(pi);
 		}
 		si.parameters = params;
-		debug(si);
+		//debug(si);
 		return si;
 	}
 	
