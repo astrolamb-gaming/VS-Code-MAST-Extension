@@ -89,7 +89,26 @@
           },
           {
             "include": "#comments-base"
-          }
+          },
+		  {
+			"name": "comment.block.slash.asterisk.mast",
+			"contentName": "meta.typehint.comment.mast",
+			"begin": "\\/\\*",
+			"beginCaptures": {
+				"1": {
+					"name": "punctuation.definition.comment.python"
+				}
+			},
+			"end": "\\*\\/",
+			"patterns": [
+              {
+                "include": "#codetags"
+              },
+              {
+                "include": "#docstring-guts-unicode"
+              }
+            ]
+		  }
         ]
       },
       "docstring-statement": {
@@ -2015,6 +2034,21 @@
           }
         ]
       },
+	  "comments-slash-asterisk": {
+		"name": "comment.block.slash.asterisk.mast",
+		"begin": "\\/\\*",
+		"beginCaptures": {
+			"1": {
+				"name": "punctuation.definition.comment.python"
+			}
+        },
+		"end": "\\*\\/",
+		"patterns": [
+          {
+            "include": "#codetags"
+          }
+        ]
+	  },
       "comments-string-single-three": {
         "name": "comment.line.number-sign.python",
         "begin": "(\\#)",
