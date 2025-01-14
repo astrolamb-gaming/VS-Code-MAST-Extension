@@ -1616,19 +1616,19 @@
 			"begin": "([A-Za-z_$][\\w$]*)\\s*(\\()",
 			"beginCaptures": {
 				"1": {
-					"name": "meta.function-call.generic.python"
+					"name": "entity.name.function.python"
 				},
 				"2": {
-					"name": "punctuation.definition.arguments.begin.bracket.round.python"
+					"name": "punctuation.definition.parameters.begin.bracket.round.python"
 				}
 			},
 			"end": "\\)",
 			"endCaptures": {
 				"0": {
-					"name": "punctuation.definition.arguments.end.python"
+					"name": "punctuation.definition.parameters.end.python"
 				}
 			},
-			"name": "meta.function-call.java",
+			"name": "meta.function-call.python",
 			"patterns": [
 				{
             "include": "#special-variables"
@@ -1638,6 +1638,9 @@
 			  },
 			  {
 				"include": "#function-arguments"
+			  },
+			  {
+				  "include": "#code"
 			  }
 			]
 		},
