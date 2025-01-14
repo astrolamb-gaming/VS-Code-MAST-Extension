@@ -2,8 +2,8 @@
     "comments": {
       "lineComment": "#",
       "blockComment": [
-        "\"\"\"",
-        "\"\"\""
+        "\/*",
+        "*\/""
       ]
     },
     "brackets": [
@@ -48,6 +48,10 @@
           "comment"
         ]
       },
+	  {
+		  "open": "\/*",
+		  "close": "*\/"
+	  },
       {
         "open": "R\"",
         "close": "\"",
@@ -182,7 +186,14 @@
         "notIn": [
           "string"
         ]
-      }
+      },
+	  {
+		  "open": "\"\"\"",
+		  "close": "\"\"\"",
+		  "notIn": [
+			"comment"
+		  ]
+	  }
     ],
     "surroundingPairs": [
       [
