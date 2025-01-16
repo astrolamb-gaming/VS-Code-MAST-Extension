@@ -55,7 +55,52 @@
 				"editor.defaultColorDecorators": "auto"
 			},
 			"editor.tokenColorCustomizations": {
-				"textMateRules": []
+				"textMateRules": [
+					{
+						"scope": "label.jump",
+						"settings": {
+							"foreground": "#C586C0",
+							"fontStyle": ""
+						}
+					},
+					{
+						"scope": "label.jump.keyword",
+						"settings": {
+							"foreground": "#4EC9B0",
+							"fontStyle": ""
+						}
+					},
+					{
+						"scope": "label",
+						"settings": {
+							"foreground": "#4EC9B0"
+						}
+					},
+					{
+						"scope": "sub.label",
+						"settings": {
+							"foreground": "#4EC9B0"
+						}
+					},
+					{
+						"scope": "label.main.designator",
+						"settings": {
+							"foreground": "#C586C0"
+						}
+					},
+					{
+						"scope": "label.sub.designator",
+						"settings": {
+							"foreground": "#C586C0"
+						}
+					},
+					{
+						"scope": "label.route",
+						"settings": {
+							"foreground": "#9886ff"
+						}
+					}
+				]
 			}
 		},
 		"configuration": {

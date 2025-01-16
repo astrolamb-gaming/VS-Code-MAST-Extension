@@ -43,7 +43,13 @@
           },
           {
             "include": "#semicolon"
-          }
+          },
+		  {
+			  "include": "#objects"
+		  },
+		  {
+			  "include": "variables"
+		  }
         ]
       },
       "semicolon": {
@@ -278,20 +284,57 @@
             "match": "(?x)\n  \\b(?<!\\.)(\n    async | continue | del | assert | break | finally | for\n    | from | elif | else | if | except | pass | raise\n    | return | try | while | with\n  )\\b\n"
           },
 		  {
-			"name": "keyword.control.flow.label.main.mast",
-			"match": "={2,}\\s*[ \\t]*(\\w+)[ \\t]*(={2,})?"
+			"match": "(?m)^(\\s*)(={2,}\\s*[ \\t]*)(\\w+)([ \\t]*(={2,})?)",
+			"captures": {
+				"2": {
+					"name": "label.main.designator.mast"
+				},
+				"3": {
+					"name": "label.main.mast"
+				},
+				"4": {
+					"name": "label.main.designator.mast"
+				}
+			}
 		  },
 		  {
-			"name": "keyword.control.flow.label.sub.mast",
-			"match": "-{2,}\\s*[ \\t]*(\\w+)[ \\t]*(-{2,})?"
+			"match": "(?m)^(\\s*)(-{2,}\\s*[ \\t]*)(\\w+)([ \\t]*(-{2,})?)",
+			"captures": {
+				"2": {
+					"name": "label.sub.designator.mast"
+				},
+				"3": {
+					"name": "label.sub.mast"
+				},
+				"4": {
+					"name": "label.sub.designator.mast"
+				}
+			}
 		  },
 		  {
-			  "name": "keyword.control.flow.label.jump.mast",
-			  "match": "(jump|->).*"
+			  "match": "(jump|->)(\\s*)(\\w+)",
+			  "captures": {
+				  "1": {
+					  "name": "label.jump.keyword.mast"
+				  },
+				  "3": {
+					  "name": "label.jump.mast"
+				  }
+				  
+			  }
 		  },
 		  {
-			  "name": "keyword.control.flow.label.route.mast",
-			  "match": "(\\/{2,}([\\w\\/]+))"
+			  "name": "label.route.mast",
+			  "match": "(?m)^\\s*(\\/{2,})(\\w+)(\\/\\w+)*",
+			  "captures": {
+				  "2": {
+					  "name": "label.route.primary.mast"
+				  },
+				  "3": {
+					  "name": "label.route.secondary.mast"
+				  }
+				  
+			  }
 		  },
           {
             "name": "storage.modifier.declaration.python",
@@ -441,7 +484,10 @@
           },
           {
             "include": "#member-access-attribute"
-          }
+          },
+		  {
+			  "include": "#properties"
+		  }
         ]
       },
       "member-access-base": {
@@ -468,11 +514,11 @@
       },
       "member-access-attribute": {
         "comment": "Highlight attribute access in otherwise non-specialized cases.",
-        "name": "meta.attribute.python",
+        "name": "variable.other.object.attribute.python",
         "match": "(?x)\n  \\b ([A-Za-z_]\\w*) \\b\n"
       },
       "special-names": {
-        "name": "constant.other.caps.python",
+        "name": "variable.other.object.constant.other.caps.python",
         "match": "(?x)\n  \\b\n    # we want to see \"enough\", meaning 2 or more upper-case\n    # letters in the beginning of the constant\n    #\n    # for more details refer to:\n    #   https://github.com/MagicStack/MagicPython/issues/42\n    (\n      _* [[:upper:]] [_\\d]* [[:upper:]]\n    )\n    [[:upper:]\\d]* (_\\w*)?\n  \\b\n"
       },
       "curly-braces": {
@@ -1612,20 +1658,245 @@
           }
         ]
       },
+	  "variable": {
+			"match": "(?<!\\w)[A-Za-z_]\\w*(?!=\\w)",
+			"name": "variable.other.object"
+	  },
+	  "variable-def": {
+		  "begin": "(?m)^(\\s*)([A-Za-z_]\\w*)(\\s*=[^=])",
+		  "begin-captures": {
+			  "2": {
+				  "name": "variable.other.object.definition"
+			  }
+		  },
+		  "end": "(?m)$",
+		  "name": "variable.other.object.set"
+	  },
+	  "attribute": {
+			"match": "(?=\\w\\.)\\w+(?!=\\w)",
+			"name": "variable.attribute.mast"
+	  },
+	  "objects": {
+			"match": "(?<![\\w])[a-zA-Z_][\\w$]*(?=\\s*\\.\\s*[\\w]+)",
+			"name": "variable.other.object.java"
+		},
+	  "object-types": {
+			"patterns": [
+				{
+					"include": "#generics"
+				},
+				{
+					"begin": "\\b((?:[A-Za-z_]\\w*\\s*\\.\\s*)*)([A-Z_]\\w*)\\s*(?=\\[)",
+					"beginCaptures": {
+						"1": {
+							"patterns": [
+								{
+									"match": "[A-Za-z_]\\w*",
+									"name": "storage.type.java"
+								},
+								{
+									"match": "\\.",
+									"name": "punctuation.separator.period.java"
+								}
+							]
+						},
+						"2": {
+							"name": "storage.type.object.array.java"
+						}
+					},
+					"end": "(?!\\s*\\[)",
+					"patterns": [
+						{
+							"include": "#comments"
+						},
+						{
+							"include": "#parens"
+						}
+					]
+				},
+				{
+					"match": "\\b((?:[A-Za-z_]\\w*\\s*\\.\\s*)*[A-Z_]\\w*)\\s*(?=<)",
+					"captures": {
+						"1": {
+							"patterns": [
+								{
+									"match": "[A-Za-z_]\\w*",
+									"name": "storage.type.java"
+								},
+								{
+									"match": "\\.",
+									"name": "punctuation.separator.period.java"
+								}
+							]
+						}
+					}
+				},
+				{
+					"match": "\\b((?:[A-Za-z_]\\w*\\s*\\.\\s*)*[A-Z_]\\w*)\\b((?=\\s*[A-Za-z$_\\n])|(?=\\s*\\.\\.\\.))",
+					"captures": {
+						"1": {
+							"patterns": [
+								{
+									"match": "[A-Za-z_]\\w*",
+									"name": "storage.type.java"
+								},
+								{
+									"match": "\\.",
+									"name": "punctuation.separator.period.java"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		"properties": {
+			"patterns": [
+				{
+					"match": "(\\.)\\s*(new)",
+					"captures": {
+						"1": {
+							"name": "punctuation.separator.period.java"
+						},
+						"2": {
+							"name": "keyword.control.new.java"
+						}
+					}
+				},
+				{
+					"match": "(\\.)\\s*([a-zA-Z_$][\\w$]*)(?=\\s*\\.\\s*[a-zA-Z_$][\\w$]*)",
+					"captures": {
+						"1": {
+							"name": "punctuation.separator.period.java"
+						},
+						"2": {
+							"name": "variable.other.object.property.java"
+						}
+					}
+				},
+				{
+					"match": "(\\.)\\s*([a-zA-Z_$][\\w$]*)",
+					"captures": {
+						"1": {
+							"name": "punctuation.separator.period.java"
+						},
+						"2": {
+							"name": "variable.other.object.property.java"
+						}
+					}
+				},
+				{
+					"match": "(\\.)\\s*([0-9][\\w$]*)",
+					"captures": {
+						"1": {
+							"name": "punctuation.separator.period.java"
+						},
+						"2": {
+							"name": "invalid.illegal.identifier.java"
+						}
+					}
+				}
+			]
+		},
+		"code": {
+			"patterns": [
+				{
+					"include": "#annotations"
+				},
+				{
+					"include": "#comments"
+				},
+				{
+					"include": "#enums"
+				},
+				{
+					"include": "#class"
+				},
+				{
+					"include": "#record"
+				},
+				{
+					"include": "#anonymous-block-and-instance-initializer"
+				},
+				{
+					"include": "#try-catch-finally"
+				},
+				{
+					"include": "#assertions"
+				},
+				{
+					"include": "#parens"
+				},
+				{
+					"include": "#constants-and-special-vars"
+				},
+				{
+					"include": "#numbers"
+				},
+				{
+					"include": "#anonymous-classes-and-new"
+				},
+				{
+					"include": "#lambda-expression"
+				},
+				{
+					"include": "#keywords"
+				},
+				{
+					"include": "#storage-modifiers"
+				},
+				{
+					"include": "#method-call"
+				},
+				{
+					"include": "#function-call"
+				},
+				{
+					"include": "#variables"
+				},
+				{
+					"include": "#variables-local"
+				},
+				{
+					"include": "#objects"
+				},
+				{
+					"include": "#properties"
+				},
+				{
+					"include": "#strings"
+				},
+				{
+					"include": "#all-types"
+				},
+				{
+					"match": ",",
+					"name": "punctuation.separator.delimiter.java"
+				},
+				{
+					"match": "\\.",
+					"name": "punctuation.separator.period.java"
+				},
+				{
+					"match": ";",
+					"name": "punctuation.terminator.java"
+				}
+			]
+		},
 		"function-call": {
-			"begin": "([A-Za-z_$][\\w$]*)\\s*(\\()",
+			"begin": "([A-Za-z_][\\w]*)\\s*(\\()",
 			"beginCaptures": {
 				"1": {
 					"name": "entity.name.function.python"
 				},
 				"2": {
-					"name": "punctuation.definition.parameters.begin.bracket.round.python"
+					"name": "punctuation.definition.parameters.begin.bracket.round.python.mast"
 				}
 			},
 			"end": "\\)",
 			"endCaptures": {
 				"0": {
-					"name": "punctuation.definition.parameters.end.python"
+					"name": "punctuation.definition.parameters.end.bracket.round.python.mast"
 				}
 			},
 			"name": "meta.function-call.python",
