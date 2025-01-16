@@ -5,6 +5,7 @@ exports.getMainLabelAtPos = getMainLabelAtPos;
 const vscode_languageserver_1 = require("vscode-languageserver");
 const errorChecking_1 = require("./errorChecking");
 const server_1 = require("./server");
+const console_1 = require("console");
 /**
  * Get valid labels, but only main or sublabels, not both.
  * @param textDocument
@@ -14,10 +15,10 @@ const server_1 = require("./server");
 function getLabels(textDocument, main = true) {
     let definedLabel;
     if (main) {
-        definedLabel = /^ *?={2,}([\w ]+?)={2,} *?$/gm;
+        definedLabel = /^(\s*)(={2,}\s*[ \t]*)(\w+)([ \t]*(={2,})?)/gm;
     }
     else {
-        definedLabel = /^ *?-{2,}([\w ]+?)-{2,} *?$/gm;
+        definedLabel = /^(\s*)(-{2,}\s*[ \t]*)(\w+)([ \t]*(-{2,})?)/gm;
     }
     let m;
     const text = textDocument.getText();
@@ -25,6 +26,11 @@ function getLabels(textDocument, main = true) {
     //debug("Iterating over defined labels");
     while (m = definedLabel.exec(text)) {
         const str = m[0].replace(/(=|-)/g, "").trim();
+        if (main) {
+            const lbl = m[3];
+            (0, console_1.debug)(m[0]);
+            (0, console_1.debug)("Main label: " + lbl);
+        }
         const li = {
             main: main,
             name: str,
@@ -33,7 +39,7 @@ function getLabels(textDocument, main = true) {
             length: m[0].length,
             subLabels: []
         };
-        //debug(str);
+        (0, console_1.debug)(str);
         labels.push(li);
     }
     // Here we have to iterate over the labels again to properly get the end position.
@@ -131,11 +137,11 @@ function checkLabels(textDocument) {
                     start: textDocument.positionAt(m.index),
                     end: textDocument.positionAt(m.index + m[0].length)
                 },
-                severity: vscode_languageserver_1.DiagnosticSeverity.Error,
-                message: "Specified label does not exist. Define this label before use.",
+                severity: vscode_languageserver_1.DiagnosticSeverity.Warning,
+                message: "Specified label does not exist in this file. Make sure that this label is defined before use.",
                 source: "mast"
             };
-            d.relatedInformation = (0, errorChecking_1.relatedMessage)(textDocument, d.range, "Labels must be defined in a format beginning and ending with two or more = or - signs. They may use A-Z, a-z, 0-9, and _ in their names. Other characters are not allowed.");
+            d.relatedInformation = (0, errorChecking_1.relatedMessage)(textDocument, d.range, "Labels must be defined in a format beginning (and optionally ending) with two or more = or - signs. They may use A-Z, a-z, 0-9, and _ in their names. Other characters are not allowed.");
             diagnostics.push(d);
         }
     }
@@ -152,7 +158,7 @@ function findBadLabels(t) {
     const diagnostics = [];
     const any = /(^ *?=+?.*?$)|(^ *?-+?.*?$)/gm;
     const whiteSpaceWarning = /^ +?/;
-    const good = /(^ *?={2,}([0-9A-Za-z _]+?)={2,} *?$)|(^ *?-{2,}([0-9A-Za-z _]+?)-{2,} *?$)/m;
+    const good = /(^(\s*)(={2,}\s*[ \t]*)(\w+)([ \t]*(={2,})?))|(^(\s*)(-{2,}\s*[ \t]*)(\w+)([ \t]*(-{2,})?))/m;
     const bad = /[\!\@\$\%\^\&\*\(\)\.\,\>\<\?`\[\]\\\/\+\~\{\}\|\'\"\;\:]+?/m;
     let m;
     // Iterate over regular labels
@@ -178,7 +184,7 @@ function findBadLabels(t) {
                 message: "Invalid characters in label designation",
                 source: "mast"
             };
-            d.relatedInformation = (0, errorChecking_1.relatedMessage)(t, d.range, "Labels must be defined in a format beginning and ending with two or more = or - signs. \nThey may use A-Z, a-z, 0-9, and _ in their names. Other characters are not allowed.\nExample:\"== LabelA ==\"");
+            d.relatedInformation = (0, errorChecking_1.relatedMessage)(t, d.range, "Labels must be defined in a format beginning (and optionally ending) with two or more = or - signs. \nThey may use A-Z, a-z, 0-9, and _ in their names. Other characters are not allowed.\nExamples:\"== LabelA\" or \"== LabelA ==\"");
             diagnostics.push(d);
         }
         tr = whiteSpaceWarning.test(m[0]);

@@ -1784,17 +1784,6 @@
 							"name": "variable.other.object.property.java"
 						}
 					}
-				},
-				{
-					"match": "(\\.)\\s*([0-9][\\w$]*)",
-					"captures": {
-						"1": {
-							"name": "punctuation.separator.period.java"
-						},
-						"2": {
-							"name": "invalid.illegal.identifier.java"
-						}
-					}
 				}
 			]
 		},

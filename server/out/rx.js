@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.parse = parse;
-const RXDict = new Map();
+//const RXDict: Map<string, RegExp> = new Map();
 const console_1 = require("console");
-function parse(result) {
+function parse(result, RXDict) {
     (0, console_1.debug)("Responded");
     //const result =  xhttp.responseText;
     const labelRX = /class .*?def/gs;
@@ -15,7 +15,7 @@ function parse(result) {
         //debug(m[0]);
         // TODO: Account for comments at end of lines?
         let noComments = m[0].replace(/^\s*\#.*\n/gm, "");
-        (0, console_1.debug)("\n\nnoComments: \n" + noComments);
+        //debug("\n\nnoComments: \n" + noComments);
         let start = noComments.indexOf("rule = re.compile(r'");
         if (start === -1) {
             continue;
@@ -37,23 +37,26 @@ function parse(result) {
         // }
         //debug(rx);
         let className = noComments.replace(/(\(\w+\)){0,1}:.*/, "").replace(/class /, "");
-        (0, console_1.debug)("ClassName: " + className);
+        //debug("ClassName: " + className);
         try {
             const rxe = pyre(rx);
-            (0, console_1.debug)(rxe);
+            //debug(rxe);
             const ret = {
                 name: className,
                 rx: rxe
             };
             RXDict.set(className, rxe);
+            //debug(className);
+            //debug(RXDict.get(className));
         }
         catch (e) {
-            (0, console_1.debug)(m[0]);
+            //debug(m[0]);
             (0, console_1.debug)(e);
         }
         count += 1;
         //if (count > 50) {break;}
     }
+    return RXDict;
 }
 /**
  * Returns a JavaScript RegExp instance from the given Python-like string.
@@ -69,7 +72,7 @@ function parse(result) {
  */
 function pyre(pattern) {
     pattern = String(pattern || '').trim();
-    (0, console_1.debug)(pattern);
+    //debug(pattern);
     // populate namedCaptures array and removed named captures from the `pattern`
     let namedCaptures = [];
     let namedCaptureValues = [];
@@ -79,7 +82,7 @@ function pyre(pattern) {
         var match = /^\(\?P[<]([^>]+)[>](.*?)\)$/.exec(group);
         if (/^\(\?P[<]/.test(group)) {
             if (match === null) {
-                (0, console_1.debug)(group);
+                //debug(group);
                 return group;
             }
             // Python-style "named capture"
@@ -87,10 +90,10 @@ function pyre(pattern) {
             // This subpattern will then be indexed in the matches array by its normal
             // numeric position and also by name.
             if (namedCaptures) {
-                (0, console_1.debug)(match);
+                //debug(match);
                 namedCaptures[numGroups] = match[1];
                 namedCaptureValues[numGroups] = match[2];
-                (0, console_1.debug)(match[1]);
+                //debug(match[1]);
             }
             numGroups++;
             return '(' + match[2] + ')';
@@ -98,7 +101,7 @@ function pyre(pattern) {
         else if ('(?P=' === group.substring(0, 4)) {
             for (const i in namedCaptures) {
                 if (group === '(?P=' + namedCaptures[i] + ")") {
-                    (0, console_1.debug)(namedCaptures[i]);
+                    //debug(namedCaptures[i]);
                     return '(' + namedCaptureValues[i] + ')';
                 }
             }
@@ -116,7 +119,7 @@ function pyre(pattern) {
         numGroups++;
         return group;
     });
-    (0, console_1.debug)(pattern);
+    //debug(pattern);
     // for (const i in namedCaptures) {
     // pattern.replace('',
     // }

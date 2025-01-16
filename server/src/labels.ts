@@ -23,9 +23,9 @@ export interface LabelInfo {
 function getLabels(textDocument: TextDocument, main: boolean = true): LabelInfo[] {
 	let definedLabel : RegExp;
 	if (main) {
-		definedLabel = /^ *?={2,}([\w ]+?)={2,} *?$/gm
+		definedLabel = /^(\s*)(={2,}\s*[ \t]*)(\w+)([ \t]*(={2,})?)/gm
 	} else {
-		definedLabel = /^ *?-{2,}([\w ]+?)-{2,} *?$/gm
+		definedLabel = /^(\s*)(-{2,}\s*[ \t]*)(\w+)([ \t]*(-{2,})?)/gm
 	}
 	let m: RegExpExecArray | null;
 	const text = textDocument.getText();
@@ -35,6 +35,11 @@ function getLabels(textDocument: TextDocument, main: boolean = true): LabelInfo[
 	
 	while (m = definedLabel.exec(text)) {
 		const str = m[0].replace(/(=|-)/g,"").trim();
+		if (main) {
+			const lbl = m[3];
+			debug(m[0]);
+			debug("Main label: " + lbl);
+		}
 		const li: LabelInfo = {
 			main: main,
 			name: str,
@@ -43,7 +48,7 @@ function getLabels(textDocument: TextDocument, main: boolean = true): LabelInfo[
 			length: m[0].length,
 			subLabels: []
 		}
-		//debug(str);
+		debug(str);
 		labels.push(li);
 	}
 	// Here we have to iterate over the labels again to properly get the end position.
@@ -146,11 +151,11 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 					start: textDocument.positionAt(m.index),
 					end: textDocument.positionAt(m.index + m[0].length)
 				},
-				severity: DiagnosticSeverity.Error,
-				message: "Specified label does not exist. Define this label before use.",
+				severity: DiagnosticSeverity.Warning,
+				message: "Specified label does not exist in this file. Make sure that this label is defined before use.",
 				source: "mast"
 			}
-			d.relatedInformation = relatedMessage(textDocument, d.range, "Labels must be defined in a format beginning and ending with two or more = or - signs. They may use A-Z, a-z, 0-9, and _ in their names. Other characters are not allowed.");
+			d.relatedInformation = relatedMessage(textDocument, d.range, "Labels must be defined in a format beginning (and optionally ending) with two or more = or - signs. They may use A-Z, a-z, 0-9, and _ in their names. Other characters are not allowed.");
 			diagnostics.push(d);
 		}
 	}
@@ -169,7 +174,7 @@ function findBadLabels(t: TextDocument) : Diagnostic[] {
 	const diagnostics: Diagnostic[] = [];
 	const any: RegExp = /(^ *?=+?.*?$)|(^ *?-+?.*?$)/gm;
 	const whiteSpaceWarning: RegExp = /^ +?/;
-	const good: RegExp = /(^ *?={2,}([0-9A-Za-z _]+?)={2,} *?$)|(^ *?-{2,}([0-9A-Za-z _]+?)-{2,} *?$)/m;
+	const good: RegExp = /(^(\s*)(={2,}\s*[ \t]*)(\w+)([ \t]*(={2,})?))|(^(\s*)(-{2,}\s*[ \t]*)(\w+)([ \t]*(-{2,})?))/m;
 	const bad: RegExp = /[\!\@\$\%\^\&\*\(\)\.\,\>\<\?`\[\]\\\/\+\~\{\}\|\'\"\;\:]+?/m;
 	let m: RegExpExecArray | null;
 	// Iterate over regular labels
@@ -196,7 +201,7 @@ function findBadLabels(t: TextDocument) : Diagnostic[] {
 				message: "Invalid characters in label designation",
 				source: "mast"
 			}
-			d.relatedInformation = relatedMessage(t, d.range, "Labels must be defined in a format beginning and ending with two or more = or - signs. \nThey may use A-Z, a-z, 0-9, and _ in their names. Other characters are not allowed.\nExample:\"== LabelA ==\"");
+			d.relatedInformation = relatedMessage(t, d.range, "Labels must be defined in a format beginning (and optionally ending) with two or more = or - signs. \nThey may use A-Z, a-z, 0-9, and _ in their names. Other characters are not allowed.\nExamples:\"== LabelA\" or \"== LabelA ==\"");
 			diagnostics.push(d);
 		}
 

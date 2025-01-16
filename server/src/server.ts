@@ -44,6 +44,7 @@ import { onSignatureHelp, prepSignatures } from './signatureHelp';
 import { ClassTypings, parseWholeFile, PyFile } from './data';
 import { loadRouteLabels } from './routeLabels';
 import { parse, RX } from './rx';
+import { getComments } from './comments';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -170,12 +171,14 @@ async function loadTypings(): Promise<void> {
 }
 
 const expressions: RX[] = [];
+const exp: Map<string, RegExp> = new Map();
 const defSource = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/mast.py";
 const defSource2 = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/maststory.py";
 async function getRexEx(src: string) :Promise<void> {
 	const data = await fetch(src);
 	const txt = await data.text();
-	parse(txt);
+	parse(txt, exp);
+	
 }
 
 connection.onInitialize((params: InitializeParams) => {
@@ -183,7 +186,10 @@ connection.onInitialize((params: InitializeParams) => {
 	loadTypings().then(()=>{ typingsDone = true; });
 	loadRouteLabels().then(()=>{ debug("Routes Loaded") });
 	getRexEx(defSource).then(()=>{ debug("Regular Expressions gotten")});
-	getRexEx(defSource2).then(()=>{ debug("Regular Expressions 2 gotten")});
+	getRexEx(defSource2).then(()=>{ debug("Regular Expressions 2 gotten")
+		debug("Label?: ");
+		debug(exp.get("Label"));
+	});
 	//const zip : Promise<void> = extractZip("","./sbs");
 
 	//pyTypings = pyTypings.concat(parseTyping(fs.readFileSync("sbs.pyi","utf-8")));
@@ -388,6 +394,8 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 	// In this simple example we get the settings for every validate run.
 	const settings = await getDocumentSettings(textDocument.uri);
 	
+	getComments(textDocument);
+
 	// The validator creates diagnostics for all uppercase words length 2 and more
 	const text = textDocument.getText();
 	currentDocument = textDocument;

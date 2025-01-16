@@ -19,7 +19,7 @@ function onHover(_pos, text) {
     // 	start: t.positionAt(m.index),
     // 	end: t.positionAt(m.index + m[0].length)
     // }
-    (0, console_1.debug)("Getting line");
+    //debug("Getting line");
     let hoveredLine = getCurrentLineFromTextDocument(_pos, text);
     // If it's a comment, we'll just ignore it.
     const comment = hoveredLine.indexOf("#");
@@ -27,7 +27,7 @@ function onHover(_pos, text) {
         return hover;
     }
     const symbol = getHoveredSymbol(hoveredLine, _pos.position.character);
-    (0, console_1.debug)(symbol);
+    //debug(symbol);
     return hover;
 }
 function getEndOfSymbol(str) {

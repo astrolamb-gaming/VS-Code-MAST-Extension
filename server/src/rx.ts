@@ -2,12 +2,12 @@ export interface RX {
 	name:string,
 	rx: RegExp
 }
-const RXDict: Map<string, RegExp> = new Map();
+//const RXDict: Map<string, RegExp> = new Map();
 
 import { debug } from 'console';
 import { integer } from 'vscode-languageserver';
 
-export function parse(result: string) {
+export function parse(result: string, RXDict: Map<string, RegExp>) {
 	debug("Responded");
 	//const result =  xhttp.responseText;
 	const labelRX = /class .*?def/gs;
@@ -19,7 +19,7 @@ export function parse(result: string) {
 		//debug(m[0]);
 		// TODO: Account for comments at end of lines?
 		let noComments = m[0].replace(/^\s*\#.*\n/gm,"")
-		debug("\n\nnoComments: \n" + noComments);
+		//debug("\n\nnoComments: \n" + noComments);
 		let start = noComments.indexOf("rule = re.compile(r'");
 		if (start === -1) { continue; }
 		let end = noComments.indexOf("\n",start);
@@ -40,18 +40,20 @@ export function parse(result: string) {
 		//debug(rx);
 
 		let className = noComments.replace(/(\(\w+\)){0,1}:.*/,"").replace(/class /,"");
-		debug("ClassName: " + className);
+		//debug("ClassName: " + className);
 		
 		try {
 			const rxe = pyre(rx);
-			debug(rxe);
+			//debug(rxe);
 			const ret: RX = {
 				name: className,
 				rx: rxe
 			}
 			RXDict.set(className,rxe);
+			//debug(className);
+			//debug(RXDict.get(className));
 		} catch (e) {
-			debug(m[0]);
+			//debug(m[0]);
 			debug(e as string);
 		}
 		
@@ -60,7 +62,7 @@ export function parse(result: string) {
 		//if (count > 50) {break;}
 	}
   
-  
+  return RXDict;
 }
 
 
@@ -78,7 +80,7 @@ export function parse(result: string) {
  */
 function pyre(pattern:string): RegExp {
   pattern = String(pattern || '').trim();
-	debug(pattern);
+	//debug(pattern);
   // populate namedCaptures array and removed named captures from the `pattern`
   let namedCaptures: string[] =  [];
   let namedCaptureValues: string[] = [];
@@ -88,7 +90,7 @@ function pyre(pattern:string): RegExp {
 	var match = /^\(\?P[<]([^>]+)[>](.*?)\)$/.exec(group);
     if (/^\(\?P[<]/.test(group)) {
 		if (match === null) {
-			debug(group);
+			//debug(group);
 			return group;
 		}
       // Python-style "named capture"
@@ -96,17 +98,17 @@ function pyre(pattern:string): RegExp {
       // This subpattern will then be indexed in the matches array by its normal
       // numeric position and also by name.
       if (namedCaptures) {
-		  debug(match);
+		  //debug(match);
 		  namedCaptures[numGroups] = match[1]; 
 		  namedCaptureValues[numGroups] = match[2];
-		  debug(match[1]);
+		  //debug(match[1]);
 	  }
       numGroups++;
       return '(' + match[2] + ')';
 	} else if ('(?P=' === group.substring(0,4)) {
 		for (const i in namedCaptures) {
 			if (group === '(?P=' + namedCaptures[i] + ")") {
-				debug(namedCaptures[i]);
+				//debug(namedCaptures[i]);
 				return '(' + namedCaptureValues[i] + ')';
 			}
 		}
@@ -122,7 +124,7 @@ function pyre(pattern:string): RegExp {
 	numGroups++;
 	return group;
   });
-  debug(pattern);
+  //debug(pattern);
   // for (const i in namedCaptures) {
 	  // pattern.replace('',
   // }
