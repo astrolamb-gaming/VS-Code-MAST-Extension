@@ -8,6 +8,7 @@ exports.activate = activate;
 exports.deactivate = deactivate;
 const path = require("path");
 const vscode_1 = require("vscode");
+const vscode = require("vscode");
 const node_1 = require("vscode-languageclient/node");
 let client;
 function activate(context) {
@@ -42,6 +43,24 @@ function activate(context) {
             }
         }
     };
+    const disposable = vscode.languages.registerFoldingRangeProvider('mast', {
+        provideFoldingRanges(document, context, token) {
+            //console.log('folding range invoked'); // comes here on every character edit
+            let sectionStart = 0, FR = [], re = /^\s*?={2,}/; // regex to detect start of region
+            for (let i = 0; i < document.lineCount; i++) {
+                if (re.test(document.lineAt(i).text)) {
+                    if (sectionStart > 0) {
+                        FR.push(new vscode.FoldingRange(sectionStart, i - 1, vscode.FoldingRangeKind.Region));
+                    }
+                    sectionStart = i;
+                }
+            }
+            if (sectionStart > 0) {
+                FR.push(new vscode.FoldingRange(sectionStart, document.lineCount - 1, vscode.FoldingRangeKind.Region));
+            }
+            return FR;
+        }
+    });
     // context.subscriptions.push(vscode.languages.registerCompletionItemProvider(GO_MODE, new GoCompletionItemProvider(), ".", "\""));
     // Create the language client and start the client.
     client = new node_1.LanguageClient('languageServerExample', 'Language Server Example', serverOptions, clientOptions);
