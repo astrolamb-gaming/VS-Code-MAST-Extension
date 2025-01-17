@@ -101,7 +101,8 @@
 						}
 					}
 				]
-			}
+			},
+			"editor.foldingStrategy": "auto"
 		},
 		"configuration": {
 			"type": "object",
