@@ -5,7 +5,7 @@ exports.findSubfolderByName = findSubfolderByName;
 exports.getFolders = getFolders;
 const path = require("path");
 const fs = require("fs");
-const console_1 = require("console");
+const server_1 = require("./server");
 function getRootFolder() {
     // let initialDir = "./";
     // let dir = findSubfolderByName(initialDir,"__lib__");
@@ -14,7 +14,7 @@ function getRootFolder() {
     // is using the root Artemis folder or the missions folder, or anything in between.
     let initialDir = "../../../../";
     let dir = findSubfolderByName(initialDir, "data");
-    (0, console_1.debug)(dir + "\n");
+    (0, server_1.debug)(dir + "\n");
     if (dir !== null) {
         dir = findSubfolderByName(dir, "missions");
         if (dir !== null) {

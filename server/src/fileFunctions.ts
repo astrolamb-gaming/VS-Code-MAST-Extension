@@ -21,9 +21,9 @@ import {
 	CompletionItemLabelDetails,
 	InsertTextFormat
 } from 'vscode-languageserver/node';
-import { appendFunctionData } from './server';
+import { appendFunctionData, debug } from './server';
 import { checkServerIdentity } from 'tls';
-import { debug } from 'console';
+
 import { getRegExMatch } from './data';
 
 export function getRootFolder() : string | null{

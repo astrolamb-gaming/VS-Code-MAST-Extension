@@ -38,14 +38,14 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { findDiagnostic } from './errorChecking';
 import { checkLabels, getMainLabelAtPos, LabelInfo } from './labels';
 import { onCompletion, prepCompletions } from './autocompletion';
-import { debug } from 'console';
+import { debug as db} from 'console';
 import { onHover } from './hover';
 import { onSignatureHelp, prepSignatures } from './signatureHelp';
 import { ClassTypings, parseWholeFile, PyFile } from './data';
 import { loadRouteLabels } from './routeLabels';
 import { parse, RX } from './rx';
 import { getComments } from './comments';
-
+import fs = require("fs");
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 const connection = createConnection(ProposedFeatures.all);
@@ -514,3 +514,13 @@ documents.listen(connection);
 
 // Listen on the connection
 connection.listen();
+
+export function debug(str:any) {
+    if (str === undefined) {
+        str = "UNDEFINED";
+    }
+    str = "\n" + str;
+    fs.writeFileSync('outputLog.txt', str, { flag: "a+" });
+	db(str);
+	console.log(str);
+}

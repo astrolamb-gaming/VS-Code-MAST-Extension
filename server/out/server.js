@@ -8,6 +8,7 @@ exports.getFunctionData = getFunctionData;
 exports.getSupportedRoutes = getSupportedRoutes;
 exports.getSourceFiles = getSourceFiles;
 exports.updateLabelNames = updateLabelNames;
+exports.debug = debug;
 /* --------------------------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
@@ -25,6 +26,7 @@ const data_1 = require("./data");
 const routeLabels_1 = require("./routeLabels");
 const rx_1 = require("./rx");
 const comments_1 = require("./comments");
+const fs = require("fs");
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 const connection = (0, node_1.createConnection)(node_1.ProposedFeatures.all);
@@ -130,7 +132,7 @@ async function loadTypings() {
         (0, signatureHelp_1.prepSignatures)(sourceFiles);
     }
     catch (err) {
-        (0, console_1.debug)("\nFailed to load\n" + err);
+        debug("\nFailed to load\n" + err);
     }
 }
 const expressions = [];
@@ -145,12 +147,12 @@ async function getRexEx(src) {
 connection.onInitialize((params) => {
     // These are only executed on startup
     loadTypings().then(() => { typingsDone = true; });
-    (0, routeLabels_1.loadRouteLabels)().then(() => { (0, console_1.debug)("Routes Loaded"); });
-    getRexEx(defSource).then(() => { (0, console_1.debug)("Regular Expressions gotten"); });
+    (0, routeLabels_1.loadRouteLabels)().then(() => { debug("Routes Loaded"); });
+    getRexEx(defSource).then(() => { debug("Regular Expressions gotten"); });
     getRexEx(defSource2).then(() => {
-        (0, console_1.debug)("Regular Expressions 2 gotten");
-        (0, console_1.debug)("Label?: ");
-        (0, console_1.debug)(exp.get("Label"));
+        debug("Regular Expressions 2 gotten");
+        debug("Label?: ");
+        debug(exp.get("Label"));
     });
     //const zip : Promise<void> = extractZip("","./sbs");
     //pyTypings = pyTypings.concat(parseTyping(fs.readFileSync("sbs.pyi","utf-8")));
@@ -371,7 +373,7 @@ connection.onCompletion((_textDocumentPosition) => {
         return (0, autocompletion_1.onCompletion)(_textDocumentPosition, text);
     }
     catch (e) {
-        (0, console_1.debug)("onCompletion failure\n" + e);
+        debug("onCompletion failure\n" + e);
         return undefined;
     }
 });
@@ -399,7 +401,7 @@ function updateLabelNames(li) {
 connection.onHover((_textDocumentPosition) => {
     const text = documents.get(_textDocumentPosition.textDocument.uri);
     if (text === undefined) {
-        (0, console_1.debug)("Undefined");
+        debug("Undefined");
         return undefined;
     }
     return (0, hover_1.onHover)(_textDocumentPosition, text);
@@ -409,4 +411,13 @@ connection.onHover((_textDocumentPosition) => {
 documents.listen(connection);
 // Listen on the connection
 connection.listen();
+function debug(str) {
+    if (str === undefined) {
+        str = "UNDEFINED";
+    }
+    str = "\n" + str;
+    fs.writeFileSync('outputLog.txt', str, { flag: "a+" });
+    (0, console_1.debug)(str);
+    console.log(str);
+}
 //# sourceMappingURL=server.js.map

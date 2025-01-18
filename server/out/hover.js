@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.onHover = onHover;
-const console_1 = require("console");
+const server_1 = require("./server");
 const vscode_languageserver_1 = require("vscode-languageserver");
 function onHover(_pos, text) {
     // Get Hover Range
@@ -52,7 +52,7 @@ function getCurrentLineFromTextDocument(_pos, text) {
  * @returns
  */
 function getHoveredSymbolOld(str, pos) {
-    (0, console_1.debug)("Hovering at position: " + pos);
+    (0, server_1.debug)("Hovering at position: " + pos);
     const eosList = [" ", "(", ")", ".", ",", "+", "-", "=", "{", "}", "[", "]", "<", ">", "/", "*", "\n"];
     const priorStr = str.substring(0, pos);
     let start = 0;

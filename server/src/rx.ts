@@ -4,7 +4,7 @@ export interface RX {
 }
 //const RXDict: Map<string, RegExp> = new Map();
 
-import { debug } from 'console';
+import { debug } from './server';
 import { integer } from 'vscode-languageserver';
 
 export function parse(result: string, RXDict: Map<string, RegExp>) {

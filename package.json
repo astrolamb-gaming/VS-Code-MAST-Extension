@@ -42,7 +42,7 @@
 			{
 				"language": "mast",
 				"scopeName": "source.mast",
-				"path": "./syntaxes/mast.tmLanguage.json"
+				"path": "./syntaxes/mast_test.tmLanguage.json"
 			},
 			{
 				"scopeName": "source.regexp.mast",
@@ -57,23 +57,24 @@
 			"editor.tokenColorCustomizations": {
 				"textMateRules": [
 					{
-						"scope": "label.jump",
-						"settings": {
-							"foreground": "#C586C0",
-							"fontStyle": ""
-						}
-					},
-					{
-						"scope": "label.jump.keyword",
+						"scope": "label.jump.to",
 						"settings": {
 							"foreground": "#4EC9B0",
 							"fontStyle": ""
 						}
 					},
 					{
+						"scope": "label.jump.keyword",
+						"settings": {
+							"foreground": "#C586C0",
+							"fontStyle": ""
+						}
+					},
+					{
 						"scope": "label",
 						"settings": {
-							"foreground": "#4EC9B0"
+							"foreground": "#4EC9B0",
+							"fontStyle": "bold"
 						}
 					},
 					{
@@ -99,10 +100,16 @@
 						"settings": {
 							"foreground": "#9886ff"
 						}
+					},
+					{
+						"scope": "string.quoted.double.map.description.mast",
+						"settings": {
+							"foreground": "#ffc400",
+							"fontStyle": "bold"
+						}
 					}
 				]
-			},
-			"editor.foldingStrategy": "auto"
+			}
 		},
 		"configuration": {
 			"type": "object",

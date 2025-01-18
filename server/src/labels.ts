@@ -2,7 +2,7 @@ import { Diagnostic, DiagnosticSeverity, integer } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { relatedMessage } from './errorChecking';
 import { updateLabelNames } from "./server";
-import { debug } from 'console';
+import { debug } from './server';
 
 
 export interface LabelInfo {
@@ -62,9 +62,17 @@ function getLabels(textDocument: TextDocument, main: boolean = true): LabelInfo[
 	}
 
 	// Add END as a main label, last so we don't need to mess with it in earlier iterations.
+	// Also add "main" as a main label, since it can happen that sublabels are defined before any user-defined main labels.
 	if (main) {
 		const endLabel: LabelInfo = { main: true, name: "END", start: text.length-1,end: text.length, length: 3, subLabels: [] }
 		labels.push(endLabel);
+		let end:integer = text.length;
+		for (const i in labels) {
+			if (labels[i].start < end) {
+				end = labels[i].start-1;
+			}
+		}
+		const mainLabel: LabelInfo = { main: true, name: "main", start: 0,end: text.length, length: 3, subLabels: [] }
 	}
 	return labels
 }

@@ -5,7 +5,7 @@ exports.getMainLabelAtPos = getMainLabelAtPos;
 const vscode_languageserver_1 = require("vscode-languageserver");
 const errorChecking_1 = require("./errorChecking");
 const server_1 = require("./server");
-const console_1 = require("console");
+const server_2 = require("./server");
 /**
  * Get valid labels, but only main or sublabels, not both.
  * @param textDocument
@@ -28,8 +28,8 @@ function getLabels(textDocument, main = true) {
         const str = m[0].replace(/(=|-)/g, "").trim();
         if (main) {
             const lbl = m[3];
-            (0, console_1.debug)(m[0]);
-            (0, console_1.debug)("Main label: " + lbl);
+            (0, server_2.debug)(m[0]);
+            (0, server_2.debug)("Main label: " + lbl);
         }
         const li = {
             main: main,
@@ -39,7 +39,7 @@ function getLabels(textDocument, main = true) {
             length: m[0].length,
             subLabels: []
         };
-        (0, console_1.debug)(str);
+        (0, server_2.debug)(str);
         labels.push(li);
     }
     // Here we have to iterate over the labels again to properly get the end position.
@@ -52,9 +52,17 @@ function getLabels(textDocument, main = true) {
         labels[i].end = text.length;
     }
     // Add END as a main label, last so we don't need to mess with it in earlier iterations.
+    // Also add "main" as a main label, since it can happen that sublabels are defined before any user-defined main labels.
     if (main) {
         const endLabel = { main: true, name: "END", start: text.length - 1, end: text.length, length: 3, subLabels: [] };
         labels.push(endLabel);
+        let end = text.length;
+        for (const i in labels) {
+            if (labels[i].start < end) {
+                end = labels[i].start - 1;
+            }
+        }
+        const mainLabel = { main: true, name: "main", start: 0, end: text.length, length: 3, subLabels: [] };
     }
     return labels;
 }
