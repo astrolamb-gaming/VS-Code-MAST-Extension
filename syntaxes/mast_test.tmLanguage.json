@@ -9,6 +9,9 @@
   "scopeName": "source.mast",
   "patterns": [
     {
+      "include": "#comment"
+    },
+    {
       "include": "#string"
     },
     {
@@ -56,9 +59,6 @@
         },
         {
           "include": "#punctuation-semicolon"
-        },
-        {
-          "include": "#comment"
         }
       ]
     },
