@@ -283,59 +283,59 @@
             "name": "keyword.control.flow.python",
             "match": "(?x)\n  \\b(?<!\\.)(\n    async | continue | del | assert | break | finally | for\n    | from | elif | else | if | except | pass | raise\n    | return | try | while | with\n  )\\b\n"
           },
-		  {
-			"match": "(?m)^(\\s*)(={2,}\\s*[ \\t]*)(\\w+)([ \\t]*(={2,})?)",
-			"captures": {
-				"2": {
-					"name": "label.main.designator.mast"
-				},
-				"3": {
-					"name": "label.main.mast"
-				},
-				"4": {
-					"name": "label.main.designator.mast"
-				}
-			}
-		  },
-		  {
-			"match": "(?m)^(\\s*)(-{2,}\\s*[ \\t]*)(\\w+)([ \\t]*(-{2,})?)",
-			"captures": {
-				"2": {
-					"name": "label.sub.designator.mast"
-				},
-				"3": {
-					"name": "label.sub.mast"
-				},
-				"4": {
-					"name": "label.sub.designator.mast"
-				}
-			}
-		  },
-		  {
-			  "match": "(jump|->)(\\s*)(\\w+)",
-			  "captures": {
-				  "1": {
-					  "name": "label.jump.keyword.mast"
-				  },
-				  "3": {
-					  "name": "label.jump.mast"
-				  }
-				  
-			  }
-		  },
-		  {
-			  "name": "label.route.mast",
-			  "match": "(?m)^\\s*(\\/{2,})(\\w+)(\\/\\w+)*",
-			  "captures": {
-				  "2": {
-					  "name": "label.route.primary.mast"
-				  },
-				  "3": {
-					  "name": "label.route.secondary.mast"
-				  }
-				  
-			  }
-		  },
+          {
+            "match": "(?m)^(\\s*)(={2,}\\s*[ \\t]*)(\\w+)([ \\t]*(={2,})?)",
+            "captures": {
+              "2": {
+                "name": "label.main.designator.mast"
+              },
+              "3": {
+                "name": "label.main.mast"
+              },
+              "4": {
+                "name": "label.main.designator.mast"
+              }
+            }
+          },
+          {
+          "match": "(?m)^(\\s*)(-{2,}\\s*[ \\t]*)(\\w+)([ \\t]*(-{2,})?)",
+          "captures": {
+            "2": {
+              "name": "label.sub.designator.mast"
+            },
+            "3": {
+              "name": "label.sub.mast"
+            },
+            "4": {
+              "name": "label.sub.designator.mast"
+            }
+          }
+          },
+          {
+            "match": "(jump|->)(\\s*)(\\w+)",
+            "captures": {
+              "1": {
+                "name": "label.jump.keyword.mast"
+              },
+              "3": {
+                "name": "label.jump.mast"
+              }
+              
+            }
+          },
+          {
+            "name": "label.route.mast",
+            "match": "(?m)^\\s*(\\/{2,})(\\w+)(\\/\\w+)*",
+            "captures": {
+              "2": {
+                "name": "label.route.primary.mast"
+              },
+              "3": {
+                "name": "label.route.secondary.mast"
+              }
+              
+            }
+          },
           {
             "name": "storage.modifier.declaration.python",
             "match": "(?x)\n  \\b(?<!\\.)(\n    global | shared | nonlocal\n  )\\b\n"

@@ -107,6 +107,24 @@
 							"foreground": "#ffc400",
 							"fontStyle": "bold"
 						}
+					},
+					{
+						"scope": "success.yield.result",
+						"settings": {
+							"foreground": "#006900"
+						}
+					},
+					{
+						"scope": "fail.yield.result",
+						"settings": {
+							"foreground": "#7e0000"
+						}
+					},
+					{
+						"scope": "constant.language.mast",
+						"settings": {
+							"foreground": "#770077"
+						}
 					}
 				]
 			}

@@ -12,10 +12,19 @@
       "include": "#string"
     },
     {
+      "include": "#label"
+    },
+    {
+      "include": "#operator"
+    },
+    {
       "include": "#statements"
     },
     {
       "include": "#shebang"
+    },
+    {
+      "include": "#assignment-operator"
     }
   ],
   "repository": {
@@ -35,6 +44,9 @@
         },
         {
           "include": "#declaration"
+        },
+        {
+          "include": "#yield-result"
         },
         {
           "include": "#control-statement"
@@ -100,47 +112,20 @@
         }
       ]
     },
-    "control-statement": {
+    "yield-result": {
       "patterns": [
         {
-          "include": "#switch-statement"
+          "match": "(?<=yield )success",
+          "name": "success.yield.result"
         },
         {
-          "include": "#for-loop"
-        },
-        {
-          "name": "keyword.control.trycatch.ts",
-          "match": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(catch|finally|throw|try)(?![_$[:alnum:]])(?:(?=\\.\\.\\.)|(?!\\.))"
-        },
-        {
-          "match": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(break|continue|goto)\\s+([_$[:alpha:]][_$[:alnum:]]*)(?![_$[:alnum:]])(?:(?=\\.\\.\\.)|(?!\\.))",
-          "captures": {
-            "1": {
-              "name": "keyword.control.loop.ts"
-            },
-            "2": {
-              "name": "entity.name.label.ts"
-            }
-          }
-        },
-        {
-          "name": "keyword.control.loop.ts",
-          "match": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(break|continue|do|goto|while)(?![_$[:alnum:]])(?:(?=\\.\\.\\.)|(?!\\.))"
-        },
-        {
-          "begin": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(return)(?![_$[:alnum:]])(?:(?=\\.\\.\\.)|(?!\\.))",
-          "beginCaptures": {
-            "0": {
-              "name": "keyword.control.flow.ts"
-            }
-          },
-          "end": "(?=[;}]|$|;|^\\s*$|(?:^\\s*(?:abstract|async|(?:\\bawait\\s+(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)\\b)|break|case|catch|class|const|continue|declare|do|else|enum|export|finally|function|for|goto|if|import|interface|let|module|namespace|switch|return|throw|try|type|(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)|var|while)\\b))",
-          "patterns": [
-            {
-              "include": "#expression"
-            }
-          ]
-        },
+          "match": "(?<=yield )fail",
+          "name": "fail.yield.result"
+        }
+      ]
+    },
+    "label":{
+      "patterns": [
         {
           "match": "(?m)^(\\s*)(={2,}\\s*[ \\t]*)(\\w+)([ \\t]*(={2,})?)",
           "captures": {
@@ -193,7 +178,89 @@
               }
               
             }
+          }
+      ]
+    },
+    "statement-keyword": {
+      "patterns": [
+        {
+          "name": "storage.type.function.python",
+          "match": "\\b((async\\s+)?\\s*def)\\b"
+        },
+        {
+          "name": "keyword.control.flow.python",
+          "comment": "if `as` is eventually followed by `:` or line continuation\nit's probably control flow like:\n    with foo as bar, \\\n         Foo as Bar:\n      try:\n        do_stuff()\n      except Exception as e:\n        pass\n",
+          "match": "\\b(?<!\\.)as\\b(?=.*[:\\\\])"
+        },
+        {
+          "name": "keyword.control.import.python",
+          "comment": "other legal use of `as` is in an import",
+          "match": "\\b(?<!\\.)as\\b"
+        },
+        {
+          "name": "keyword.control.flow.python",
+          "match": "(?x)\n  \\b(?<!\\.)(\n    async | continue | del | assert | break | finally | for\n    | from | elif | else | if | except | pass | raise\n    | return | try | while | with\n  )\\b\n"
+        },
+        {
+          "name": "storage.modifier.declaration.python",
+          "match": "(?x)\n  \\b(?<!\\.)(\n    global | shared | nonlocal\n  )\\b\n"
+        },
+        {
+          "name": "storage.type.class.python",
+          "match": "\\b(?<!\\.)(class)\\b"
+        },
+        {
+          "match": "(?x)\n  ^\\s*(\n    case | match\n  )(?=\\s*([-+\\w\\d(\\[{'\":#]|$))\\b\n",
+          "captures": {
+            "1": {
+              "name": "keyword.control.flow.python"
+            }
+          }
+        }
+      ]
+    },
+    "control-statement": {
+      "patterns": [
+        {
+          "include": "#switch-statement"
+        },
+        {
+          "include": "#for-loop"
+        },
+        {
+          "name": "keyword.control.trycatch.ts",
+          "match": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(catch|finally|throw|try)(?![_$[:alnum:]])(?:(?=\\.\\.\\.)|(?!\\.))"
+        },
+        {
+          "match": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(break|continue|goto)\\s+([_$[:alpha:]][_$[:alnum:]]*)(?![_$[:alnum:]])(?:(?=\\.\\.\\.)|(?!\\.))",
+          "captures": {
+            "1": {
+              "name": "keyword.control.loop.ts"
+            },
+            "2": {
+              "name": "entity.name.label.ts"
+            }
+          }
+        },
+        {
+          "name": "keyword.control.loop.ts",
+          "match": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(break|continue|do|goto|while)(?![_$[:alnum:]])(?:(?=\\.\\.\\.)|(?!\\.))"
+        },
+        {
+          "begin": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(return)(?![_$[:alnum:]])(?:(?=\\.\\.\\.)|(?!\\.))",
+          "beginCaptures": {
+            "0": {
+              "name": "keyword.control.flow.ts"
+            }
           },
+          "end": "(?=[;}]|$|;|^\\s*$|(?:^\\s*(?:abstract|async|(?:\\bawait\\s+(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)\\b)|break|case|catch|class|const|continue|declare|do|else|enum|export|finally|function|for|goto|if|import|interface|let|module|namespace|switch|return|throw|try|type|(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)|var|while)\\b))",
+          "patterns": [
+            {
+              "include": "#expression"
+            }
+          ]
+        },
+        
         {
           "name": "keyword.control.switch.ts",
           "match": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(case|default|switch)(?![_$[:alnum:]])(?:(?=\\.\\.\\.)|(?!\\.))"
@@ -219,38 +286,7 @@
         }
       ]
     },
-    "label": {
-      "patterns": [
-        {
-          "begin": "([_$[:alpha:]][_$[:alnum:]]*)\\s*(:)(?=\\s*\\{)",
-          "beginCaptures": {
-            "1": {
-              "name": "entity.name.label.ts"
-            },
-            "2": {
-              "name": "punctuation.separator.label.ts"
-            }
-          },
-          "end": "(?<=\\})",
-          "patterns": [
-            {
-              "include": "#decl-block"
-            }
-          ]
-        },
-        {
-          "match": "([_$[:alpha:]][_$[:alnum:]]*)\\s*(:)",
-          "captures": {
-            "1": {
-              "name": "entity.name.label.ts"
-            },
-            "2": {
-              "name": "punctuation.separator.label.ts"
-            }
-          }
-        }
-      ]
-    },
+    
     "expression": {
       "patterns": [
         {
@@ -2165,152 +2201,7 @@
         }
       ]
     },
-    "import-equals-declaration": {
-      "patterns": [
-        {
-          "name": "meta.import-equals.external.ts",
-          "begin": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(?:(\\bexport)\\s+)?(?:(\\bdeclare)\\s+)?\\b(import)(?:\\s+(type))?\\s+([_$[:alpha:]][_$[:alnum:]]*)\\s*(=)\\s*(require)\\s*(\\()",
-          "beginCaptures": {
-            "1": {
-              "name": "keyword.control.export.ts"
-            },
-            "2": {
-              "name": "storage.modifier.ts"
-            },
-            "3": {
-              "name": "keyword.control.import.ts"
-            },
-            "4": {
-              "name": "keyword.control.type.ts"
-            },
-            "5": {
-              "name": "variable.other.readwrite.alias.ts"
-            },
-            "6": {
-              "name": "keyword.operator.assignment.ts"
-            },
-            "7": {
-              "name": "keyword.control.require.ts"
-            },
-            "8": {
-              "name": "meta.brace.round.ts"
-            }
-          },
-          "end": "\\)",
-          "endCaptures": {
-            "0": {
-              "name": "meta.brace.round.ts"
-            }
-          },
-          "patterns": [
-            {
-              "include": "#comment"
-            },
-            {
-              "include": "#string"
-            }
-          ]
-        },
-        {
-          "name": "meta.import-equals.internal.ts",
-          "begin": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(?:(\\bexport)\\s+)?(?:(\\bdeclare)\\s+)?\\b(import)(?:\\s+(type))?\\s+([_$[:alpha:]][_$[:alnum:]]*)\\s*(=)\\s*(?!require\\b)",
-          "beginCaptures": {
-            "1": {
-              "name": "keyword.control.export.ts"
-            },
-            "2": {
-              "name": "storage.modifier.ts"
-            },
-            "3": {
-              "name": "keyword.control.import.ts"
-            },
-            "4": {
-              "name": "keyword.control.type.ts"
-            },
-            "5": {
-              "name": "variable.other.readwrite.alias.ts"
-            },
-            "6": {
-              "name": "keyword.operator.assignment.ts"
-            }
-          },
-          "end": "(?=;|$|^)",
-          "patterns": [
-            {
-              "include": "#single-line-comment-consuming-line-ending"
-            },
-            {
-              "include": "#comment"
-            },
-            {
-              "match": "([_$[:alpha:]][_$[:alnum:]]*)\\s*(?:(\\.)|(\\?\\.(?!\\s*[[:digit:]])))",
-              "captures": {
-                "1": {
-                  "name": "entity.name.type.module.ts"
-                },
-                "2": {
-                  "name": "punctuation.accessor.ts"
-                },
-                "3": {
-                  "name": "punctuation.accessor.optional.ts"
-                }
-              }
-            },
-            {
-              "name": "variable.other.readwrite.import.equals.declaration.ts",
-              "match": "([_$[:alpha:]][_$[:alnum:]]*)"
-            }
-          ]
-        }
-      ]
-    },
-    "import-declaration": {
-      "name": "meta.import.ts",
-      "begin": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(?:(\\bexport)\\s+)?(?:(\\bdeclare)\\s+)?\\b(import)(?:\\s+(type)(?!\\s+from))?(?!\\s*[:\\(])(?![_$[:alnum:]])(?:(?=\\.\\.\\.)|(?!\\.))",
-      "beginCaptures": {
-        "1": {
-          "name": "keyword.control.export.ts"
-        },
-        "2": {
-          "name": "storage.modifier.ts"
-        },
-        "3": {
-          "name": "keyword.control.import.ts"
-        },
-        "4": {
-          "name": "keyword.control.type.ts"
-        }
-      },
-      "end": "(?<!^import|[^\\._$[:alnum:]]import)(?=;|$|^)",
-      "patterns": [
-        {
-          "include": "#single-line-comment-consuming-line-ending"
-        },
-        {
-          "include": "#comment"
-        },
-        {
-          "include": "#string"
-        },
-        {
-          "begin": "(?<=^import|[^\\._$[:alnum:]]import)(?!\\s*[\"'])",
-          "end": "\\bfrom\\b",
-          "endCaptures": {
-            "0": {
-              "name": "keyword.control.from.ts"
-            }
-          },
-          "patterns": [
-            {
-              "include": "#import-export-declaration"
-            }
-          ]
-        },
-        {
-          "include": "#import-export-declaration"
-        }
-      ]
-    },
+    
     "export-declaration": {
       "patterns": [
         {
@@ -3398,210 +3289,38 @@
         }
       ]
     },
-    "expression-operators": {
-      "patterns": [
-        {
-          "name": "keyword.control.flow.ts",
-          "match": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(await)(?![_$[:alnum:]])(?:(?=\\.\\.\\.)|(?!\\.))"
-        },
-        {
-          "begin": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(yield)(?![_$[:alnum:]])(?:(?=\\.\\.\\.)|(?!\\.))(?=\\s*\\/\\*([^\\*]|(\\*[^\\/]))*\\*\\/\\s*\\*)",
-          "beginCaptures": {
-            "1": {
-              "name": "keyword.control.flow.ts"
-            }
+    
+      "assignment-operator": {
+        "name": "keyword.operator.assignment.python",
+        "match": "(?x)\n     <<= | >>= | //= | \\*\\*=\n    | \\+= | -= | /= | @=\n    | \\*= | %= | ~= | \\^= | &= | \\|=\n    | =(?!=)\n"
+      },
+      "operator": {
+        "match": "(?x)\n    \\b(?<!\\.)\n      (?:\n        (and | or | not | in | is)                         (?# 1)\n        |\n        (for | if | else | await | (?:yield(?:\\s+from)?))  (?# 2)\n      )\n    (?!\\s*:)\\b\n\n    | (<< | >> | & | \\| | \\^ | ~)                          (?# 3)\n\n    | (\\*\\* | \\* | \\+ | - | % | // | / | @)                (?# 4)\n\n    | (!= | == | >= | <= | < | >)                          (?# 5)\n\n    | (:=)                                                 (?# 6)\n",
+        "captures": {
+          "1": {
+            "name": "keyword.operator.logical.python"
           },
-          "end": "\\*",
-          "endCaptures": {
-            "0": {
-              "name": "keyword.generator.asterisk.ts"
-            }
+          "2": {
+            "name": "keyword.control.flow.python"
           },
-          "patterns": [
-            {
-              "include": "#comment"
-            }
-          ]
-        },
-        {
-          "match": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(yield)(?![_$[:alnum:]])(?:(?=\\.\\.\\.)|(?!\\.))(?:\\s*(\\*))?",
-          "captures": {
-            "1": {
-              "name": "keyword.control.flow.ts"
-            },
-            "2": {
-              "name": "keyword.generator.asterisk.ts"
-            }
-          }
-        },
-        {
-          "name": "keyword.operator.expression.delete.ts",
-          "match": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))delete(?![_$[:alnum:]])(?:(?=\\.\\.\\.)|(?!\\.))"
-        },
-        {
-          "name": "keyword.operator.expression.in.ts",
-          "match": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))in(?![_$[:alnum:]])(?:(?=\\.\\.\\.)|(?!\\.))(?!\\()"
-        },
-        {
-          "name": "keyword.operator.expression.of.ts",
-          "match": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))of(?![_$[:alnum:]])(?:(?=\\.\\.\\.)|(?!\\.))(?!\\()"
-        },
-        {
-          "name": "keyword.operator.expression.instanceof.ts",
-          "match": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))instanceof(?![_$[:alnum:]])(?:(?=\\.\\.\\.)|(?!\\.))"
-        },
-        {
-          "name": "keyword.operator.new.ts",
-          "match": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))new(?![_$[:alnum:]])(?:(?=\\.\\.\\.)|(?!\\.))"
-        },
-        {
-          "include": "#typeof-operator"
-        },
-        {
-          "name": "keyword.operator.expression.void.ts",
-          "match": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))void(?![_$[:alnum:]])(?:(?=\\.\\.\\.)|(?!\\.))"
-        },
-        {
-          "match": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(as)\\s+(const)(?=\\s*($|[;,:})\\]]))",
-          "captures": {
-            "1": {
-              "name": "keyword.control.as.ts"
-            },
-            "2": {
-              "name": "storage.modifier.ts"
-            }
-          }
-        },
-        {
-          "begin": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(?:(as)|(satisfies))\\s+",
-          "beginCaptures": {
-            "1": {
-              "name": "keyword.control.as.ts"
-            },
-            "2": {
-              "name": "keyword.control.satisfies.ts"
-            }
+          "3": {
+            "name": "keyword.operator.bitwise.python"
           },
-          "end": "(?=^|[;),}\\]:?\\-\\+\\>]|\\|\\||\\&\\&|\\!\\=\\=|$|((?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(as|satisfies)\\s+)|(\\s+\\<))",
-          "patterns": [
-            {
-              "include": "#type"
-            }
-          ]
-        },
-        {
-          "name": "keyword.operator.spread.ts",
-          "match": "\\.\\.\\."
-        },
-        {
-          "name": "keyword.operator.assignment.compound.ts",
-          "match": "\\*=|(?<!\\()/=|%=|\\+=|\\-="
-        },
-        {
-          "name": "keyword.operator.assignment.compound.bitwise.ts",
-          "match": "\\&=|\\^=|<<=|>>=|>>>=|\\|="
-        },
-        {
-          "name": "keyword.operator.bitwise.shift.ts",
-          "match": "<<|>>"
-        },
-        {
-          "name": "keyword.operator.comparison.ts",
-          "match": "===|!==|==|!="
-        },
-        {
-          "name": "keyword.operator.relational.ts",
-          "match": "<=|>=|<>|<|>"
-        },
-        {
-          "match": "(?<=[_$[:alnum:]])(\\!)\\s*(?:(/=)|(?:(/)(?![/*])))",
-          "captures": {
-            "1": {
-              "name": "keyword.operator.logical.ts"
-            },
-            "2": {
-              "name": "keyword.operator.assignment.compound.ts"
-            },
-            "3": {
-              "name": "keyword.operator.arithmetic.ts"
-            }
-          }
-        },
-        {
-          "name": "keyword.operator.logical.ts",
-          "match": "not|and|or|is|in"
-        },
-        {
-          "name": "keyword.operator.bitwise.ts",
-          "match": "\\&|~|\\^|\\|"
-        },
-        {
-          "name": "keyword.operator.assignment.ts",
-          "match": "\\="
-        },
-        {
-          "name": "keyword.operator.decrement.ts",
-          "match": "-\\="
-        },
-        {
-          "name": "keyword.operator.increment.ts",
-          "match": "\\+\\="
-        },
-        {
-          "name": "keyword.operator.arithmetic.ts",
-          "match": "%|\\*|/|-|\\+|//"
-        },
-        {
-          "begin": "(?<=[_$[:alnum:])\\]])\\s*(?=(\\/\\*([^\\*]|(\\*[^\\/]))*\\*\\/\\s*)+(?:(/=)|(?:(/)(?![/*]))))",
-          "end": "(?:(/=)|(?:(/)(?!\\*([^\\*]|(\\*[^\\/]))*\\*\\/)))",
-          "endCaptures": {
-            "1": {
-              "name": "keyword.operator.assignment.compound.ts"
-            },
-            "2": {
-              "name": "keyword.operator.arithmetic.ts"
-            }
+          "4": {
+            "name": "keyword.operator.arithmetic.python"
           },
-          "patterns": [
-            {
-              "include": "#comment"
-            }
-          ]
-        },
-        {
-          "match": "(?<=[_$[:alnum:])\\]])\\s*(?:(/=)|(?:(/)(?![/*])))",
-          "captures": {
-            "1": {
-              "name": "keyword.operator.assignment.compound.ts"
-            },
-            "2": {
-              "name": "keyword.operator.arithmetic.ts"
-            }
+          "5": {
+            "name": "keyword.operator.comparison.python"
+          },
+          "6": {
+            "name": "keyword.operator.assignment.python"
           }
-        }
-      ]
-    },
-    "typeof-operator": {
-      "begin": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))typeof(?![_$[:alnum:]])(?:(?=\\.\\.\\.)|(?!\\.))",
-      "beginCaptures": {
-        "0": {
-          "name": "keyword.operator.expression.typeof.ts"
         }
       },
-      "end": "(?=[,);}\\]=>:&|{\\?]|(extends\\s+)|$|;|^\\s*$|(?:^\\s*(?:abstract|async|(?:\\bawait\\s+(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)\\b)|break|case|catch|class|const|continue|declare|do|else|enum|export|finally|function|for|goto|if|import|interface|let|module|namespace|switch|return|throw|try|type|(?:\\busing(?=\\s+(?!in\\b|of\\b(?!\\s*(?:of\\b|=)))[_$[:alpha:]])\\b)|var|while)\\b))",
-      "patterns": [
-        {
-          "include": "#type-arguments"
-        },
-        {
-          "include": "#expression"
-        }
-      ]
-    },
     "literal": {
       "patterns": [
         {
-          "name": "constant.language.python",
+          "name": "constant.language.mast",
           "match": "\\b(True|False|None|NotImplemented|Ellipsis)\\b"
         },
         {
@@ -4907,8 +4626,8 @@
       },
     "string-quoted-multi-line2": {
       "name": "string.quoted.multi.mast",
-      "begin": "(\"\"\")",
-      "end": "(\"\"\")",
+      "begin": "(\"{3,})",
+      "end": "(\"{3,})",
       "beginCaptures": {
         "1": {
           "name": "punctuation.definition.string.begin.python"
