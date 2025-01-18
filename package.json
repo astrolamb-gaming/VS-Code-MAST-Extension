@@ -25,6 +25,10 @@
 				"extensions": [
 					".mast"
 				],
+				"icon": {
+					"dark": "mast.png",
+					"light": "mast.png"
+				},
 				"aliases": [
 					"MAST",
 					"mast",
