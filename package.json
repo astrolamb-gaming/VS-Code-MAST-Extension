@@ -125,6 +125,13 @@
 						"settings": {
 							"foreground": "#770077"
 						}
+					},
+					{
+						"scope": "import.file.mast",
+						"settings": {
+							"foreground": "#b7ffe7",
+							"fontStyle": "italic"
+						}
 					}
 				]
 			}

@@ -21,22 +21,10 @@
       "include": "#statements"
     },
     {
-      "include": "#shebang"
-    },
-    {
       "include": "#assignment-operator"
     }
   ],
   "repository": {
-    "shebang": {
-      "name": "comment.line.shebang.ts",
-      "match": "\\A(#!).*(?=$)",
-      "captures": {
-        "1": {
-          "name": "punctuation.definition.comment.ts"
-        }
-      }
-    },
     "statements": {
       "patterns": [
         {
@@ -47,6 +35,9 @@
         },
         {
           "include": "#yield-result"
+        },
+        {
+          "include": "#statement-keyword"
         },
         {
           "include": "#control-statement"
@@ -95,16 +86,10 @@
           "include": "#namespace-declaration"
         },
         {
+          "include": "#import"
+        },
+        {
           "include": "#type-alias-declaration"
-        },
-        {
-          "include": "#import-equals-declaration"
-        },
-        {
-          "include": "#import-declaration"
-        },
-        {
-          "include": "#export-declaration"
         },
         {
           "name": "storage.modifier.ts",
@@ -121,6 +106,22 @@
         {
           "match": "(?<=yield )fail",
           "name": "fail.yield.result"
+        }
+      ]
+    },
+    "import": {
+      "patterns" :[
+        {
+          "name": "keyword.control.import.python",
+          "match": "(?m)^\\s*(import)\\s+(([\\w]+)\\.(py|mast))",
+          "captures":{
+            "1": {
+              "name": "keyword.control.import.mast"
+            },
+            "2": {
+              "name": "import.file.mast"
+            }
+          }
         }
       ]
     },
@@ -210,7 +211,7 @@
           "match": "\\b(?<!\\.)(class)\\b"
         },
         {
-          "match": "(?x)\n  ^\\s*(\n    case | match\n  )(?=\\s*([-+\\w\\d(\\[{'\":#]|$))\\b\n",
+          "match": "(?x)\n  ^\\s*(\n    on | case | match\n  )(?=\\s*([-+\\w\\d(\\[{'\":#]|$))\\b\n",
           "captures": {
             "1": {
               "name": "keyword.control.flow.python"
@@ -4534,6 +4535,9 @@
         },
         {
           "include": "#fstring-raw-quoted-single-line"
+        },
+        {
+          "include": "#string-quoted-carets"
         }
       ]
     },
@@ -4652,6 +4656,38 @@
             "include": "#fstring-single-core"
           }
         ]
+    },
+    "string-quoted-carets": {
+      "name": "string.quoted.carets.mast",
+      "begin": "(\\^{3,})",
+      "end": "(\\^{3,})",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.string.begin.caret.python"
+        }
+      },
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.definition.string.end.caret.python"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#fstring-raw-guts"
+        },
+        {
+          "include": "#fstring-illegal-single-brace"
+        },
+        {
+          "include": "#fstring-single-brace"
+        },
+        {
+          "include": "#fstring-raw-single-core"
+        },
+        {
+          "include": "string-quoted-single-line"
+        }
+      ]
     },
     "string-quoted-multi-line": {
       "name": "string.quoted.multi.mast",
@@ -4827,6 +4863,9 @@
           },
           {
             "include": "#f-expression"
+          },
+          {
+            "include": "#string-quoted-single-line"
           }
         ]
       },

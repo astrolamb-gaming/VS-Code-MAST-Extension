@@ -41,6 +41,10 @@
         ]
       },
       {
+        "open": " ~~",
+        "close": "~~"
+      },
+      {
         "open": "r\"",
         "close": "\"",
         "notIn": [
@@ -48,152 +52,159 @@
           "comment"
         ]
       },
-	  {
-		  "open": "\/*",
-		  "close": "*\/"
-	  },
       {
-        "open": "R\"",
-        "close": "\"",
+        "open": "\/*",
+        "close": "*\/"
+      },
+        {
+          "open": "R\"",
+          "close": "\"",
+          "notIn": [
+            "string",
+            "comment"
+          ]
+        },
+        {
+          "open": "u\"",
+          "close": "\"",
+          "notIn": [
+            "string",
+            "comment"
+          ]
+        },
+        {
+          "open": "U\"",
+          "close": "\"",
+          "notIn": [
+            "string",
+            "comment"
+          ]
+        },
+        {
+          "open": "f\"",
+          "close": "\"",
+          "notIn": [
+            "string",
+            "comment"
+          ]
+        },
+        {
+          "open": "F\"",
+          "close": "\"",
+          "notIn": [
+            "string",
+            "comment"
+          ]
+        },
+        {
+          "open": "b\"",
+          "close": "\"",
+          "notIn": [
+            "string",
+            "comment"
+          ]
+        },
+        {
+          "open": "B\"",
+          "close": "\"",
+          "notIn": [
+            "string",
+            "comment"
+          ]
+        },
+        {
+          "open": "'",
+          "close": "'",
+          "notIn": [
+            "string",
+            "comment"
+          ]
+        },
+        {
+          "open": "r'",
+          "close": "'",
+          "notIn": [
+            "string",
+            "comment"
+          ]
+        },
+        {
+          "open": "R'",
+          "close": "'",
+          "notIn": [
+            "string",
+            "comment"
+          ]
+        },
+        {
+          "open": "u'",
+          "close": "'",
+          "notIn": [
+            "string",
+            "comment"
+          ]
+        },
+        {
+          "open": "U'",
+          "close": "'",
+          "notIn": [
+            "string",
+            "comment"
+          ]
+        },
+        {
+          "open": "f'",
+          "close": "'",
+          "notIn": [
+            "string",
+            "comment"
+          ]
+        },
+        {
+          "open": "F'",
+          "close": "'",
+          "notIn": [
+            "string",
+            "comment"
+          ]
+        },
+        {
+          "open": "b'",
+          "close": "'",
+          "notIn": [
+            "string",
+            "comment"
+          ]
+        },
+        {
+          "open": "B'",
+          "close": "'",
+          "notIn": [
+            "string",
+            "comment"
+          ]
+        },
+        {
+          "open": "`",
+          "close": "`",
+          "notIn": [
+            "string"
+          ]
+        },
+      {
+        "open": "\"\"\"",
+        "close": "\"\"\"",
         "notIn": [
-          "string",
           "comment"
         ]
       },
       {
-        "open": "u\"",
-        "close": "\"",
+        "open": "^^^",
+        "close": "^^^",
         "notIn": [
-          "string",
           "comment"
         ]
-      },
-      {
-        "open": "U\"",
-        "close": "\"",
-        "notIn": [
-          "string",
-          "comment"
-        ]
-      },
-      {
-        "open": "f\"",
-        "close": "\"",
-        "notIn": [
-          "string",
-          "comment"
-        ]
-      },
-      {
-        "open": "F\"",
-        "close": "\"",
-        "notIn": [
-          "string",
-          "comment"
-        ]
-      },
-      {
-        "open": "b\"",
-        "close": "\"",
-        "notIn": [
-          "string",
-          "comment"
-        ]
-      },
-      {
-        "open": "B\"",
-        "close": "\"",
-        "notIn": [
-          "string",
-          "comment"
-        ]
-      },
-      {
-        "open": "'",
-        "close": "'",
-        "notIn": [
-          "string",
-          "comment"
-        ]
-      },
-      {
-        "open": "r'",
-        "close": "'",
-        "notIn": [
-          "string",
-          "comment"
-        ]
-      },
-      {
-        "open": "R'",
-        "close": "'",
-        "notIn": [
-          "string",
-          "comment"
-        ]
-      },
-      {
-        "open": "u'",
-        "close": "'",
-        "notIn": [
-          "string",
-          "comment"
-        ]
-      },
-      {
-        "open": "U'",
-        "close": "'",
-        "notIn": [
-          "string",
-          "comment"
-        ]
-      },
-      {
-        "open": "f'",
-        "close": "'",
-        "notIn": [
-          "string",
-          "comment"
-        ]
-      },
-      {
-        "open": "F'",
-        "close": "'",
-        "notIn": [
-          "string",
-          "comment"
-        ]
-      },
-      {
-        "open": "b'",
-        "close": "'",
-        "notIn": [
-          "string",
-          "comment"
-        ]
-      },
-      {
-        "open": "B'",
-        "close": "'",
-        "notIn": [
-          "string",
-          "comment"
-        ]
-      },
-      {
-        "open": "`",
-        "close": "`",
-        "notIn": [
-          "string"
-        ]
-      },
-	  {
-		  "open": "\"\"\"",
-		  "close": "\"\"\"",
-		  "notIn": [
-			"comment"
-		  ]
-	  }
+      }
     ],
     "surroundingPairs": [
       [
@@ -219,6 +230,10 @@
       [
         "`",
         "`"
+      ],
+      [
+        "^^^",
+        "^^^"
       ]
     ],
     "folding": {
