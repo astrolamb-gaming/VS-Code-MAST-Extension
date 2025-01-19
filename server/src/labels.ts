@@ -2,7 +2,8 @@ import { Diagnostic, DiagnosticSeverity, integer } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { relatedMessage } from './errorChecking';
 import { updateLabelNames } from "./server";
-import { debug } from './server';
+import { myDebug } from './server';
+import { debug } from 'console';
 
 
 export interface LabelInfo {

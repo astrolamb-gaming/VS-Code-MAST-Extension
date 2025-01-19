@@ -2,9 +2,10 @@ export interface RX {
 	name:string,
 	rx: RegExp
 }
+import { debug } from 'console';
 //const RXDict: Map<string, RegExp> = new Map();
 
-import { debug } from './server';
+import { myDebug } from './server';
 import { integer } from 'vscode-languageserver';
 
 export function parse(result: string, RXDict: Map<string, RegExp>) {
@@ -54,7 +55,8 @@ export function parse(result: string, RXDict: Map<string, RegExp>) {
 			//debug(RXDict.get(className));
 		} catch (e) {
 			//debug(m[0]);
-			debug(e as string);
+			//debug(e as string);
+			// Kinda don't actually care if there's a failure here.
 		}
 		
 		

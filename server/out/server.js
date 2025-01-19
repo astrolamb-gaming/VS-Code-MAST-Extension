@@ -8,7 +8,7 @@ exports.getFunctionData = getFunctionData;
 exports.getSupportedRoutes = getSupportedRoutes;
 exports.getSourceFiles = getSourceFiles;
 exports.updateLabelNames = updateLabelNames;
-exports.debug = debug;
+exports.myDebug = myDebug;
 /* --------------------------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
@@ -132,7 +132,7 @@ async function loadTypings() {
         (0, signatureHelp_1.prepSignatures)(sourceFiles);
     }
     catch (err) {
-        debug("\nFailed to load\n" + err);
+        (0, console_1.debug)("\nFailed to load\n" + err);
     }
 }
 const expressions = [];
@@ -147,12 +147,12 @@ async function getRexEx(src) {
 connection.onInitialize((params) => {
     // These are only executed on startup
     loadTypings().then(() => { typingsDone = true; });
-    (0, routeLabels_1.loadRouteLabels)().then(() => { debug("Routes Loaded"); });
-    getRexEx(defSource).then(() => { debug("Regular Expressions gotten"); });
+    (0, routeLabels_1.loadRouteLabels)().then(() => { (0, console_1.debug)("Routes Loaded"); });
+    getRexEx(defSource).then(() => { (0, console_1.debug)("Regular Expressions gotten"); });
     getRexEx(defSource2).then(() => {
-        debug("Regular Expressions 2 gotten");
-        debug("Label?: ");
-        debug(exp.get("Label"));
+        (0, console_1.debug)("Regular Expressions 2 gotten");
+        (0, console_1.debug)("Label?: ");
+        (0, console_1.debug)(exp.get("Label"));
     });
     //const zip : Promise<void> = extractZip("","./sbs");
     //pyTypings = pyTypings.concat(parseTyping(fs.readFileSync("sbs.pyi","utf-8")));
@@ -373,7 +373,7 @@ connection.onCompletion((_textDocumentPosition) => {
         return (0, autocompletion_1.onCompletion)(_textDocumentPosition, text);
     }
     catch (e) {
-        debug("onCompletion failure\n" + e);
+        (0, console_1.debug)("onCompletion failure\n" + e);
         return undefined;
     }
 });
@@ -401,7 +401,7 @@ function updateLabelNames(li) {
 connection.onHover((_textDocumentPosition) => {
     const text = documents.get(_textDocumentPosition.textDocument.uri);
     if (text === undefined) {
-        debug("Undefined");
+        (0, console_1.debug)("Undefined");
         return undefined;
     }
     return (0, hover_1.onHover)(_textDocumentPosition, text);
@@ -411,7 +411,7 @@ connection.onHover((_textDocumentPosition) => {
 documents.listen(connection);
 // Listen on the connection
 connection.listen();
-function debug(str) {
+function myDebug(str) {
     if (str === undefined) {
         str = "UNDEFINED";
     }

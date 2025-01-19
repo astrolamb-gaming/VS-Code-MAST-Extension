@@ -1,4 +1,5 @@
-import { debug } from './server';
+import { debug } from 'console';
+import { myDebug } from './server';
 import { CompletionItem, CompletionItemKind, CompletionItemLabelDetails } from 'vscode-languageserver';
 
 const routeLabels: IRouteLabel[] = [];

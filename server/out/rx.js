@@ -1,10 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.parse = parse;
-//const RXDict: Map<string, RegExp> = new Map();
-const server_1 = require("./server");
+const console_1 = require("console");
 function parse(result, RXDict) {
-    (0, server_1.debug)("Responded");
+    (0, console_1.debug)("Responded");
     //const result =  xhttp.responseText;
     const labelRX = /class .*?def/gs;
     const ruleRX = /rule = re\.compile\(r\'\.*\'\)/;
@@ -51,7 +50,8 @@ function parse(result, RXDict) {
         }
         catch (e) {
             //debug(m[0]);
-            (0, server_1.debug)(e);
+            //debug(e as string);
+            // Kinda don't actually care if there's a failure here.
         }
         count += 1;
         //if (count > 50) {break;}

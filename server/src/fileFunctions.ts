@@ -21,10 +21,11 @@ import {
 	CompletionItemLabelDetails,
 	InsertTextFormat
 } from 'vscode-languageserver/node';
-import { appendFunctionData, debug } from './server';
+import { appendFunctionData, myDebug } from './server';
 import { checkServerIdentity } from 'tls';
 
 import { getRegExMatch } from './data';
+import { debug } from 'console';
 
 export function getRootFolder() : string | null{
 	// let initialDir = "./";

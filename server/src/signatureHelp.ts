@@ -1,7 +1,8 @@
-import { debug } from './server';
+import { myDebug } from './server';
 import { SignatureHelpParams, SignatureHelp, integer, SignatureInformation, ParameterInformation } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { PyFile } from './data';
+import { debug } from 'console';
 
 let functionSigs: SignatureInformation[] = [];
 

@@ -38,7 +38,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { findDiagnostic } from './errorChecking';
 import { checkLabels, getMainLabelAtPos, LabelInfo } from './labels';
 import { onCompletion, prepCompletions } from './autocompletion';
-import { debug as db} from 'console';
+import { debug as db, debug} from 'console';
 import { onHover } from './hover';
 import { onSignatureHelp, prepSignatures } from './signatureHelp';
 import { ClassTypings, parseWholeFile, PyFile } from './data';
@@ -364,6 +364,7 @@ connection.languages.diagnostics.on(async (params) => {
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent(change => {
+	
 	validateTextDocument(change.document);
 });
 
@@ -515,7 +516,7 @@ documents.listen(connection);
 // Listen on the connection
 connection.listen();
 
-export function debug(str:any) {
+export function myDebug(str:any) {
     if (str === undefined) {
         str = "UNDEFINED";
     }

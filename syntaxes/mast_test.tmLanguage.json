@@ -5809,7 +5809,7 @@
           "name": "punctuation.whitespace.comment.leading.ts"
         },
         "2": {
-          "name": "comment.line.double-slash.ts"
+          "name": "comment.line.number-sign.mast"
         },
         "3": {
           "name": "punctuation.definition.comment.ts"
@@ -5822,7 +5822,7 @@
         }
       },
       "end": "(?=^)",
-      "contentName": "comment.line.double-slash.ts",
+      "contentName": "comment.line.number-sign.mast",
       "patterns": [
         {
           "include": "#codetags"

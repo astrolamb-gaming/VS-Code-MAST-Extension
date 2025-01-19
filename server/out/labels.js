@@ -5,7 +5,7 @@ exports.getMainLabelAtPos = getMainLabelAtPos;
 const vscode_languageserver_1 = require("vscode-languageserver");
 const errorChecking_1 = require("./errorChecking");
 const server_1 = require("./server");
-const server_2 = require("./server");
+const console_1 = require("console");
 /**
  * Get valid labels, but only main or sublabels, not both.
  * @param textDocument
@@ -28,8 +28,8 @@ function getLabels(textDocument, main = true) {
         const str = m[0].replace(/(=|-)/g, "").trim();
         if (main) {
             const lbl = m[3];
-            (0, server_2.debug)(m[0]);
-            (0, server_2.debug)("Main label: " + lbl);
+            (0, console_1.debug)(m[0]);
+            (0, console_1.debug)("Main label: " + lbl);
         }
         const li = {
             main: main,
@@ -39,7 +39,7 @@ function getLabels(textDocument, main = true) {
             length: m[0].length,
             subLabels: []
         };
-        (0, server_2.debug)(str);
+        (0, console_1.debug)(str);
         labels.push(li);
     }
     // Here we have to iterate over the labels again to properly get the end position.

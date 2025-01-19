@@ -7,6 +7,7 @@ const vscode_languageserver_1 = require("vscode-languageserver");
 const labels_1 = require("./labels");
 const server_1 = require("./server");
 const routeLabels_1 = require("./routeLabels");
+const comments_1 = require("./comments");
 let classes = [];
 let defaultFunctionCompletionItems = [];
 /**
@@ -49,6 +50,10 @@ function onCompletion(_textDocumentPosition, text) {
         "sbs.target",
         "sbs.functions"
     ];
+    // If we're inside a comment, we don't want autocompletion.
+    if ((0, comments_1.isInComment)(pos)) {
+        return ci;
+    }
     // If we're defining a label, we don't want autocomplete.
     if (iStr.includes("--") || iStr.includes("==")) {
         return ci;

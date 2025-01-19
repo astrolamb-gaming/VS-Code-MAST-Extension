@@ -2,10 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.prepSignatures = prepSignatures;
 exports.onSignatureHelp = onSignatureHelp;
-const server_1 = require("./server");
+const console_1 = require("console");
 let functionSigs = [];
 function prepSignatures(files) {
-    (0, server_1.debug)("Prepping signatures");
+    (0, console_1.debug)("Prepping signatures");
     for (const i in files) {
         const pyFile = files[i];
         for (const f in pyFile.defaultFunctions) {
@@ -25,11 +25,11 @@ function onSignatureHelp(_textDocPos, text) {
     //const text = documents.get(_textDocPos.textDocument.uri);
     const t = text?.getText();
     if (text === undefined) {
-        (0, server_1.debug)("Document ref is undefined");
+        (0, console_1.debug)("Document ref is undefined");
         return sh;
     }
     if (t === undefined) {
-        (0, server_1.debug)("Document text is undefined");
+        (0, console_1.debug)("Document text is undefined");
         return sh;
     }
     // Calculate the position in the text's string value using the Position value.
@@ -41,7 +41,7 @@ function onSignatureHelp(_textDocPos, text) {
     let last = iStr.lastIndexOf("(");
     let sub = iStr.substring(last + 1, pos).replace(/ /g, "");
     let arr = sub.split(",");
-    (0, server_1.debug)(arr);
+    (0, console_1.debug)(arr);
     sh.activeParameter = arr.length - 1;
     // Check for the current function name and get SignatureInformation for that function.
     let f = getCurrentMethodName(iStr);

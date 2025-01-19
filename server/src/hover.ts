@@ -1,4 +1,5 @@
-import { debug } from './server';
+import { debug } from 'console';
+import { myDebug } from './server';
 import { Hover, integer, MarkupContent, Position, TextDocumentPositionParams } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 

@@ -2,8 +2,8 @@
     "comments": {
       "lineComment": "#",
       "blockComment": [
-        "\/*",
-        "*\/"
+        "/*",
+        "*/"
       ]
     },
     "brackets": [

@@ -5,6 +5,7 @@ import { getClassTypings, getPyTypings, getSourceFiles, getSupportedRoutes, labe
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { ClassObject, ClassTypings, IClassObject, PyFile } from './data';
 import { getRouteLabelAutocompletions } from './routeLabels';
+import { isInComment } from './comments';
 
 let classes: IClassObject[] = [];
 let defaultFunctionCompletionItems: CompletionItem[] = [];
@@ -52,7 +53,10 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		"sbs.functions"
 	]
 
-	
+	// If we're inside a comment, we don't want autocompletion.
+	if (isInComment(pos)) {
+		return ci;
+	}
 
 	// If we're defining a label, we don't want autocomplete.
 	if (iStr.includes("--") || iStr.includes("==")) {

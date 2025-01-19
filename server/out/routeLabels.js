@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.loadRouteLabels = loadRouteLabels;
 exports.getRouteLabelAutocompletions = getRouteLabelAutocompletions;
-const server_1 = require("./server");
+const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
 const routeLabels = [];
 const supportedRoutes = [];
@@ -129,7 +129,7 @@ async function loadRouteLabels() {
         }
     }
     catch (e) {
-        (0, server_1.debug)("Error in loadRouteLabels(): " + e);
+        (0, console_1.debug)("Error in loadRouteLabels(): " + e);
     }
 }
 function getRouteLabelAutocompletions(currentText) {
