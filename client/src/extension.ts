@@ -57,7 +57,12 @@ export function activate(context: ExtensionContext) {
             //console.log('folding range invoked'); // comes here on every character edit
             let sectionStart = 0, FR = [], re = /^\s*?={2,}/;  // regex to detect start of region
 
-			// TODO: Recursive regex: https://github.com/slevithan/regex-recursion
+			// TODO: Recursive regex: https://github.com/slevithan/regex-recursion/  ?
+			
+			// TODO: Comment folding regex:
+			// Actually might want to use comments.ts for this
+			const startBlockComment = /^\s*?\/\*/g;
+			const endBlockComment = /^.*?\*\//g;
 
 			let foldSections: RegExp[] = [
 				/^\s*?if/g,
