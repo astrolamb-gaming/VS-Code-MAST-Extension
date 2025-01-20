@@ -57,6 +57,8 @@ export function activate(context: ExtensionContext) {
             //console.log('folding range invoked'); // comes here on every character edit
             let sectionStart = 0, FR = [], re = /^\s*?={2,}/;  // regex to detect start of region
 
+			// TODO: Recursive regex: https://github.com/slevithan/regex-recursion
+
 			let foldSections: RegExp[] = [
 				/^\s*?if/g,
 				/^\s*?for/g,
@@ -64,11 +66,11 @@ export function activate(context: ExtensionContext) {
 				/^\s*?else/g,
 				/^\s*?case/g,
 				/^\s*?-{2,}/g,
-				/^\s*?if/g,
+				/^\s*?on[ \t]+(change[ \t]+)?/g,
 			];
 			foldSections.push(re);
 
-			re = /^\s*?(if|for|elif|else|case|-{2,}|={2,})|\/{2,}/g;
+			re = /^\s*?(if|for|elif|else|case|match|-{2,}|={2,})|\/{2,}/g;
 
             for (let i = 0; i < document.lineCount; i++) {
 

@@ -211,12 +211,16 @@
           "match": "\\b(?<!\\.)(class)\\b"
         },
         {
-          "match": "(?x)\n  ^\\s*(\n    on | case | match\n  )(?=\\s*([-+\\w\\d(\\[{'\":#]|$))\\b\n",
+          "match": "(?x)\n  ^\\s*(\n    case | match\n  )(?=\\s*([-+\\w\\d(\\[{'\":#]|$))\\b\n",
           "captures": {
             "1": {
               "name": "keyword.control.flow.python"
             }
           }
+        },
+        {
+          "match": "on[ \t]+(change[ \t]+)?",
+          "name": "keyword.control.flow.change.mast"
         }
       ]
     },
@@ -5057,6 +5061,59 @@
             "include": "#fstring-raw-multi-core"
           }
         ]
+      },
+      "fstring-guts": {
+        "patterns": [
+          {
+            "include": "#escape-sequence-unicode"
+          },
+          {
+            "include": "#escape-sequence"
+          },
+          {
+            "include": "#string-line-continuation"
+          },
+          {
+            "include": "#fstring-formatting"
+          }
+        ]
+      },
+      "fstring-formatting-braces": {
+        "patterns": [
+          {
+            "comment": "empty braces are illegal",
+            "match": "({)(\\s*?)(})",
+            "captures": {
+              "1": {
+                "name": "constant.character.format.placeholder.other.python"
+              },
+              "2": {
+                "name": "invalid.illegal.brace.python"
+              },
+              "3": {
+                "name": "constant.character.format.placeholder.other.python"
+              }
+            }
+          },
+          {
+            "name": "constant.character.escape.python",
+            "match": "({{|}})"
+          }
+        ]
+      },
+      "fstring-formatting": {
+        "patterns": [
+          {
+            "include": "#fstring-formatting-braces"
+          },
+          {
+            "include": "#fstring-formatting-singe-brace"
+          }
+        ]
+      },
+      "fstring-formatting-singe-brace": {
+        "name": "invalid.illegal.brace.python",
+        "match": "(}(?!}))"
       },
       "string-consume-escape": {
         "match": "\\\\['\"\\n\\\\]"
