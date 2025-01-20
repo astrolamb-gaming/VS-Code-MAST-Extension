@@ -42,7 +42,10 @@
       },
       {
         "open": " ~~",
-        "close": "~~"
+        "close": "~~",
+        "notIn": [
+          "string"
+        ]
       },
       {
         "open": "r\"",
@@ -239,7 +242,7 @@
     "folding": {
       "offSide": true,
       "markers": {
-        "start": "(^\\s*#\\s*region\\b)|(^={1,})",
+        "start": "(^\\s*#\\s*region\\b)|(^[=-]{2,})",
         "end": "^\\s*#\\s*endregion\\b"
       }
     },

@@ -56,7 +56,10 @@
 		"configurationDefaults": {
 			"[MAST]": {
 				"diffEditor.ignoreTrimWhitespace": false,
-				"editor.defaultColorDecorators": "auto"
+				"editor.defaultColorDecorators": "auto",
+				"editor.showFoldingControls": "always",
+				"editor.folding": true,
+    			"editor.foldingStrategy": "indentation"
 			},
 			"editor.tokenColorCustomizations": {
 				"textMateRules": [

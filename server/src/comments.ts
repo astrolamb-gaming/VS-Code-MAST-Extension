@@ -59,7 +59,6 @@ function getMatchesForRegex(pattern: RegExp, text: string) {
 	let m: RegExpExecArray | null;
 	while (m = pattern.exec(text)) {
 		let comment = m[0];
-		//debug(comment);
 		debug(comment);
 		const r: CRange = {
 			start: m.index,
@@ -72,4 +71,10 @@ function getMatchesForRegex(pattern: RegExp, text: string) {
 
 function log(str:any) {
 	fs.writeFileSync('outputLog.txt', str, {flag: "a+"})
+}
+
+function getStrings(textDocument: TextDocument) {
+	const text = textDocument.getText();
+	let strings: CRange[] = [];
+	let pattern: RegExp = /\".*?\"/g;
 }

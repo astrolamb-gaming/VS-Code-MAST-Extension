@@ -47,6 +47,17 @@ function activate(context) {
         provideFoldingRanges(document, context, token) {
             //console.log('folding range invoked'); // comes here on every character edit
             let sectionStart = 0, FR = [], re = /^\s*?={2,}/; // regex to detect start of region
+            let foldSections = [
+                /^\s*?if/g,
+                /^\s*?for/g,
+                /^\s*?elif/g,
+                /^\s*?else/g,
+                /^\s*?case/g,
+                /^\s*?-{2,}/g,
+                /^\s*?if/g,
+            ];
+            foldSections.push(re);
+            re = /^\s*?(if|for|elif|else|case|-{2,}|={2,})|\/{2,}/g;
             for (let i = 0; i < document.lineCount; i++) {
                 if (re.test(document.lineAt(i).text)) {
                     if (sectionStart > 0) {

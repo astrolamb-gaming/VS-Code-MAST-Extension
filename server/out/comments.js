@@ -51,7 +51,6 @@ function getMatchesForRegex(pattern, text) {
     let m;
     while (m = pattern.exec(text)) {
         let comment = m[0];
-        //debug(comment);
         (0, console_1.debug)(comment);
         const r = {
             start: m.index,
@@ -63,5 +62,10 @@ function getMatchesForRegex(pattern, text) {
 }
 function log(str) {
     fs.writeFileSync('outputLog.txt', str, { flag: "a+" });
+}
+function getStrings(textDocument) {
+    const text = textDocument.getText();
+    let strings = [];
+    let pattern = /\".*?\"/g;
 }
 //# sourceMappingURL=comments.js.map
