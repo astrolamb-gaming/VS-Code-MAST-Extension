@@ -139,6 +139,12 @@
 							"foreground": "#b7ffe7",
 							"fontStyle": "italic"
 						}
+					},
+					{
+						"scope": "meta.injection.python",
+						"settings": {
+							"fontStyle": "italic"
+						}
 					}
 				]
 			}

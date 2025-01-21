@@ -18,6 +18,9 @@
       "include": "#label"
     },
     {
+      "include": "#snake-syntax"
+    },
+    {
       "include": "#operator"
     },
     {
@@ -4474,23 +4477,29 @@
         }
       }
     },
-    "old-strings" :{
+    "string" :{
       "patterns": [
         {
           "include": "#qstring-single"
+        },
+        {
+          "include": "#qstring-double-multi-line"
+        },
+        {
+          "include": "#qstring-caret-multi-line"
+        },
+        {
+          "include": "#template"
         },
         {
           "include": "#qstring-double-start-only"
         },
         {
           "include": "#qstring-double"
-        },
-        {
-          "include": "#template"
         }
       ]
     },
-    "string": {
+    "old-string": {
       "patterns": [
         {
           "include": "#qstring-double-start-only"
@@ -4545,41 +4554,7 @@
         }
       ]
     },
-    "string-quoted-single-line": {
-        "name": "string.quoted.single.python",
-        "begin": "(?:\\b([rR])(?=[uU]))?([uU])?((['\"]))",
-        "end": "(\\3)|((?<!\\\\)\\n)",
-        "beginCaptures": {
-          "1": {
-            "name": "invalid.illegal.prefix.python"
-          },
-          "2": {
-            "name": "storage.type.string.python"
-          },
-          "3": {
-            "name": "punctuation.definition.string.begin.python"
-          }
-        },
-        "endCaptures": {
-          "1": {
-            "name": "punctuation.definition.string.end.python"
-          },
-          "2": {
-            "name": "invalid.illegal.newline.python"
-          }
-        },
-        "patterns": [
-          {
-            "include": "#string-single-bad-brace1-formatting-unicode"
-          },
-          {
-            "include": "#string-single-bad-brace2-formatting-unicode"
-          },
-          {
-            "include": "#string-unicode-guts"
-          }
-        ]
-      },
+    
       "string-single-bad-brace1-formatting-unicode": {
         "comment": "template using {% ... %}",
         "begin": "(?x)\n    (?= \\{%\n          ( .*? (?!(['\"])|((?<!\\\\)\\n)) )\n        %\\}\n    )\n",
@@ -4723,7 +4698,7 @@
       ]
     },
     "fstring-fnorm-quoted-single-line": {
-        "name": "meta.fstring.python",
+        "name": "meta.fstring.python fstring-fnorm-quoted-single-line",
         "begin": "(\\b[fF])([bBuU])?((['\"]))",
         "end": "(\\3)|((?<!\\\\)\\n)",
         "beginCaptures": {
@@ -4760,355 +4735,7 @@
           }
         ]
       },
-      "fstring-normf-quoted-single-line": {
-        "name": "meta.fstring.python",
-        "begin": "(\\b[bBuU])([fF])((['\"]))",
-        "end": "(\\3)|((?<!\\\\)\\n)",
-        "beginCaptures": {
-          "1": {
-            "name": "invalid.illegal.prefix.python"
-          },
-          "2": {
-            "name": "string.interpolated.python string.quoted.single.python storage.type.string.python"
-          },
-          "3": {
-            "name": "punctuation.definition.string.begin.python string.quoted.single.python"
-          }
-        },
-        "endCaptures": {
-          "1": {
-            "name": "punctuation.definition.string.end.python string.interpolated.python string.quoted.single.python"
-          },
-          "2": {
-            "name": "invalid.illegal.newline.python"
-          }
-        },
-        "patterns": [
-          {
-            "include": "#fstring-guts"
-          },
-          {
-            "include": "#fstring-illegal-single-brace"
-          },
-          {
-            "include": "#fstring-single-brace"
-          },
-          {
-            "include": "#fstring-single-core"
-          }
-        ]
-      },
-      "fstring-raw-quoted-single-line": {
-        "name": "meta.fstring.python",
-        "begin": "(\\b(?:[rR][fF]|[fF][rR]))((['\"]))",
-        "end": "(\\2)|((?<!\\\\)\\n)",
-        "beginCaptures": {
-          "1": {
-            "name": "string.interpolated.python string.quoted.raw.single.python storage.type.string.python"
-          },
-          "2": {
-            "name": "punctuation.definition.string.begin.python string.quoted.raw.single.python"
-          }
-        },
-        "endCaptures": {
-          "1": {
-            "name": "punctuation.definition.string.end.python string.interpolated.python string.quoted.raw.single.python"
-          },
-          "2": {
-            "name": "invalid.illegal.newline.python"
-          }
-        },
-        "patterns": [
-          {
-            "include": "#fstring-raw-guts"
-          },
-          {
-            "include": "#fstring-illegal-single-brace"
-          },
-          {
-            "include": "#fstring-single-brace"
-          },
-          {
-            "include": "#fstring-raw-single-core"
-          }
-        ]
-      },
-      "fstring-single-core": {
-        "name": "string.interpolated.python string.quoted.single.python",
-        "match": "(?x)\n  (.+?)\n    (\n      (?# .* and .*? in multi-line match need special handling of\n        newlines otherwise SublimeText and Atom will match slightly\n        differently.\n\n        The guard for newlines has to be separate from the\n        lookahead because of special $ matching rule.)\n      ($\\n?)\n      |\n      (?=[\\\\\\}\\{]|(['\"])|((?<!\\\\)\\n))\n    )\n  (?# due to how multiline regexps are matched we need a special case\n    for matching a newline character)\n  | \\n\n"
-      },
-      "fstring-raw-single-core": {
-        "name": "string.interpolated.python string.quoted.raw.single.python",
-        "match": "(?x)\n  (.+?)\n    (\n      (?# .* and .*? in multi-line match need special handling of\n        newlines otherwise SublimeText and Atom will match slightly\n        differently.\n\n        The guard for newlines has to be separate from the\n        lookahead because of special $ matching rule.)\n      ($\\n?)\n      |\n      (?=[\\\\\\}\\{]|(['\"])|((?<!\\\\)\\n))\n    )\n  (?# due to how multiline regexps are matched we need a special case\n    for matching a newline character)\n  | \\n\n"
-      },
-      "fstring-single-brace": {
-        "comment": "value interpolation using { ... }",
-        "begin": "(\\{)",
-        "end": "(?x)\n  (\\})|(?=\\n)\n",
-        "beginCaptures": {
-          "1": {
-            "name": "constant.character.format.placeholder.other.python"
-          }
-        },
-        "endCaptures": {
-          "1": {
-            "name": "constant.character.format.placeholder.other.python"
-          }
-        },
-        "patterns": [
-          {
-            "include": "#fstring-terminator-single"
-          },
-          {
-            "include": "#f-expression"
-          },
-          {
-            "include": "#string-quoted-single-line"
-          }
-        ]
-      },
-      "fstring-terminator-single": {
-        "patterns": [
-          {
-            "name": "storage.type.format.python",
-            "match": "(=(![rsa])?)(?=})"
-          },
-          {
-            "name": "storage.type.format.python",
-            "match": "(=?![rsa])(?=})"
-          },
-          {
-            "match": "(?x)\n  ( (?: =?) (?: ![rsa])? )\n    ( : \\w? [<>=^]? [-+ ]? \\#?\n      \\d* ,? (\\.\\d+)? [bcdeEfFgGnosxX%]? )(?=})\n",
-            "captures": {
-              "1": {
-                "name": "storage.type.format.python"
-              },
-              "2": {
-                "name": "storage.type.format.python"
-              }
-            }
-          },
-          {
-            "include": "#fstring-terminator-single-tail"
-          }
-        ]
-      },
-      "fstring-terminator-single-tail": {
-        "begin": "((?:=?)(?:![rsa])?)(:)(?=.*?{)",
-        "end": "(?=})|(?=\\n)",
-        "beginCaptures": {
-          "1": {
-            "name": "storage.type.format.python"
-          },
-          "2": {
-            "name": "storage.type.format.python"
-          }
-        },
-        "patterns": [
-          {
-            "include": "#fstring-illegal-single-brace"
-          },
-          {
-            "include": "#fstring-single-brace"
-          },
-          {
-            "name": "storage.type.format.python",
-            "match": "([bcdeEfFgGnosxX%])(?=})"
-          },
-          {
-            "name": "storage.type.format.python",
-            "match": "(\\.\\d+)"
-          },
-          {
-            "name": "storage.type.format.python",
-            "match": "(,)"
-          },
-          {
-            "name": "storage.type.format.python",
-            "match": "(\\d+)"
-          },
-          {
-            "name": "storage.type.format.python",
-            "match": "(\\#)"
-          },
-          {
-            "name": "storage.type.format.python",
-            "match": "([-+ ])"
-          },
-          {
-            "name": "storage.type.format.python",
-            "match": "([<>=^])"
-          },
-          {
-            "name": "storage.type.format.python",
-            "match": "(\\w)"
-          }
-        ]
-      },
-      "fstring-fnorm-quoted-multi-line": {
-        "name": "meta.fstring.python",
-        "begin": "(\\b[fF])([bBuU])?('''|\"\"\")",
-        "end": "(\\3)",
-        "beginCaptures": {
-          "1": {
-            "name": "string.interpolated.python string.quoted.multi.python storage.type.string.python"
-          },
-          "2": {
-            "name": "invalid.illegal.prefix.python"
-          },
-          "3": {
-            "name": "punctuation.definition.string.begin.python string.interpolated.python string.quoted.multi.python"
-          }
-        },
-        "endCaptures": {
-          "1": {
-            "name": "punctuation.definition.string.end.python string.interpolated.python string.quoted.multi.python"
-          },
-          "2": {
-            "name": "invalid.illegal.newline.python"
-          }
-        },
-        "patterns": [
-          {
-            "include": "#fstring-guts"
-          },
-          {
-            "include": "#fstring-illegal-multi-brace"
-          },
-          {
-            "include": "#fstring-multi-brace"
-          },
-          {
-            "include": "#fstring-multi-core"
-          }
-        ]
-      },
-      "fstring-normf-quoted-multi-line": {
-        "name": "meta.fstring.python",
-        "begin": "(\\b[bBuU])([fF])('''|\"\"\")",
-        "end": "(\\3)",
-        "beginCaptures": {
-          "1": {
-            "name": "invalid.illegal.prefix.python"
-          },
-          "2": {
-            "name": "string.interpolated.python string.quoted.multi.python storage.type.string.python"
-          },
-          "3": {
-            "name": "punctuation.definition.string.begin.python string.quoted.multi.python"
-          }
-        },
-        "endCaptures": {
-          "1": {
-            "name": "punctuation.definition.string.end.python string.interpolated.python string.quoted.multi.python"
-          },
-          "2": {
-            "name": "invalid.illegal.newline.python"
-          }
-        },
-        "patterns": [
-          {
-            "include": "#fstring-guts"
-          },
-          {
-            "include": "#fstring-illegal-multi-brace"
-          },
-          {
-            "include": "#fstring-multi-brace"
-          },
-          {
-            "include": "#fstring-multi-core"
-          }
-        ]
-      },
-      "fstring-raw-quoted-multi-line": {
-        "name": "meta.fstring.python",
-        "begin": "(\\b(?:[rR][fF]|[fF][rR]))('''|\"\"\")",
-        "end": "(\\2)",
-        "beginCaptures": {
-          "1": {
-            "name": "string.interpolated.python string.quoted.raw.multi.python storage.type.string.python"
-          },
-          "2": {
-            "name": "punctuation.definition.string.begin.python string.quoted.raw.multi.python"
-          }
-        },
-        "endCaptures": {
-          "1": {
-            "name": "punctuation.definition.string.end.python string.interpolated.python string.quoted.raw.multi.python"
-          },
-          "2": {
-            "name": "invalid.illegal.newline.python"
-          }
-        },
-        "patterns": [
-          {
-            "include": "#fstring-raw-guts"
-          },
-          {
-            "include": "#fstring-illegal-multi-brace"
-          },
-          {
-            "include": "#fstring-multi-brace"
-          },
-          {
-            "include": "#fstring-raw-multi-core"
-          }
-        ]
-      },
-      "fstring-guts": {
-        "patterns": [
-          {
-            "include": "#escape-sequence-unicode"
-          },
-          {
-            "include": "#escape-sequence"
-          },
-          {
-            "include": "#string-line-continuation"
-          },
-          {
-            "include": "#fstring-formatting"
-          }
-        ]
-      },
-      "fstring-formatting-braces": {
-        "patterns": [
-          {
-            "comment": "empty braces are illegal",
-            "match": "({)(\\s*?)(})",
-            "captures": {
-              "1": {
-                "name": "constant.character.format.placeholder.other.python"
-              },
-              "2": {
-                "name": "invalid.illegal.brace.python"
-              },
-              "3": {
-                "name": "constant.character.format.placeholder.other.python"
-              }
-            }
-          },
-          {
-            "name": "constant.character.escape.python",
-            "match": "({{|}})"
-          }
-        ]
-      },
-      "fstring-formatting": {
-        "patterns": [
-          {
-            "include": "#fstring-formatting-braces"
-          },
-          {
-            "include": "#fstring-formatting-singe-brace"
-          }
-        ]
-      },
-      "fstring-formatting-singe-brace": {
-        "name": "invalid.illegal.brace.python",
-        "match": "(}(?!}))"
-      },
+      
       "string-consume-escape": {
         "match": "\\\\['\"\\n\\\\]"
       },
@@ -5216,6 +4843,7 @@
         "match": "(?x)\n  (.+?)\n    (\n      (?# .* and .*? in multi-line match need special handling of\n        newlines otherwise SublimeText and Atom will match slightly\n        differently.\n\n        The guard for newlines has to be separate from the\n        lookahead because of special $ matching rule.)\n      ($\\n?)\n      |\n      (?=[\\\\\\}\\{]|'''|\"\"\")\n    )\n  (?# due to how multiline regexps are matched we need a special case\n    for matching a newline character)\n  | \\n\n"
       },
       "fstring-multi-brace": {
+        "name": "fstring-multi-brace",
         "comment": "value interpolation using { ... }",
         "begin": "(\\{)",
         "end": "(?x)\n  (\\})\n",
@@ -5333,16 +4961,10 @@
       },
     "qstring-double-start-only": {
       "name": "string.quoted.double.map.description.mast",
-      "begin": "(?m)^\" ",
+      "match": "(?m)^\\s*?(\"([^\"]*?))$",
       "beginCaptures": {
-        "0": {
-          "name": "punctuation.definition.string.begin.mast"
-        }
-      },
-      "end": "(?m)((?:[^\\\\\\n])$)",
-      "endCaptures": {
         "1": {
-          "name": "punctuation.definition.string.end.ts"
+          "name": "punctuation.definition.string.begin.mast"
         }
       }
     },
@@ -5392,6 +5014,32 @@
         }
       ]
     },
+    "qstring-caret-multi-line": {
+      "name": "string.quoted.caret.mast",
+      "begin": "\\^{3,}",
+      "end": "\\^{3,}",
+      "patterns": [
+        {
+          "include": "#template-substitution-element"
+        },
+        {
+          "include": "#string-character-escape"
+        }
+      ]
+    },
+    "qstring-double-multi-line":{
+      "name": "string.quoted.double.multi.line",
+      "begin": "\"{3,}",
+      "end": "\"{3,}",
+      "patterns": [
+        {
+          "include": "#template-substitution-element"
+        },
+        {
+          "include": "#string-character-escape"
+        }
+      ]
+    },
     "string-character-escape": {
       "name": "constant.character.escape.ts",
       "match": "\\\\(x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|u\\{[0-9A-Fa-f]+\\}|[0-2][0-7]{0,2}|3[0-6][0-7]?|37[0-7]?|[4-7][0-7]?|.|$)"
@@ -5403,7 +5051,7 @@
         },
         {
           "contentName": "string.template.ts",
-          "begin": "([_$[:alpha:]][_$[:alnum:]]*)?(`)",
+          "begin": "(\")",
           "beginCaptures": {
             "1": {
               "name": "entity.name.function.tagged-template.ts"
@@ -5412,7 +5060,7 @@
               "name": "string.template.ts punctuation.definition.string.template.begin.ts"
             }
           },
-          "end": "`",
+          "end": "\"",
           "endCaptures": {
             "0": {
               "name": "string.template.ts punctuation.definition.string.template.end.ts"
@@ -5471,7 +5119,7 @@
     },
     "template-substitution-element": {
       "name": "meta.template.expression.ts",
-      "begin": "\\$\\{",
+      "begin": "\\{",
       "beginCaptures": {
         "0": {
           "name": "punctuation.definition.template-expression.begin.ts"
@@ -5556,6 +5204,28 @@
         }
       ],
       "contentName": "meta.embedded.line.ts"
+    },
+    "snake-syntax": {
+      "name": "meta.injection.python",
+      "begin": "~{2,}",
+      "end": "~{2,}",
+      "patterns": [
+        {
+          "include": "#template-type-substitution-element"
+        },
+        {
+          "include": "#string"
+        },
+        {
+          "include": "#operator"
+        },
+        {
+          "include": "#statements"
+        },
+        {
+          "include": "#assignment-operator"
+        }
+      ]
     },
     "regex": {
       "patterns": [
