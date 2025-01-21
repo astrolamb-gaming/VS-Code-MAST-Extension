@@ -4489,10 +4489,10 @@
           "include": "#qstring-caret-multi-line"
         },
         {
-          "include": "#template"
+          "include": "#qstring-double-start-only"
         },
         {
-          "include": "#qstring-double-start-only"
+          "include": "#template"
         },
         {
           "include": "#qstring-double"
@@ -4961,7 +4961,7 @@
       },
     "qstring-double-start-only": {
       "name": "string.quoted.double.map.description.mast",
-      "match": "(?m)^\\s*?(\"([^\"]*?))$",
+      "match": "(?m)^\\s*?(\"([^\"]*?))($|\n)",
       "beginCaptures": {
         "1": {
           "name": "punctuation.definition.string.begin.mast"
