@@ -42,13 +42,12 @@ function onCompletion(_textDocumentPosition, text) {
     //debug("" + startOfLine as string);
     //
     // debug(iStr);
-    let items = [
-        "sbs",
-        "change_console",
-        "MoreThings",
-        "sbs.something",
-        "sbs.target",
-        "sbs.functions"
+    let keywords = [
+        "def",
+        "async",
+        "on change",
+        "await",
+        "shared"
     ];
     // If we're inside a comment, we don't want autocompletion.
     if ((0, comments_1.isInComment)(pos)) {

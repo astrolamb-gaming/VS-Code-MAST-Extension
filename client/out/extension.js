@@ -47,6 +47,11 @@ function activate(context) {
         provideFoldingRanges(document, context, token) {
             //console.log('folding range invoked'); // comes here on every character edit
             let sectionStart = 0, FR = [], re = /^\s*?={2,}/; // regex to detect start of region
+            // TODO: Recursive regex: https://github.com/slevithan/regex-recursion/  ?
+            // TODO: Comment folding regex:
+            // Actually might want to use comments.ts for this
+            const startBlockComment = /^\s*?\/\*/g;
+            const endBlockComment = /^.*?\*\//g;
             let foldSections = [
                 /^\s*?if/g,
                 /^\s*?for/g,
@@ -54,10 +59,10 @@ function activate(context) {
                 /^\s*?else/g,
                 /^\s*?case/g,
                 /^\s*?-{2,}/g,
-                /^\s*?if/g,
+                /^\s*?on[ \t]+(change[ \t]+)?/g,
             ];
             foldSections.push(re);
-            re = /^\s*?(if|for|elif|else|case|-{2,}|={2,})|\/{2,}/g;
+            re = /^\s*?(if|for|elif|else|case|match|-{2,}|={2,})|\/{2,}/g;
             for (let i = 0; i < document.lineCount; i++) {
                 if (re.test(document.lineAt(i).text)) {
                     if (sectionStart > 0) {
