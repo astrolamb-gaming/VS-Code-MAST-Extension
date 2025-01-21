@@ -4479,9 +4479,7 @@
     },
     "string" :{
       "patterns": [
-        {
-          "include": "#qstring-single"
-        },
+        
         {
           "include": "#qstring-double-multi-line"
         },
@@ -4492,10 +4490,23 @@
           "include": "#qstring-double-start-only"
         },
         {
-          "include": "#template"
+          "include": "#qstring-button-definition"
+        },
+        {
+          "include": "#comms-message-target"
+        },
+        {
+          "include": "#qstring-single"
         },
         {
           "include": "#qstring-double"
+        },
+        
+        {
+          "include": "#qstring-percent"
+        },
+        {
+          "include": "#template"
         }
       ]
     },
@@ -4961,12 +4972,18 @@
       },
     "qstring-double-start-only": {
       "name": "string.quoted.double.map.description.mast",
-      "match": "(?m)^\\s*?(\"([^\"]*?))($|\n)",
+      "begin": "(?m)^\\s*?(\")",
       "beginCaptures": {
         "1": {
           "name": "punctuation.definition.string.begin.mast"
         }
-      }
+      },
+      "end": "\n|\"",
+      "patterns": [
+        {
+          "include": "#template-substitution-element"
+        }
+      ]
     },
     "qstring-double": {
       "name": "string.quoted.double.ts",
@@ -4988,8 +5005,24 @@
       "patterns": [
         {
           "include": "#string-character-escape"
+        },
+        {
+          "include": "#template-substitution-element"
         }
       ]
+    },
+    "qstring-percent": {
+      "name": "string.weighted.percent",
+      "begin": "(?m)\\s*(\\%)(\\d*)",
+      "beginCaptures": {
+        "0": {
+          "name": "string.weighted.percent.start"
+        },
+        "1": {
+          "name": "string.weighted.percent.weight-value"
+        }
+      },
+      "end": "(?m)$|\""
     },
     "qstring-single": {
       "name": "string.quoted.single.ts",
@@ -5029,14 +5062,38 @@
     },
     "qstring-double-multi-line":{
       "name": "string.quoted.double.multi.line",
-      "begin": "\"{3,}",
-      "end": "\"{3,}",
+      "begin": "^\\s*(\"{3,})",
+      "beginCaptures": {
+        "0": "string.quoted.double.multi.line.start"
+      },
+      "end": "(\"{3,})",
+      "endCaptures": {
+        "0": "string.quoted.double.multi.line.end"
+      },
       "patterns": [
         {
           "include": "#template-substitution-element"
         },
         {
           "include": "#string-character-escape"
+        }
+      ]
+    },
+    "comms-message-target": {
+      "name": "keyword.comms.target",
+      "begin": "^\\s*(\\<\\<|\\>\\>|\\(\\)|\\<(all|scan|client|ship|dialog|dialog_main|dialog_consoles_all|dialog_consoles|dialog_ships)\\>)",
+      "end": "\\n|(\".*\")"
+    },
+    "qstring-button-definition": {
+      "name": "comms.button.build",
+      "begin": "(?m)^\\s*[\\+\\*]",
+      "end": "\".*\"",
+      "patterns":[
+        {
+          "include": "#template-substitution-element"
+        },
+        {
+          "include": "#expression"
         }
       ]
     },

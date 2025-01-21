@@ -145,6 +145,34 @@
 						"settings": {
 							"fontStyle": "italic"
 						}
+					},
+					{
+						"scope": "string.weighted.percent.start",
+						"settings": {
+							"foreground": "#007e6e",
+							"fontStyle": "bold"
+						}
+					},
+					{
+						"scope": "string.weighted.percent.weight-value",
+						"settings": {
+							"foreground": "#00960f",
+							"fontStyle": "bold"
+						}
+					},
+					{
+						"scope": "comms.button.build",
+						"settings": {
+							"foreground": "#5500ff",
+							"fontStyle": "bold"
+						}
+					},
+					{
+						"scope": "keyword.comms.target",
+						"settings": {
+							"foreground": "#0000ff",
+							"fontStyle": "bold"
+						}
 					}
 				]
 			}
