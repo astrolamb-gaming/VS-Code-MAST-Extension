@@ -33,12 +33,7 @@
   "repository": {
     "statements": {
       "patterns": [
-        {
-          "include": "#string"
-        },
-        {
-          "include": "#declaration"
-        },
+        
         {
           "include": "#yield-result"
         },
@@ -48,6 +43,10 @@
         {
           "include": "#control-statement"
         },
+        {
+          "include": "#declaration"
+        },
+        
         {
           "include": "#after-operator-block-as-object-literal"
         },
@@ -5062,7 +5061,7 @@
     },
     "qstring-double-multi-line":{
       "name": "string.quoted.double.multi.line",
-      "begin": "^\\s*(\"{3,})",
+      "begin": "(\"{3,})",
       "beginCaptures": {
         "0": "string.quoted.double.multi.line.start"
       },
@@ -5191,6 +5190,9 @@
       "patterns": [
         {
           "include": "#expression"
+        },
+        {
+          "include": "#statement-keyword"
         }
       ],
       "contentName": "meta.embedded.line.ts"
