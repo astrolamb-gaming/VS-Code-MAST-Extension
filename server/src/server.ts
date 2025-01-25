@@ -35,7 +35,7 @@ import {
 } from 'vscode-languageserver/node';
 
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { findDiagnostic } from './errorChecking';
+import { checkLastLine, findDiagnostic } from './errorChecking';
 import { checkLabels, getMainLabelAtPos, LabelInfo } from './labels';
 import { onCompletion, prepCompletions } from './autocompletion';
 import { debug as db, debug} from 'console';
@@ -44,7 +44,7 @@ import { onSignatureHelp, prepSignatures } from './signatureHelp';
 import { ClassTypings, parseWholeFile, PyFile } from './data';
 import { loadRouteLabels } from './routeLabels';
 import { parse, RX } from './rx';
-import { getComments } from './comments';
+import { getComments, getStrings } from './comments';
 import fs = require("fs");
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -181,6 +181,11 @@ async function getRexEx(src: string) :Promise<void> {
 	
 }
 
+// 
+/**
+ * TODO: Implement system using semantic tokens
+ * https://stackoverflow.com/questions/70490767/language-server-semantic-tokens
+ */
 connection.onInitialize((params: InitializeParams) => {
 	// These are only executed on startup
 	loadTypings().then(()=>{ typingsDone = true; });
@@ -249,6 +254,7 @@ connection.onInitialize((params: InitializeParams) => {
 });
 
 connection.onInitialized(() => {
+	debug("Number of documents in documents: " + documents.all.length);
 	
 	if (hasConfigurationCapability) {
 		// Register for all configuration changes.
@@ -364,8 +370,11 @@ connection.languages.diagnostics.on(async (params) => {
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent(change => {
-	
+
 	validateTextDocument(change.document);
+});
+documents.onDidOpen(change => {
+	debug("Number of documents in documents: " + documents.keys.length);
 });
 
 export interface ErrorInstance {
@@ -396,6 +405,7 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 	const settings = await getDocumentSettings(textDocument.uri);
 	
 	getComments(textDocument);
+	getStrings(textDocument);
 
 	// The validator creates diagnostics for all uppercase words length 2 and more
 	const text = textDocument.getText();
@@ -410,9 +420,13 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 		pattern: /(^(=|-){2,}([0-9A-Za-z _]+?)(-|=)([0-9A-Za-z _]+?)(=|-){2,})/gm,
 		severity: DiagnosticSeverity.Error,
 		message: "Label Definition: Cannot use '-' or '=' inside label name.",
-		source: "sbs",
+		source: __filename,
 		relatedMessage: "Only A-Z, a-z, 0-9, and _ are allowed to be used in a label name."
 	};
+	let e2: Diagnostic | undefined = checkLastLine(textDocument);
+	if (typeof(e2) !== "undefined") {
+		diagnostics.push(e2);
+	}
 	errorSources.push(e1);
 	e1 = {
 		pattern: /^[\w ][^+][^\"][\w\(\) ]+?\/\//g,

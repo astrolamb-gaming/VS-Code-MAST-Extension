@@ -8,60 +8,26 @@
   "name": "TypeScript",
   "scopeName": "source.mast",
   "patterns": [
-    {
-      "include": "#comment"
-    },
-    {
-      "include": "#string"
-    },
-    {
-      "include": "#label"
-    },
-    {
-      "include": "#snake-syntax"
-    },
-    {
-      "include": "#operator"
-    },
-    {
-      "include": "#statements"
-    },
-    {
-      "include": "#assignment-operator"
-    }
+    {"include": "#comment"},
+    {"include": "#string"},
+    {"include": "#label"},
+    {"include": "#snake-syntax"},
+    {"include": "#operator"},
+    {"include": "#statements"},
+    {"include": "#assignment-operator"}
   ],
   "repository": {
     "statements": {
       "patterns": [
-        
-        {
-          "include": "#yield-result"
-        },
-        {
-          "include": "#statement-keyword"
-        },
-        {
-          "include": "#control-statement"
-        },
-        {
-          "include": "#declaration"
-        },
-        
-        {
-          "include": "#after-operator-block-as-object-literal"
-        },
-        {
-          "include": "#decl-block"
-        },
-        {
-          "include": "#label"
-        },
-        {
-          "include": "#expression"
-        },
-        {
-          "include": "#punctuation-semicolon"
-        }
+        {"include": "#yield-result"},
+        {"include": "#statement-keyword"},
+        {"include": "#control-statement"},
+        {"include": "#declaration"},
+        {"include": "#after-operator-block-as-object-literal"},
+        {"include": "#decl-block"},
+        {"include": "#label"},
+        {"include": "#expression"},
+        {"include": "#punctuation-semicolon"}
       ]
     },
     "declaration": {
@@ -228,12 +194,8 @@
     },
     "control-statement": {
       "patterns": [
-        {
-          "include": "#switch-statement"
-        },
-        {
-          "include": "#for-loop"
-        },
+        {"include": "#switch-statement" },
+        {"include": "#for-loop"},
         {
           "name": "keyword.control.trycatch.ts",
           "match": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(catch|finally|throw|try)(?![_$[:alnum:]])(?:(?=\\.\\.\\.)|(?!\\.))"
@@ -267,7 +229,6 @@
             }
           ]
         },
-        
         {
           "name": "keyword.control.switch.ts",
           "match": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(case|default|switch)(?![_$[:alnum:]])(?:(?=\\.\\.\\.)|(?!\\.))"
@@ -296,80 +257,36 @@
     
     "expression": {
       "patterns": [
-        {
-          "include": "#expressionWithoutIdentifiers"
-        },
-        {
-          "include": "#identifiers"
-        },
-        {
-          "include": "#expressionPunctuations"
-        }
+        {"include": "#expressionWithoutIdentifiers"},
+        {"include": "#identifiers"},
+        {"include": "#expressionPunctuations"}
       ]
     },
     "expressionWithoutIdentifiers": {
       "patterns": [
-        {
-          "include": "#string"
-        },
-        {
-          "include": "#regex"
-        },
-        {
-          "include": "#comment"
-        },
-        {
-          "include": "#function-expression"
-        },
-        {
-          "include": "#class-expression"
-        },
-        {
-          "include": "#arrow-function"
-        },
-        {
-          "include": "#paren-expression-possibly-arrow"
-        },
-        {
-          "include": "#cast"
-        },
-        {
-          "include": "#ternary-expression"
-        },
-        {
-          "include": "#new-expr"
-        },
-        {
-          "include": "#instanceof-expr"
-        },
-        {
-          "include": "#object-literal"
-        },
-        {
-          "include": "#expression-operators"
-        },
-        {
-          "include": "#function-call"
-        },
-        {
-          "include": "#literal"
-        },
-        {
-          "include": "#support-objects"
-        },
-        {
-          "include": "#paren-expression"
-        }
+        {"include": "#string"},
+        {"include": "#regex"},
+        {"include": "#comment"},
+        {"include": "#function-expression"},
+        {"include": "#class-expression"},
+        {"include": "#arrow-function"},
+        {"include": "#paren-expression-possibly-arrow"},
+        {"include": "#cast"},
+        {"include": "#ternary-expression"},
+        {"include": "#new-expr"},
+        {"include": "#instanceof-expr"},
+        {"include": "#object-literal"},
+        {"include": "#expression-operators"},
+        {"include": "#function-call"},
+        {"include": "#literal"},
+        {"include": "#support-objects"},
+        {"include": "#paren-expression"}
       ]
     },
     "expressionPunctuations": {
       "patterns": [
-        {
-          "include": "#punctuation-comma"
-        },
-        {
-          "include": "#punctuation-accessor"
-        }
+        {"include": "#punctuation-comma"},
+        {"include": "#punctuation-accessor"}
       ]
     },
     "decorator": {
@@ -5012,7 +4929,7 @@
     },
     "qstring-percent": {
       "name": "string.weighted.percent",
-      "begin": "(?m)\\s*(\\%)(\\d*)",
+      "begin": "(?m)^\\s*(\\%)(\\d*)",
       "beginCaptures": {
         "0": {
           "name": "string.weighted.percent.start"
@@ -5079,13 +4996,14 @@
       ]
     },
     "comms-message-target": {
-      "name": "keyword.comms.target",
+      "name": "comms.button.target",
       "begin": "^\\s*(\\<\\<|\\>\\>|\\(\\)|\\<(all|scan|client|ship|dialog|dialog_main|dialog_consoles_all|dialog_consoles|dialog_ships)\\>)",
       "end": "\\n|(\".*\")"
     },
     "qstring-button-definition": {
       "name": "comms.button.build",
-      "begin": "(?m)^\\s*[\\+\\*]",
+      "comment": "Need to use \\s+ because it has to be indented",
+      "begin": "(?m)^\\s+[\\+\\*]",
       "end": "\".*\"",
       "patterns":[
         {

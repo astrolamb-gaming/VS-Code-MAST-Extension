@@ -15,6 +15,15 @@ export function isInComment(loc:integer):boolean {
 	return false;
 }
 let commentRanges:CRange[] = [];
+let stringRanges: CRange[] = [];
+export function isInString(loc:integer) : boolean {
+	for (const r in stringRanges) {
+		if (stringRanges[r].start < loc && stringRanges[r].end > loc) {
+			return true;
+		}
+	}
+	return false;
+}
 /**
  * Should be called whenever the file is updated.
  * Really should be more efficient and add/remove as necessary, but I'm not taking the time to do that yet.
@@ -32,13 +41,11 @@ export function getComments(textDocument: TextDocument) {
 	let strRng:CRange[] = [];
 	pattern = /\".*?\"/g;
 	strRng = getMatchesForRegex(pattern,text);
-	debug(strRng);
-
 	
 	pattern = /\#.*?(\"|$)/g;
 	while (m = pattern.exec(text)) {
 		let comment = m[0];
-		debug(m);
+		//debug(m);
 		for (const i in strRng) {
 			if (strRng[i].start < m.index && m.index < strRng[i].end) {
 
@@ -54,12 +61,29 @@ export function getComments(textDocument: TextDocument) {
 	
 }
 
+const indents: integer[] = [];
+const dedents: integer[] = [];
+export function getIndentations(textDocument: TextDocument) {
+	let text = textDocument.getText();
+	let m: RegExpExecArray | null;
+	let pattern = /^[\\t ]*/gm
+	while (m = pattern.exec(text)) {
+		let comment = m[0];
+		debug(comment);
+		const r: CRange = {
+			start: m.index,
+			end: m.index + m[0].length
+		}
+	}
+
+}
+
 function getMatchesForRegex(pattern: RegExp, text: string) {
 	let matches: CRange[] = [];
 	let m: RegExpExecArray | null;
 	while (m = pattern.exec(text)) {
 		let comment = m[0];
-		debug(comment);
+		//debug(comment);
 		const r: CRange = {
 			start: m.index,
 			end: m.index + m[0].length
@@ -73,8 +97,17 @@ function log(str:any) {
 	fs.writeFileSync('outputLog.txt', str, {flag: "a+"})
 }
 
-function getStrings(textDocument: TextDocument) {
+export function getStrings(textDocument: TextDocument) {
 	const text = textDocument.getText();
 	let strings: CRange[] = [];
-	let pattern: RegExp = /\".*?\"/g;
+	//let pattern: RegExp = //gm;
+	// TODO: Get all sets of {} to see if we're in an f-string and need to exclude sections of the string
+	let strDouble = /([\"\'].*?[\"\'])/gm;
+	let strDoubleStartOnly = /(^\\s*?(\")[^\"]*?(\\n|$))/gm;
+	let multiDouble = /(\^{3,}.*?\^{3,})/gm;
+	let caretDouble = /(\"{3,}.*?\"{3,})/gs;
+	strings = getMatchesForRegex(strDouble,text);
+	//debug(strings);
+	stringRanges = strings;
+	return strings;
 }

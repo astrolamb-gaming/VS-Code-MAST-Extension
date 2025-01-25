@@ -38,8 +38,8 @@ function getLabels(textDocument: TextDocument, main: boolean = true): LabelInfo[
 		const str = m[0].replace(/(=|-)/g,"").trim();
 		if (main) {
 			const lbl = m[3];
-			debug(m[0]);
-			debug("Main label: " + lbl);
+			//debug(m[0]);
+			//debug("Main label: " + lbl);
 		}
 		const li: LabelInfo = {
 			main: main,
@@ -49,7 +49,7 @@ function getLabels(textDocument: TextDocument, main: boolean = true): LabelInfo[
 			length: m[0].length,
 			subLabels: []
 		}
-		debug(str);
+		//debug(str);
 		labels.push(li);
 	}
 	// Here we have to iterate over the labels again to properly get the end position.
@@ -184,7 +184,8 @@ function findBadLabels(t: TextDocument) : Diagnostic[] {
 	const any: RegExp = /(^ *?=+?.*?$)|(^ *?-+?.*?$)/gm;
 	const whiteSpaceWarning: RegExp = /^ +?/;
 	const good: RegExp = /(^(\s*)(={2,}\s*[ \t]*)(\w+)([ \t]*(={2,})?))|(^(\s*)(-{2,}\s*[ \t]*)(\w+)([ \t]*(-{2,})?))/m;
-	const bad: RegExp = /[\!\@\$\%\^\&\*\(\)\.\,\>\<\?`\[\]\\\/\+\~\{\}\|\'\"\;\:]+?/m;
+	const bad: RegExp = /[\!\@\$\%\^\&\*\(\)\.\,\>\<\?\`\[\]\\\/\+\~\{\}\|\'\"\;\:]+?/m;
+	const specialLabel: RegExp = /=\w+:/;
 	let m: RegExpExecArray | null;
 	// Iterate over regular labels
 	while (m = any.exec(text)) {
@@ -200,8 +201,10 @@ function findBadLabels(t: TextDocument) : Diagnostic[] {
 		//debug("  Result: " + tr as string);
 
 		if (!tr) {
+			
 			//debug("    Bad result");
-			const d: Diagnostic = {
+			
+			let d: Diagnostic = {
 				range: {
 					start: t.positionAt(m.index),
 					end: t.positionAt(m.index + m[0].length)
@@ -210,7 +213,19 @@ function findBadLabels(t: TextDocument) : Diagnostic[] {
 				message: "Invalid characters in label designation",
 				source: "mast"
 			}
-			d.relatedInformation = relatedMessage(t, d.range, "Labels must be defined in a format beginning (and optionally ending) with two or more = or - signs. \nThey may use A-Z, a-z, 0-9, and _ in their names. Other characters are not allowed.\nExamples:\"== LabelA\" or \"== LabelA ==\"");
+			
+			if (specialLabel.test(m[0])) {
+				d.severity = DiagnosticSeverity.Warning;
+				debug(m[0]);
+				debug("One good = sign");
+				d.message = "Possible improper label definition";
+				d.source = __dirname;
+				d.relatedInformation = relatedMessage(t,d.range, "The acceptable use of a label with a single starting '=' is rare, and you'd better know what you're doing.\nOne example useage can be found in the legendarymissions, in hangar/bar.mast. \nIn this situation, the disconnect label is used to tell the server how to handle a disconnected client.");
+			} else {
+				debug(lbl);
+				debug("One bad = sign");
+				d.relatedInformation = relatedMessage(t, d.range, "Labels must be defined in a format beginning (and optionally ending) with two or more = or - signs. \nThey may use A-Z, a-z, 0-9, and _ in their names. Other characters are not allowed.\nExamples:\"== LabelA\" or \"== LabelA ==\"");
+			}
 			diagnostics.push(d);
 		}
 
@@ -238,19 +253,24 @@ function findBadLabels(t: TextDocument) : Diagnostic[] {
 	const slashCheck = / *?\/\/.+?\/\//; // contains two or more sets of "//"
 	const formatCheck = /.*?\/\/\w+(\/(\w+))*.*/m; // checks for proper //something/something/something format
 	while (m = routes.exec(text)) {
-		if (badRoute.test(m[0])) {
-			const d: Diagnostic = {
-				range: {
-					start: t.positionAt(m.index),
-					end: t.positionAt(m.index + m[0].length)
-				},
-				severity: DiagnosticSeverity.Error,
-				message: "Route labels can be used only at the beginning of a line.",
-				source: "mast"
-			}
-			d.relatedInformation = relatedMessage(t, d.range, "See https://artemis-sbs.github.io/sbs_utils/mast/routes/ for more details on routes.");
-			diagnostics.push(d);
-		}
+		/**
+		 * I still want to implement a more robust version of this someday, but for now
+		 * we're removing due to the use of // as an operator
+		 */
+
+		// if (badRoute.test(m[0])) {
+		// 	const d: Diagnostic = {
+		// 		range: {
+		// 			start: t.positionAt(m.index),
+		// 			end: t.positionAt(m.index + m[0].length)
+		// 		},
+		// 		severity: DiagnosticSeverity.Error,
+		// 		message: "Route labels can be used only at the beginning of a line.",
+		// 		source: "mast"
+		// 	}
+		// 	d.relatedInformation = relatedMessage(t, d.range, "See https://artemis-sbs.github.io/sbs_utils/mast/routes/ for more details on routes.");
+		// 	diagnostics.push(d);
+		// }
 		if (slashCheck.test(m[0])) {
 			const d: Diagnostic = {
 				range: {
@@ -258,7 +278,7 @@ function findBadLabels(t: TextDocument) : Diagnostic[] {
 					end: t.positionAt(m.index + m[0].length)
 				},
 				severity: DiagnosticSeverity.Error,
-				message: "Route label designator (//) may only be used at the beginning of the line.",
+				message: "Route label designator (//) may only be used once at the beginning of the line.",
 				source: "mast"
 			}
 			d.relatedInformation = relatedMessage(t, d.range, "See https://artemis-sbs.github.io/sbs_utils/mast/routes/ for more details on routes.");

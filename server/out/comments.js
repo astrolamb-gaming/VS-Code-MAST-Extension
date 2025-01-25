@@ -1,7 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.isInComment = isInComment;
+exports.isInString = isInString;
 exports.getComments = getComments;
+exports.getIndentations = getIndentations;
+exports.getStrings = getStrings;
 const console_1 = require("console");
 const fs = require("fs");
 function isInComment(loc) {
@@ -13,6 +16,15 @@ function isInComment(loc) {
     return false;
 }
 let commentRanges = [];
+let stringRanges = [];
+function isInString(loc) {
+    for (const r in stringRanges) {
+        if (stringRanges[r].start < loc && stringRanges[r].end > loc) {
+            return true;
+        }
+    }
+    return false;
+}
 /**
  * Should be called whenever the file is updated.
  * Really should be more efficient and add/remove as necessary, but I'm not taking the time to do that yet.
@@ -28,11 +40,10 @@ function getComments(textDocument) {
     let strRng = [];
     pattern = /\".*?\"/g;
     strRng = getMatchesForRegex(pattern, text);
-    (0, console_1.debug)(strRng);
     pattern = /\#.*?(\"|$)/g;
     while (m = pattern.exec(text)) {
         let comment = m[0];
-        (0, console_1.debug)(m);
+        //debug(m);
         for (const i in strRng) {
             if (strRng[i].start < m.index && m.index < strRng[i].end) {
             }
@@ -46,12 +57,27 @@ function getComments(textDocument) {
         }
     }
 }
+const indents = [];
+const dedents = [];
+function getIndentations(textDocument) {
+    let text = textDocument.getText();
+    let m;
+    let pattern = /^[\\t ]*/gm;
+    while (m = pattern.exec(text)) {
+        let comment = m[0];
+        (0, console_1.debug)(comment);
+        const r = {
+            start: m.index,
+            end: m.index + m[0].length
+        };
+    }
+}
 function getMatchesForRegex(pattern, text) {
     let matches = [];
     let m;
     while (m = pattern.exec(text)) {
         let comment = m[0];
-        (0, console_1.debug)(comment);
+        //debug(comment);
         const r = {
             start: m.index,
             end: m.index + m[0].length
@@ -66,6 +92,15 @@ function log(str) {
 function getStrings(textDocument) {
     const text = textDocument.getText();
     let strings = [];
-    let pattern = /\".*?\"/g;
+    //let pattern: RegExp = //gm;
+    // TODO: Get all sets of {} to see if we're in an f-string and need to exclude sections of the string
+    let strDouble = /([\"\'].*?[\"\'])/gm;
+    let strDoubleStartOnly = /(^\\s*?(\")[^\"]*?(\\n|$))/gm;
+    let multiDouble = /(\^{3,}.*?\^{3,})/gm;
+    let caretDouble = /(\"{3,}.*?\"{3,})/gs;
+    strings = getMatchesForRegex(strDouble, text);
+    //debug(strings);
+    stringRanges = strings;
+    return strings;
 }
 //# sourceMappingURL=comments.js.map

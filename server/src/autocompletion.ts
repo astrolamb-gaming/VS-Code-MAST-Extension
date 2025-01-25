@@ -5,7 +5,7 @@ import { getClassTypings, getPyTypings, getSourceFiles, getSupportedRoutes, labe
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { ClassObject, ClassTypings, IClassObject, PyFile } from './data';
 import { getRouteLabelAutocompletions } from './routeLabels';
-import { isInComment } from './comments';
+import { isInComment, isInString } from './comments';
 
 let classes: IClassObject[] = [];
 let defaultFunctionCompletionItems: CompletionItem[] = [];
@@ -52,9 +52,14 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		"shared"
 	]
 
-	// If we're inside a comment, we don't want autocompletion.
+	// If we're inside a comment or a string, we don't want autocompletion.
 	if (isInComment(pos)) {
 		return ci;
+	} else {
+		if (isInString(pos)) {
+			debug("Is in string");
+			return ci;
+		}
 	}
 
 	// If we're defining a label, we don't want autocomplete.

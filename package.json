@@ -105,26 +105,25 @@
 					{
 						"scope": "label.route",
 						"settings": {
-							"foreground": "#9886ff"
+							"foreground": "#4EC9B0"
 						}
 					},
 					{
 						"scope": "string.quoted.double.map.description.mast",
 						"settings": {
-							"foreground": "#ffc400",
 							"fontStyle": "bold"
 						}
 					},
 					{
 						"scope": "success.yield.result",
 						"settings": {
-							"foreground": "#006900"
+							"foreground": "#008b00"
 						}
 					},
 					{
 						"scope": "fail.yield.result",
 						"settings": {
-							"foreground": "#7e0000"
+							"foreground": "#a50000"
 						}
 					},
 					{
@@ -161,16 +160,9 @@
 						}
 					},
 					{
-						"scope": "comms.button.build",
+						"scope": "comms.button",
 						"settings": {
-							"foreground": "#5500ff",
-							"fontStyle": "bold"
-						}
-					},
-					{
-						"scope": "keyword.comms.target",
-						"settings": {
-							"foreground": "#0000ff",
+							"foreground": "#7fad00",
 							"fontStyle": "bold"
 						}
 					}

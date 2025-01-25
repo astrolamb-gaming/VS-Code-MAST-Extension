@@ -1,8 +1,37 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.checkLastLine = checkLastLine;
 exports.findDiagnostic = findDiagnostic;
 exports.relatedMessage = relatedMessage;
+const node_1 = require("vscode-languageserver/node");
 const server_1 = require("./server");
+/**
+ * Checks if the file ends with an empty line.
+ * @param textDocument
+ * @returns
+ */
+function checkLastLine(textDocument) {
+    const text = textDocument.getText();
+    textDocument.lineCount;
+    const lastLinePos = textDocument.offsetAt({
+        line: textDocument.lineCount - 1,
+        character: 0
+    });
+    const lastLine = text.substring(lastLinePos);
+    if (lastLine !== "") {
+        const diagnostic = {
+            severity: node_1.DiagnosticSeverity.Error,
+            range: {
+                start: textDocument.positionAt(lastLinePos),
+                end: textDocument.positionAt(lastLinePos + lastLine.length)
+            },
+            message: "MAST Compiler Error: File must end with an empty line.",
+            source: "MAST Compiler " + __filename
+        };
+        return diagnostic;
+    }
+    return undefined;
+}
 function findDiagnostic(pattern, textDocument, severity, message, source, relatedInfo, maxProblems, problems) {
     const text = textDocument.getText();
     let m;

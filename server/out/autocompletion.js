@@ -49,9 +49,15 @@ function onCompletion(_textDocumentPosition, text) {
         "await",
         "shared"
     ];
-    // If we're inside a comment, we don't want autocompletion.
+    // If we're inside a comment or a string, we don't want autocompletion.
     if ((0, comments_1.isInComment)(pos)) {
         return ci;
+    }
+    else {
+        if ((0, comments_1.isInString)(pos)) {
+            (0, console_1.debug)("Is in string");
+            return ci;
+        }
     }
     // If we're defining a label, we don't want autocomplete.
     if (iStr.includes("--") || iStr.includes("==")) {

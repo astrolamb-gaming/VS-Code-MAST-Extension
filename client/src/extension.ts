@@ -6,6 +6,7 @@
 import * as path from 'path';
 import { workspace, ExtensionContext , window as Window} from 'vscode';
 import * as vscode from 'vscode';
+import fs = require("fs");
 
 import {
 	LanguageClient,
@@ -52,45 +53,48 @@ export function activate(context: ExtensionContext) {
 			}
 		}
 	};
-	const disposable = vscode.languages.registerFoldingRangeProvider('mast', {
-        provideFoldingRanges(document, context, token) {
-            //console.log('folding range invoked'); // comes here on every character edit
-            let sectionStart = 0, FR = [], re = /^\s*?={2,}/;  // regex to detect start of region
+	
+	// const disposable = vscode.languages.registerFoldingRangeProvider('mast', {
+    //     provideFoldingRanges(document, context, token) {
+    //         //console.log('folding range invoked'); // comes here on every character edit
+    //         let sectionStart = 0, FR = [], re = /^\s*?={2,}/;  // regex to detect start of region
 
-			// TODO: Recursive regex: https://github.com/slevithan/regex-recursion/  ?
+	// 		// TODO: Recursive regex: https://github.com/slevithan/regex-recursion/  ?
 			
-			// TODO: Comment folding regex:
-			// Actually might want to use comments.ts for this
-			const startBlockComment = /^\s*?\/\*/g;
-			const endBlockComment = /^.*?\*\//g;
+	// 		getIndentations(document);
 
-			let foldSections: RegExp[] = [
-				/^\s*?if/g,
-				/^\s*?for/g,
-				/^\s*?elif/g,
-				/^\s*?else/g,
-				/^\s*?case/g,
-				/^\s*?-{2,}/g,
-				/^\s*?on[ \t]+(change[ \t]+)?/g,
-			];
-			foldSections.push(re);
+	// 		// TODO: Comment folding regex:
+	// 		// Actually might want to use comments.ts for this
+	// 		const startBlockComment = /^\s*?\/\*/g;
+	// 		const endBlockComment = /^.*?\*\//g;
 
-			re = /^\s*?(if|for|elif|else|case|match|-{2,}|={2,})|\/{2,}/g;
+	// 		let foldSections: RegExp[] = [
+	// 			/^\s*?if/g,
+	// 			/^\s*?for/g,
+	// 			/^\s*?elif/g,
+	// 			/^\s*?else/g,
+	// 			/^\s*?case/g,
+	// 			/^\s*?-{2,}/g,
+	// 			/^\s*?on[ \t]+(change[ \t]+)?/g,
+	// 		];
+	// 		foldSections.push(re);
 
-            for (let i = 0; i < document.lineCount; i++) {
+	// 		re = /^\s*?(if|for|elif|else|case|match|-{2,}|={2,})|\/{2,}/g;
 
-                if (re.test(document.lineAt(i).text)) {
-                    if (sectionStart > 0) {
-                        FR.push(new vscode.FoldingRange(sectionStart, i - 1, vscode.FoldingRangeKind.Region));
-                    }
-                    sectionStart = i;
-                }
-            }
-            if (sectionStart > 0) { FR.push(new vscode.FoldingRange(sectionStart, document.lineCount - 1, vscode.FoldingRangeKind.Region)); }
+    //         for (let i = 0; i < document.lineCount; i++) {
 
-            return FR;
-        }
-    });
+    //             if (re.test(document.lineAt(i).text)) {
+    //                 if (sectionStart > 0) {
+    //                     FR.push(new vscode.FoldingRange(sectionStart, i - 1, vscode.FoldingRangeKind.Region));
+    //                 }
+    //                 sectionStart = i;
+    //             }
+    //         }
+    //         if (sectionStart > 0) { FR.push(new vscode.FoldingRange(sectionStart, document.lineCount - 1, vscode.FoldingRangeKind.Region)); }
+
+    //         return FR;
+    //     }
+    // });
 
 	// context.subscriptions.push(vscode.languages.registerCompletionItemProvider(GO_MODE, new GoCompletionItemProvider(), ".", "\""));
 
@@ -113,6 +117,22 @@ export function deactivate(): Thenable<void> | undefined {
 	return client.stop();
 }
 
+function getIndentations(td: vscode.TextDocument) {
+	for (let i = 0; i < td.lineCount; i++) {
+		let indents = td.lineAt(i).firstNonWhitespaceCharacterIndex;
+		debug("Indents: "+indents);
+		debug(td.lineAt(i).text);
+		let pattern = /.*/g;
+		let m: RegExpExecArray;
+		let c = 0;
+		while (m = pattern.exec(td.lineAt(i).text)) {
+			debug(m[0]);
+			c = c + 1;
+			if (c > 10) { break; }
+		}
+	}
+}
+
 // class GoCompletionItemProvider implements vscode.CompletionItemProvider {
 //     public provideCompletionItems(
 //         document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken):
@@ -120,3 +140,13 @@ export function deactivate(): Thenable<void> | undefined {
 // 			vscode.execute
 //     }
 // }
+
+function debug(str:any) {
+    if (str === undefined) {
+        str = "UNDEFINED";
+    }
+    str = "\n" + str;
+    fs.writeFileSync('outputLog.txt', str, { flag: "a+" });
+	console.debug(str);
+	console.log(str);
+}

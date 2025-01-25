@@ -144,6 +144,11 @@ async function getRexEx(src) {
     const txt = await data.text();
     (0, rx_1.parse)(txt, exp);
 }
+// 
+/**
+ * TODO: Implement system using semantic tokens
+ * https://stackoverflow.com/questions/70490767/language-server-semantic-tokens
+ */
 connection.onInitialize((params) => {
     // These are only executed on startup
     loadTypings().then(() => { typingsDone = true; });
@@ -203,6 +208,7 @@ connection.onInitialize((params) => {
     return result;
 });
 connection.onInitialized(() => {
+    (0, console_1.debug)("Number of documents in documents: " + documents.all.length);
     if (hasConfigurationCapability) {
         // Register for all configuration changes.
         connection.client.register(node_1.DidChangeConfigurationNotification.type, undefined);
@@ -303,10 +309,14 @@ connection.languages.diagnostics.on(async (params) => {
 documents.onDidChangeContent(change => {
     validateTextDocument(change.document);
 });
+documents.onDidOpen(change => {
+    (0, console_1.debug)("Number of documents in documents: " + documents.keys.length);
+});
 async function validateTextDocument(textDocument) {
     // In this simple example we get the settings for every validate run.
     const settings = await getDocumentSettings(textDocument.uri);
     (0, comments_1.getComments)(textDocument);
+    (0, comments_1.getStrings)(textDocument);
     // The validator creates diagnostics for all uppercase words length 2 and more
     const text = textDocument.getText();
     currentDocument = textDocument;
@@ -319,9 +329,13 @@ async function validateTextDocument(textDocument) {
         pattern: /(^(=|-){2,}([0-9A-Za-z _]+?)(-|=)([0-9A-Za-z _]+?)(=|-){2,})/gm,
         severity: node_1.DiagnosticSeverity.Error,
         message: "Label Definition: Cannot use '-' or '=' inside label name.",
-        source: "sbs",
+        source: __filename,
         relatedMessage: "Only A-Z, a-z, 0-9, and _ are allowed to be used in a label name."
     };
+    let e2 = (0, errorChecking_1.checkLastLine)(textDocument);
+    if (typeof (e2) !== "undefined") {
+        diagnostics.push(e2);
+    }
     errorSources.push(e1);
     e1 = {
         pattern: /^[\w ][^+][^\"][\w\(\) ]+?\/\//g,
