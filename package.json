@@ -64,10 +64,10 @@
 			"editor.tokenColorCustomizations": {
 				"textMateRules": [
 					{
-						"scope": "label.jump.to",
+						"scope": "label",
 						"settings": {
-							"foreground": "#4EC9B0",
-							"fontStyle": ""
+							"foreground": "#C586C0",
+							"fontStyle": "bold"
 						}
 					},
 					{
@@ -75,19 +75,6 @@
 						"settings": {
 							"foreground": "#C586C0",
 							"fontStyle": ""
-						}
-					},
-					{
-						"scope": "label",
-						"settings": {
-							"foreground": "#4EC9B0",
-							"fontStyle": "bold"
-						}
-					},
-					{
-						"scope": "sub.label",
-						"settings": {
-							"foreground": "#4EC9B0"
 						}
 					},
 					{
@@ -100,12 +87,6 @@
 						"scope": "label.sub.designator",
 						"settings": {
 							"foreground": "#C586C0"
-						}
-					},
-					{
-						"scope": "label.route",
-						"settings": {
-							"foreground": "#4EC9B0"
 						}
 					},
 					{
@@ -135,8 +116,7 @@
 					{
 						"scope": "import.file.mast",
 						"settings": {
-							"foreground": "#b7ffe7",
-							"fontStyle": "italic"
+							"foreground": "#CCCCCC"
 						}
 					},
 					{

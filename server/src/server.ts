@@ -31,21 +31,24 @@ import {
 	SignatureHelpParams,
 	ServerRequestHandler,
 	ParameterInformation,
-	Hover
+	Hover,
+	WorkspaceFolder
 } from 'vscode-languageserver/node';
 
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { checkLastLine, findDiagnostic } from './errorChecking';
+import { findDiagnostic } from './errorChecking';
 import { checkLabels, getMainLabelAtPos, LabelInfo } from './labels';
 import { onCompletion, prepCompletions } from './autocompletion';
-import { debug as db, debug} from 'console';
+import { debug} from 'console';
 import { onHover } from './hover';
 import { onSignatureHelp, prepSignatures } from './signatureHelp';
 import { ClassTypings, parseWholeFile, PyFile } from './data';
 import { loadRouteLabels } from './routeLabels';
 import { parse, RX } from './rx';
-import { getComments, getStrings } from './comments';
+import { getComments } from './comments';
 import fs = require("fs");
+import { getFileContents, readAllFilesIn } from './fileFunctions';
+import { loadCache } from './cache';
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 const connection = createConnection(ProposedFeatures.all);
@@ -78,108 +81,16 @@ export function getFunctionData(): SignatureInformation[] { return functionData;
 
 
 
-let files: string[] = [
-	"sbs/__init__",
-	"sbs_utils/agent",
-	"sbs_utils/consoledispatcher",
-	"sbs_utils/damagedispatcher",
-	"sbs_utils/extra_dispatcher",
-	"sbs_utils/faces",
-	"sbs_utils/fs",
-	"sbs_utils/futures",
-	"sbs_utils/griddispatcher",
-	"sbs_utils/gridobject",
-	"sbs_utils/gui",
-	"sbs_utils/handlerhooks",
-	"sbs_utils/helpers",
-	"sbs_utils/layout",
-	"sbs_utils/lifetimedispatchers",
-	"sbs_utils/objects",
-	"sbs_utils/scatter",
-	"sbs_utils/spaceobject",
-	"sbs_utils/tickdispatcher",
-	"sbs_utils/vec",
-	"sbs_utils/mast/label",
-	"sbs_utils/mast/mast",
-	"sbs_utils/mast/mast_sbs_procedural",
-	"sbs_utils/mast/mastmission",
-	"sbs_utils/mast/mastobjects",
-	"sbs_utils/mast/mastscheduler",
-	"sbs_utils/mast/maststory",
-	"sbs_utils/mast/maststorypage",
-	"sbs_utils/mast/maststoryscheduler",
-	"sbs_utils/mast/parsers",
-	"sbs_utils/mast/pollresults",
-	"sbs_utils/pages/avatar",
-	"sbs_utils/pages/shippicker",
-	"sbs_utils/pages/start",
-	"sbs_utils/pages/layout/layout",
-	"sbs_utils/pages/layout/text_area",
-	"sbs_utils/pages/widgets/control",
-	"sbs_utils/pages/widgets/layout_listbox",
-	"sbs_utils/pages/widgets/listbox",
-	"sbs_utils/pages/widgets/shippicker",
-	"sbs_utils/procedural/behavior",
-	"sbs_utils/procedural/comms",
-	"sbs_utils/procedural/cosmos",
-	"sbs_utils/procedural/execution",
-	"sbs_utils/procedural/grid",
-	"sbs_utils/procedural/gui",
-	"sbs_utils/procedural/internal_damage",
-	"sbs_utils/procedural/inventory",
-	"sbs_utils/procedural/links",
-	"sbs_utils/procedural/maps",
-	"sbs_utils/procedural/query",
-	"sbs_utils/procedural/roles",
-	"sbs_utils/procedural/routes",
-	"sbs_utils/procedural/science",
-	"sbs_utils/procedural/screen_shot",
-	"sbs_utils/procedural/ship_data",
-	"sbs_utils/procedural/signal",
-	"sbs_utils/procedural/space_objects",
-	"sbs_utils/procedural/spawn",
-	"sbs_utils/procedural/style",
-	"sbs_utils/procedural/timers"
-];
+
 
 const supportedRoutes: string[][] = [];
 export function getSupportedRoutes(): string[][] { return supportedRoutes; }
 
 
 
-const sourceFiles: PyFile[] = []
-export function getSourceFiles(): PyFile[] { return sourceFiles; }
 
-async function loadTypings(): Promise<void> {
-	try {
-		//const { default: fetch } = await import("node-fetch");
-		//const fetch = await import('node-fetch');
-		//let github : string = "https://github.com/artemis-sbs/sbs_utils/raw/refs/heads/master/mock/sbs.py";
-		let gh : string = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/typings/";
-		for (const page in files) {
-			let url = gh+files[page]+".pyi";
-			const data = await fetch(url);
-			const textData = await data.text();
-			sourceFiles.push(parseWholeFile(textData, files[page]));
-		}
-		prepCompletions(sourceFiles);
-		prepSignatures(sourceFiles);
-	} catch (err) {
-		debug("\nFailed to load\n"+err as string);
-	}
 
-}
 
-const expressions: RX[] = [];
-const exp: Map<string, RegExp> = new Map();
-const defSource = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/mast.py";
-const defSource2 = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/maststory.py";
-async function getRexEx(src: string) :Promise<void> {
-	const data = await fetch(src);
-	const txt = await data.text();
-	parse(txt, exp);
-	
-}
 
 // 
 /**
@@ -188,13 +99,8 @@ async function getRexEx(src: string) :Promise<void> {
  */
 connection.onInitialize((params: InitializeParams) => {
 	// These are only executed on startup
-	loadTypings().then(()=>{ typingsDone = true; });
-	loadRouteLabels().then(()=>{ debug("Routes Loaded") });
-	getRexEx(defSource).then(()=>{ debug("Regular Expressions gotten")});
-	getRexEx(defSource2).then(()=>{ debug("Regular Expressions 2 gotten")
-		debug("Label?: ");
-		debug(exp.get("Label"));
-	});
+	
+	
 	//const zip : Promise<void> = extractZip("","./sbs");
 
 	//pyTypings = pyTypings.concat(parseTyping(fs.readFileSync("sbs.pyi","utf-8")));
@@ -224,7 +130,7 @@ connection.onInitialize((params: InitializeParams) => {
 			completionProvider: {
 				resolveProvider: false, // FOR NOW - MAY USE LATER
 				// TODO: The /, >, and especially the space are hopefully temporary workarounds.
-				triggerCharacters: [".","/",">"," ","\""]
+				triggerCharacters: [".","/",">"," ","\"","@"]
 			},
 			diagnosticProvider: {
 				interFileDependencies: false,
@@ -250,11 +156,20 @@ connection.onInitialize((params: InitializeParams) => {
 			}
 		};
 	}
+
+	if (params.workspaceFolders) {
+		debug("Workspace Folders true");
+		const workspaceFolder = params.workspaceFolders[0];
+		debug(workspaceFolder.uri);
+		//readAllFilesIn(workspaceFolder);
+		loadCache(workspaceFolder.uri);
+	} else {
+		debug("No Workspace folders");
+	}
 	return result;
 });
 
 connection.onInitialized(() => {
-	debug("Number of documents in documents: " + documents.all.length);
 	
 	if (hasConfigurationCapability) {
 		// Register for all configuration changes.
@@ -266,6 +181,8 @@ connection.onInitialized(() => {
 		});
 
 	}
+	
+	
 	
 });
 connection.onCodeAction((params) => {
@@ -352,6 +269,12 @@ documents.onDidClose(e => {
 connection.languages.diagnostics.on(async (params) => {
 	//TODO: get info from other files in same directory
 	const document = documents.get(params.textDocument.uri);
+	// connection.workspace.getWorkspaceFolders().then((value:WorkspaceFolder[] | null) => {
+	// 	if (value !== null) {
+	// 		value[0].uri
+	// 	}
+	// })
+	
 	if (document !== undefined) {
 		return {
 			kind: DocumentDiagnosticReportKind.Full,
@@ -370,11 +293,8 @@ connection.languages.diagnostics.on(async (params) => {
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent(change => {
-
+	
 	validateTextDocument(change.document);
-});
-documents.onDidOpen(change => {
-	debug("Number of documents in documents: " + documents.keys.length);
 });
 
 export interface ErrorInstance {
@@ -405,7 +325,6 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 	const settings = await getDocumentSettings(textDocument.uri);
 	
 	getComments(textDocument);
-	getStrings(textDocument);
 
 	// The validator creates diagnostics for all uppercase words length 2 and more
 	const text = textDocument.getText();
@@ -420,13 +339,9 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 		pattern: /(^(=|-){2,}([0-9A-Za-z _]+?)(-|=)([0-9A-Za-z _]+?)(=|-){2,})/gm,
 		severity: DiagnosticSeverity.Error,
 		message: "Label Definition: Cannot use '-' or '=' inside label name.",
-		source: __filename,
+		source: "sbs",
 		relatedMessage: "Only A-Z, a-z, 0-9, and _ are allowed to be used in a label name."
 	};
-	let e2: Diagnostic | undefined = checkLastLine(textDocument);
-	if (typeof(e2) !== "undefined") {
-		diagnostics.push(e2);
-	}
 	errorSources.push(e1);
 	e1 = {
 		pattern: /^[\w ][^+][^\"][\w\(\) ]+?\/\//g,
@@ -536,6 +451,6 @@ export function myDebug(str:any) {
     }
     str = "\n" + str;
     fs.writeFileSync('outputLog.txt', str, { flag: "a+" });
-	db(str);
+	debug(str);
 	console.log(str);
 }

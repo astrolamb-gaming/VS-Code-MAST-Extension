@@ -53,19 +53,25 @@ function onCompletion(_textDocumentPosition, text) {
     if ((0, comments_1.isInComment)(pos)) {
         return ci;
     }
-    else {
-        if ((0, comments_1.isInString)(pos)) {
-            (0, console_1.debug)("Is in string");
-            return ci;
-        }
+    // TODO: Check and make absolutely sure that isTextInBracket is working properly
+    // TODO: May be useful to have a list of used string words that can be added via autocomplete (i.e. roles)
+    if ((0, comments_1.isInString)(pos) && !(0, comments_1.isTextInBracket)(iStr, pos)) {
+        (0, console_1.debug)("Is in string");
+        return ci;
     }
     // If we're defining a label, we don't want autocomplete.
     if (iStr.includes("--") || iStr.includes("==")) {
         return ci;
     }
+    // Media labels only get the skybox names
+    if (iStr.endsWith("@media/skybox/")) {
+        return (0, routeLabels_1.getSkyboxCompletionItems)();
+    }
     // Route Label autocompletion
-    if (iStr.includes("//")) {
-        return (0, routeLabels_1.getRouteLabelAutocompletions)(iStr);
+    if (iStr.trim().startsWith("//") || iStr.trim().startsWith("@")) {
+        let ci = (0, routeLabels_1.getRouteLabelAutocompletions)(iStr);
+        // TODO: Add media, map, gui/tab, and console autocompletion items
+        return ci;
     }
     // TODO: Add variables provided by routes to autocompletion
     /**

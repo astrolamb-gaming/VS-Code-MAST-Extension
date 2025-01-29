@@ -5,7 +5,6 @@ exports.getMainLabelAtPos = getMainLabelAtPos;
 const vscode_languageserver_1 = require("vscode-languageserver");
 const errorChecking_1 = require("./errorChecking");
 const server_1 = require("./server");
-const console_1 = require("console");
 /**
  * Get valid labels, but only main or sublabels, not both.
  * @param textDocument
@@ -195,15 +194,11 @@ function findBadLabels(t) {
             };
             if (specialLabel.test(m[0])) {
                 d.severity = vscode_languageserver_1.DiagnosticSeverity.Warning;
-                (0, console_1.debug)(m[0]);
-                (0, console_1.debug)("One good = sign");
                 d.message = "Possible improper label definition";
                 d.source = __dirname;
                 d.relatedInformation = (0, errorChecking_1.relatedMessage)(t, d.range, "The acceptable use of a label with a single starting '=' is rare, and you'd better know what you're doing.\nOne example useage can be found in the legendarymissions, in hangar/bar.mast. \nIn this situation, the disconnect label is used to tell the server how to handle a disconnected client.");
             }
             else {
-                (0, console_1.debug)(lbl);
-                (0, console_1.debug)("One bad = sign");
                 d.relatedInformation = (0, errorChecking_1.relatedMessage)(t, d.range, "Labels must be defined in a format beginning (and optionally ending) with two or more = or - signs. \nThey may use A-Z, a-z, 0-9, and _ in their names. Other characters are not allowed.\nExamples:\"== LabelA\" or \"== LabelA ==\"");
             }
             diagnostics.push(d);

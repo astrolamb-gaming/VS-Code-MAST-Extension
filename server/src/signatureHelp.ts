@@ -45,7 +45,7 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 	let last = iStr.lastIndexOf("(");
 	let sub = iStr.substring(last+1, pos).replace(/ /g,"");
 	let arr = sub.split(",");
-	debug(arr);
+	//debug(arr);
 	sh.activeParameter = arr.length - 1;
 
 	// Check for the current function name and get SignatureInformation for that function.

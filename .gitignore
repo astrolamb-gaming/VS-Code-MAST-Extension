@@ -402,3 +402,6 @@ FodyWeavers.xsd
 
 # js.map files
 *.map
+
+# batch files
+*.bat

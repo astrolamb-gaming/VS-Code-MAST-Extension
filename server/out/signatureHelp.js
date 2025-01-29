@@ -41,7 +41,7 @@ function onSignatureHelp(_textDocPos, text) {
     let last = iStr.lastIndexOf("(");
     let sub = iStr.substring(last + 1, pos).replace(/ /g, "");
     let arr = sub.split(",");
-    (0, console_1.debug)(arr);
+    //debug(arr);
     sh.activeParameter = arr.length - 1;
     // Check for the current function name and get SignatureInformation for that function.
     let f = getCurrentMethodName(iStr);

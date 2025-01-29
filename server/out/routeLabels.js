@@ -1,23 +1,144 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.getSkyboxCompletionItems = getSkyboxCompletionItems;
+exports.loadMediaLabels = loadMediaLabels;
 exports.loadRouteLabels = loadRouteLabels;
 exports.getRouteLabelAutocompletions = getRouteLabelAutocompletions;
 const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
+const fileFunctions_1 = require("./fileFunctions");
 const routeLabels = [];
+const mediaLabels = [];
+const resourceLabels = [];
 const supportedRoutes = [];
 const routeDefSource = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/mast.py";
+const mediaDefSource = "https://github.com/artemis-sbs/sbs_utils/blob/master/sbs_utils/procedural/media.py";
 const labelDetails = {
     // Decided that this clutters up the UI too much. Same information is displayed in the CompletionItem details.
     //detail: "(" + params + ")",
     description: "Route Label"
 };
+let skyboxes = [];
+function getSkyboxCompletionItems() {
+    return skyboxes;
+}
+// Resource labels can use @ or // when called.
+function getResourceLabels() {
+    const resLabels = [
+        "console/",
+        "gui/tab/"
+    ];
+    const resDetails = [
+        "Console label - Go to or define a custom console",
+        "gui/tab label - Make a client tab with the label name. When it is selected, the code within this label is executed."
+    ];
+    for (const i in resLabels) {
+        let docs = resDetails[i]; //"Media label - loads skyboxes or music";
+        const resourceLabelDetails = {
+            description: "Resource Label"
+        };
+        const ci = {
+            label: resLabels[i],
+            kind: vscode_languageserver_1.CompletionItemKind.Event,
+            labelDetails: resourceLabelDetails,
+            documentation: docs
+        };
+        const ri = {
+            route: resLabels[i],
+            labels: resLabels[i].split("/"),
+            completionItem: ci
+        };
+        resourceLabels.push(ri);
+    }
+}
+/**
+ * Parse media.py for media types, for autocompletion purposes
+ * May need to change this later if it is changed to use switch statement
+ * Also gets other @ whatever options
+ */
+async function loadMediaLabels() {
+    try {
+        const data = await fetch(mediaDefSource);
+        (0, console_1.debug)("Getting media label info");
+        const textData = await data.text();
+        let pattern = /def _media_schedule\(kind, label, ID=0\):.+?(def)/gs;
+        let m;
+        while (m = pattern.exec(textData)) {
+            let t = m[0];
+            //debug(t);
+            const ifPattern = /kind == \\\"\w+\\\":/g;
+            let n;
+            while (n = ifPattern.exec(t)) {
+                //debug(n[0]);
+                let route = n[0].replace(/kind == \\\"/g, "").replace(/\\\":/g, "").trim();
+                let label = "media/" + route;
+                let docs = "Media label - loads skyboxes or music";
+                const mediaLabelDetails = {
+                    description: "Media Label"
+                };
+                const ci = {
+                    label: label,
+                    kind: vscode_languageserver_1.CompletionItemKind.Event,
+                    labelDetails: mediaLabelDetails,
+                    documentation: docs
+                };
+                const ri = {
+                    route: label,
+                    labels: label.split("/"),
+                    completionItem: ci
+                };
+                (0, console_1.debug)(label);
+                mediaLabels.push(ri);
+            }
+        }
+        let label = "map";
+        let docs = "Map label - defines a map. Typically only used at the beginning of a file";
+        let mediaLabelDetails = {
+            description: "Map Label"
+        };
+        let ci = {
+            label: label,
+            kind: vscode_languageserver_1.CompletionItemKind.Event,
+            labelDetails: mediaLabelDetails,
+            documentation: docs
+        };
+        let ri = {
+            route: label,
+            labels: label.split("/"),
+            completionItem: ci
+        };
+        mediaLabels.push(ri);
+        label = "media";
+        docs = "Media label - loads skyboxes or music";
+        mediaLabelDetails = {
+            description: "Media Label"
+        };
+        ci = {
+            label: label,
+            kind: vscode_languageserver_1.CompletionItemKind.Event,
+            labelDetails: mediaLabelDetails,
+            documentation: docs
+        };
+        ri = {
+            route: label,
+            labels: label.split("/"),
+            completionItem: ci
+        };
+        mediaLabels.push(ri);
+    }
+    catch (e) {
+        (0, console_1.debug)(e);
+    }
+}
 /**
  * Parse the sbs_utils/mast/mast.py file to find all the valid route labels
  * TODO: Add all the provided variables
  */
 async function loadRouteLabels() {
     try {
+        getResourceLabels();
+        loadMediaLabels();
+        skyboxes = getSkyboxes();
         const data = await fetch(routeDefSource);
         const textData = await data.text();
         // Get the text of function that defines route labels
@@ -143,6 +264,36 @@ function getRouteLabelAutocompletions(currentText) {
     for (const i in routeLabels) {
         if (("//" + routeLabels[i].route).includes(currentText.trim())) {
             ci.push(routeLabels[i].completionItem);
+        }
+    }
+    for (const i in mediaLabels) {
+        if (("@" + mediaLabels[i].route).includes(currentText.trim())) {
+            ci.push(mediaLabels[i].completionItem);
+        }
+    }
+    for (const i in resourceLabels) {
+        if (("//" + resourceLabels[i].route).includes(currentText.trim()) || ("@" + resourceLabels[i].route).includes(currentText.trim())) {
+            ci.push(resourceLabels[i].completionItem);
+        }
+    }
+    return ci;
+}
+function getSkyboxes() {
+    const skyboxes = [];
+    const ci = [];
+    let initialDir = "../../../../";
+    const graphics = (0, fileFunctions_1.findSubfolderByName)(initialDir, "graphics");
+    if (graphics !== null) {
+        const files = (0, fileFunctions_1.getFilesInDir)(graphics);
+        for (const file of files) {
+            if (file.includes("sky") && file.endsWith(".png")) {
+                const last = file.lastIndexOf("/");
+                let sb = file.substring(last + 1).replace(".png", "");
+                skyboxes.push(sb);
+                ci.push({
+                    label: sb
+                });
+            }
         }
     }
     return ci;

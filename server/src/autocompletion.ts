@@ -1,11 +1,11 @@
 import { debug } from 'console';
 import { CompletionItem, CompletionItemKind, integer, MarkupContent, TextDocumentPositionParams } from 'vscode-languageserver';
 import { getMainLabelAtPos } from './labels';
-import { getClassTypings, getPyTypings, getSourceFiles, getSupportedRoutes, labelNames } from './server';
+import { labelNames } from './server';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { ClassObject, ClassTypings, IClassObject, PyFile } from './data';
-import { getRouteLabelAutocompletions } from './routeLabels';
-import { isInComment, isInString } from './comments';
+import { getRouteLabelAutocompletions, getSkyboxCompletionItems } from './routeLabels';
+import { isInComment, isInString, isTextInBracket } from './comments';
 
 let classes: IClassObject[] = [];
 let defaultFunctionCompletionItems: CompletionItem[] = [];
@@ -52,24 +52,37 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		"shared"
 	]
 
+
+
 	// If we're inside a comment or a string, we don't want autocompletion.
 	if (isInComment(pos)) {
 		return ci;
-	} else {
-		if (isInString(pos)) {
-			debug("Is in string");
-			return ci;
-		}
 	}
+
+	// TODO: Check and make absolutely sure that isTextInBracket is working properly
+	// TODO: May be useful to have a list of used string words that can be added via autocomplete (i.e. roles)
+	if (isInString(pos) && !isTextInBracket(iStr,pos)) {
+		debug("Is in string");
+		return ci;
+	}
+
+	
 
 	// If we're defining a label, we don't want autocomplete.
 	if (iStr.includes("--") || iStr.includes("==")) {
 		return ci;
 	}
 
+	// Media labels only get the skybox names
+	if (iStr.endsWith("@media/skybox/")) {
+		return getSkyboxCompletionItems();
+	}
+
 	// Route Label autocompletion
-	if(iStr.includes("//")) {
-		return getRouteLabelAutocompletions(iStr);
+	if(iStr.trim().startsWith("//")||iStr.trim().startsWith("@")) {
+		let ci = getRouteLabelAutocompletions(iStr);
+		// TODO: Add media, map, gui/tab, and console autocompletion items
+		return ci;
 	}
 	// TODO: Add variables provided by routes to autocompletion
 	/**

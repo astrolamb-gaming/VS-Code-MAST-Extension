@@ -124,6 +124,10 @@
           }
           },
           {
+            "match": "(?m)^(\\s*)(=.+)($|\n)",
+            "name": "label.special.mast"
+          },
+          {
             "match": "(jump|->)(\\s*)(\\w+)",
             "captures": {
               "1": {
@@ -147,6 +151,10 @@
               }
               
             }
+          },
+          {
+            "name": "label.media.mast",
+            "match": "@[\\w-]+(/[\\w-]+)*"
           }
       ]
     },
@@ -165,6 +173,24 @@
           "name": "keyword.control.import.python",
           "comment": "other legal use of `as` is in an import",
           "match": "\\b(?<!\\.)as\\b"
+        },
+        {
+          "name": "keyword.control.import.mast",
+          "match": "((\\bfrom\\b) ([\\w_\\.]+) )?(\\bimport\\b) ([\\w_\\.\\*]+)",
+          "captures": {
+            "2": {
+              "name": "keyword.control.from.mast"
+            },
+            "3": {
+              "name": "import.file.mast"
+            },
+            "4": {
+              "name": "keyword.control.import.mast"
+            },
+            "5": {
+              "name": "import.file.mast"
+            }
+          }
         },
         {
           "name": "keyword.control.flow.python",
@@ -4978,11 +5004,11 @@
     },
     "qstring-double-multi-line":{
       "name": "string.quoted.double.multi.line",
-      "begin": "(\"{3,})",
+      "begin": "([\"']{3,})",
       "beginCaptures": {
         "0": "string.quoted.double.multi.line.start"
       },
-      "end": "(\"{3,})",
+      "end": "([\"']{3,})",
       "endCaptures": {
         "0": "string.quoted.double.multi.line.end"
       },
