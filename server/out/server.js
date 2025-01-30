@@ -32,7 +32,7 @@ const documents = new node_1.TextDocuments(vscode_languageserver_textdocument_1.
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
 exports.hasDiagnosticRelatedInformationCapability = false;
-//const completionStrings : string[] = [];
+const completionStrings = [];
 let debugStrs = ""; //Debug: ${workspaceFolder}\n";
 let pyTypings = [];
 let workspacePyTypings = [];
@@ -48,7 +48,6 @@ function appendFunctionData(si) { functionData.push(si); }
 function getFunctionData() { return functionData; }
 const supportedRoutes = [];
 function getSupportedRoutes() { return supportedRoutes; }
-// 
 /**
  * TODO: Implement system using semantic tokens
  * https://stackoverflow.com/questions/70490767/language-server-semantic-tokens

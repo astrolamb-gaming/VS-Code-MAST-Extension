@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MastFileCache = exports.PyFileCache = exports.FileCache = exports.Cache = void 0;
 exports.loadCache = loadCache;
 exports.getSourceFiles = getSourceFiles;
+exports.getCache = getCache;
 const data_1 = require("./data");
 const console_1 = require("console");
 const autocompletion_1 = require("./autocompletion");
@@ -10,6 +11,7 @@ const signatureHelp_1 = require("./signatureHelp");
 const rx_1 = require("./rx");
 const routeLabels_1 = require("./routeLabels");
 function loadCache(dir) {
+    cache = new Cache();
     const defSource = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/mast.py";
     const defSource2 = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/maststory.py";
     loadTypings().then(() => { (0, console_1.debug)("Typings Loaded"); });
@@ -22,7 +24,37 @@ function loadCache(dir) {
     });
 }
 class Cache {
-    constructor() { }
+    constructor() {
+        // string is the full file path and name
+        // FileCache is the information associated with the file
+        this.fileInfo = new Map();
+    }
+    getLabels() {
+        let li = [];
+        for (const f of this.fileInfo) {
+            li = li.concat(f[1].labelNames);
+        }
+        return li;
+    }
+    /**
+     * Get the FileCache associated with the filename
+     * @param name
+     * @returns FileCache
+     */
+    get(name) {
+        let ret = this.fileInfo.get(name);
+        if (ret === undefined) {
+            for (const f of this.fileInfo) {
+                if (f[0].endsWith(name)) {
+                    return f[1];
+                }
+            }
+        }
+        return ret;
+    }
+    set(file, info) {
+        this.fileInfo.set(file, info);
+    }
 }
 exports.Cache = Cache;
 class FileCache {
@@ -141,4 +173,8 @@ let files = [
     "sbs_utils/procedural/style",
     "sbs_utils/procedural/timers"
 ];
+let cache;
+function getCache() {
+    return cache;
+}
 //# sourceMappingURL=cache.js.map

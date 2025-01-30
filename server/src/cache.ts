@@ -8,7 +8,10 @@ import { prepSignatures } from './signatureHelp';
 import { parse, RX } from './rx';
 import { loadRouteLabels } from './routeLabels';
 
+
+
 export function loadCache(dir: string) {
+	cache = new Cache();
 	const defSource = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/mast.py";
 	const defSource2 = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/maststory.py";
 	loadTypings().then(()=>{ debug("Typings Loaded" )});
@@ -18,10 +21,45 @@ export function loadCache(dir: string) {
 		debug("Label?: ");
 		debug(exp.get("Label"));
 	});
+	
 }
+
+
 
 export class Cache {
 	constructor() {}
+	// string is the full file path and name
+	// FileCache is the information associated with the file
+	fileInfo: Map<string,FileCache> = new Map();
+
+	getLabels(): LabelInfo[] {
+		let li: LabelInfo[] = [];
+		for (const f of this.fileInfo) {
+			li = li.concat((f[1] as MastFileCache).labelNames);
+		}
+		return li;
+	}
+
+	/**
+	 * Get the FileCache associated with the filename
+	 * @param name 
+	 * @returns FileCache
+	 */
+	get(name:string): FileCache | undefined {
+		let ret = this.fileInfo.get(name);
+		if (ret === undefined) {
+			for (const f of this.fileInfo) {
+				if (f[0].endsWith(name)) {
+					return f[1];
+				}
+			}
+		}
+		return ret;
+	}
+	set(file:string, info: FileCache) {
+		this.fileInfo.set(file,info);
+	}
+
 
 
 }
@@ -136,3 +174,8 @@ let files: string[] = [
 	"sbs_utils/procedural/style",
 	"sbs_utils/procedural/timers"
 ];
+
+let cache: Cache;
+export function getCache(): Cache {
+	return cache;
+}

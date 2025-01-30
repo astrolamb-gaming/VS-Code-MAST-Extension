@@ -59,7 +59,7 @@ const documents = new TextDocuments(TextDocument);
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
 export let hasDiagnosticRelatedInformationCapability = false;
-//const completionStrings : string[] = [];
+const completionStrings : string[] = [];
 
 let debugStrs : string = "";//Debug: ${workspaceFolder}\n";
 
@@ -78,21 +78,10 @@ export function appendFunctionData(si: SignatureInformation) {functionData.push(
 export function getFunctionData(): SignatureInformation[] { return functionData; }
 
 
-
-
-
-
-
 const supportedRoutes: string[][] = [];
 export function getSupportedRoutes(): string[][] { return supportedRoutes; }
 
 
-
-
-
-
-
-// 
 /**
  * TODO: Implement system using semantic tokens
  * https://stackoverflow.com/questions/70490767/language-server-semantic-tokens

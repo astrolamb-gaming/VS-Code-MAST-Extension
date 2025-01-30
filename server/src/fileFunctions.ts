@@ -22,10 +22,7 @@ import {
 	InsertTextFormat,
 	WorkspaceFolder
 } from 'vscode-languageserver/node';
-import { appendFunctionData, myDebug } from './server';
-import { checkServerIdentity } from 'tls';
-
-import { getRegExMatch } from './data';
+import { myDebug } from './server';
 import { debug } from 'console';
 
 /**
