@@ -6,9 +6,12 @@ exports.getFolders = getFolders;
 exports.getFileContents = getFileContents;
 exports.getFilesInDir = getFilesInDir;
 exports.readAllFilesIn = readAllFilesIn;
+exports.getStoryJson = getStoryJson;
+exports.loadStoryJson = loadStoryJson;
 const path = require("path");
 const fs = require("fs");
 const console_1 = require("console");
+const AdmZip = require("adm-zip");
 /**
  * TODO: Use parsers.py to determine the style definitions available for UI elements
  * See https://github.com/artemis-sbs/sbs_utils/blob/master/sbs_utils/mast/parsers.py
@@ -79,7 +82,7 @@ function getFilesInDir(dir, includeChildren = true) {
         for (const f in files) {
             if (files[f].isDirectory()) {
                 if (includeChildren) {
-                    let newDir = path.join(dir, files[f].name);
+                    let newDir = path.join(uri, files[f].name);
                     ret = ret.concat(getFilesInDir(newDir, includeChildren));
                 }
             }
@@ -98,5 +101,62 @@ function readAllFilesIn(folder) {
     for (const f in files) {
         (0, console_1.debug)(files[f]);
     }
+}
+async function readZipArchive(filepath) {
+    const map = new Map();
+    try {
+        const zip = new AdmZip(filepath);
+        for (const zipEntry of zip.getEntries()) {
+            let data = zipEntry.getData().toString('utf-8');
+            map.set(filepath, data);
+        }
+    }
+    catch (e) {
+        console.log(`Unzipping ${filepath} failed. \n${e}`);
+    }
+    return map;
+}
+function getStoryJson(uri) {
+    let mission = findSubfolderByName("../../../", "missions");
+    (0, console_1.debug)(mission);
+    (0, console_1.debug)(uri);
+    let ret = "";
+    getFilesInDir(uri).forEach((file) => {
+        if (file.endsWith("story.json")) {
+            (0, console_1.debug)("Found file");
+            ret = file;
+        }
+    });
+    if (ret !== "") {
+        return ret;
+    }
+    const m = uri.indexOf("missions");
+    const end = m + 9;
+    const dir1 = uri.substring(end);
+    (0, console_1.debug)(dir1);
+    const n = dir1.indexOf("/");
+    if (n === -1) {
+        return uri;
+    }
+    ret = uri.substring(0, end + n + 1);
+    return ret;
+}
+async function loadStoryJson(uri) {
+    let story = "C:/Users/mholderbaum/Documents/Cosmos-1-0-0/data/missions/legendarymissions/story.json";
+    story = "story.json";
+    // getStoryJson(uri).replace(/\\/g,"/");
+    (0, console_1.debug)(story);
+    let ret = await fetch(story);
+    const json = ret.json();
+    (0, console_1.debug)(json);
+    // const data = getFileContents(story).then((content)=>{
+    // 	debug(content);
+    // });
+    // debug(data);
+    // const sj = JSON.parse(data);
+    // debug(sj);
+    // //const mastlib = sj["mastlib"];
+    // const sbslib = sj["sbslib"];
+    // debug(sbslib);
 }
 //# sourceMappingURL=fileFunctions.js.map

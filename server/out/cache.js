@@ -9,25 +9,27 @@ const console_1 = require("console");
 const autocompletion_1 = require("./autocompletion");
 const signatureHelp_1 = require("./signatureHelp");
 const rx_1 = require("./rx");
-const routeLabels_1 = require("./routeLabels");
+const fileFunctions_1 = require("./fileFunctions");
 function loadCache(dir) {
     cache = new Cache();
-    const defSource = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/mast.py";
-    const defSource2 = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/maststory.py";
-    loadTypings().then(() => { (0, console_1.debug)("Typings Loaded"); });
-    (0, routeLabels_1.loadRouteLabels)().then(() => { (0, console_1.debug)("Routes Loaded"); });
-    getRexEx(defSource).then(() => { (0, console_1.debug)("Regular Expressions gotten"); });
-    getRexEx(defSource2).then(() => {
-        (0, console_1.debug)("Regular Expressions 2 gotten");
-        (0, console_1.debug)("Label?: ");
-        (0, console_1.debug)(exp.get("Label"));
-    });
+    // const defSource = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/mast.py";
+    // const defSource2 = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/maststory.py";
+    // loadTypings().then(()=>{ debug("Typings Loaded" )});
+    // loadRouteLabels().then(()=>{ debug("Routes Loaded") });
+    // getRexEx(defSource).then(()=>{ debug("Regular Expressions gotten")});
+    // getRexEx(defSource2).then(()=>{ debug("Regular Expressions 2 gotten")
+    // 	debug("Label?: ");
+    // 	debug(exp.get("Label"));
+    // });
+    (0, fileFunctions_1.loadStoryJson)(dir);
+    //debug(getStoryJson(dir));
 }
 class Cache {
     constructor() {
         // string is the full file path and name
         // FileCache is the information associated with the file
         this.fileInfo = new Map();
+        this.modulesLoaded = false;
     }
     getLabels() {
         let li = [];

@@ -7,21 +7,23 @@ import { prepCompletions } from './autocompletion';
 import { prepSignatures } from './signatureHelp';
 import { parse, RX } from './rx';
 import { loadRouteLabels } from './routeLabels';
+import { getStoryJson, loadStoryJson } from './fileFunctions';
 
 
 
 export function loadCache(dir: string) {
 	cache = new Cache();
-	const defSource = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/mast.py";
-	const defSource2 = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/maststory.py";
-	loadTypings().then(()=>{ debug("Typings Loaded" )});
-	loadRouteLabels().then(()=>{ debug("Routes Loaded") });
-	getRexEx(defSource).then(()=>{ debug("Regular Expressions gotten")});
-	getRexEx(defSource2).then(()=>{ debug("Regular Expressions 2 gotten")
-		debug("Label?: ");
-		debug(exp.get("Label"));
-	});
-	
+	// const defSource = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/mast.py";
+	// const defSource2 = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/maststory.py";
+	// loadTypings().then(()=>{ debug("Typings Loaded" )});
+	// loadRouteLabels().then(()=>{ debug("Routes Loaded") });
+	// getRexEx(defSource).then(()=>{ debug("Regular Expressions gotten")});
+	// getRexEx(defSource2).then(()=>{ debug("Regular Expressions 2 gotten")
+	// 	debug("Label?: ");
+	// 	debug(exp.get("Label"));
+	// });
+	loadStoryJson(dir);
+	//debug(getStoryJson(dir));
 }
 
 
@@ -31,6 +33,8 @@ export class Cache {
 	// string is the full file path and name
 	// FileCache is the information associated with the file
 	fileInfo: Map<string,FileCache> = new Map();
+
+	modulesLoaded: boolean = false;
 
 	getLabels(): LabelInfo[] {
 		let li: LabelInfo[] = [];

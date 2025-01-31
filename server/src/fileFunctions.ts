@@ -24,6 +24,7 @@ import {
 } from 'vscode-languageserver/node';
 import { myDebug } from './server';
 import { debug } from 'console';
+import AdmZip = require("adm-zip");
 
 /**
  * TODO: Use parsers.py to determine the style definitions available for UI elements
@@ -103,7 +104,7 @@ export function getFilesInDir(dir: string, includeChildren: boolean = true): str
 		for (const f in files) {
 			if (files[f].isDirectory()) {
 				if (includeChildren) {
-					let newDir = path.join(dir, files[f].name);
+					let newDir = path.join(uri, files[f].name);
 					ret = ret.concat(getFilesInDir(newDir, includeChildren));
 				}
 			} else {
@@ -123,4 +124,72 @@ export function readAllFilesIn(folder: WorkspaceFolder) {
 	for (const f in files) {
 		debug(files[f]);
 	}
+}
+
+
+
+async function readZipArchive(filepath: string) {
+	const map: Map<string, string> = new Map();
+	try {
+		const zip = new AdmZip(filepath);
+		for (const zipEntry of zip.getEntries()) {
+			let data = zipEntry.getData().toString('utf-8');
+			map.set(filepath,data);
+		}
+	} catch (e) {
+		console.log(`Unzipping ${filepath} failed. \n${e}`);
+	}
+	return map;
+}
+
+export function getStoryJson(uri: string) {
+	let mission = findSubfolderByName("../../../","missions");
+	debug(mission);
+	debug(uri);
+	let ret = "";
+	getFilesInDir(uri).forEach((file)=>{
+		if (file.endsWith("story.json")) {
+			debug("Found file");
+			ret = file;
+		}
+	});
+	if (ret !== "") {
+		return ret;
+	}
+	const m = uri.indexOf("missions");
+	const end = m + 9;
+	const dir1 = uri.substring(end);
+	debug(dir1);
+	const n = dir1.indexOf("/");
+	if (n === -1) {
+		return uri;
+	}
+	ret = uri.substring(0,end + n + 1);
+	return ret;
+}
+
+export async function loadStoryJson(uri: string) {
+	let story = "C:/Users/mholderbaum/Documents/Cosmos-1-0-0/data/missions/legendarymissions/story.json";
+	story = "story.json"
+	// getStoryJson(uri).replace(/\\/g,"/");
+	debug(story);
+	let ret = await fetch(story);
+	const json = ret.json();
+	debug(json);
+	// const data = getFileContents(story).then((content)=>{
+	// 	debug(content);
+	// });
+	// debug(data);
+	// const sj = JSON.parse(data);
+	// debug(sj);
+	// //const mastlib = sj["mastlib"];
+	// const sbslib = sj["sbslib"];
+	// debug(sbslib);
+}
+
+//readZipArchive("C:/Users/mholderbaum/Documents/Cosmos-1-0-0/data/missions/__lib__/artemis-sbs.LegendaryMissions.autoplay.v3.9.39.mastlib");
+
+interface StoryJson {
+	mastlib: string[],
+	sbslib: string[]
 }
