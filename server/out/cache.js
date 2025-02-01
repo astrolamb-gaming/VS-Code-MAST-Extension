@@ -1,9 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MastFileCache = exports.PyFileCache = exports.FileCache = exports.Cache = void 0;
+exports.StoryJson = exports.MastFileCache = exports.PyFileCache = exports.MissionCache = void 0;
 exports.loadCache = loadCache;
 exports.getSourceFiles = getSourceFiles;
 exports.getCache = getCache;
+const fs = require("fs");
+const path = require("path");
 const data_1 = require("./data");
 const console_1 = require("console");
 const autocompletion_1 = require("./autocompletion");
@@ -11,7 +13,8 @@ const signatureHelp_1 = require("./signatureHelp");
 const rx_1 = require("./rx");
 const fileFunctions_1 = require("./fileFunctions");
 function loadCache(dir) {
-    cache = new Cache();
+    // TODO: Need a list of caches, in case there are files from more than one mission folder open
+    cache = new MissionCache(dir);
     // const defSource = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/mast.py";
     // const defSource2 = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/maststory.py";
     // loadTypings().then(()=>{ debug("Typings Loaded" )});
@@ -21,51 +24,84 @@ function loadCache(dir) {
     // 	debug("Label?: ");
     // 	debug(exp.get("Label"));
     // });
-    (0, fileFunctions_1.loadStoryJson)(dir);
     //debug(getStoryJson(dir));
 }
-class Cache {
-    constructor() {
+class MissionCache {
+    constructor(workspaceUri) {
+        this.missionName = "";
+        this.missionURI = "";
+        this.missionPyModules = [];
+        this.missionMastModules = [];
         // string is the full file path and name
         // FileCache is the information associated with the file
-        this.fileInfo = new Map();
-        this.modulesLoaded = false;
+        this.pyFileInfo = new Map();
+        this.mastFileInfo = new Map();
+        this.missionURI = (0, fileFunctions_1.getMissionFolder)(workspaceUri);
+        this.missionName = path.basename(this.missionURI);
+        this.storyJson = new StoryJson(path.join(this.missionURI, "story.json"));
+        this.storyJson.readFile().then(() => { this.modulesLoaded(); });
+        let files = (0, fileFunctions_1.getFilesInDir)(this.missionURI);
+        for (const file of files) {
+            if (path.extname(file) === "mast") {
+                (0, console_1.debug)(file);
+                if (path.basename(file).includes("__init__")) {
+                    (0, console_1.debug)("INIT file found");
+                }
+                else {
+                    // Parse MAST File
+                    const m = new data_1.MastFile(file);
+                }
+            }
+            if (path.extname(file) === "py") {
+                (0, console_1.debug)(file);
+                // Parse Python File
+                const p = new data_1.PyFile(file);
+                this.pyFileInfo.set(file, p);
+            }
+        }
+    }
+    modulesLoaded() {
+        const uri = this.missionURI;
+        const missionLibFolder = path.join((0, fileFunctions_1.getParentFolder)(uri), "__lib__");
+        for (const zip of this.storyJson.sbslib) {
+            const zipPath = path.join(missionLibFolder, zip);
+            (0, fileFunctions_1.readZipArchive)(zipPath).then((data) => {
+                this.handleZipData(data);
+            }).catch(err => {
+                (0, console_1.debug)("Error unzipping. \n" + err);
+            });
+        }
+        for (const zip of this.storyJson.mastlib) {
+            const zipPath = path.join(missionLibFolder, zip);
+            (0, fileFunctions_1.readZipArchive)(zipPath).then((data) => {
+                this.handleZipData(data);
+            }).catch(err => {
+                (0, console_1.debug)("Error unzipping. \n" + err);
+            });
+        }
+    }
+    handleZipData(zip) {
+        zip.forEach((file, data) => {
+            if (file.endsWith(".py")) {
+                const p = new data_1.PyFile(file, data);
+                this.missionPyModules.push(p);
+            }
+            if (file.endsWith(".mast")) {
+                const m = new data_1.MastFile(file, data);
+                this.missionMastModules.push(m);
+            }
+        });
     }
     getLabels() {
         let li = [];
-        for (const f of this.fileInfo) {
+        for (const f of this.mastFileInfo) {
             li = li.concat(f[1].labelNames);
         }
         return li;
     }
-    /**
-     * Get the FileCache associated with the filename
-     * @param name
-     * @returns FileCache
-     */
-    get(name) {
-        let ret = this.fileInfo.get(name);
-        if (ret === undefined) {
-            for (const f of this.fileInfo) {
-                if (f[0].endsWith(name)) {
-                    return f[1];
-                }
-            }
-        }
-        return ret;
-    }
-    set(file, info) {
-        this.fileInfo.set(file, info);
-    }
 }
-exports.Cache = Cache;
-class FileCache {
-    constructor() {
-        this.variableNames = [];
-    }
-}
-exports.FileCache = FileCache;
-class PyFileCache extends FileCache {
+exports.MissionCache = MissionCache;
+class PyFileCache extends data_1.FileCache {
     constructor() {
         super(...arguments);
         this.classTypings = [];
@@ -74,13 +110,40 @@ class PyFileCache extends FileCache {
     }
 }
 exports.PyFileCache = PyFileCache;
-class MastFileCache extends FileCache {
+class MastFileCache extends data_1.FileCache {
     constructor() {
         super(...arguments);
         this.labelNames = [];
     }
 }
 exports.MastFileCache = MastFileCache;
+class StoryJson {
+    constructor(uri) {
+        this.uri = "";
+        this.sbslib = [];
+        this.mastlib = [];
+        this.complete = false;
+        this.uri = uri;
+    }
+    /**
+     * Must be called after instantiating the object.
+     */
+    async readFile() {
+        const data = fs.readFileSync(this.uri, "utf-8");
+        this.parseFile(data);
+    }
+    /** Only call this from readFile() */
+    parseFile(text) {
+        const story = JSON.parse(text);
+        (0, console_1.debug)(story);
+        if (story.sbslib)
+            this.sbslib = story.sbslib;
+        if (story.mastlib)
+            this.mastlib = story.mastlib;
+        this.complete = true;
+    }
+}
+exports.StoryJson = StoryJson;
 const sourceFiles = [];
 function getSourceFiles() { return sourceFiles; }
 async function loadTypings() {
@@ -89,11 +152,13 @@ async function loadTypings() {
         //const fetch = await import('node-fetch');
         //let github : string = "https://github.com/artemis-sbs/sbs_utils/raw/refs/heads/master/mock/sbs.py";
         let gh = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/typings/";
+        // TODO: try getting local files. If this fails, then use the github files.
         for (const page in files) {
             let url = gh + files[page] + ".pyi";
             const data = await fetch(url);
             const textData = await data.text();
-            sourceFiles.push((0, data_1.parseWholeFile)(textData, files[page]));
+            //sourceFiles.push(parseWholeFile(textData, files[page]));
+            sourceFiles.push(new data_1.PyFile(url));
         }
         (0, autocompletion_1.prepCompletions)(sourceFiles);
         (0, signatureHelp_1.prepSignatures)(sourceFiles);

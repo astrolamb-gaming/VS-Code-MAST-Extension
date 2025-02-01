@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.getLabels = getLabels;
 exports.checkLabels = checkLabels;
 exports.getMainLabelAtPos = getMainLabelAtPos;
 const vscode_languageserver_1 = require("vscode-languageserver");

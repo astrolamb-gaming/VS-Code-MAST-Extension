@@ -42,7 +42,7 @@ import { onCompletion, prepCompletions } from './autocompletion';
 import { debug} from 'console';
 import { onHover } from './hover';
 import { onSignatureHelp, prepSignatures } from './signatureHelp';
-import { ClassTypings, parseWholeFile, PyFile } from './data';
+import { ClassTypings, PyFile } from './data';
 import { loadRouteLabels } from './routeLabels';
 import { parse, RX } from './rx';
 import { getComments } from './comments';
@@ -147,7 +147,6 @@ connection.onInitialize((params: InitializeParams) => {
 	}
 
 	if (params.workspaceFolders) {
-		debug("Workspace Folders true");
 		const workspaceFolder = params.workspaceFolders[0];
 		debug(workspaceFolder.uri);
 		//readAllFilesIn(workspaceFolder);
@@ -363,6 +362,7 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 
 connection.onDidChangeWatchedFiles(_change => {
 	// Monitored files have change in VSCode
+	debug(_change.changes);
 	connection.console.log('We received a file change event');
 });
 

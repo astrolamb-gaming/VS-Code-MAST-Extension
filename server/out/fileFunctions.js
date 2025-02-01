@@ -4,10 +4,13 @@ exports.getRootFolder = getRootFolder;
 exports.findSubfolderByName = findSubfolderByName;
 exports.getFolders = getFolders;
 exports.getFileContents = getFileContents;
+exports.readFile = readFile;
 exports.getFilesInDir = getFilesInDir;
 exports.readAllFilesIn = readAllFilesIn;
+exports.readZipArchive = readZipArchive;
 exports.getStoryJson = getStoryJson;
-exports.loadStoryJson = loadStoryJson;
+exports.getParentFolder = getParentFolder;
+exports.getMissionFolder = getMissionFolder;
 const path = require("path");
 const fs = require("fs");
 const console_1 = require("console");
@@ -69,8 +72,19 @@ function getFolders(dir) {
  * @returns A promise containing the text contents of the file specified
  */
 async function getFileContents(dir) {
-    const entries = await fetch(dir);
+    const uri = dir.replace("file:///c%3A", "C:");
+    const entries = await fetch(uri);
     return entries.text();
+}
+async function readFile(dir) {
+    let ret = "";
+    const d = fs.readFile(dir, "utf-8", (err, data) => {
+        if (err) {
+            (0, console_1.debug)("error reading file: " + dir + "\n" + err);
+        }
+        ret = data;
+    });
+    return ret;
 }
 function getFilesInDir(dir, includeChildren = true) {
     let ret = [];
@@ -107,8 +121,10 @@ async function readZipArchive(filepath) {
     try {
         const zip = new AdmZip(filepath);
         for (const zipEntry of zip.getEntries()) {
-            let data = zipEntry.getData().toString('utf-8');
-            map.set(filepath, data);
+            if (!zipEntry.isDirectory) {
+                let data = zipEntry.getData().toString('utf-8');
+                map.set(zipEntry.entryName, data);
+            }
         }
     }
     catch (e) {
@@ -141,22 +157,21 @@ function getStoryJson(uri) {
     ret = uri.substring(0, end + n + 1);
     return ret;
 }
-async function loadStoryJson(uri) {
-    let story = "C:/Users/mholderbaum/Documents/Cosmos-1-0-0/data/missions/legendarymissions/story.json";
-    story = "story.json";
-    // getStoryJson(uri).replace(/\\/g,"/");
-    (0, console_1.debug)(story);
-    let ret = await fetch(story);
-    const json = ret.json();
-    (0, console_1.debug)(json);
-    // const data = getFileContents(story).then((content)=>{
-    // 	debug(content);
-    // });
-    // debug(data);
-    // const sj = JSON.parse(data);
-    // debug(sj);
-    // //const mastlib = sj["mastlib"];
-    // const sbslib = sj["sbslib"];
-    // debug(sbslib);
+function getParentFolder(childUri) {
+    return (path.dirname(childUri));
 }
+function getMissionFolder(uri) {
+    uri = uri.replace("file:///c%3A", "C:");
+    uri = path.normalize(uri);
+    let parent = getParentFolder(uri);
+    let count = 0;
+    while (!getParentFolder(parent).endsWith("missions")) {
+        parent = getParentFolder(parent);
+        count++;
+        if (count > 5)
+            break;
+    }
+    return parent;
+}
+//readZipArchive("C:/Users/mholderbaum/Documents/Cosmos-1-0-0/data/missions/__lib__/artemis-sbs.LegendaryMissions.autoplay.v3.9.39.mastlib");
 //# sourceMappingURL=fileFunctions.js.map

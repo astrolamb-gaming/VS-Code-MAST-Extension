@@ -101,7 +101,6 @@ connection.onInitialize((params) => {
         };
     }
     if (params.workspaceFolders) {
-        (0, console_1.debug)("Workspace Folders true");
         const workspaceFolder = params.workspaceFolders[0];
         (0, console_1.debug)(workspaceFolder.uri);
         //readAllFilesIn(workspaceFolder);
@@ -265,6 +264,7 @@ async function validateTextDocument(textDocument) {
 }
 connection.onDidChangeWatchedFiles(_change => {
     // Monitored files have change in VSCode
+    (0, console_1.debug)(_change.changes);
     connection.console.log('We received a file change event');
 });
 /**

@@ -21,7 +21,7 @@ export interface LabelInfo {
  * @param main search for main labels (==main_label==) if true, or sublabels (--sublabel--) if false
  * @returns 
  */
-function getLabels(textDocument: TextDocument, main: boolean = true): LabelInfo[] {
+export function getLabels(textDocument: TextDocument, main: boolean = true): LabelInfo[] {
 	let definedLabel : RegExp;
 	if (main) {
 		definedLabel = /^(\s*)(={2,}\s*[ \t]*)(\w+)([ \t]*(={2,})?)/gm

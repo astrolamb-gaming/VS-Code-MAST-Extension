@@ -1,21 +1,144 @@
+import * as path from 'path';
+import * as fs from 'fs';
 import { debug } from 'console';
 import { CompletionItem, CompletionItemKind, CompletionItemLabelDetails, integer, MarkupContent, ParameterInformation, SignatureInformation } from 'vscode-languageserver';
+import { getLabels, LabelInfo } from './labels';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 
-
-
-
-
-export interface MastFile {
-	uri: string,
-	// TODO: Add support for holding label information for all files listed in __init__.mast in a given folder.
-	// TODO: Add system for tracking variables in a mast file
+export class FileCache {
+	uri: string;
+	variableNames: string[] = [];
+	constructor(uri: string) {
+		this.uri = uri;
+	}
+	parseVariables(contents: string) {
+		let pattern = /^\s*?(\w+)\s*?=\s*?[^\s\+=-\\*\/].*$/gm;
+		let m: RegExpExecArray | null;
+		let catcher = 0;
+		while (m = pattern.exec(contents)) {
+			const variable = m[0];
+			
+			debug(variable);
+			catcher++;
+			if (catcher > 20) {
+				continue;
+			}
+		}
+	}
 }
 
-export interface PyFile {
-	uri: string,
-	defaultFunctions: Function[],
-	defaultFunctionCompletionItems: CompletionItem[],
-	classes: IClassObject[]
+export class MastFile extends FileCache {
+	labelNames : LabelInfo[] = [];
+	// TODO: Add support for holding label information for all files listed in __init__.mast in a given folder.
+	// TODO: Add system for tracking variables in a mast file
+	constructor(uri: string, fileContents:string = "") {
+		super(uri);
+		if (fileContents !== "") {
+			this.parse(fileContents);
+		}
+		if (path.extname(uri) === "mast") {
+			const d = fs.readFile(uri, "utf-8", (err,data)=>{
+				if (err) {
+					debug("error reading file: " + uri + "\n" + err);
+				} else {
+					this.parse(data);
+				}
+			});
+		} else if (path.extname(uri) === "py") {
+			// Shouldn't do anything, Py files are very different from mast
+		}
+	}
+
+	parse(text: string) {
+		const textDocument: TextDocument = TextDocument.create(this.uri, "mast", 1, text);
+		const mainLabels : LabelInfo[] = getLabels(textDocument,true);
+		const subLabels : LabelInfo[] = getLabels(textDocument,false);
+		// Add child labels to their parent
+		for (const i in mainLabels) {
+			const ml = mainLabels[i];
+			for (const j in subLabels) {
+				const sl = subLabels[j];
+				if (sl.start > ml.start && sl.start < ml.end) {
+					ml.subLabels.push(sl.name);
+				}
+			}
+		}
+		this.labelNames = this.labelNames.concat(mainLabels);
+	}
+}
+
+export class PyFile extends FileCache {
+	defaultFunctions: Function[] = [];
+	defaultFunctionCompletionItems: CompletionItem[] = [];
+	classes: IClassObject[] = [];
+	constructor(uri: string, fileContents:string = "") {
+		super(uri);
+		if (fileContents !== "") {
+			this.parseWholeFile(fileContents, uri);
+		}
+		if (path.extname(uri) === "py") {
+			const d = fs.readFile(uri, "utf-8", (err,data)=>{
+				if (err) {
+					debug("error reading file: " + uri + "\n" + err);
+				} else {
+					this.parseWholeFile(data,uri);
+				}
+			});
+		} else if (path.extname(uri) === "mast") {
+			// Shouldn't do anything, Py files are very different from mast
+		}
+	}
+
+	parseWholeFile(text: string, source: string) {
+		// super.parseVariables(text); We don't actually want to look for variable names in python files
+		let className : RegExp = /^class .+?:/gm; // Look for "class ClassName:" to parse class names.
+		//const parentClass: RegExp = /\(\w*?\):/
+		let comment : RegExp = /((\"){3,3}(.*?)(\"){3,3})|(\.\.\.)/m;
+		let checkText: string;
+		let classIndices : integer[] = [];
+		let m: RegExpExecArray | null;
+	
+		// Iterate over all classes to get their indices
+		//classIndices.push(0);
+		while(m = className.exec(text)) {
+			classIndices.push(m.index);
+			//debug("" + m.index + ": " +m[0]);
+		}
+		classIndices.push(text.length-1);
+	
+		let len = classIndices.length; // How many indices there are - NOT the same as number of classes (should be # of classes - 1)
+	
+		// const file: PyFile = {
+		// 	uri: source,
+		// 	defaultFunctions: [],
+		// 	defaultFunctionCompletionItems: [],
+		// 	classes: []
+		// }
+		
+		// Here we go over all the indices and get all functions between the last index (or 0) and the current index.
+		// So if the file doesn't start with a class definition, all function prior to a class definition are added to the default functions
+		// while class functions are addded to a ClassObject object.
+		for (let i = 0; i < len; i++) {
+			let t: string;
+			if (i === 0) {
+				t = text.substring(0,classIndices[0]);
+			} else {
+				t = text.substring(classIndices[i-1],classIndices[i]);
+			}
+			
+			const co = new ClassObject(t,source);
+			// Since sbs functions aren't part of a class, but do need a "sbs." prefix, we pretend sbs is its own class.
+			if (co.name === "") {
+				this.defaultFunctions = co.methods;
+				for (const m in co.methods) {
+					this.defaultFunctionCompletionItems.push(co.methods[m].completionItem);
+				}
+			} else {
+				// Only add to class list if it's actually a class (or sbs)
+				this.classes.push(co);
+			}
+		}
+	}
 }
 
 export interface ClassTypings {
@@ -314,57 +437,6 @@ export function getRegExMatch(sourceString : string, pattern : RegExp) : string 
 	return ret;
 }
 
-export function parseWholeFile(text: string, source: string): PyFile {
-	let className : RegExp = /^class .+?:/gm; // Look for "class ClassName:" to parse class names.
-	//const parentClass: RegExp = /\(\w*?\):/
-	let comment : RegExp = /((\"){3,3}(.*?)(\"){3,3})|(\.\.\.)/m;
-	let checkText: string;
-	let classIndices : integer[] = [];
-	let m: RegExpExecArray | null;
-
-	// Iterate over all classes to get their indices
-	//classIndices.push(0);
-	while(m = className.exec(text)) {
-		classIndices.push(m.index);
-		//debug("" + m.index + ": " +m[0]);
-	}
-	classIndices.push(text.length-1);
-
-	let len = classIndices.length; // How many indices there are - NOT the same as number of classes (should be # of classes - 1)
-
-	const file: PyFile = {
-		uri: source,
-		defaultFunctions: [],
-		defaultFunctionCompletionItems: [],
-		classes: []
-	}
-	
-	// Here we go over all the indices and get all functions between the last index (or 0) and the current index.
-	// So if the file doesn't start with a class definition, all function prior to a class definition are added to the default functions
-	// while class functions are addded to a ClassObject object.
-	for (let i = 0; i < len; i++) {
-		let t: string;
-		if (i === 0) {
-			t = text.substring(0,classIndices[0]);
-		} else {
-			t = text.substring(classIndices[i-1],classIndices[i]);
-		}
-		
-		const co = new ClassObject(t,source);
-		// Since sbs functions aren't part of a class, but do need a "sbs." prefix, we pretend sbs is its own class.
-		if (co.name === "") {
-			file.defaultFunctions = co.methods;
-			for (const m in co.methods) {
-				file.defaultFunctionCompletionItems.push(co.methods[m].completionItem);
-			}
-		} else {
-			// Only add to class list if it's actually a class (or sbs)
-			file.classes.push(co);
-		}
-	}
-
-	return file;
-}
 
 /**
  * Gets all functions within a particular module or class.
