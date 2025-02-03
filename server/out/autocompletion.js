@@ -5,9 +5,9 @@ exports.onCompletion = onCompletion;
 const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
 const labels_1 = require("./labels");
-const server_1 = require("./server");
 const routeLabels_1 = require("./routeLabels");
 const comments_1 = require("./comments");
+const cache_1 = require("./cache");
 let classes = [];
 let defaultFunctionCompletionItems = [];
 /**
@@ -41,7 +41,7 @@ function onCompletion(_textDocumentPosition, text) {
     const iStr = t.substring(startOfLine, pos);
     //debug("" + startOfLine as string);
     //
-    // debug(iStr);
+    (0, console_1.debug)(iStr);
     let keywords = [
         "def",
         "async",
@@ -60,12 +60,16 @@ function onCompletion(_textDocumentPosition, text) {
         return ci;
     }
     // If we're defining a label, we don't want autocomplete.
-    if (iStr.includes("--") || iStr.includes("==")) {
+    if (iStr.trim().startsWith("--") || iStr.trim().startsWith("==")) {
         return ci;
     }
     // Media labels only get the skybox names
-    if (iStr.endsWith("@media/skybox/")) {
+    else if (iStr.endsWith("@media/skybox/")) {
         return (0, routeLabels_1.getSkyboxCompletionItems)();
+        // Get Music Options (default vs Artemis2)
+    }
+    else if (iStr.endsWith("@media/music/")) {
+        return (0, routeLabels_1.getMusic)();
     }
     // Route Label autocompletion
     if (iStr.trim().startsWith("//") || iStr.trim().startsWith("@")) {
@@ -94,10 +98,11 @@ function onCompletion(_textDocumentPosition, text) {
     // Handle label autocompletion
     let jump = /(->|jump) *?$/;
     if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (")) {
-        for (const i in server_1.labelNames) {
-            ci.push({ label: server_1.labelNames[i].name, kind: vscode_languageserver_1.CompletionItemKind.Event });
+        let labelNames = (0, cache_1.getCache)(text.uri).getLabels(text.uri);
+        for (const i in labelNames) {
+            ci.push({ label: labelNames[i].name, kind: vscode_languageserver_1.CompletionItemKind.Event });
         }
-        const lbl = (0, labels_1.getMainLabelAtPos)(startOfLine, server_1.labelNames).subLabels;
+        const lbl = (0, labels_1.getMainLabelAtPos)(startOfLine, labelNames).subLabels;
         for (const i in lbl) {
             ci.push({ label: lbl[i], kind: vscode_languageserver_1.CompletionItemKind.Event });
         }
@@ -110,20 +115,36 @@ function onCompletion(_textDocumentPosition, text) {
     // 	// }
     // 	return ci;
     // }
-    // First we check if it should be just stuff from a particular class
-    for (const i in classes) {
-        if (iStr.endsWith(classes[i].name + ".")) {
-            return ci.concat(classes[i].methodCompletionItems);
+    /**
+        All of this is now done by MissionCache#getCompletions()
+        // First we check if it should be just stuff from a particular class
+        for (const i in classes) {
+            if (iStr.endsWith(classes[i].name + ".")) {
+                return ci.concat(classes[i].methodCompletionItems);
+            }
+        }
+        // If it doesn't belong to a particular class, add class constructor to the list of completion items
+        for (const i in classes) {
+            //if (classes[i].constructorFunction !== undefined) {
+                ci.push(classes[i].completionItem);
+            //}
+        }
+    */
+    (0, console_1.debug)("Checking getCompletions");
+    //debug(text.uri);
+    (0, console_1.debug)(ci);
+    const cache = (0, cache_1.getCache)(text.uri);
+    // Check if this is a class
+    for (const c of cache.missionClasses) {
+        if (iStr.endsWith(c.name + ".")) {
+            (0, console_1.debug)(iStr + " contains" + c.name);
+            return c.methodCompletionItems;
         }
     }
-    // If it doesn't belong to a particular class, add class constructor to the list of completion items
-    for (const i in classes) {
-        //if (classes[i].constructorFunction !== undefined) {
-        ci.push(classes[i].completionItem);
-        //}
-    }
-    ci = ci.concat(defaultFunctionCompletionItems);
-    // TODO: Account for text that's already present
+    ci = cache.getCompletions();
+    (0, console_1.debug)(ci.length);
+    //ci = ci.concat(defaultFunctionCompletionItems);
+    // TODO: Account for text that's already present??
     // - Remove the text from the start of the completion item label
     return ci;
 }

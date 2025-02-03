@@ -73,7 +73,7 @@ export function getLabels(textDocument: TextDocument, main: boolean = true): Lab
 				end = labels[i].start-1;
 			}
 		}
-		const mainLabel: LabelInfo = { main: true, name: "main", start: 0,end: text.length, length: 3, subLabels: [] }
+		const mainLabel: LabelInfo = { main: true, name: "main", start: 0, end: end, length: 4, subLabels: [] }
 	}
 	return labels
 }
@@ -164,7 +164,8 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 				message: "Specified label does not exist in this file. Make sure that this label is defined before use.",
 				source: "mast"
 			}
-			d.relatedInformation = relatedMessage(textDocument, d.range, "Labels must be defined in a format beginning (and optionally ending) with two or more = or - signs. They may use A-Z, a-z, 0-9, and _ in their names. Other characters are not allowed.");
+			//d.relatedInformation = relatedMessage(textDocument, d.range, "Labels must be defined in a format beginning (and optionally ending) with two or more = or - signs. They may use A-Z, a-z, 0-9, and _ in their names. Other characters are not allowed.");
+			//d.relatedInformation = relatedMessage(textDocument, d.range, "");
 			diagnostics.push(d);
 		}
 	}

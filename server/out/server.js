@@ -3,9 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.labelNames = exports.hasDiagnosticRelatedInformationCapability = void 0;
 exports.getPyTypings = getPyTypings;
 exports.getClassTypings = getClassTypings;
-exports.appendFunctionData = appendFunctionData;
-exports.getFunctionData = getFunctionData;
-exports.getSupportedRoutes = getSupportedRoutes;
 exports.updateLabelNames = updateLabelNames;
 exports.myDebug = myDebug;
 /* --------------------------------------------------------------------------------------------
@@ -14,6 +11,7 @@ exports.myDebug = myDebug;
  * ------------------------------------------------------------------------------------------ */
 //// <reference path="../src/sbs.pyi" />
 const node_1 = require("vscode-languageserver/node");
+const vscode_uri_1 = require("vscode-uri");
 const vscode_languageserver_textdocument_1 = require("vscode-languageserver-textdocument");
 const errorChecking_1 = require("./errorChecking");
 const labels_1 = require("./labels");
@@ -43,11 +41,11 @@ function getClassTypings() { return classTypings; }
 exports.labelNames = [];
 let typingsDone = false;
 let currentDocument;
-let functionData = [];
-function appendFunctionData(si) { functionData.push(si); }
-function getFunctionData() { return functionData; }
-const supportedRoutes = [];
-function getSupportedRoutes() { return supportedRoutes; }
+// let functionData : SignatureInformation[] = [];
+// export function appendFunctionData(si: SignatureInformation) {functionData.push(si);}
+// export function getFunctionData(): SignatureInformation[] { return functionData; }
+// const supportedRoutes: string[][] = [];
+// export function getSupportedRoutes(): string[][] { return supportedRoutes; }
 /**
  * TODO: Implement system using semantic tokens
  * https://stackoverflow.com/questions/70490767/language-server-semantic-tokens
@@ -104,7 +102,9 @@ connection.onInitialize((params) => {
         const workspaceFolder = params.workspaceFolders[0];
         (0, console_1.debug)(workspaceFolder.uri);
         //readAllFilesIn(workspaceFolder);
-        (0, cache_1.loadCache)(workspaceFolder.uri);
+        const uri = vscode_uri_1.URI.parse(workspaceFolder.uri);
+        (0, console_1.debug)(uri.fsPath);
+        (0, cache_1.loadCache)(uri.fsPath);
     }
     else {
         (0, console_1.debug)("No Workspace folders");

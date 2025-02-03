@@ -4,14 +4,16 @@ exports.getSkyboxCompletionItems = getSkyboxCompletionItems;
 exports.loadMediaLabels = loadMediaLabels;
 exports.loadRouteLabels = loadRouteLabels;
 exports.getRouteLabelAutocompletions = getRouteLabelAutocompletions;
+exports.getMusic = getMusic;
 const console_1 = require("console");
+const path = require("path");
 const vscode_languageserver_1 = require("vscode-languageserver");
 const fileFunctions_1 = require("./fileFunctions");
 const routeLabels = [];
 const mediaLabels = [];
 const resourceLabels = [];
 const supportedRoutes = [];
-const routeDefSource = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/mast.py";
+const routeDefSource = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast_sbs/story_nodes/route_label.py";
 const mediaDefSource = "https://github.com/artemis-sbs/sbs_utils/blob/master/sbs_utils/procedural/media.py";
 const labelDetails = {
     // Decided that this clutters up the UI too much. Same information is displayed in the CompletionItem details.
@@ -129,6 +131,7 @@ async function loadMediaLabels() {
     catch (e) {
         (0, console_1.debug)(e);
     }
+    return mediaLabels;
 }
 /**
  * Parse the sbs_utils/mast/mast.py file to find all the valid route labels
@@ -291,9 +294,24 @@ function getSkyboxes() {
                 let sb = file.substring(last + 1).replace(".png", "");
                 skyboxes.push(sb);
                 ci.push({
-                    label: sb
+                    label: path.basename(file).replace(".png", "")
                 });
             }
+        }
+    }
+    return ci;
+}
+function getMusic() {
+    const options = [];
+    const ci = [];
+    let initialDir = "../../../../";
+    const music = (0, fileFunctions_1.findSubfolderByName)(initialDir, "music");
+    if (music !== null) {
+        const files = (0, fileFunctions_1.getFolders)(music);
+        for (const file of files) {
+            ci.push({
+                label: path.basename(file)
+            });
         }
     }
     return ci;

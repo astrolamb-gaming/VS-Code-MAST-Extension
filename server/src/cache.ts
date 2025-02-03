@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { CompletionItem, SignatureInformation } from 'vscode-languageserver';
-import { ClassTypings, FileCache, MastFile, PyFile } from './data';
+import { ClassTypings, FileCache, IClassObject, MastFile, PyFile } from './data';
 import { LabelInfo } from './labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
@@ -10,16 +10,27 @@ import { prepSignatures } from './signatureHelp';
 import { parse, RX } from './rx';
 import { loadRouteLabels } from './routeLabels';
 import { getFilesInDir, getMissionFolder, getParentFolder, readZipArchive } from './fileFunctions';
+import { updateLabelNames } from './server';
+import { URI } from 'vscode-uri';
 
 
 
 export function loadCache(dir: string) {
 	// TODO: Need a list of caches, in case there are files from more than one mission folder open
-	cache = new MissionCache(dir);
+let cache = getCache(dir);
+
+	getMissionFolder(dir);
+
+
+
+	// if (cache === undefined) {
+	// 	cache = new MissionCache(dir);
+	// 	caches.push(cache);
+	// }
 	// const defSource = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/mast.py";
 	// const defSource2 = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/maststory.py";
-	// loadTypings().then(()=>{ debug("Typings Loaded" )});
-	// loadRouteLabels().then(()=>{ debug("Routes Loaded") });
+	//loadTypings().then(()=>{ debug("Typings Loaded" )});
+//loadRouteLabels().then(()=>{ debug("Routes Loaded") });
 	// getRexEx(defSource).then(()=>{ debug("Regular Expressions gotten")});
 	// getRexEx(defSource2).then(()=>{ debug("Regular Expressions 2 gotten")
 	// 	debug("Label?: ");
@@ -29,27 +40,43 @@ export function loadCache(dir: string) {
 	//debug(getStoryJson(dir));
 }
 
+class MissionSubFolder {
+	uri: string;
 
+	constructor(uri: string) {
+		this.uri = uri;
+
+	}
+}
 
 export class MissionCache {
 
 	missionName: string = "";
 	missionURI: string = "";
 	storyJson: StoryJson;
+	// The Modules are the default sbslib and mastlib files.
+	// They apply to ALL files in the mission folder.
 	missionPyModules: PyFile[] = [];
 	missionMastModules: MastFile[] = [];
+	missionDefaultCompletions: CompletionItem[] = [];
+	missionDefaultSignatures: SignatureInformation[] = [];
+	missionClasses: IClassObject[] = [];
 
 	// string is the full file path and name
 	// FileCache is the information associated with the file
-	pyFileInfo: Map<string,PyFile> = new Map();
-	mastFileInfo: Map<string,MastFile> = new Map();
+	pyFileInfo: PyFile[] = [];
+	mastFileInfo: MastFile[] = [];
+
+	
 
 	constructor(workspaceUri: string) {
+		debug(workspaceUri);
 		this.missionURI = getMissionFolder(workspaceUri);
+		debug(this.missionURI);
 		this.missionName = path.basename(this.missionURI);
 		this.storyJson = new StoryJson(path.join(this.missionURI,"story.json"));
 		this.storyJson.readFile().then(()=>{this.modulesLoaded()});
-		
+	
 		let files: string[] = getFilesInDir(this.missionURI);
 		for (const file of files) {
 			if (path.extname(file) === "mast") {
@@ -59,6 +86,7 @@ export class MissionCache {
 				} else {
 					// Parse MAST File
 					const m: MastFile = new MastFile(file);
+					this.mastFileInfo.push(m);
 				}
 				
 				
@@ -67,7 +95,7 @@ export class MissionCache {
 				debug(file);
 				// Parse Python File
 				const p: PyFile = new PyFile(file);
-				this.pyFileInfo.set(file, p);
+				this.pyFileInfo.push(p);
 			}
 		}
 
@@ -75,63 +103,113 @@ export class MissionCache {
 
 	modulesLoaded() {
 		const uri = this.missionURI;
+		debug(uri);
+		if (uri.includes("sbs_utils")) {
+			debug("sbs nope");
+		}
 		const missionLibFolder = path.join(getParentFolder(uri), "__lib__");
-		for (const zip of this.storyJson.sbslib) {
+		debug(missionLibFolder);
+		const lib = this.storyJson.mastlib.concat(this.storyJson.sbslib);
+		for (const zip of lib) {
 			const zipPath = path.join(missionLibFolder,zip);
 			readZipArchive(zipPath).then((data)=>{
+				debug("Zip archive read for " + zipPath);
 				this.handleZipData(data);
 			}).catch(err =>{
 				debug("Error unzipping. \n" + err);
 			});
 		}
-		for (const zip of this.storyJson.mastlib) {
-			const zipPath = path.join(missionLibFolder,zip);
-			readZipArchive(zipPath).then((data)=>{
-				this.handleZipData(data);
-			}).catch(err =>{
-				debug("Error unzipping. \n" + err);
-			});
-		}
+		loadSbs().then((p)=>{
+			this.missionPyModules.push(p);
+			this.missionClasses = this.missionClasses.concat(p.classes);
+			this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.defaultFunctionCompletionItems);
+			for (const s of p.defaultFunctions) {
+				this.missionDefaultSignatures.push(s.signatureInformation);
+			}
+		});
 	}
 
 	handleZipData(zip: Map<string, string>) {
-		zip.forEach((file, data)=>{
+		//debug(zip);
+		zip.forEach((data, file)=>{
 			if (file.endsWith(".py")) {
 				const p = new PyFile(file, data);
 				this.missionPyModules.push(p);
-			}		
+				this.missionClasses = this.missionClasses.concat(p.classes);
+				this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.defaultFunctionCompletionItems);
+				//this.missionDefaultSignatures = this.missionDefaultSignatures.concat(p.defaultFunctions)
+				for (const s of p.defaultFunctions) {
+					this.missionDefaultSignatures.push(s.signatureInformation);
+				}
+			}
 			if (file.endsWith(".mast")) {
 				const m = new MastFile(file, data);
 				this.missionMastModules.push(m);
 			}
 		});
+		
+		
+		debug(this.missionDefaultCompletions);
+		debug(this.missionClasses);
 	}
 
 	
-
-	getLabels(): LabelInfo[] {
+	/**
+	 * @param fileUri The uri of the file. 
+	 * @returns List of {@link LabelInfo LabelInfo} applicable to the current scope
+	 */
+	getLabels(fileUri: string): LabelInfo[] {
 		let li: LabelInfo[] = [];
 		for (const f of this.mastFileInfo) {
-			li = li.concat(f[1].labelNames);
+			// Check if the mast files are in scope
+			// TODO: Check init.mast for if any files should not be included
+			debug(fileUri);
+			if (f.parentFolder === getParentFolder(fileUri)) {
+				li = li.concat(f.labelNames);
+			}
 		}
 		return li;
 	}
 
+	/**
+	 * @param _class String name of the class that we're dealing with. Optional. Default value is an empty string, and the default functions will be returned.
+	 * @returns List of {@link CompletionItem CompletionItem} related to the class, or the default function completions
+	 */
+	getCompletions(_class: string = "") {
+		let ci:CompletionItem[] = [];
+		// Don't need to do this, but will be slightly faster than iterating over missionClasses and then returning the defaults
+		if (_class === "") {
+			ci = this.missionDefaultCompletions;
+			for (const c of this.missionClasses) {
+				ci.push(c.completionItem);
+			}
+			// TODO: Add variables in scope
+			return ci;
+		}
+		for (const c of this.missionClasses) {
+			if (c.name === _class) {
+				debug(c.name + " is the class we're looking for.")
+				debug(c.methodCompletionItems);
+				return c.methodCompletionItems;
+			}
+		}
+		return this.missionDefaultCompletions;
+	}
+
+	getMethodSignatures(name: string) {
+		let si: SignatureInformation[] = this.missionDefaultSignatures;
+		// .filter((sig, index, arr)=>{
+		// 	sig.label === name;
+		// });
+		// TODO: Add functions from py files in local directory
+		return si;
+	}
+
 }
 
 
 
 
-
-export class PyFileCache extends FileCache {
-	classTypings : ClassTypings[] = [];
-	pyTypings : CompletionItem[] = [];
-	functionData : SignatureInformation[] = [];
-}
-
-export class MastFileCache extends FileCache {
-	labelNames : LabelInfo[] = [];
-}
 
 interface StoryJsonContents {
 	sbslib: string[],
@@ -152,8 +230,13 @@ export class StoryJson {
 	 * Must be called after instantiating the object.
 	 */
 	async readFile() {
-		const data = fs.readFileSync(this.uri, "utf-8");
-		this.parseFile(data);
+		try {
+			const data = fs.readFileSync(this.uri, "utf-8");
+			this.parseFile(data);
+		} catch (e) {
+			debug("Couldn't read file");
+			debug(e);
+		}
 	}
 
 	/** Only call this from readFile() */
@@ -175,9 +258,7 @@ async function loadTypings(): Promise<void> {
 		//const fetch = await import('node-fetch');
 		//let github : string = "https://github.com/artemis-sbs/sbs_utils/raw/refs/heads/master/mock/sbs.py";
 		let gh : string = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/typings/";
-
 		// TODO: try getting local files. If this fails, then use the github files.
-
 		for (const page in files) {
 			let url = gh+files[page]+".pyi";
 			const data = await fetch(url);
@@ -190,6 +271,13 @@ async function loadTypings(): Promise<void> {
 	} catch (err) {
 		debug("\nFailed to load\n"+err as string);
 	}
+}
+
+async function loadSbs(): Promise<PyFile> {
+	let gh: string = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/mock/sbs.py";
+	const data = await fetch(gh);
+	const text = await data.text();
+	return new PyFile(gh, text);
 }
 
 const expressions: RX[] = [];
@@ -267,7 +355,30 @@ let files: string[] = [
 	"sbs_utils/procedural/timers"
 ];
 
-let cache: MissionCache;
-export function getCache(): MissionCache {
-	return cache;
+let caches: MissionCache[] = [];
+
+
+/**
+ * 
+ * @param name Can be either the name of the mission folder, or a URI to that folder or any folder within the mission folder.
+ * @returns 
+ */
+export function getCache(name:string): MissionCache {
+	let ret = undefined;
+	if (name.startsWith("file")) {
+		name = URI.parse(name).fsPath;
+	}
+	debug("Trying to get cache with name: " + name);
+	const mf = getMissionFolder(name);
+	//debug(mf);
+	for (const cache of caches) {
+		if (cache.missionName === name || cache.missionURI === mf) {
+			return cache;
+		}
+	}
+	if (ret === undefined) {
+		ret = new MissionCache(name);
+		caches.push(ret);
+	}
+	return ret;
 }

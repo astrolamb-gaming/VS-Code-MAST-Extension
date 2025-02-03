@@ -3,9 +3,11 @@ import { SignatureHelpParams, SignatureHelp, integer, SignatureInformation, Para
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { PyFile } from './data';
 import { debug } from 'console';
+import { getCache } from './cache';
 
 let functionSigs: SignatureInformation[] = [];
 
+// With new system, this function will be depracated
 export function prepSignatures(files: PyFile[]) {
 	debug("Prepping signatures");
 	for (const i in files) {
@@ -49,12 +51,21 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 	sh.activeParameter = arr.length - 1;
 
 	// Check for the current function name and get SignatureInformation for that function.
+
 	let f: string = getCurrentMethodName(iStr);
-	for (const i in functionSigs) {
-		if (functionSigs[i].label === f) {
-			sh.signatures.push(functionSigs[i]);
+	debug("Signature name: " + f);
+	let sigs = getCache(text.uri).getMethodSignatures(f);
+	debug(sh.signatures.length);
+	for (const sig of sigs) {
+		if (sig.label === f) {
+			sh.signatures.push(sig);
 		}
 	}
+	// for (const i in functionSigs) {
+	// 	if (functionSigs[i].label === f) {
+	// 		sh.signatures.push(functionSigs[i]);
+	// 	}
+	// }
 
 	// This is just for testing
 	let p: ParameterInformation = {

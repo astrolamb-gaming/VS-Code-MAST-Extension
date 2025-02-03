@@ -3,7 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.prepSignatures = prepSignatures;
 exports.onSignatureHelp = onSignatureHelp;
 const console_1 = require("console");
+const cache_1 = require("./cache");
 let functionSigs = [];
+// With new system, this function will be depracated
 function prepSignatures(files) {
     (0, console_1.debug)("Prepping signatures");
     for (const i in files) {
@@ -45,11 +47,19 @@ function onSignatureHelp(_textDocPos, text) {
     sh.activeParameter = arr.length - 1;
     // Check for the current function name and get SignatureInformation for that function.
     let f = getCurrentMethodName(iStr);
-    for (const i in functionSigs) {
-        if (functionSigs[i].label === f) {
-            sh.signatures.push(functionSigs[i]);
+    (0, console_1.debug)("Signature name: " + f);
+    let sigs = (0, cache_1.getCache)(text.uri).getMethodSignatures(f);
+    (0, console_1.debug)(sh.signatures.length);
+    for (const sig of sigs) {
+        if (sig.label === f) {
+            sh.signatures.push(sig);
         }
     }
+    // for (const i in functionSigs) {
+    // 	if (functionSigs[i].label === f) {
+    // 		sh.signatures.push(functionSigs[i]);
+    // 	}
+    // }
     // This is just for testing
     let p = {
         label: "Parameter 1",

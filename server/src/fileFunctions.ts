@@ -26,6 +26,7 @@ import { myDebug } from './server';
 import { debug } from 'console';
 import AdmZip = require("adm-zip");
 import { StoryJson } from './cache';
+import { URI } from 'vscode-uri';
 
 /**
  * TODO: Use parsers.py to determine the style definitions available for UI elements
@@ -133,6 +134,25 @@ export function getFilesInDir(dir: string, includeChildren: boolean = true): str
 	
 }
 
+/**
+ * TODO: For now I'll just assume that ALL files in a directory are imported. This may not be actually true at times.
+ * @param uri 
+ * @returns 
+ */
+export function getInitFileInFolder(uri: string): string | undefined {
+	const files =  fs.readdirSync(uri, { withFileTypes: true });
+	let ret = undefined;
+	for (const file of files) {
+		if (file.name.includes("__init__")) {
+			ret = file.parentPath + path.sep + file.name;
+			return ret;
+		}
+	}
+	return ret;
+}
+
+
+
 export function readAllFilesIn(folder: WorkspaceFolder) {
 	const files = getFilesInDir(folder.uri, false);
 	for (const f in files) {
@@ -144,8 +164,10 @@ export function readAllFilesIn(folder: WorkspaceFolder) {
 
 export async function readZipArchive(filepath: string) {
 	const map: Map<string, string> = new Map();
+	debug(filepath);
+	const zip = new AdmZip(filepath);
 	try {
-		const zip = new AdmZip(filepath);
+		
 		for (const zipEntry of zip.getEntries()) {
 			if (!zipEntry.isDirectory) {
 				let data = zipEntry.getData().toString('utf-8');
@@ -176,7 +198,7 @@ export function getStoryJson(uri: string) {
 	const end = m + 9;
 	const dir1 = uri.substring(end);
 	debug(dir1);
-	const n = dir1.indexOf("/");
+	const n = dir1.indexOf(path.sep);
 	if (n === -1) {
 		return uri;
 	}
@@ -185,20 +207,59 @@ export function getStoryJson(uri: string) {
 }
 
 export function getParentFolder(childUri:string) {
-	return (path.dirname(childUri));
+	let p = path.dirname(childUri);
+	debug(p);
+	fs.lstat(p, (err,stats) => {
+		if (err) {
+			debug(err);
+			throw new URIError(err.message);
+			return p;
+		}
+		if (stats.isSymbolicLink()) {
+			fs.readlink(p,(err2,dat)=>{
+				if (err2) {
+					debug(err2);
+				}				
+				p = path.dirname(dat);
+			});
+		}
+	});
+	return p;
 }
 
 export function getMissionFolder(uri: string) : string {
-	uri = uri.replace("file:///c%3A","C:");
-	uri = path.normalize(uri);
-	let parent = getParentFolder(uri);
-	let count = 0;
-	while (!getParentFolder(parent).endsWith("missions")) {
-		parent = getParentFolder(parent);
-		count++;
-		if (count > 5) break;
+	// Check if it's the right format
+	if (uri.startsWith("file")) {
+		uri = URI.parse(uri).fsPath;
 	}
-	return parent;
+	let arr = uri.split(path.sep);
+	let retArr = [];
+	let found = false;
+	for (let i = 0; i < arr.length; i++) {
+		// Check if this is the mission folder
+		if (arr[i] !== "missions") {
+			retArr.push(arr[i]);
+		} else {
+			retArr.push(arr[i]);
+			if (i + 1 < arr.length) {
+				retArr.push(arr[i + 1]);
+			} else {
+				debug("Can't determine the mission folder: " + uri);
+				return "";
+			}
+			found = true;
+			break;
+		}
+
+	}
+	// Rebuild the path
+	let ret = retArr.join(path.sep);
+	//debug(ret);
+	// Check if it's in a mission folder
+	if (!found) {
+		return "";
+	}
+	return ret;
 }
 
 

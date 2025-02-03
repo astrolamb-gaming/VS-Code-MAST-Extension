@@ -34,7 +34,7 @@ import {
 	Hover,
 	WorkspaceFolder
 } from 'vscode-languageserver/node';
-
+import { URI } from 'vscode-uri';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { findDiagnostic } from './errorChecking';
 import { checkLabels, getMainLabelAtPos, LabelInfo } from './labels';
@@ -73,13 +73,13 @@ export let labelNames : LabelInfo[] = [];
 let typingsDone: boolean = false;
 let currentDocument: TextDocument;
 
-let functionData : SignatureInformation[] = [];
-export function appendFunctionData(si: SignatureInformation) {functionData.push(si);}
-export function getFunctionData(): SignatureInformation[] { return functionData; }
+// let functionData : SignatureInformation[] = [];
+// export function appendFunctionData(si: SignatureInformation) {functionData.push(si);}
+// export function getFunctionData(): SignatureInformation[] { return functionData; }
 
 
-const supportedRoutes: string[][] = [];
-export function getSupportedRoutes(): string[][] { return supportedRoutes; }
+// const supportedRoutes: string[][] = [];
+// export function getSupportedRoutes(): string[][] { return supportedRoutes; }
 
 
 /**
@@ -150,7 +150,10 @@ connection.onInitialize((params: InitializeParams) => {
 		const workspaceFolder = params.workspaceFolders[0];
 		debug(workspaceFolder.uri);
 		//readAllFilesIn(workspaceFolder);
-		loadCache(workspaceFolder.uri);
+		
+		const uri = URI.parse(workspaceFolder.uri);
+		debug(uri.fsPath);
+		loadCache(uri.fsPath);
 	} else {
 		debug("No Workspace folders");
 	}

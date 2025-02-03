@@ -62,7 +62,7 @@ function getLabels(textDocument, main = true) {
                 end = labels[i].start - 1;
             }
         }
-        const mainLabel = { main: true, name: "main", start: 0, end: text.length, length: 3, subLabels: [] };
+        const mainLabel = { main: true, name: "main", start: 0, end: end, length: 4, subLabels: [] };
     }
     return labels;
 }
@@ -149,7 +149,8 @@ function checkLabels(textDocument) {
                 message: "Specified label does not exist in this file. Make sure that this label is defined before use.",
                 source: "mast"
             };
-            d.relatedInformation = (0, errorChecking_1.relatedMessage)(textDocument, d.range, "Labels must be defined in a format beginning (and optionally ending) with two or more = or - signs. They may use A-Z, a-z, 0-9, and _ in their names. Other characters are not allowed.");
+            //d.relatedInformation = relatedMessage(textDocument, d.range, "Labels must be defined in a format beginning (and optionally ending) with two or more = or - signs. They may use A-Z, a-z, 0-9, and _ in their names. Other characters are not allowed.");
+            //d.relatedInformation = relatedMessage(textDocument, d.range, "");
             diagnostics.push(d);
         }
     }

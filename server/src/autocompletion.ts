@@ -4,8 +4,9 @@ import { getMainLabelAtPos } from './labels';
 import { labelNames } from './server';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { ClassObject, ClassTypings, IClassObject, PyFile } from './data';
-import { getRouteLabelAutocompletions, getSkyboxCompletionItems } from './routeLabels';
+import { getMusic, getRouteLabelAutocompletions, getSkyboxCompletionItems } from './routeLabels';
 import { isInComment, isInString, isTextInBracket } from './comments';
+import { getCache } from './cache';
 
 let classes: IClassObject[] = [];
 let defaultFunctionCompletionItems: CompletionItem[] = [];
@@ -43,7 +44,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	const iStr : string = t.substring(startOfLine,pos);
 	//debug("" + startOfLine as string);
 	//
-	// debug(iStr);
+	debug(iStr);
 	let keywords : string[] = [
 		"def",
 		"async",
@@ -69,13 +70,16 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	
 
 	// If we're defining a label, we don't want autocomplete.
-	if (iStr.includes("--") || iStr.includes("==")) {
+	if (iStr.trim().startsWith("--") || iStr.trim().startsWith("==")) {
 		return ci;
 	}
 
 	// Media labels only get the skybox names
-	if (iStr.endsWith("@media/skybox/")) {
+	else if (iStr.endsWith("@media/skybox/")) {
 		return getSkyboxCompletionItems();
+	// Get Music Options (default vs Artemis2)
+	} else if (iStr.endsWith("@media/music/")) {
+		return getMusic();
 	}
 
 	// Route Label autocompletion
@@ -106,6 +110,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// Handle label autocompletion
 	let jump: RegExp = /(->|jump) *?$/;
 	if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (")) {
+		let labelNames = getCache(text.uri).getLabels(text.uri);
 		for (const i in labelNames) {
 			ci.push({label: labelNames[i].name, kind: CompletionItemKind.Event});
 		}
@@ -126,21 +131,38 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// 	return ci;
 	// }
 
-	// First we check if it should be just stuff from a particular class
-	for (const i in classes) {
-		if (iStr.endsWith(classes[i].name + ".")) {
-			return ci.concat(classes[i].methodCompletionItems);
+
+	/**  
+	 	All of this is now done by MissionCache#getCompletions()
+		// First we check if it should be just stuff from a particular class
+		for (const i in classes) {
+			if (iStr.endsWith(classes[i].name + ".")) {
+				return ci.concat(classes[i].methodCompletionItems);
+			}
+		}
+		// If it doesn't belong to a particular class, add class constructor to the list of completion items
+		for (const i in classes) {
+			//if (classes[i].constructorFunction !== undefined) {
+				ci.push(classes[i].completionItem);
+			//}
+		}
+	*/
+	debug("Checking getCompletions");
+	//debug(text.uri);
+	debug(ci);
+	const cache = getCache(text.uri);
+
+	// Check if this is a class
+	for (const c of cache.missionClasses) {
+		if (iStr.endsWith(c.name + ".")) {
+			debug(iStr + " contains" + c.name);
+			return c.methodCompletionItems;
 		}
 	}
-	// If it doesn't belong to a particular class, add class constructor to the list of completion items
-	for (const i in classes) {
-		//if (classes[i].constructorFunction !== undefined) {
-			ci.push(classes[i].completionItem);
-		//}
-	}
-
-	ci = ci.concat(defaultFunctionCompletionItems);
-	// TODO: Account for text that's already present
+	ci = cache.getCompletions();
+	debug(ci.length);
+	//ci = ci.concat(defaultFunctionCompletionItems);
+	// TODO: Account for text that's already present??
 	// - Remove the text from the start of the completion item label
 	return ci;
 }

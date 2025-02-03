@@ -8,10 +8,16 @@ const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
 const labels_1 = require("./labels");
 const vscode_languageserver_textdocument_1 = require("vscode-languageserver-textdocument");
+const fileFunctions_1 = require("./fileFunctions");
 class FileCache {
     constructor(uri) {
         this.variableNames = [];
         this.uri = uri;
+        let parent = "sbs_utils";
+        if (!uri.includes("sbs_utils")) {
+            parent = (0, fileFunctions_1.getParentFolder)(uri);
+        }
+        this.parentFolder = parent;
     }
     parseVariables(contents) {
         let pattern = /^\s*?(\w+)\s*?=\s*?[^\s\+=-\\*\/].*$/gm;
@@ -75,10 +81,12 @@ class PyFile extends FileCache {
         this.defaultFunctions = [];
         this.defaultFunctionCompletionItems = [];
         this.classes = [];
+        // If fileContents is NOT an empty string (e.g. if it's from a zipped folder), then all we do is parse the contents
         if (fileContents !== "") {
             this.parseWholeFile(fileContents, uri);
         }
-        if (path.extname(uri) === "py") {
+        else if (path.extname(uri) === "py") {
+            (0, console_1.debug)("File contents empty, so we need to load it.");
             const d = fs.readFile(uri, "utf-8", (err, data) => {
                 if (err) {
                     (0, console_1.debug)("error reading file: " + uri + "\n" + err);
@@ -89,6 +97,7 @@ class PyFile extends FileCache {
             });
         }
         else if (path.extname(uri) === "mast") {
+            (0, console_1.debug)("Can't build a MastFile from PyFile");
             // Shouldn't do anything, Py files are very different from mast
         }
     }

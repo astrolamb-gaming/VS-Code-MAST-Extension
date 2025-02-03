@@ -137,3 +137,27 @@ function getHoveredSymbol(str: string, pos: integer): string {
 	return res;
 }
 
+/**
+ * a shared variable is shared by all tasks. i.e. global.
+
+All code runs on the server, with signals it is the context that matters.
+
+A shared signal means any client can emit it and the code doesn't run on a specific client CONTEXT. i.e. a global context. 
+A non-shared signal runs on the context of the calling client.
+
+A shared signal does not run on the mainserver's GUI context or any GUI context for that matter.
+
+
+
+re: assigned, client, and temp
+
+They are additional scopes that I couldn't get stable in time for 1.0.
+
+They may return or may not.
+
+They do nothing now but the intent was.
+
+- client would be 'shared' across all task on a client.
+- temp would not be copied to and task scheduled (currently a schedule task inherits a copy all the values of the scheduling task)
+- Assigned would be a space object that a task is assigned to
+ */

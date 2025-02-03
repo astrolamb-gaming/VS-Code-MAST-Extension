@@ -6,6 +6,7 @@ exports.getFolders = getFolders;
 exports.getFileContents = getFileContents;
 exports.readFile = readFile;
 exports.getFilesInDir = getFilesInDir;
+exports.getInitFileInFolder = getInitFileInFolder;
 exports.readAllFilesIn = readAllFilesIn;
 exports.readZipArchive = readZipArchive;
 exports.getStoryJson = getStoryJson;
@@ -15,6 +16,7 @@ const path = require("path");
 const fs = require("fs");
 const console_1 = require("console");
 const AdmZip = require("adm-zip");
+const vscode_uri_1 = require("vscode-uri");
 /**
  * TODO: Use parsers.py to determine the style definitions available for UI elements
  * See https://github.com/artemis-sbs/sbs_utils/blob/master/sbs_utils/mast/parsers.py
@@ -110,6 +112,22 @@ function getFilesInDir(dir, includeChildren = true) {
     }
     return ret;
 }
+/**
+ * TODO: For now I'll just assume that ALL files in a directory are imported. This may not be actually true at times.
+ * @param uri
+ * @returns
+ */
+function getInitFileInFolder(uri) {
+    const files = fs.readdirSync(uri, { withFileTypes: true });
+    let ret = undefined;
+    for (const file of files) {
+        if (file.name.includes("__init__")) {
+            ret = file.parentPath + path.sep + file.name;
+            return ret;
+        }
+    }
+    return ret;
+}
 function readAllFilesIn(folder) {
     const files = getFilesInDir(folder.uri, false);
     for (const f in files) {
@@ -118,8 +136,9 @@ function readAllFilesIn(folder) {
 }
 async function readZipArchive(filepath) {
     const map = new Map();
+    (0, console_1.debug)(filepath);
+    const zip = new AdmZip(filepath);
     try {
-        const zip = new AdmZip(filepath);
         for (const zipEntry of zip.getEntries()) {
             if (!zipEntry.isDirectory) {
                 let data = zipEntry.getData().toString('utf-8');
@@ -150,7 +169,7 @@ function getStoryJson(uri) {
     const end = m + 9;
     const dir1 = uri.substring(end);
     (0, console_1.debug)(dir1);
-    const n = dir1.indexOf("/");
+    const n = dir1.indexOf(path.sep);
     if (n === -1) {
         return uri;
     }
@@ -158,20 +177,59 @@ function getStoryJson(uri) {
     return ret;
 }
 function getParentFolder(childUri) {
-    return (path.dirname(childUri));
+    let p = path.dirname(childUri);
+    (0, console_1.debug)(p);
+    fs.lstat(p, (err, stats) => {
+        if (err) {
+            (0, console_1.debug)(err);
+            throw new URIError(err.message);
+            return p;
+        }
+        if (stats.isSymbolicLink()) {
+            fs.readlink(p, (err2, dat) => {
+                if (err2) {
+                    (0, console_1.debug)(err2);
+                }
+                p = path.dirname(dat);
+            });
+        }
+    });
+    return p;
 }
 function getMissionFolder(uri) {
-    uri = uri.replace("file:///c%3A", "C:");
-    uri = path.normalize(uri);
-    let parent = getParentFolder(uri);
-    let count = 0;
-    while (!getParentFolder(parent).endsWith("missions")) {
-        parent = getParentFolder(parent);
-        count++;
-        if (count > 5)
-            break;
+    // Check if it's the right format
+    if (uri.startsWith("file")) {
+        uri = vscode_uri_1.URI.parse(uri).fsPath;
     }
-    return parent;
+    let arr = uri.split(path.sep);
+    let retArr = [];
+    let found = false;
+    for (let i = 0; i < arr.length; i++) {
+        // Check if this is the mission folder
+        if (arr[i] !== "missions") {
+            retArr.push(arr[i]);
+        }
+        else {
+            retArr.push(arr[i]);
+            if (i + 1 < arr.length) {
+                retArr.push(arr[i + 1]);
+            }
+            else {
+                (0, console_1.debug)("Can't determine the mission folder: " + uri);
+                return "";
+            }
+            found = true;
+            break;
+        }
+    }
+    // Rebuild the path
+    let ret = retArr.join(path.sep);
+    //debug(ret);
+    // Check if it's in a mission folder
+    if (!found) {
+        return "";
+    }
+    return ret;
 }
 //readZipArchive("C:/Users/mholderbaum/Documents/Cosmos-1-0-0/data/missions/__lib__/artemis-sbs.LegendaryMissions.autoplay.v3.9.39.mastlib");
 //# sourceMappingURL=fileFunctions.js.map

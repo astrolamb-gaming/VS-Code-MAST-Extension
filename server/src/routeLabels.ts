@@ -1,13 +1,15 @@
 import { debug } from 'console';
 import { myDebug } from './server';
+import * as path from 'path';
+import * as fs from 'fs';
 import { CompletionItem, CompletionItemKind, CompletionItemLabelDetails } from 'vscode-languageserver';
-import { findSubfolderByName, getFilesInDir } from './fileFunctions';
+import { findSubfolderByName, getFilesInDir, getFolders } from './fileFunctions';
 
 const routeLabels: IRouteLabel[] = [];
 const mediaLabels: IRouteLabel[] = [];
 const resourceLabels: IRouteLabel[] = [];
 const supportedRoutes: string[][] = [];
-const routeDefSource = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/mast.py";
+const routeDefSource = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast_sbs/story_nodes/route_label.py";
 const mediaDefSource = "https://github.com/artemis-sbs/sbs_utils/blob/master/sbs_utils/procedural/media.py";
 const labelDetails: CompletionItemLabelDetails = {
 	// Decided that this clutters up the UI too much. Same information is displayed in the CompletionItem details.
@@ -55,7 +57,7 @@ function getResourceLabels() {
  * May need to change this later if it is changed to use switch statement
  * Also gets other @ whatever options
  */
-export async function loadMediaLabels(): Promise<void> {
+export async function loadMediaLabels(): Promise<IRouteLabel[]> {
 	try {
 		const data = await fetch(mediaDefSource);
 		debug("Getting media label info");
@@ -130,6 +132,7 @@ export async function loadMediaLabels(): Promise<void> {
 	} catch (e) {
 		debug(e);
 	}
+	return mediaLabels;
 }
 /**
  * Parse the sbs_utils/mast/mast.py file to find all the valid route labels
@@ -289,10 +292,26 @@ function getSkyboxes(): CompletionItem[] {
 				let sb = file.substring(last+1).replace(".png","");
 				skyboxes.push(sb);
 				ci.push({
-					label: sb
+					label: path.basename(file).replace(".png","")
 				});
 
 			}
+		}
+	}
+	return ci;
+}
+
+export function getMusic(): CompletionItem[] {
+	const options: string[] = [];
+	const ci: CompletionItem[] = [];
+	let initialDir = "../../../../";
+	const music = findSubfolderByName(initialDir, "music");
+	if (music !== null) {
+		const files = getFolders(music);
+		for (const file of files) {
+			ci.push({
+				label: path.basename(file)
+			});
 		}
 	}
 	return ci;
