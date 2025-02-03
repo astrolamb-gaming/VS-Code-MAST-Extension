@@ -160,7 +160,7 @@ class ClassObject {
         let comment = /((\"){3,3}(.*?)(\"){3,3})|(\.\.\.)/m;
         // TODO: Could pull the class parent and interfaces (if any). Would this be useful?
         this.name = getRegExMatch(raw, className).replace("class ", "").replace(/\(.*?\):/, "");
-        if (this.name === "" && sourceFile === "sbs/__init__") {
+        if (this.name === "" && sourceFile.endsWith("sbs.py")) {
             this.name = "sbs";
         }
         this.sourceFile = sourceFile;

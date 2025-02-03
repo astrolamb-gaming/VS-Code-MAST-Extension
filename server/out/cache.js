@@ -59,6 +59,15 @@ class MissionCache {
         this.storyJson = new StoryJson(path.join(this.missionURI, "story.json"));
         this.storyJson.readFile().then(() => { this.modulesLoaded(); });
         let files = (0, fileFunctions_1.getFilesInDir)(this.missionURI);
+        loadSbs().then((p) => {
+            (0, console_1.debug)(p.classes);
+            this.missionPyModules.push(p);
+            this.missionClasses = this.missionClasses.concat(p.classes);
+            this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.defaultFunctionCompletionItems);
+            for (const s of p.defaultFunctions) {
+                this.missionDefaultSignatures.push(s.signatureInformation);
+            }
+        });
         for (const file of files) {
             if (path.extname(file) === "mast") {
                 (0, console_1.debug)(file);
@@ -97,14 +106,6 @@ class MissionCache {
                 (0, console_1.debug)("Error unzipping. \n" + err);
             });
         }
-        loadSbs().then((p) => {
-            this.missionPyModules.push(p);
-            this.missionClasses = this.missionClasses.concat(p.classes);
-            this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.defaultFunctionCompletionItems);
-            for (const s of p.defaultFunctions) {
-                this.missionDefaultSignatures.push(s.signatureInformation);
-            }
-        });
     }
     handleZipData(zip) {
         //debug(zip);
@@ -124,8 +125,8 @@ class MissionCache {
                 this.missionMastModules.push(m);
             }
         });
-        (0, console_1.debug)(this.missionDefaultCompletions);
-        (0, console_1.debug)(this.missionClasses);
+        //debug(this.missionDefaultCompletions);
+        //debug(this.missionClasses);
     }
     /**
      * @param fileUri The uri of the file.
@@ -148,16 +149,19 @@ class MissionCache {
      * @returns List of {@link CompletionItem CompletionItem} related to the class, or the default function completions
      */
     getCompletions(_class = "") {
+        //debug(this.missionDefaultCompletions.length);
         let ci = [];
         // Don't need to do this, but will be slightly faster than iterating over missionClasses and then returning the defaults
         if (_class === "") {
-            ci = this.missionDefaultCompletions;
+            //debug(ci.length);
+            ci = ci.concat(this.missionDefaultCompletions);
             for (const c of this.missionClasses) {
                 ci.push(c.completionItem);
             }
             // TODO: Add variables in scope
             return ci;
         }
+        (0, console_1.debug)(this.missionDefaultCompletions.length);
         for (const c of this.missionClasses) {
             if (c.name === _class) {
                 (0, console_1.debug)(c.name + " is the class we're looking for.");

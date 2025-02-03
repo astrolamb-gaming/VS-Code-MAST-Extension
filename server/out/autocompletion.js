@@ -132,17 +132,24 @@ function onCompletion(_textDocumentPosition, text) {
     */
     (0, console_1.debug)("Checking getCompletions");
     //debug(text.uri);
-    (0, console_1.debug)(ci);
+    //debug(ci);
     const cache = (0, cache_1.getCache)(text.uri);
     // Check if this is a class
-    for (const c of cache.missionClasses) {
-        if (iStr.endsWith(c.name + ".")) {
-            (0, console_1.debug)(iStr + " contains" + c.name);
-            return c.methodCompletionItems;
+    if (iStr.endsWith(".")) {
+        (0, console_1.debug)("Getting Classes...");
+        for (const c of cache.missionClasses) {
+            if (c.name === "sbs") {
+                (0, console_1.debug)("THIS IS SBS");
+            }
+            if (iStr.endsWith(c.name + ".")) {
+                (0, console_1.debug)(iStr + " contains" + c.name);
+                return c.methodCompletionItems;
+            }
         }
     }
+    //debug(ci.length);
     ci = cache.getCompletions();
-    (0, console_1.debug)(ci.length);
+    //debug(ci.length);
     //ci = ci.concat(defaultFunctionCompletionItems);
     // TODO: Account for text that's already present??
     // - Remove the text from the start of the completion item label

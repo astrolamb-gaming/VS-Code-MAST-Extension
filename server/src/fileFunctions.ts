@@ -209,6 +209,9 @@ export function getStoryJson(uri: string) {
 export function getParentFolder(childUri:string) {
 	let p = path.dirname(childUri);
 	debug(p);
+	if (p === ".") {
+		debug(childUri + " getParentFolder() ends with period.");
+	}
 	fs.lstat(p, (err,stats) => {
 		if (err) {
 			debug(err);

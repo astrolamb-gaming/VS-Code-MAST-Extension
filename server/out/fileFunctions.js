@@ -179,6 +179,9 @@ function getStoryJson(uri) {
 function getParentFolder(childUri) {
     let p = path.dirname(childUri);
     (0, console_1.debug)(p);
+    if (p === ".") {
+        (0, console_1.debug)(childUri + " getParentFolder() ends with period.");
+    }
     fs.lstat(p, (err, stats) => {
         if (err) {
             (0, console_1.debug)(err);
