@@ -5,7 +5,6 @@ exports.onCompletion = onCompletion;
 const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
 const labels_1 = require("./labels");
-const routeLabels_1 = require("./routeLabels");
 const comments_1 = require("./comments");
 const cache_1 = require("./cache");
 const path = require("path");
@@ -66,16 +65,20 @@ function onCompletion(_textDocumentPosition, text) {
     }
     // Media labels only get the skybox names
     else if (iStr.endsWith("@media/skybox/")) {
-        return (0, routeLabels_1.getSkyboxCompletionItems)();
+        return (0, cache_1.getGlobals)().skyboxes;
         // Get Music Options (default vs Artemis2)
     }
     else if (iStr.endsWith("@media/music/")) {
-        return (0, routeLabels_1.getMusic)();
+        return (0, cache_1.getGlobals)().music;
     }
     // Route Label autocompletion
-    if (iStr.trim().startsWith("//") || iStr.trim().startsWith("@")) {
-        let ci = (0, routeLabels_1.getRouteLabelAutocompletions)(iStr);
+    if (iStr.trim().startsWith("//")) {
+        ci = (0, cache_1.getCache)(text.uri).getRouteLabels(); //getRouteLabelAutocompletions(iStr);
+        return ci;
         // TODO: Add media, map, gui/tab, and console autocompletion items
+    }
+    else if (iStr.trim().startsWith("@")) {
+        ci = (0, cache_1.getCache)(text.uri).getMediaLabels();
         return ci;
     }
     // TODO: Add variables provided by routes to autocompletion

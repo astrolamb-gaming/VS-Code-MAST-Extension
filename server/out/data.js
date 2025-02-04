@@ -38,13 +38,13 @@ class MastFile extends FileCache {
     // TODO: Add support for holding label information for all files listed in __init__.mast in a given folder.
     // TODO: Add system for tracking variables in a mast file
     constructor(uri, fileContents = "") {
-        (0, console_1.debug)("building mast file");
+        //debug("building mast file");
         super(uri);
         this.labelNames = [];
         if (path.extname(uri) === ".mast") {
             // If the contents are aleady read, we parse and move on. Don't need to read or parse again.
             if (fileContents !== "") {
-                (0, console_1.debug)("parsing, has contents");
+                //debug("parsing, has contents");
                 this.parse(fileContents);
                 return;
             }
@@ -66,7 +66,7 @@ class MastFile extends FileCache {
     parse(text) {
         const textDocument = vscode_languageserver_textdocument_1.TextDocument.create(this.uri, "mast", 1, text);
         this.labelNames = (0, labels_1.getLabelsInFile)(text, this.uri);
-        (0, console_1.debug)(this.labelNames);
+        //debug(this.labelNames);
         // TODO: Parse variables, etc
     }
 }

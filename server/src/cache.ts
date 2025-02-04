@@ -8,12 +8,62 @@ import { debug } from 'console';
 import { prepCompletions } from './autocompletion';
 import { prepSignatures } from './signatureHelp';
 import { parse, RX } from './rx';
-import { loadRouteLabels } from './routeLabels';
-import { getFilesInDir, getMissionFolder, getParentFolder, readZipArchive } from './fileFunctions';
+import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } from './routeLabels';
+import { findSubfolderByName, getFilesInDir, getFolders, getMissionFolder, getParentFolder, readZipArchive } from './fileFunctions';
 import { updateLabelNames } from './server';
 import { URI } from 'vscode-uri';
 
+export class Globals {
+	skyboxes: CompletionItem[];
+	music: CompletionItem[];
+	constructor() {
+		this.skyboxes = this.findSkyboxes();
+		this.music = this.findMusic();
+	}
 
+	private findSkyboxes(): CompletionItem[] {
+		const skyboxes: string[] = [];
+		const ci: CompletionItem[] = [];
+		let initialDir = "../../../../";
+		const graphics = findSubfolderByName(initialDir, "graphics");
+		if (graphics !== null) {
+			const files = getFilesInDir(graphics);
+			for (const file of files) {
+				if (file.includes("sky") && file.endsWith(".png")) {
+					const last = file.lastIndexOf("/");
+					let sb = file.substring(last+1).replace(".png","");
+					skyboxes.push(sb);
+					ci.push({
+						label: path.basename(file).replace(".png","")
+					});
+	
+				}
+			}
+		}
+		return ci;
+	}
+	private findMusic(): CompletionItem[] {
+		const options: string[] = [];
+		const ci: CompletionItem[] = [];
+		let initialDir = "../../../../";
+		const music = findSubfolderByName(initialDir, "music");
+		if (music !== null) {
+			const files = getFolders(music);
+			for (const file of files) {
+				ci.push({
+					label: path.basename(file)
+				});
+			}
+		}
+		return ci;
+	}
+}
+
+const globals: Globals = new Globals();
+
+export function getGlobals() {
+	return globals;
+}
 
 export function loadCache(dir: string) {
 	// TODO: Need a list of caches, in case there are files from more than one mission folder open
@@ -67,10 +117,23 @@ export class MissionCache {
 	pyFileInfo: PyFile[] = [];
 	mastFileInfo: MastFile[] = [];
 
-	
+	//// Other Labels
+	// Route Labels - From RouteDecoratorLabel class
+	routeLabels: IRouteLabel[] = [];
+	// Media Labels - From procedural/media.py # _media_schedule()
+	mediaLabels: IRouteLabel[] = [];
+	// Resource Labels - Not sure how best to handle these...
+	/**
+	 * TODO: See about parsing all python classes that derive from Label
+	 */
+	resourceLabels: IRouteLabel[] = [];
 
 	constructor(workspaceUri: string) {
 		//debug(workspaceUri);
+
+		this.resourceLabels = loadResourceLabels();
+		this.mediaLabels = this.mediaLabels.concat(loadMediaLabels());
+
 		this.missionURI = getMissionFolder(workspaceUri);
 		debug(this.missionURI);
 		this.missionName = path.basename(this.missionURI);
@@ -136,7 +199,7 @@ export class MissionCache {
 	}
 
 	handleZipData(zip: Map<string, string>, parentFolder:string = "") {
-		debug(zip);
+		//debug(zip);
 		zip.forEach((data, file)=>{
 			if (parentFolder !== "") {
 				file = parentFolder + path.sep + file;
@@ -145,6 +208,9 @@ export class MissionCache {
 			if (file.endsWith("__init__.mast")) {
 				// Do nothing
 			} else if (file.endsWith(".py")) {
+				this.routeLabels = this.routeLabels.concat(loadRouteLabels(data));
+				// this.mediaLabels = this.mediaLabels.concat(loadMediaLabels(data));
+				// this.resourceLabels = this.resourceLabels.concat(loadResourceLabels(data));
 				const p = new PyFile(file, data);
 				this.missionPyModules.push(p);
 				this.missionClasses = this.missionClasses.concat(p.classes);
@@ -163,6 +229,30 @@ export class MissionCache {
 		
 		//debug(this.missionDefaultCompletions);
 		//debug(this.missionClasses);
+	}
+
+	getRouteLabels(): CompletionItem[] {
+		let ci: CompletionItem[] = [];
+		for (const r of this.routeLabels) {
+			ci.push(r.completionItem);
+		}
+		return ci;
+	}
+
+	getMediaLabels(): CompletionItem[] {
+		let ci: CompletionItem[] = [];
+		for (const r of this.mediaLabels) {
+			ci.push(r.completionItem);
+		}
+		return ci;
+	}
+
+	getResourceLabels(): CompletionItem[] {
+		let ci: CompletionItem[] = [];
+		for (const r of this.resourceLabels) {
+			ci.push(r.completionItem);
+		}
+		return ci;
 	}
 
 	

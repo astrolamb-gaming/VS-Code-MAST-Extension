@@ -7,7 +7,6 @@ exports.getMainLabelAtPos = getMainLabelAtPos;
 const vscode_languageserver_1 = require("vscode-languageserver");
 const errorChecking_1 = require("./errorChecking");
 const server_1 = require("./server");
-const console_1 = require("console");
 /**
  * Get valid labels, but only main or sublabels, not both.
  * @param textDocument
@@ -76,7 +75,7 @@ function parseLabels(text, src, main = true) {
 }
 function getLabelsInFile(text, src) {
     const mainLabels = parseLabels(text, src, true);
-    (0, console_1.debug)(mainLabels);
+    //debug(mainLabels);
     const subLabels = parseLabels(text, src, false);
     // Add child labels to their parent
     for (const i in mainLabels) {

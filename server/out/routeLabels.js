@@ -1,16 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getSkyboxCompletionItems = getSkyboxCompletionItems;
+exports.loadResourceLabels = loadResourceLabels;
 exports.loadMediaLabels = loadMediaLabels;
 exports.loadRouteLabels = loadRouteLabels;
 exports.getRouteLabelAutocompletions = getRouteLabelAutocompletions;
-exports.getMusic = getMusic;
 const console_1 = require("console");
-const path = require("path");
 const vscode_languageserver_1 = require("vscode-languageserver");
-const fileFunctions_1 = require("./fileFunctions");
-const routeLabels = [];
-const mediaLabels = [];
+//const routeLabels: IRouteLabel[] = [];
+//const mediaLabels: IRouteLabel[] = [];
 const resourceLabels = [];
 const supportedRoutes = [];
 const routeDefSource = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast_sbs/story_nodes/route_label.py";
@@ -25,7 +23,8 @@ function getSkyboxCompletionItems() {
     return skyboxes;
 }
 // Resource labels can use @ or // when called.
-function getResourceLabels() {
+function loadResourceLabels() {
+    let resourceLabels = [];
     const resLabels = [
         "console/",
         "gui/tab/"
@@ -52,17 +51,63 @@ function getResourceLabels() {
         };
         resourceLabels.push(ri);
     }
+    return resourceLabels;
 }
 /**
  * Parse media.py for media types, for autocompletion purposes
  * May need to change this later if it is changed to use switch statement
  * Also gets other @ whatever options
  */
-async function loadMediaLabels() {
+function loadMediaLabels(textData = "") {
+    let mediaLabels = [];
+    const routes = ["skybox", "music"];
+    for (const route of routes) {
+        let label = "media/" + route;
+        let docs = "Media label - loads skyboxes or music";
+        const mediaLabelDetails = {
+            description: "Media Label"
+        };
+        const ci = {
+            label: label,
+            kind: vscode_languageserver_1.CompletionItemKind.Event,
+            labelDetails: mediaLabelDetails,
+            documentation: docs
+        };
+        const ri = {
+            route: label,
+            labels: label.split("/"),
+            completionItem: ci
+        };
+        (0, console_1.debug)(label);
+        mediaLabels.push(ri);
+    }
+    let label = "map";
+    let docs = "Map label - defines a map. Typically only used at the beginning of a file";
+    let mediaLabelDetails = {
+        description: "Map Label"
+    };
+    let ci = {
+        label: label,
+        kind: vscode_languageserver_1.CompletionItemKind.Event,
+        labelDetails: mediaLabelDetails,
+        documentation: docs
+    };
+    let ri = {
+        route: label,
+        labels: label.split("/"),
+        completionItem: ci
+    };
+    mediaLabels.push(ri);
+    if (textData === "") {
+        return mediaLabels;
+    }
+    if (!textData.includes("_media_schedule")) {
+        return mediaLabels;
+    }
     try {
-        const data = await fetch(mediaDefSource);
-        (0, console_1.debug)("Getting media label info");
-        const textData = await data.text();
+        // const data = await fetch(mediaDefSource);
+        // debug("Getting media label info");
+        // const textData = await data.text();
         let pattern = /def _media_schedule\(kind, label, ID=0\):.+?(def)/gs;
         let m;
         while (m = pattern.exec(textData)) {
@@ -134,16 +179,22 @@ async function loadMediaLabels() {
     return mediaLabels;
 }
 /**
- * Parse the sbs_utils/mast/mast.py file to find all the valid route labels
+ * Parse any file containing the RouteDecoratorLabel class to get the route labels
  * TODO: Add all the provided variables
  */
-async function loadRouteLabels() {
+function loadRouteLabels(textData) {
+    let routeLabels = [];
+    if (textData.includes("RouteDecoratorLabel")) {
+        (0, console_1.debug)(" THIS ONE ");
+    }
+    else {
+        return routeLabels;
+    }
     try {
-        getResourceLabels();
-        loadMediaLabels();
-        skyboxes = getSkyboxes();
-        const data = await fetch(routeDefSource);
-        const textData = await data.text();
+        //getResourceLabels();
+        //loadMediaLabels();
+        // const data = await fetch(routeDefSource);
+        // const textData = await data.text();
         // Get the text of function that defines route labels
         let pattern = /RouteDecoratorLabel\(DecoratorLabel\):.+?generate_label_begin_cmds.+?[\s](def |class)/gs;
         let m;
@@ -214,6 +265,7 @@ async function loadRouteLabels() {
                     labels: arr,
                     completionItem: ci
                 };
+                (0, console_1.debug)(ri);
                 routeLabels.push(ri);
             }
         }
@@ -255,6 +307,7 @@ async function loadRouteLabels() {
     catch (e) {
         (0, console_1.debug)("Error in loadRouteLabels(): " + e);
     }
+    return routeLabels;
 }
 function getRouteLabelAutocompletions(currentText) {
     const ci = [];
@@ -264,54 +317,19 @@ function getRouteLabelAutocompletions(currentText) {
     // 		ci.push({label: r, kind: CompletionItemKind.Event});
     // 	}
     // }
-    for (const i in routeLabels) {
-        if (("//" + routeLabels[i].route).includes(currentText.trim())) {
-            ci.push(routeLabels[i].completionItem);
-        }
-    }
-    for (const i in mediaLabels) {
-        if (("@" + mediaLabels[i].route).includes(currentText.trim())) {
-            ci.push(mediaLabels[i].completionItem);
-        }
-    }
+    // for (const i in routeLabels) {
+    // 	if (("//" + routeLabels[i].route).includes(currentText.trim())) {
+    // 		ci.push(routeLabels[i].completionItem);
+    // 	}
+    // }
+    // for (const ml of getGlobals().music) {
+    // 	if (("@" + ml).includes(currentText.trim())) {
+    // 		ci.push(mediaLabels[i].completionItem);
+    // 	}
+    // }
     for (const i in resourceLabels) {
         if (("//" + resourceLabels[i].route).includes(currentText.trim()) || ("@" + resourceLabels[i].route).includes(currentText.trim())) {
             ci.push(resourceLabels[i].completionItem);
-        }
-    }
-    return ci;
-}
-function getSkyboxes() {
-    const skyboxes = [];
-    const ci = [];
-    let initialDir = "../../../../";
-    const graphics = (0, fileFunctions_1.findSubfolderByName)(initialDir, "graphics");
-    if (graphics !== null) {
-        const files = (0, fileFunctions_1.getFilesInDir)(graphics);
-        for (const file of files) {
-            if (file.includes("sky") && file.endsWith(".png")) {
-                const last = file.lastIndexOf("/");
-                let sb = file.substring(last + 1).replace(".png", "");
-                skyboxes.push(sb);
-                ci.push({
-                    label: path.basename(file).replace(".png", "")
-                });
-            }
-        }
-    }
-    return ci;
-}
-function getMusic() {
-    const options = [];
-    const ci = [];
-    let initialDir = "../../../../";
-    const music = (0, fileFunctions_1.findSubfolderByName)(initialDir, "music");
-    if (music !== null) {
-        const files = (0, fileFunctions_1.getFolders)(music);
-        for (const file of files) {
-            ci.push({
-                label: path.basename(file)
-            });
         }
     }
     return ci;

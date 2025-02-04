@@ -88,7 +88,7 @@ export function parseLabels(text: string, src: string, main: boolean = true): La
 
 export function getLabelsInFile(text: string, src: string): LabelInfo[] {
 	const mainLabels : LabelInfo[] = parseLabels(text, src, true);
-	debug(mainLabels);
+	//debug(mainLabels);
 	const subLabels : LabelInfo[] = parseLabels(text, src, false);
 	// Add child labels to their parent
 	for (const i in mainLabels) {

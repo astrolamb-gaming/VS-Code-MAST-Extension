@@ -4,9 +4,9 @@ import { getMainLabelAtPos } from './labels';
 import { labelNames } from './server';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { ClassObject, ClassTypings, IClassObject, PyFile } from './data';
-import { getMusic, getRouteLabelAutocompletions, getSkyboxCompletionItems } from './routeLabels';
+import { getRouteLabelAutocompletions, getSkyboxCompletionItems } from './routeLabels';
 import { isInComment, isInString, isTextInBracket } from './comments';
-import { getCache } from './cache';
+import { getCache, getGlobals } from './cache';
 import path = require('path');
 
 let classes: IClassObject[] = [];
@@ -77,18 +77,23 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 
 	// Media labels only get the skybox names
 	else if (iStr.endsWith("@media/skybox/")) {
-		return getSkyboxCompletionItems();
+		return getGlobals().skyboxes;
 	// Get Music Options (default vs Artemis2)
 	} else if (iStr.endsWith("@media/music/")) {
-		return getMusic();
+		return getGlobals().music;
 	}
 
 	// Route Label autocompletion
-	if(iStr.trim().startsWith("//")||iStr.trim().startsWith("@")) {
-		let ci = getRouteLabelAutocompletions(iStr);
+	if(iStr.trim().startsWith("//")) {
+		ci = getCache(text.uri).getRouteLabels();//getRouteLabelAutocompletions(iStr);
+		return ci;
 		// TODO: Add media, map, gui/tab, and console autocompletion items
+	} else if (iStr.trim().startsWith("@")) {
+		ci = getCache(text.uri).getMediaLabels();
 		return ci;
 	}
+	
+	
 	// TODO: Add variables provided by routes to autocompletion
 	/**
 	 * //science

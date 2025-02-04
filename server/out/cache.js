@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.StoryJson = exports.MissionCache = void 0;
+exports.StoryJson = exports.MissionCache = exports.Globals = void 0;
+exports.getGlobals = getGlobals;
 exports.loadCache = loadCache;
 exports.getSourceFiles = getSourceFiles;
 exports.getCache = getCache;
@@ -12,8 +13,55 @@ const console_1 = require("console");
 const autocompletion_1 = require("./autocompletion");
 const signatureHelp_1 = require("./signatureHelp");
 const rx_1 = require("./rx");
+const routeLabels_1 = require("./routeLabels");
 const fileFunctions_1 = require("./fileFunctions");
 const vscode_uri_1 = require("vscode-uri");
+class Globals {
+    constructor() {
+        this.skyboxes = this.findSkyboxes();
+        this.music = this.findMusic();
+    }
+    findSkyboxes() {
+        const skyboxes = [];
+        const ci = [];
+        let initialDir = "../../../../";
+        const graphics = (0, fileFunctions_1.findSubfolderByName)(initialDir, "graphics");
+        if (graphics !== null) {
+            const files = (0, fileFunctions_1.getFilesInDir)(graphics);
+            for (const file of files) {
+                if (file.includes("sky") && file.endsWith(".png")) {
+                    const last = file.lastIndexOf("/");
+                    let sb = file.substring(last + 1).replace(".png", "");
+                    skyboxes.push(sb);
+                    ci.push({
+                        label: path.basename(file).replace(".png", "")
+                    });
+                }
+            }
+        }
+        return ci;
+    }
+    findMusic() {
+        const options = [];
+        const ci = [];
+        let initialDir = "../../../../";
+        const music = (0, fileFunctions_1.findSubfolderByName)(initialDir, "music");
+        if (music !== null) {
+            const files = (0, fileFunctions_1.getFolders)(music);
+            for (const file of files) {
+                ci.push({
+                    label: path.basename(file)
+                });
+            }
+        }
+        return ci;
+    }
+}
+exports.Globals = Globals;
+const globals = new Globals();
+function getGlobals() {
+    return globals;
+}
 function loadCache(dir) {
     // TODO: Need a list of caches, in case there are files from more than one mission folder open
     let cache = getCache(dir);
@@ -40,6 +88,7 @@ class MissionSubFolder {
 }
 class MissionCache {
     constructor(workspaceUri) {
+        //debug(workspaceUri);
         this.missionName = "";
         this.missionURI = "";
         // The Modules are the default sbslib and mastlib files.
@@ -53,7 +102,18 @@ class MissionCache {
         // FileCache is the information associated with the file
         this.pyFileInfo = [];
         this.mastFileInfo = [];
-        //debug(workspaceUri);
+        //// Other Labels
+        // Route Labels - From RouteDecoratorLabel class
+        this.routeLabels = [];
+        // Media Labels - From procedural/media.py # _media_schedule()
+        this.mediaLabels = [];
+        // Resource Labels - Not sure how best to handle these...
+        /**
+         * TODO: See about parsing all python classes that derive from Label
+         */
+        this.resourceLabels = [];
+        this.resourceLabels = (0, routeLabels_1.loadResourceLabels)();
+        this.mediaLabels = this.mediaLabels.concat((0, routeLabels_1.loadMediaLabels)());
         this.missionURI = (0, fileFunctions_1.getMissionFolder)(workspaceUri);
         (0, console_1.debug)(this.missionURI);
         this.missionName = path.basename(this.missionURI);
@@ -111,7 +171,7 @@ class MissionCache {
         }
     }
     handleZipData(zip, parentFolder = "") {
-        (0, console_1.debug)(zip);
+        //debug(zip);
         zip.forEach((data, file) => {
             if (parentFolder !== "") {
                 file = parentFolder + path.sep + file;
@@ -121,6 +181,9 @@ class MissionCache {
                 // Do nothing
             }
             else if (file.endsWith(".py")) {
+                this.routeLabels = this.routeLabels.concat((0, routeLabels_1.loadRouteLabels)(data));
+                // this.mediaLabels = this.mediaLabels.concat(loadMediaLabels(data));
+                // this.resourceLabels = this.resourceLabels.concat(loadResourceLabels(data));
                 const p = new data_1.PyFile(file, data);
                 this.missionPyModules.push(p);
                 this.missionClasses = this.missionClasses.concat(p.classes);
@@ -138,6 +201,27 @@ class MissionCache {
         });
         //debug(this.missionDefaultCompletions);
         //debug(this.missionClasses);
+    }
+    getRouteLabels() {
+        let ci = [];
+        for (const r of this.routeLabels) {
+            ci.push(r.completionItem);
+        }
+        return ci;
+    }
+    getMediaLabels() {
+        let ci = [];
+        for (const r of this.mediaLabels) {
+            ci.push(r.completionItem);
+        }
+        return ci;
+    }
+    getResourceLabels() {
+        let ci = [];
+        for (const r of this.resourceLabels) {
+            ci.push(r.completionItem);
+        }
+        return ci;
     }
     /**
      * @param fileUri The uri of the file.
