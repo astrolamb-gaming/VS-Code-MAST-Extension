@@ -2,7 +2,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { debug } from 'console';
 import { CompletionItem, CompletionItemKind, CompletionItemLabelDetails, integer, MarkupContent, ParameterInformation, SignatureInformation } from 'vscode-languageserver';
-import { getLabels, LabelInfo } from './labels';
+import { parseLabels, LabelInfo, getLabelsInFile } from './labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { getParentFolder } from './fileFunctions';
 
@@ -13,7 +13,7 @@ export class FileCache {
 	constructor(uri: string) {
 		this.uri = uri;
 		let parent = "sbs_utils";
-		if (!uri.includes("sbs_utils")) {
+		if (!uri.includes("sbs_utils") && !uri.includes("mastlib")) {
 			parent = getParentFolder(uri);
 		}
 		this.parentFolder = parent;
@@ -39,38 +39,35 @@ export class MastFile extends FileCache {
 	// TODO: Add support for holding label information for all files listed in __init__.mast in a given folder.
 	// TODO: Add system for tracking variables in a mast file
 	constructor(uri: string, fileContents:string = "") {
+		debug("building mast file");
 		super(uri);
-		if (fileContents !== "") {
-			this.parse(fileContents);
-		}
-		if (path.extname(uri) === "mast") {
+		
+		if (path.extname(uri) === ".mast") {
+			// If the contents are aleady read, we parse and move on. Don't need to read or parse again.
+			if (fileContents !== "") {
+				debug("parsing, has contents");
+				this.parse(fileContents);
+				return;
+			}
 			const d = fs.readFile(uri, "utf-8", (err,data)=>{
 				if (err) {
 					debug("error reading file: " + uri + "\n" + err);
+					throw err;
 				} else {
+					debug("parsing, no error");
 					this.parse(data);
 				}
 			});
-		} else if (path.extname(uri) === "py") {
+		} else if (path.extname(uri) === ".py") {
 			// Shouldn't do anything, Py files are very different from mast
 		}
 	}
 
 	parse(text: string) {
 		const textDocument: TextDocument = TextDocument.create(this.uri, "mast", 1, text);
-		const mainLabels : LabelInfo[] = getLabels(textDocument,true);
-		const subLabels : LabelInfo[] = getLabels(textDocument,false);
-		// Add child labels to their parent
-		for (const i in mainLabels) {
-			const ml = mainLabels[i];
-			for (const j in subLabels) {
-				const sl = subLabels[j];
-				if (sl.start > ml.start && sl.start < ml.end) {
-					ml.subLabels.push(sl.name);
-				}
-			}
-		}
-		this.labelNames = this.labelNames.concat(mainLabels);
+		this.labelNames = getLabelsInFile(text, this.uri);
+		debug(this.labelNames);
+		// TODO: Parse variables, etc
 	}
 }
 
@@ -81,9 +78,12 @@ export class PyFile extends FileCache {
 	constructor(uri: string, fileContents:string = "") {
 		super(uri);
 		// If fileContents is NOT an empty string (e.g. if it's from a zipped folder), then all we do is parse the contents
-		if (fileContents !== "") {
-			this.parseWholeFile(fileContents, uri);
-		} else if (path.extname(uri) === "py") {
+		
+		if (path.extname(uri) === "py") {
+			// If file contents are included, we don't need to read, just go straight to parsing
+			if (fileContents !== "") {
+				this.parseWholeFile(fileContents, uri);
+			}
 			debug("File contents empty, so we need to load it.");
 			const d = fs.readFile(uri, "utf-8", (err,data)=>{
 				if (err) {

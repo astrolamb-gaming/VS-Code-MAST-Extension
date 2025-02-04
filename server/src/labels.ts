@@ -4,6 +4,7 @@ import { relatedMessage } from './errorChecking';
 import { updateLabelNames } from "./server";
 import { myDebug } from './server';
 import { debug } from 'console';
+import { URI } from 'vscode-uri';
 
 
 export interface LabelInfo {
@@ -12,7 +13,8 @@ export interface LabelInfo {
 	start: integer,
 	end: integer,
 	length: integer,
-	subLabels: string[]
+	subLabels: string[],
+	srcFile: string
 }
 
 /**
@@ -21,7 +23,11 @@ export interface LabelInfo {
  * @param main search for main labels (==main_label==) if true, or sublabels (--sublabel--) if false
  * @returns 
  */
-export function getLabels(textDocument: TextDocument, main: boolean = true): LabelInfo[] {
+export function parseLabels(text: string, src: string, main: boolean = true): LabelInfo[] {
+	// let src = textDocument.uri;
+	// if (src.startsWith("file")) {
+	// 	src = URI.parse(src).fsPath;
+	// }
 	let definedLabel : RegExp;
 	if (main) {
 		definedLabel = /^(\s*)(={2,}\s*[ \t]*)(\w+)([ \t]*(={2,})?)/gm
@@ -29,7 +35,7 @@ export function getLabels(textDocument: TextDocument, main: boolean = true): Lab
 		definedLabel = /^(\s*)(-{2,}\s*[ \t]*)(\w+)([ \t]*(-{2,})?)/gm
 	}
 	let m: RegExpExecArray | null;
-	const text = textDocument.getText();
+	//const text = textDocument.getText();
 	const labels : LabelInfo[] = [];
 	
 	//debug("Iterating over defined labels");
@@ -47,7 +53,8 @@ export function getLabels(textDocument: TextDocument, main: boolean = true): Lab
 			start: m.index,
 			end: 0,
 			length: m[0].length,
-			subLabels: []
+			subLabels: [],
+			srcFile: src
 		}
 		//debug(str);
 		labels.push(li);
@@ -65,7 +72,7 @@ export function getLabels(textDocument: TextDocument, main: boolean = true): Lab
 	// Add END as a main label, last so we don't need to mess with it in earlier iterations.
 	// Also add "main" as a main label, since it can happen that sublabels are defined before any user-defined main labels.
 	if (main) {
-		const endLabel: LabelInfo = { main: true, name: "END", start: text.length-1,end: text.length, length: 3, subLabels: [] }
+		const endLabel: LabelInfo = { main: true, name: "END", start: text.length-1,end: text.length, length: 3, subLabels: [], srcFile: src }
 		labels.push(endLabel);
 		let end:integer = text.length;
 		for (const i in labels) {
@@ -73,9 +80,27 @@ export function getLabels(textDocument: TextDocument, main: boolean = true): Lab
 				end = labels[i].start-1;
 			}
 		}
-		const mainLabel: LabelInfo = { main: true, name: "main", start: 0, end: end, length: 4, subLabels: [] }
+		const mainLabel: LabelInfo = { main: true, name: "main", start: 0, end: end, length: 4, subLabels: [], srcFile: src }
+		labels.push(mainLabel);
 	}
 	return labels
+}
+
+export function getLabelsInFile(text: string, src: string): LabelInfo[] {
+	const mainLabels : LabelInfo[] = parseLabels(text, src, true);
+	debug(mainLabels);
+	const subLabels : LabelInfo[] = parseLabels(text, src, false);
+	// Add child labels to their parent
+	for (const i in mainLabels) {
+		const ml = mainLabels[i];
+		for (const j in subLabels) {
+			const sl = subLabels[j];
+			if (sl.start > ml.start && sl.start < ml.end) {
+				ml.subLabels.push(sl.name);
+			}
+		}
+	}
+	return mainLabels;
 }
 
 function checkForDuplicateLabels(t: TextDocument, main:LabelInfo[],sub:LabelInfo[]): Diagnostic[] {
@@ -106,8 +131,8 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 	let diagnostics : Diagnostic[] = [];
 	const calledLabel : RegExp = /(^ *?-> *?[0-9A-Za-z_]{1,})|(^ *?jump *?[0-9A-Za-z_]{1,})/gm;
 	let m: RegExpExecArray | null;
-	const mainLabels : LabelInfo[] = getLabels(textDocument,true);
-	const subLabels : LabelInfo[] = getLabels(textDocument,false);
+	const mainLabels : LabelInfo[] = parseLabels(textDocument.getText(),textDocument.uri, true);
+	const subLabels : LabelInfo[] = parseLabels(textDocument.getText(), textDocument.uri, false);
 	// Add child labels to their parent
 	for (const i in mainLabels) {
 		const ml = mainLabels[i];

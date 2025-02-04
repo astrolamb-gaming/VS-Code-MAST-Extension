@@ -8,6 +8,7 @@ const labels_1 = require("./labels");
 const routeLabels_1 = require("./routeLabels");
 const comments_1 = require("./comments");
 const cache_1 = require("./cache");
+const path = require("path");
 let classes = [];
 let defaultFunctionCompletionItems = [];
 /**
@@ -98,13 +99,18 @@ function onCompletion(_textDocumentPosition, text) {
     // Handle label autocompletion
     let jump = /(->|jump) *?$/;
     if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (")) {
-        let labelNames = (0, cache_1.getCache)(text.uri).getLabels(text.uri);
+        let labelNames = (0, cache_1.getCache)(text.uri).getLabels(text);
+        (0, console_1.debug)(labelNames);
         for (const i in labelNames) {
-            ci.push({ label: labelNames[i].name, kind: vscode_languageserver_1.CompletionItemKind.Event });
+            ci.push({ label: labelNames[i].name, kind: vscode_languageserver_1.CompletionItemKind.Event, labelDetails: { description: path.basename(labelNames[i].srcFile) } });
         }
-        const lbl = (0, labels_1.getMainLabelAtPos)(startOfLine, labelNames).subLabels;
-        for (const i in lbl) {
-            ci.push({ label: lbl[i], kind: vscode_languageserver_1.CompletionItemKind.Event });
+        const lbl = (0, labels_1.getMainLabelAtPos)(startOfLine, labelNames);
+        let subs = lbl.subLabels;
+        if (lbl === undefined) {
+            return ci;
+        }
+        for (const i in subs) {
+            ci.push({ label: subs[i], kind: vscode_languageserver_1.CompletionItemKind.Event, labelDetails: { description: "Parent: " + lbl.name } });
         }
         return ci;
     }

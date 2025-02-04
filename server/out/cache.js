@@ -7,6 +7,7 @@ exports.getCache = getCache;
 const fs = require("fs");
 const path = require("path");
 const data_1 = require("./data");
+const labels_1 = require("./labels");
 const console_1 = require("console");
 const autocompletion_1 = require("./autocompletion");
 const signatureHelp_1 = require("./signatureHelp");
@@ -52,15 +53,16 @@ class MissionCache {
         // FileCache is the information associated with the file
         this.pyFileInfo = [];
         this.mastFileInfo = [];
-        (0, console_1.debug)(workspaceUri);
+        //debug(workspaceUri);
         this.missionURI = (0, fileFunctions_1.getMissionFolder)(workspaceUri);
         (0, console_1.debug)(this.missionURI);
         this.missionName = path.basename(this.missionURI);
         this.storyJson = new StoryJson(path.join(this.missionURI, "story.json"));
         this.storyJson.readFile().then(() => { this.modulesLoaded(); });
         let files = (0, fileFunctions_1.getFilesInDir)(this.missionURI);
+        //debug(files);
         loadSbs().then((p) => {
-            (0, console_1.debug)(p.classes);
+            //debug(p.classes);
             this.missionPyModules.push(p);
             this.missionClasses = this.missionClasses.concat(p.classes);
             this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.defaultFunctionCompletionItems);
@@ -69,7 +71,8 @@ class MissionCache {
             }
         });
         for (const file of files) {
-            if (path.extname(file) === "mast") {
+            (0, console_1.debug)(path.extname(file));
+            if (path.extname(file) === ".mast") {
                 (0, console_1.debug)(file);
                 if (path.basename(file).includes("__init__")) {
                     (0, console_1.debug)("INIT file found");
@@ -80,7 +83,7 @@ class MissionCache {
                     this.mastFileInfo.push(m);
                 }
             }
-            if (path.extname(file) === "py") {
+            if (path.extname(file) === ".py") {
                 (0, console_1.debug)(file);
                 // Parse Python File
                 const p = new data_1.PyFile(file);
@@ -101,16 +104,23 @@ class MissionCache {
             const zipPath = path.join(missionLibFolder, zip);
             (0, fileFunctions_1.readZipArchive)(zipPath).then((data) => {
                 (0, console_1.debug)("Zip archive read for " + zipPath);
-                this.handleZipData(data);
+                this.handleZipData(data, zip);
             }).catch(err => {
                 (0, console_1.debug)("Error unzipping. \n" + err);
             });
         }
     }
-    handleZipData(zip) {
-        //debug(zip);
+    handleZipData(zip, parentFolder = "") {
+        (0, console_1.debug)(zip);
         zip.forEach((data, file) => {
-            if (file.endsWith(".py")) {
+            if (parentFolder !== "") {
+                file = parentFolder + path.sep + file;
+            }
+            (0, console_1.debug)(file);
+            if (file.endsWith("__init__.mast")) {
+                // Do nothing
+            }
+            else if (file.endsWith(".py")) {
                 const p = new data_1.PyFile(file, data);
                 this.missionPyModules.push(p);
                 this.missionClasses = this.missionClasses.concat(p.classes);
@@ -120,7 +130,8 @@ class MissionCache {
                     this.missionDefaultSignatures.push(s.signatureInformation);
                 }
             }
-            if (file.endsWith(".mast")) {
+            else if (file.endsWith(".mast")) {
+                (0, console_1.debug)("Building file: " + file);
                 const m = new data_1.MastFile(file, data);
                 this.missionMastModules.push(m);
             }
@@ -132,17 +143,43 @@ class MissionCache {
      * @param fileUri The uri of the file.
      * @returns List of {@link LabelInfo LabelInfo} applicable to the current scope
      */
-    getLabels(fileUri) {
+    getLabels(textDocument) {
+        let fileUri = textDocument.uri;
+        if (fileUri.startsWith("file")) {
+            fileUri = vscode_uri_1.URI.parse(fileUri).fsPath;
+        }
         let li = [];
+        (0, console_1.debug)(this.mastFileInfo);
         for (const f of this.mastFileInfo) {
+            if (f.uri === fileUri) {
+                li = li.concat(f.labelNames);
+            }
             // Check if the mast files are in scope
             // TODO: Check init.mast for if any files should not be included
             (0, console_1.debug)(fileUri);
             if (f.parentFolder === (0, fileFunctions_1.getParentFolder)(fileUri)) {
+                (0, console_1.debug)("adding labels for: ");
+                (0, console_1.debug)(f);
                 li = li.concat(f.labelNames);
             }
         }
-        return li;
+        const arrUniq = [...new Map(li.map(v => [v.name, v])).values()];
+        return arrUniq;
+    }
+    /**
+     * Call when the contents of a file changes
+     * @param textDocument
+     */
+    updateLabels(textDocument) {
+        let fileUri = textDocument.uri;
+        if (fileUri.startsWith("file")) {
+            fileUri = vscode_uri_1.URI.parse(fileUri).fsPath;
+        }
+        for (const file of this.mastFileInfo) {
+            if (file.uri === fileUri) {
+                file.labelNames = (0, labels_1.getLabelsInFile)(textDocument.getText(), textDocument.uri);
+            }
+        }
     }
     /**
      * @param _class String name of the class that we're dealing with. Optional. Default value is an empty string, and the default functions will be returned.

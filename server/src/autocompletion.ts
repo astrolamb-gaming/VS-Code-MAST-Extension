@@ -7,6 +7,7 @@ import { ClassObject, ClassTypings, IClassObject, PyFile } from './data';
 import { getMusic, getRouteLabelAutocompletions, getSkyboxCompletionItems } from './routeLabels';
 import { isInComment, isInString, isTextInBracket } from './comments';
 import { getCache } from './cache';
+import path = require('path');
 
 let classes: IClassObject[] = [];
 let defaultFunctionCompletionItems: CompletionItem[] = [];
@@ -110,13 +111,18 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// Handle label autocompletion
 	let jump: RegExp = /(->|jump) *?$/;
 	if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (")) {
-		let labelNames = getCache(text.uri).getLabels(text.uri);
+		let labelNames = getCache(text.uri).getLabels(text);
+		debug(labelNames);
 		for (const i in labelNames) {
-			ci.push({label: labelNames[i].name, kind: CompletionItemKind.Event});
+			ci.push({label: labelNames[i].name, kind: CompletionItemKind.Event, labelDetails: {description: path.basename(labelNames[i].srcFile)}});
 		}
-		const lbl = getMainLabelAtPos(startOfLine,labelNames).subLabels;
-		for (const i in lbl) {
-			ci.push({label: lbl[i], kind: CompletionItemKind.Event});
+		const lbl = getMainLabelAtPos(startOfLine,labelNames);
+		let subs = lbl.subLabels;
+		if (lbl === undefined) {
+			return ci;
+		}
+		for (const i in subs) {
+			ci.push({label: subs[i], kind: CompletionItemKind.Event, labelDetails: {description: "Parent: " + lbl.name}});
 		}
 		return ci;
 	}

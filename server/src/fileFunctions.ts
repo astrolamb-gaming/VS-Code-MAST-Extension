@@ -207,10 +207,14 @@ export function getStoryJson(uri: string) {
 }
 
 export function getParentFolder(childUri:string) {
+	if (childUri.startsWith("file")) {
+		childUri = URI.parse(childUri).fsPath;
+	}
 	let p = path.dirname(childUri);
 	debug(p);
 	if (p === ".") {
 		debug(childUri + " getParentFolder() ends with period.");
+		p = childUri;
 	}
 	fs.lstat(p, (err,stats) => {
 		if (err) {

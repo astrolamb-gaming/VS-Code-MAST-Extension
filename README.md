@@ -15,7 +15,10 @@ Includes:
 
 ## Requirements
 
-Dependencies should be packaged with the extension. If not, please let me know ASAP.
+Dependencies should be packaged with the extension. If you encounter an issue with a dependency, or it is not included, please let me know ASAP.
+Included dependencies:
+* adm-zip
+* vscode-uri
 
 ## Extension Settings
 
@@ -42,17 +45,7 @@ See [GitHub](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues) 
 
 ## Release Notes
 
-### 0.2.0
-
-- Added additional label and route label error checking
-- Added autocompletion for class functions (can't yet determine variable types though)
-- Added SignatureInformation for functions
-
-### 0.1.0
-
-- Initial beta release of MAST Extension
-
-
+See the [Changelog](https://marketplace.visualstudio.com/items/astrolamb.mast/changelog)
 
 ## Working with Markdown
 

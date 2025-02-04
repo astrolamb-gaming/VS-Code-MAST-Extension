@@ -1,18 +1,24 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getLabels = getLabels;
+exports.parseLabels = parseLabels;
+exports.getLabelsInFile = getLabelsInFile;
 exports.checkLabels = checkLabels;
 exports.getMainLabelAtPos = getMainLabelAtPos;
 const vscode_languageserver_1 = require("vscode-languageserver");
 const errorChecking_1 = require("./errorChecking");
 const server_1 = require("./server");
+const console_1 = require("console");
 /**
  * Get valid labels, but only main or sublabels, not both.
  * @param textDocument
  * @param main search for main labels (==main_label==) if true, or sublabels (--sublabel--) if false
  * @returns
  */
-function getLabels(textDocument, main = true) {
+function parseLabels(text, src, main = true) {
+    // let src = textDocument.uri;
+    // if (src.startsWith("file")) {
+    // 	src = URI.parse(src).fsPath;
+    // }
     let definedLabel;
     if (main) {
         definedLabel = /^(\s*)(={2,}\s*[ \t]*)(\w+)([ \t]*(={2,})?)/gm;
@@ -21,7 +27,7 @@ function getLabels(textDocument, main = true) {
         definedLabel = /^(\s*)(-{2,}\s*[ \t]*)(\w+)([ \t]*(-{2,})?)/gm;
     }
     let m;
-    const text = textDocument.getText();
+    //const text = textDocument.getText();
     const labels = [];
     //debug("Iterating over defined labels");
     while (m = definedLabel.exec(text)) {
@@ -37,7 +43,8 @@ function getLabels(textDocument, main = true) {
             start: m.index,
             end: 0,
             length: m[0].length,
-            subLabels: []
+            subLabels: [],
+            srcFile: src
         };
         //debug(str);
         labels.push(li);
@@ -54,7 +61,7 @@ function getLabels(textDocument, main = true) {
     // Add END as a main label, last so we don't need to mess with it in earlier iterations.
     // Also add "main" as a main label, since it can happen that sublabels are defined before any user-defined main labels.
     if (main) {
-        const endLabel = { main: true, name: "END", start: text.length - 1, end: text.length, length: 3, subLabels: [] };
+        const endLabel = { main: true, name: "END", start: text.length - 1, end: text.length, length: 3, subLabels: [], srcFile: src };
         labels.push(endLabel);
         let end = text.length;
         for (const i in labels) {
@@ -62,9 +69,26 @@ function getLabels(textDocument, main = true) {
                 end = labels[i].start - 1;
             }
         }
-        const mainLabel = { main: true, name: "main", start: 0, end: end, length: 4, subLabels: [] };
+        const mainLabel = { main: true, name: "main", start: 0, end: end, length: 4, subLabels: [], srcFile: src };
+        labels.push(mainLabel);
     }
     return labels;
+}
+function getLabelsInFile(text, src) {
+    const mainLabels = parseLabels(text, src, true);
+    (0, console_1.debug)(mainLabels);
+    const subLabels = parseLabels(text, src, false);
+    // Add child labels to their parent
+    for (const i in mainLabels) {
+        const ml = mainLabels[i];
+        for (const j in subLabels) {
+            const sl = subLabels[j];
+            if (sl.start > ml.start && sl.start < ml.end) {
+                ml.subLabels.push(sl.name);
+            }
+        }
+    }
+    return mainLabels;
 }
 function checkForDuplicateLabels(t, main, sub) {
     let diagnostics = [];
@@ -92,8 +116,8 @@ function checkLabels(textDocument) {
     let diagnostics = [];
     const calledLabel = /(^ *?-> *?[0-9A-Za-z_]{1,})|(^ *?jump *?[0-9A-Za-z_]{1,})/gm;
     let m;
-    const mainLabels = getLabels(textDocument, true);
-    const subLabels = getLabels(textDocument, false);
+    const mainLabels = parseLabels(textDocument.getText(), textDocument.uri, true);
+    const subLabels = parseLabels(textDocument.getText(), textDocument.uri, false);
     // Add child labels to their parent
     for (const i in mainLabels) {
         const ml = mainLabels[i];

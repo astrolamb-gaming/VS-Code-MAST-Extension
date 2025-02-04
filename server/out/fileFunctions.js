@@ -177,10 +177,14 @@ function getStoryJson(uri) {
     return ret;
 }
 function getParentFolder(childUri) {
+    if (childUri.startsWith("file")) {
+        childUri = vscode_uri_1.URI.parse(childUri).fsPath;
+    }
     let p = path.dirname(childUri);
     (0, console_1.debug)(p);
     if (p === ".") {
         (0, console_1.debug)(childUri + " getParentFolder() ends with period.");
+        p = childUri;
     }
     fs.lstat(p, (err, stats) => {
         if (err) {
