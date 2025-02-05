@@ -61,44 +61,44 @@ function loadResourceLabels() {
 function loadMediaLabels(textData = "") {
     let mediaLabels = [];
     const routes = ["skybox", "music"];
-    for (const route of routes) {
-        let label = "media/" + route;
-        let docs = "Media label - loads skyboxes or music";
-        const mediaLabelDetails = {
-            description: "Media Label"
+    if (textData === "") {
+        for (const route of routes) {
+            let label = "media/" + route;
+            let docs = "Media label - loads skyboxes or music";
+            const mediaLabelDetails = {
+                description: "Media Label"
+            };
+            const ci = {
+                label: label,
+                kind: vscode_languageserver_1.CompletionItemKind.Event,
+                labelDetails: mediaLabelDetails,
+                documentation: docs
+            };
+            const ri = {
+                route: label,
+                labels: label.split("/"),
+                completionItem: ci
+            };
+            (0, console_1.debug)(label);
+            mediaLabels.push(ri);
+        }
+        let label = "map";
+        let docs = "Map label - defines a map. Typically only used at the beginning of a file";
+        let mediaLabelDetails = {
+            description: "Map Label"
         };
-        const ci = {
+        let ci = {
             label: label,
             kind: vscode_languageserver_1.CompletionItemKind.Event,
             labelDetails: mediaLabelDetails,
             documentation: docs
         };
-        const ri = {
+        let ri = {
             route: label,
             labels: label.split("/"),
             completionItem: ci
         };
-        (0, console_1.debug)(label);
         mediaLabels.push(ri);
-    }
-    let label = "map";
-    let docs = "Map label - defines a map. Typically only used at the beginning of a file";
-    let mediaLabelDetails = {
-        description: "Map Label"
-    };
-    let ci = {
-        label: label,
-        kind: vscode_languageserver_1.CompletionItemKind.Event,
-        labelDetails: mediaLabelDetails,
-        documentation: docs
-    };
-    let ri = {
-        route: label,
-        labels: label.split("/"),
-        completionItem: ci
-    };
-    mediaLabels.push(ri);
-    if (textData === "") {
         return mediaLabels;
     }
     if (!textData.includes("_media_schedule")) {
@@ -269,7 +269,7 @@ function loadRouteLabels(textData) {
                 routeLabels.push(ri);
             }
         }
-        pattern = /RouteDecoratorLabel\(DecoratorLabel\):.+?generate_label_end_cmds.+?[\s](def |class)/gs;
+        pattern = /generate_label_end_cmds.+?[\s](def |class)/gs;
         while (m = pattern.exec(textData)) {
             let t = m[0];
             const casePattern = / case [^_.]*?:/gm;
@@ -307,6 +307,8 @@ function loadRouteLabels(textData) {
     catch (e) {
         (0, console_1.debug)("Error in loadRouteLabels(): " + e);
     }
+    (0, console_1.debug)(routeLabels);
+    //throw new Error("Route Labels");
     return routeLabels;
 }
 function getRouteLabelAutocompletions(currentText) {

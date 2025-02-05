@@ -63,27 +63,28 @@ export function loadResourceLabels() {
 export function loadMediaLabels(textData: string = ""): IRouteLabel[] {
 	let mediaLabels:IRouteLabel[] = [];
 	const routes = ["skybox","music"];
-	for (const route of routes) {
-		let label = "media/" + route;
-		let docs = "Media label - loads skyboxes or music";
-		const mediaLabelDetails: CompletionItemLabelDetails = {
-			description: "Media Label"
+	if (textData === "") {
+		for (const route of routes) {
+			let label = "media/" + route;
+			let docs = "Media label - loads skyboxes or music";
+			const mediaLabelDetails: CompletionItemLabelDetails = {
+				description: "Media Label"
+			}
+			const ci = {
+				label: label,
+				kind: CompletionItemKind.Event,
+				labelDetails: mediaLabelDetails,
+				documentation: docs
+			};
+			const ri: IRouteLabel = {
+				route: label,
+				labels: label.split("/"),
+				completionItem: ci
+			}
+			debug(label);
+			mediaLabels.push(ri);
 		}
-		const ci = {
-			label: label,
-			kind: CompletionItemKind.Event,
-			labelDetails: mediaLabelDetails,
-			documentation: docs
-		};
-		const ri: IRouteLabel = {
-			route: label,
-			labels: label.split("/"),
-			completionItem: ci
-		}
-		debug(label);
-		mediaLabels.push(ri);
-	}
-	let label = "map";
+		let label = "map";
 		let docs = "Map label - defines a map. Typically only used at the beginning of a file";
 		let mediaLabelDetails: CompletionItemLabelDetails = {
 			description: "Map Label"
@@ -100,7 +101,6 @@ export function loadMediaLabels(textData: string = ""): IRouteLabel[] {
 			completionItem: ci
 		}
 		mediaLabels.push(ri);
-	if (textData === "") {
 		return mediaLabels;
 	}
 	if (!textData.includes("_media_schedule")) {
@@ -262,7 +262,7 @@ export function loadRouteLabels(textData:string): IRouteLabel[] {
 				routeLabels.push(ri);
 			}
 		}
-		pattern = /RouteDecoratorLabel\(DecoratorLabel\):.+?generate_label_end_cmds.+?[\s](def |class)/gs;
+		pattern = /generate_label_end_cmds.+?[\s](def |class)/gs;
 		while (m = pattern.exec(textData)) {
 			let t = m[0];
 			const casePattern = / case [^_.]*?:/gm;
@@ -300,6 +300,8 @@ export function loadRouteLabels(textData:string): IRouteLabel[] {
 	} catch (e) {
 		debug("Error in loadRouteLabels(): " + e as string);
 	}
+	debug(routeLabels);
+	//throw new Error("Route Labels");
 	return routeLabels;
 }
 

@@ -187,6 +187,7 @@ class MissionCache {
                 const p = new data_1.PyFile(file, data);
                 this.missionPyModules.push(p);
                 this.missionClasses = this.missionClasses.concat(p.classes);
+                //debug(this.missionClasses);
                 this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.defaultFunctionCompletionItems);
                 //this.missionDefaultSignatures = this.missionDefaultSignatures.concat(p.defaultFunctions)
                 for (const s of p.defaultFunctions) {
@@ -247,6 +248,7 @@ class MissionCache {
                 li = li.concat(f.labelNames);
             }
         }
+        // Remove duplicates (should just be a bunch of END entries)
         const arrUniq = [...new Map(li.map(v => [v.name, v])).values()];
         return arrUniq;
     }

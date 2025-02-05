@@ -13,6 +13,7 @@ let classes: IClassObject[] = [];
 let defaultFunctionCompletionItems: CompletionItem[] = [];
 
 /**
+ * // TODO: This needs implemented I think???? Check the pyfile parsing and see if this is done already
  * Does setup for all of the autocompletion stuff. Only should run once.
  * @param files 
  */
@@ -39,6 +40,9 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		debug("Document text is undefined");
 		return ci;
 	}
+
+	const cache = getCache(text.uri);
+
 	// Calculate the position in the text's string value using the Position value.
 	const pos : integer = text.offsetAt(_textDocumentPosition.position);
 	const startOfLine : integer = pos - _textDocumentPosition.position.character;
@@ -85,11 +89,11 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 
 	// Route Label autocompletion
 	if(iStr.trim().startsWith("//")) {
-		ci = getCache(text.uri).getRouteLabels();//getRouteLabelAutocompletions(iStr);
+		ci = cache.getRouteLabels();//getRouteLabelAutocompletions(iStr);
 		return ci;
 		// TODO: Add media, map, gui/tab, and console autocompletion items
 	} else if (iStr.trim().startsWith("@")) {
-		ci = getCache(text.uri).getMediaLabels();
+		ci = cache.getMediaLabels();
 		return ci;
 	}
 	
@@ -116,7 +120,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// Handle label autocompletion
 	let jump: RegExp = /(->|jump) *?$/;
 	if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (")) {
-		let labelNames = getCache(text.uri).getLabels(text);
+		let labelNames = cache.getLabels(text);
 		debug(labelNames);
 		for (const i in labelNames) {
 			ci.push({label: labelNames[i].name, kind: CompletionItemKind.Event, labelDetails: {description: path.basename(labelNames[i].srcFile)}});
@@ -161,7 +165,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	debug("Checking getCompletions");
 	//debug(text.uri);
 	//debug(ci);
-	const cache = getCache(text.uri);
+	
 
 	// Check if this is a class
 	if (iStr.endsWith(".")) {
@@ -180,7 +184,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	ci = cache.getCompletions();
 	//debug(ci.length);
 	//ci = ci.concat(defaultFunctionCompletionItems);
-	// TODO: Account for text that's already present??
+	// TODO: Account for text that's already present?? I don't think that's necessary
 	// - Remove the text from the start of the completion item label
 	return ci;
 }

@@ -78,7 +78,7 @@ class PyFile extends FileCache {
         this.defaultFunctionCompletionItems = [];
         this.classes = [];
         // If fileContents is NOT an empty string (e.g. if it's from a zipped folder), then all we do is parse the contents
-        if (path.extname(uri) === "py") {
+        if (path.extname(uri) === ".py") {
             // If file contents are included, we don't need to read, just go straight to parsing
             if (fileContents !== "") {
                 this.parseWholeFile(fileContents, uri);
@@ -93,7 +93,7 @@ class PyFile extends FileCache {
                 }
             });
         }
-        else if (path.extname(uri) === "mast") {
+        else if (path.extname(uri) === ".mast") {
             (0, console_1.debug)("Can't build a MastFile from PyFile");
             // Shouldn't do anything, Py files are very different from mast
         }
@@ -132,7 +132,8 @@ class PyFile extends FileCache {
                 t = text.substring(classIndices[i - 1], classIndices[i]);
             }
             const co = new ClassObject(t, source);
-            // Since sbs functions aren't part of a class, but do need a "sbs." prefix, we pretend sbs is its own class.
+            // Since sbs functions aren't part of a class, but do need a "sbs." prefix, we pretend sbs is its own class. 
+            // PyFile handles that.
             if (co.name === "") {
                 this.defaultFunctions = co.methods;
                 for (const m in co.methods) {
