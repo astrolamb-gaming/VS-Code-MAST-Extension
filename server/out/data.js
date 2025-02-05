@@ -48,16 +48,18 @@ class MastFile extends FileCache {
                 this.parse(fileContents);
                 return;
             }
-            const d = fs.readFile(uri, "utf-8", (err, data) => {
-                if (err) {
-                    (0, console_1.debug)("error reading file: " + uri + "\n" + err);
-                    throw err;
-                }
-                else {
-                    (0, console_1.debug)("parsing, no error");
-                    this.parse(data);
-                }
-            });
+            else {
+                fs.readFile(uri, "utf-8", (err, data) => {
+                    if (err) {
+                        (0, console_1.debug)("error reading file: " + uri + "\n" + err);
+                        throw err;
+                    }
+                    else {
+                        (0, console_1.debug)("parsing, no error");
+                        this.parse(data);
+                    }
+                });
+            }
         }
         else if (path.extname(uri) === ".py") {
             // Shouldn't do anything, Py files are very different from mast
@@ -83,15 +85,17 @@ class PyFile extends FileCache {
             if (fileContents !== "") {
                 this.parseWholeFile(fileContents, uri);
             }
-            (0, console_1.debug)("File contents empty, so we need to load it.");
-            const d = fs.readFile(uri, "utf-8", (err, data) => {
-                if (err) {
-                    (0, console_1.debug)("error reading file: " + uri + "\n" + err);
-                }
-                else {
-                    this.parseWholeFile(data, uri);
-                }
-            });
+            else {
+                (0, console_1.debug)("File contents empty, so we need to load it.");
+                fs.readFile(uri, "utf-8", (err, data) => {
+                    if (err) {
+                        (0, console_1.debug)("error reading file: " + uri + "\n" + err);
+                    }
+                    else {
+                        this.parseWholeFile(data, uri);
+                    }
+                });
+            }
         }
         else if (path.extname(uri) === ".mast") {
             (0, console_1.debug)("Can't build a MastFile from PyFile");

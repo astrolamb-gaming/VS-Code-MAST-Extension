@@ -48,16 +48,17 @@ export class MastFile extends FileCache {
 				//debug("parsing, has contents");
 				this.parse(fileContents);
 				return;
+			} else {
+				fs.readFile(uri, "utf-8", (err,data)=>{
+					if (err) {
+						debug("error reading file: " + uri + "\n" + err);
+						throw err;
+					} else {
+						debug("parsing, no error");
+						this.parse(data);
+					}
+				});
 			}
-			const d = fs.readFile(uri, "utf-8", (err,data)=>{
-				if (err) {
-					debug("error reading file: " + uri + "\n" + err);
-					throw err;
-				} else {
-					debug("parsing, no error");
-					this.parse(data);
-				}
-			});
 		} else if (path.extname(uri) === ".py") {
 			// Shouldn't do anything, Py files are very different from mast
 		}
@@ -83,15 +84,16 @@ export class PyFile extends FileCache {
 			// If file contents are included, we don't need to read, just go straight to parsing
 			if (fileContents !== "") {
 				this.parseWholeFile(fileContents, uri);
+			} else {
+				debug("File contents empty, so we need to load it.");
+				fs.readFile(uri, "utf-8", (err,data)=>{
+					if (err) {
+						debug("error reading file: " + uri + "\n" + err);
+					} else {
+						this.parseWholeFile(data,uri);
+					}
+				});
 			}
-			debug("File contents empty, so we need to load it.");
-			const d = fs.readFile(uri, "utf-8", (err,data)=>{
-				if (err) {
-					debug("error reading file: " + uri + "\n" + err);
-				} else {
-					this.parseWholeFile(data,uri);
-				}
-			});
 		} else if (path.extname(uri) === ".mast") {
 			debug("Can't build a MastFile from PyFile");
 			// Shouldn't do anything, Py files are very different from mast
