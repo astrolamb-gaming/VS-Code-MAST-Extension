@@ -8,9 +8,16 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 - Show token information on hover
 
-### 0.2.1
+### 0.3.0
 
-
+- Added parsing of zipped files specified in story.json
+- Added parsing of all .mast and .py files in working directory
+- Added autocompletion entries for labels for all .mast files in the working directory
+- Tons of formatting changes:
+	* Allow for more possible variations for strings, including f-strings
+	* More accurate formatting for the various label types
+	* Formatting for button and comms message syntax
+	* Probably a lot more that I don't recall right now
 
 ### 0.2.0
 
