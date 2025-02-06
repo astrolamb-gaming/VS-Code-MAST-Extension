@@ -265,7 +265,7 @@ function loadRouteLabels(textData) {
                     labels: arr,
                     completionItem: ci
                 };
-                (0, console_1.debug)(ri);
+                //debug(ri);
                 routeLabels.push(ri);
             }
         }

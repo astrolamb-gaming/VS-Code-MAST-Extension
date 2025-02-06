@@ -37,6 +37,8 @@ function onCompletion(_textDocumentPosition, text) {
         (0, console_1.debug)("Document text is undefined");
         return ci;
     }
+    // getVariablesInFile(text);
+    // return ci;
     const cache = (0, cache_1.getCache)(text.uri);
     // Calculate the position in the text's string value using the Position value.
     const pos = text.offsetAt(_textDocumentPosition.position);
@@ -161,6 +163,8 @@ function onCompletion(_textDocumentPosition, text) {
             }
             if (iStr.endsWith(c.name + ".")) {
                 (0, console_1.debug)(iStr + " contains" + c.name);
+                // TODO: Only use labels with isClassMethod = true
+                // c.methods[0].completionItem.kind == CompletionItemKind.Method;
                 return c.methodCompletionItems;
             }
         }

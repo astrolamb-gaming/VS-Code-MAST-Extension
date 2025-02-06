@@ -3,7 +3,7 @@ import { CompletionItem, CompletionItemKind, integer, MarkupContent, TextDocumen
 import { getMainLabelAtPos } from './labels';
 import { labelNames } from './server';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { ClassObject, ClassTypings, IClassObject, PyFile } from './data';
+import { ClassObject, ClassTypings, getVariablesInFile, IClassObject, PyFile } from './data';
 import { getRouteLabelAutocompletions, getSkyboxCompletionItems } from './routeLabels';
 import { isInComment, isInString, isTextInBracket } from './comments';
 import { getCache, getGlobals } from './cache';
@@ -41,6 +41,8 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		debug("Document text is undefined");
 		return ci;
 	}
+	// getVariablesInFile(text);
+	// return ci;
 
 	const cache = getCache(text.uri);
 
@@ -184,6 +186,8 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			}
 			if (iStr.endsWith(c.name + ".")) {
 				debug(iStr + " contains" + c.name);
+				// TODO: Only use labels with isClassMethod = true
+				// c.methods[0].completionItem.kind == CompletionItemKind.Method;
 				return c.methodCompletionItems;
 			}
 		}

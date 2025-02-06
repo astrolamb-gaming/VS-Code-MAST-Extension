@@ -98,6 +98,7 @@ class MissionCache {
         this.missionDefaultCompletions = [];
         this.missionDefaultSignatures = [];
         this.missionClasses = [];
+        this.missionDefaultFunctions = [];
         // string is the full file path and name
         // FileCache is the information associated with the file
         this.pyFileInfo = [];
@@ -131,7 +132,7 @@ class MissionCache {
             }
         });
         for (const file of files) {
-            (0, console_1.debug)(path.extname(file));
+            //debug(path.extname(file));
             if (path.extname(file) === ".mast") {
                 (0, console_1.debug)(file);
                 if (path.basename(file).includes("__init__")) {
@@ -195,6 +196,8 @@ class MissionCache {
                 //debug(this.missionClasses);
                 this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.defaultFunctionCompletionItems);
                 //this.missionDefaultSignatures = this.missionDefaultSignatures.concat(p.defaultFunctions)
+                //p.defaultFunctions
+                this.missionDefaultFunctions = this.missionDefaultFunctions.concat(p.defaultFunctions);
                 for (const s of p.defaultFunctions) {
                     this.missionDefaultSignatures.push(s.signatureInformation);
                 }
@@ -455,7 +458,7 @@ function getCache(name) {
     if (name.startsWith("file")) {
         name = vscode_uri_1.URI.parse(name).fsPath;
     }
-    (0, console_1.debug)("Trying to get cache with name: " + name);
+    //debug("Trying to get cache with name: " + name);
     const mf = (0, fileFunctions_1.getMissionFolder)(name);
     //debug(mf);
     for (const cache of caches) {

@@ -258,7 +258,7 @@ export function loadRouteLabels(textData:string): IRouteLabel[] {
 					labels: arr,
 					completionItem: ci
 				}
-				debug(ri);
+				//debug(ri);
 				routeLabels.push(ri);
 			}
 		}

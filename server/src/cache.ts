@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { CompletionItem, SignatureInformation } from 'vscode-languageserver';
-import { ClassTypings, FileCache, IClassObject, MastFile, PyFile } from './data';
+import { ClassTypings, FileCache, IClassObject, MastFile, PyFile, Function } from './data';
 import { getLabelsInFile, LabelInfo, parseLabels } from './labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
@@ -111,6 +111,7 @@ export class MissionCache {
 	missionDefaultCompletions: CompletionItem[] = [];
 	missionDefaultSignatures: SignatureInformation[] = [];
 	missionClasses: IClassObject[] = [];
+	missionDefaultFunctions: Function[] = [];
 
 	// string is the full file path and name
 	// FileCache is the information associated with the file
@@ -154,7 +155,7 @@ export class MissionCache {
 		});
 
 		for (const file of files) {
-			debug(path.extname(file));
+			//debug(path.extname(file));
 			if (path.extname(file) === ".mast") {
 				debug(file);
 				if (path.basename(file).includes("__init__")) {
@@ -221,6 +222,8 @@ export class MissionCache {
 				//debug(this.missionClasses);
 				this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.defaultFunctionCompletionItems);
 				//this.missionDefaultSignatures = this.missionDefaultSignatures.concat(p.defaultFunctions)
+				//p.defaultFunctions
+				this.missionDefaultFunctions = this.missionDefaultFunctions.concat(p.defaultFunctions);
 				for (const s of p.defaultFunctions) {
 					this.missionDefaultSignatures.push(s.signatureInformation);
 				}
@@ -506,7 +509,7 @@ export function getCache(name:string): MissionCache {
 	if (name.startsWith("file")) {
 		name = URI.parse(name).fsPath;
 	}
-	debug("Trying to get cache with name: " + name);
+	//debug("Trying to get cache with name: " + name);
 	const mf = getMissionFolder(name);
 	//debug(mf);
 	for (const cache of caches) {

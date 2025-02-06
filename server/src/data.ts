@@ -1,11 +1,12 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { debug } from 'console';
-import { CompletionItem, CompletionItemKind, CompletionItemLabelDetails, integer, MarkupContent, ParameterInformation, SignatureInformation } from 'vscode-languageserver';
+import { CompletionItem, CompletionItemKind, CompletionItemLabelDetails, InlineValueRequest, integer, MarkupContent, ParameterInformation, SignatureInformation } from 'vscode-languageserver';
 import { parseLabels, LabelInfo, getLabelsInFile } from './labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { getParentFolder } from './fileFunctions';
 import exp = require('constants');
+import { getCache } from './cache';
 
 export class FileCache {
 	uri: string;
@@ -35,10 +36,24 @@ export class FileCache {
 	}
 }
 
+export interface Variable {
+	name: string,
+	/**
+	 * Given that MAST and Python are not stronly typed, there are lots of possible types the variable could have.
+	 */
+	possibleTypes: string[],
+	/**
+	 * variable modifiers like "shared"
+	 */
+	modifiers: string[]
+
+}
+
 export class MastFile extends FileCache {
 	labelNames : LabelInfo[] = [];
 	// TODO: Add support for holding label information for all files listed in __init__.mast in a given folder.
 	// TODO: Add system for tracking variables in a mast file
+	
 	constructor(uri: string, fileContents:string = "") {
 		//debug("building mast file");
 		super(uri);
@@ -71,6 +86,7 @@ export class MastFile extends FileCache {
 		//debug(this.labelNames);
 		// TODO: Parse variables, etc
 	}
+
 }
 
 export class PyFile extends FileCache {
@@ -231,6 +247,7 @@ export class ClassObject implements IClassObject {
 		if (this.name === "" && sourceFile.endsWith("sbs.py")) {
 			this.name = "sbs";
 		}
+		this.parent = getRegExMatch(raw,parentClass).replace(/.*\(/,"").replace(/\):?/,"");
 		this.sourceFile = sourceFile;
 		// Should just get the first set of comments, which would be the ones for the class itself
 		this.documentation = getRegExMatch(raw, comment).replace(/\"\"\"/g,"");
@@ -300,7 +317,7 @@ export class Function implements IFunction {
 		const returnValue : RegExp = /->(.+?):/gm; // Get the return value (None, boolean, int, etc)
 		const comment : RegExp = /((\"){3,3}(.*?)(\"){3,3})|(\.\.\.)/gms;
 		const isProperty : RegExp = /(@property)/;
-		let isClassMethod: RegExp = /@classmethod/;
+		const isClassMethod: RegExp = /(@classmethod)|(@staticmethod)/;
 		const isSetter : RegExp = /\.setter/;
 
 		this.name = getRegExMatch(raw, functionName).replace("def ","").replace("(","").trim();
@@ -308,11 +325,34 @@ export class Function implements IFunction {
 		let params = getRegExMatch(raw, functionParam).replace(/\(|\)/g,"").replace(/self(.*?,|.*?$)/m,"").trim();
 		this.rawParams = params;
 
-		let retVal = getRegExMatch(raw, returnValue).replace(/(:|->)/g, "").trim();
-		this.returnType = retVal;
-
 		let comments = getRegExMatch(raw, comment).replace("\"\"\"","").replace("\"\"\"","");
 		this.documentation = comments;
+
+		let retVal = getRegExMatch(raw, returnValue).replace(/(:|->)/g, "").trim();
+		if (retVal === "") {
+			let cLines = comments.split("\n");
+			for (let i = 0; i < cLines.length; i++) {
+				if (cLines[i].includes("Return")) {
+					let retLine = cLines[i+1].trim().replace("(","");
+					if (retLine.startsWith("bool")) {
+						this.returnType = "boolean";
+					} else if (retLine.startsWith("id") || retLine.startsWith("agent id")) {
+						this.returnType = "int";
+					} else if (retLine.startsWith("list")) {
+						this.returnType = "list";
+					} else if (retLine.startsWith("str")) {
+						this.returnType = "string";
+					} else {
+						// We potentially modified retLine by replacing open parentheses, so we just use the source
+						this.returnType = cLines[i+1].trim();
+					}
+					break;
+				}
+			}
+		}
+		this.returnType = retVal;
+
+		
 
 		let cik: CompletionItemKind = CompletionItemKind.Function;
 		let cikStr: string = "function";
@@ -526,4 +566,106 @@ export function getLabelDescription(text:string, pos:integer) {
 		check++;
 	}
 	return labelDesc;
+}
+
+export function getVariablesInFile(textDocument:TextDocument) {
+	const text = textDocument.getText();
+	const cache = getCache(textDocument.uri);
+	debug("Trying to get variables");
+	let variables: Variable[] = [];
+	const pattern: RegExp = /^\s*?\w+(?=\s*=[^=]\s*?)/gm;
+	const lines = text.split("\n");
+	debug("Done getting variables");
+	let m: RegExpExecArray | null;
+	let found = false;
+	for (const line of lines) {
+		const match = line.match(pattern);
+		if (match) {
+			const v = match[0];
+			debug(v);
+			// Get the variable type at this point
+
+			const equal = line.indexOf("=")+1;
+			const typeEvalStr = line.substring(equal).trim();
+			debug(typeEvalStr);
+			const t = getVariableType(typeEvalStr,textDocument.uri);
+			debug(t);
+
+			// Check if the variable is already found
+			for (const _var of variables) {
+				if (_var.name === v) {
+					// If it's already part of the list, then do this:
+					
+					break;
+				}
+			}
+			
+
+			const variable:Variable = {
+				name: v,
+				possibleTypes: [],
+				modifiers: []
+			}
+		}
+	}
+	return variables;
+}
+
+
+
+function getVariableType(typeEvalStr:string, uri:string) {
+	const test:boolean = "to_object(amb_id)" === typeEvalStr;
+	const isNumberType = (s: string) => !isNaN(+s) && isFinite(+s) && !/e/i.test(s)
+	const cache = getCache(uri);
+	let type: string = "any";
+	// Check if it's a string
+	if (typeEvalStr.startsWith("\"") || typeEvalStr.startsWith("'")) {
+		return "string";
+	// Check if its an f-string
+	} else if (typeEvalStr.startsWith("f\"") || typeEvalStr.startsWith("f'")) {
+		return "string";
+	// Check if it's a multiline string
+	} else if (typeEvalStr.startsWith("\"\"\"") || typeEvalStr.startsWith("'''")) {
+		return "string";
+	} else if (typeEvalStr === "True" || typeEvalStr === "False") {
+		return "boolean";
+	} else if (isNumberType(typeEvalStr)) {
+		// Check if it's got a decimal
+		if (typeEvalStr.includes(".")) {
+			return "float";
+		}
+		// Default to integer
+		return "int";
+	}
+	
+
+	// Check over all default functions
+	for (const f of cache.missionDefaultFunctions) {
+		if (typeEvalStr.startsWith(f.name)) {
+			if (test) debug(f);
+			return f.returnType;
+		}
+	}
+
+	// Is this a class, or a class function?
+	for (const co of cache.missionClasses) {
+		if (typeEvalStr.startsWith(co.name)) {
+			type = co.name;
+			// Check if it's a static method of the class
+			for (const func of co.methods) {
+				if (typeEvalStr.startsWith(co.name + "." + func.name)) {
+					if (test) debug(co.name + "." + func.name);
+					return func.returnType;
+				}
+			}
+			// If it's not a static method, then just return the class
+			if (test) debug(co);
+			return type;
+		}
+	}
+
+	// If it's none of the above, then it's probably an object, or a parameter of that object
+	if (test)  debug(type);
+	return type;
+
 }
