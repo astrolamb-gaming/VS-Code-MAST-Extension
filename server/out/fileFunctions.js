@@ -12,6 +12,7 @@ exports.readZipArchive = readZipArchive;
 exports.getStoryJson = getStoryJson;
 exports.getParentFolder = getParentFolder;
 exports.getMissionFolder = getMissionFolder;
+exports.fixFileName = fixFileName;
 const path = require("path");
 const fs = require("fs");
 const console_1 = require("console");
@@ -237,6 +238,12 @@ function getMissionFolder(uri) {
         return "";
     }
     return ret;
+}
+function fixFileName(uri) {
+    if (uri.startsWith("file")) {
+        uri = vscode_uri_1.URI.parse(uri).fsPath;
+    }
+    return uri;
 }
 //readZipArchive("C:/Users/mholderbaum/Documents/Cosmos-1-0-0/data/missions/__lib__/artemis-sbs.LegendaryMissions.autoplay.v3.9.39.mastlib");
 //# sourceMappingURL=fileFunctions.js.map

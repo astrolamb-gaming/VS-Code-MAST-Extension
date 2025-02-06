@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Parameter = exports.Function = exports.ClassObject = exports.PyFile = exports.MastFile = exports.FileCache = void 0;
 exports.getRegExMatch = getRegExMatch;
+exports.getLabelDescription = getLabelDescription;
 const path = require("path");
 const fs = require("fs");
 const console_1 = require("console");
@@ -382,5 +383,47 @@ function parseFunctions(raw, source) {
         fList.push(f);
     }
     return fList;
+}
+/**
+ *
+ * @param text
+ * @param pos
+ * @returns
+ */
+function getLabelDescription(text, pos) {
+    const td = vscode_languageserver_textdocument_1.TextDocument.create("temp", "mast", 0, text);
+    const labelLoc = td.positionAt(pos);
+    let check = labelLoc.line + 1;
+    let labelDesc = "";
+    let multiLineComment = false;
+    while (check < td.lineCount) {
+        const lineStart = td.offsetAt({ line: check, character: 0 });
+        const str = text.substring(lineStart, text.indexOf("\n", lineStart));
+        (0, console_1.debug)(str);
+        if (multiLineComment) {
+            if (str.endsWith("*/")) {
+                multiLineComment = false;
+                labelDesc = labelDesc + str.replace("*/", "");
+            }
+            else {
+                labelDesc = labelDesc + str;
+            }
+        }
+        if (str.trim().startsWith("/*")) {
+            multiLineComment = true;
+            labelDesc = labelDesc + str.replace("/*", "");
+        }
+        else {
+            if (str.trim().startsWith("\"") || str.trim().startsWith("#")) {
+                (0, console_1.debug)(str);
+                labelDesc = labelDesc + str.replace("\"", "").replace("#", "");
+            }
+            else {
+                break;
+            }
+        }
+        check++;
+    }
+    return labelDesc;
 }
 //# sourceMappingURL=data.js.map

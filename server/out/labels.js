@@ -5,6 +5,7 @@ exports.getLabelsInFile = getLabelsInFile;
 exports.checkLabels = checkLabels;
 exports.getMainLabelAtPos = getMainLabelAtPos;
 const vscode_languageserver_1 = require("vscode-languageserver");
+const vscode_languageserver_textdocument_1 = require("vscode-languageserver-textdocument");
 const errorChecking_1 = require("./errorChecking");
 const server_1 = require("./server");
 /**
@@ -14,6 +15,7 @@ const server_1 = require("./server");
  * @returns
  */
 function parseLabels(text, src, main = true) {
+    let td = vscode_languageserver_textdocument_1.TextDocument.create(src, "mast", 0, text);
     // let src = textDocument.uri;
     // if (src.startsWith("file")) {
     // 	src = URI.parse(src).fsPath;
@@ -57,6 +59,11 @@ function parseLabels(text, src, main = true) {
     if (labels[i] !== undefined) {
         labels[i].end = text.length;
     }
+    // TODO: Get Comments or Weighted Text immediately following the label
+    // for (const lbl of labels) {
+    // 	const desc = getLabelDescription(text.substring(lbl.start,lbl.end), 0);
+    // 	debug(desc);
+    // }
     // Add END as a main label, last so we don't need to mess with it in earlier iterations.
     // Also add "main" as a main label, since it can happen that sublabels are defined before any user-defined main labels.
     if (main) {

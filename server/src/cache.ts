@@ -169,9 +169,13 @@ export class MissionCache {
 			}
 			if (path.extname(file) === ".py") {
 				debug(file);
-				// Parse Python File
-				const p: PyFile = new PyFile(file);
-				this.pyFileInfo.push(p);
+				if (path.basename(file).includes("__init__")) {
+					debug("INIT file found");
+				} else {
+					// Parse Python File
+					const p: PyFile = new PyFile(file);
+					this.pyFileInfo.push(p);
+				}
 			}
 		}
 
@@ -205,7 +209,7 @@ export class MissionCache {
 				file = parentFolder + path.sep + file;
 			}
 			debug(file);
-			if (file.endsWith("__init__.mast")) {
+			if (file.endsWith("__init__.mast") || file.endsWith("__init__.py")) {
 				// Do nothing
 			} else if (file.endsWith(".py")) {
 				this.routeLabels = this.routeLabels.concat(loadRouteLabels(data));

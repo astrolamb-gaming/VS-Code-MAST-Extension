@@ -5,6 +5,7 @@ import { updateLabelNames } from "./server";
 import { myDebug } from './server';
 import { debug } from 'console';
 import { URI } from 'vscode-uri';
+import { getLabelDescription } from './data';
 
 
 export interface LabelInfo {
@@ -24,6 +25,7 @@ export interface LabelInfo {
  * @returns 
  */
 export function parseLabels(text: string, src: string, main: boolean = true): LabelInfo[] {
+	let td: TextDocument = TextDocument.create(src, "mast", 0, text);
 	// let src = textDocument.uri;
 	// if (src.startsWith("file")) {
 	// 	src = URI.parse(src).fsPath;
@@ -68,6 +70,12 @@ export function parseLabels(text: string, src: string, main: boolean = true): La
 	if (labels[i] !== undefined) {
  		labels[i].end = text.length;
 	}
+
+	// TODO: Get Comments or Weighted Text immediately following the label
+	// for (const lbl of labels) {
+	// 	const desc = getLabelDescription(text.substring(lbl.start,lbl.end), 0);
+	// 	debug(desc);
+	// }
 
 	// Add END as a main label, last so we don't need to mess with it in earlier iterations.
 	// Also add "main" as a main label, since it can happen that sublabels are defined before any user-defined main labels.

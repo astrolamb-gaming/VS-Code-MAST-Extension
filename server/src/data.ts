@@ -5,6 +5,7 @@ import { CompletionItem, CompletionItemKind, CompletionItemLabelDetails, integer
 import { parseLabels, LabelInfo, getLabelsInFile } from './labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { getParentFolder } from './fileFunctions';
+import exp = require('constants');
 
 export class FileCache {
 	uri: string;
@@ -479,4 +480,50 @@ function parseFunctions(raw: string, source: string) {
 		fList.push(f);
 	}
 	return fList;
+}
+
+export interface LabelDescInfo {
+	description: string,
+	startPos: integer,
+	endPos: integer
+}
+
+/**
+ * 
+ * @param text 
+ * @param pos 
+ * @returns 
+ */
+export function getLabelDescription(text:string, pos:integer) {
+	const td: TextDocument = TextDocument.create("temp","mast",0,text);
+	const labelLoc = td.positionAt(pos);
+	let check = labelLoc.line + 1;
+	let labelDesc: string = "";
+	let multiLineComment: boolean = false;
+	while (check < td.lineCount) {
+		const lineStart = td.offsetAt({line: check, character:0});
+		const str = text.substring(lineStart,text.indexOf("\n",lineStart));
+		debug(str);
+		if (multiLineComment) {
+			if (str.endsWith("*/")) {
+				multiLineComment = false;
+				labelDesc = labelDesc + str.replace("*/","");
+			} else {
+				labelDesc = labelDesc + str;
+			}
+		}
+		if (str.trim().startsWith("/*")) {
+				multiLineComment = true;
+				labelDesc = labelDesc + str.replace("/*","");
+		} else {
+			if (str.trim().startsWith("\"") || str.trim().startsWith("#")) {
+				debug(str);
+				labelDesc = labelDesc + str.replace("\"","").replace("#","");
+			} else {
+				break;
+			}
+		}
+		check++;
+	}
+	return labelDesc;
 }

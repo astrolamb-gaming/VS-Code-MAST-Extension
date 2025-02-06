@@ -8,6 +8,7 @@ import { getRouteLabelAutocompletions, getSkyboxCompletionItems } from './routeL
 import { isInComment, isInString, isTextInBracket } from './comments';
 import { getCache, getGlobals } from './cache';
 import path = require('path');
+import { fixFileName } from './fileFunctions';
 
 let classes: IClassObject[] = [];
 let defaultFunctionCompletionItems: CompletionItem[] = [];
@@ -122,16 +123,23 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (")) {
 		let labelNames = cache.getLabels(text);
 		debug(labelNames);
+		// Iterate over parent label info objects
 		for (const i in labelNames) {
 			ci.push({label: labelNames[i].name, kind: CompletionItemKind.Event, labelDetails: {description: path.basename(labelNames[i].srcFile)}});
 		}
 		const lbl = getMainLabelAtPos(startOfLine,labelNames);
-		let subs = lbl.subLabels;
 		if (lbl === undefined) {
 			return ci;
 		}
-		for (const i in subs) {
-			ci.push({label: subs[i], kind: CompletionItemKind.Event, labelDetails: {description: "Parent: " + lbl.name}});
+		// Check for the parent label at this point (to get sublabels within the same parent)
+		if (lbl.srcFile === fixFileName(text.uri)) {
+			debug("same file name!");
+			let subs = lbl.subLabels;
+			debug(lbl.name);
+			debug(subs);
+			for (const i in subs) {
+				ci.push({label: subs[i], kind: CompletionItemKind.Event, labelDetails: {description: "Sub-label of: " + lbl.name}});
+			}
 		}
 		return ci;
 	}

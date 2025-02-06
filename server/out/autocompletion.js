@@ -8,6 +8,7 @@ const labels_1 = require("./labels");
 const comments_1 = require("./comments");
 const cache_1 = require("./cache");
 const path = require("path");
+const fileFunctions_1 = require("./fileFunctions");
 let classes = [];
 let defaultFunctionCompletionItems = [];
 /**
@@ -106,16 +107,23 @@ function onCompletion(_textDocumentPosition, text) {
     if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (")) {
         let labelNames = cache.getLabels(text);
         (0, console_1.debug)(labelNames);
+        // Iterate over parent label info objects
         for (const i in labelNames) {
             ci.push({ label: labelNames[i].name, kind: vscode_languageserver_1.CompletionItemKind.Event, labelDetails: { description: path.basename(labelNames[i].srcFile) } });
         }
         const lbl = (0, labels_1.getMainLabelAtPos)(startOfLine, labelNames);
-        let subs = lbl.subLabels;
         if (lbl === undefined) {
             return ci;
         }
-        for (const i in subs) {
-            ci.push({ label: subs[i], kind: vscode_languageserver_1.CompletionItemKind.Event, labelDetails: { description: "Parent: " + lbl.name } });
+        // Check for the parent label at this point (to get sublabels within the same parent)
+        if (lbl.srcFile === (0, fileFunctions_1.fixFileName)(text.uri)) {
+            (0, console_1.debug)("same file name!");
+            let subs = lbl.subLabels;
+            (0, console_1.debug)(lbl.name);
+            (0, console_1.debug)(subs);
+            for (const i in subs) {
+                ci.push({ label: subs[i], kind: vscode_languageserver_1.CompletionItemKind.Event, labelDetails: { description: "Sub-label of: " + lbl.name } });
+            }
         }
         return ci;
     }

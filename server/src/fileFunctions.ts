@@ -269,6 +269,12 @@ export function getMissionFolder(uri: string) : string {
 	return ret;
 }
 
+export function fixFileName(uri:string) {
+	if (uri.startsWith("file")) {
+		uri = URI.parse(uri).fsPath;
+	}
+	return uri;
+}
 
 //readZipArchive("C:/Users/mholderbaum/Documents/Cosmos-1-0-0/data/missions/__lib__/artemis-sbs.LegendaryMissions.autoplay.v3.9.39.mastlib");
 
