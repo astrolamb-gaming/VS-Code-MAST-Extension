@@ -79,7 +79,7 @@ function loadMediaLabels(textData = "") {
                 labels: label.split("/"),
                 completionItem: ci
             };
-            (0, console_1.debug)(label);
+            //debug(label);
             mediaLabels.push(ri);
         }
         let label = "map";

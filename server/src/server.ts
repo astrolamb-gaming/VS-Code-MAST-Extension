@@ -45,7 +45,7 @@ import { onSignatureHelp, prepSignatures } from './signatureHelp';
 import { ClassTypings, PyFile } from './data';
 import { loadRouteLabels } from './routeLabels';
 import { parse, RX } from './rx';
-import { getComments } from './comments';
+import { getComments, getStrings, getYamls } from './comments';
 import fs = require("fs");
 import { getFileContents, readAllFilesIn } from './fileFunctions';
 import { loadCache } from './cache';
@@ -148,11 +148,11 @@ connection.onInitialize((params: InitializeParams) => {
 
 	if (params.workspaceFolders) {
 		const workspaceFolder = params.workspaceFolders[0];
-		debug(workspaceFolder.uri);
+		//debug(workspaceFolder.uri);
 		//readAllFilesIn(workspaceFolder);
 		
 		const uri = URI.parse(workspaceFolder.uri);
-		debug(uri.fsPath);
+		//debug(uri.fsPath);
 		loadCache(uri.fsPath);
 	} else {
 		debug("No Workspace folders");
@@ -316,6 +316,8 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 	const settings = await getDocumentSettings(textDocument.uri);
 	
 	getComments(textDocument);
+	getStrings(textDocument);
+	getYamls(textDocument);
 
 	// The validator creates diagnostics for all uppercase words length 2 and more
 	const text = textDocument.getText();

@@ -89,7 +89,7 @@ class PyFile extends FileCache {
                 this.parseWholeFile(fileContents, uri);
             }
             else {
-                (0, console_1.debug)("File contents empty, so we need to load it.");
+                //debug("File contents empty, so we need to load it.");
                 fs.readFile(uri, "utf-8", (err, data) => {
                     if (err) {
                         (0, console_1.debug)("error reading file: " + uri + "\n" + err);

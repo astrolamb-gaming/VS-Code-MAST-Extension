@@ -2,17 +2,18 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.isInComment = isInComment;
 exports.isInString = isInString;
+exports.isInYaml = isInYaml;
 exports.getComments = getComments;
+exports.getYamls = getYamls;
 exports.getIndentations = getIndentations;
+exports.getMatchesForRegex = getMatchesForRegex;
 exports.getBrackets = getBrackets;
 exports.isTextInBracket = isTextInBracket;
 exports.getStrings = getStrings;
-const console_1 = require("console");
 const fs = require("fs");
 function isInComment(loc) {
     for (const r in commentRanges) {
         if (commentRanges[r].start < loc && commentRanges[r].end > loc) {
-            (0, console_1.debug)("In a comment");
             return true;
         }
     }
@@ -20,10 +21,18 @@ function isInComment(loc) {
 }
 let commentRanges = [];
 let stringRanges = [];
+let yamlRanges = [];
 function isInString(loc) {
     for (const r in stringRanges) {
         if (stringRanges[r].start < loc && stringRanges[r].end > loc) {
-            (0, console_1.debug)("In a string");
+            return true;
+        }
+    }
+    return false;
+}
+function isInYaml(loc) {
+    for (const r in yamlRanges) {
+        if (yamlRanges[r].start < loc && yamlRanges[r].end > loc) {
             return true;
         }
     }
@@ -69,6 +78,16 @@ function getComments(textDocument) {
             commentRanges.push(r);
         }
     }
+}
+function getYamls(textDocument) {
+    const text = textDocument.getText();
+    let yamls = [];
+    let yaml = /^\\s*---$.*^\\s*?...$/gms;
+    yamls = getMatchesForRegex(yaml, text);
+    //debug(strings);
+    //stringRanges = yamls;
+    //debug("Strings found: " + strings.length);
+    return yamls;
 }
 const indents = [];
 const dedents = [];

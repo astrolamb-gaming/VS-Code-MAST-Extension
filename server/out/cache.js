@@ -7,6 +7,7 @@ exports.getSourceFiles = getSourceFiles;
 exports.getCache = getCache;
 const fs = require("fs");
 const path = require("path");
+const vscode_languageserver_1 = require("vscode-languageserver");
 const data_1 = require("./data");
 const labels_1 = require("./labels");
 const console_1 = require("console");
@@ -20,6 +21,54 @@ class Globals {
     constructor() {
         this.skyboxes = this.findSkyboxes();
         this.music = this.findMusic();
+        this.blob_items = [];
+        this.data_set_entries = this.loadObjectDataDocumentation();
+    }
+    loadObjectDataDocumentation() {
+        const ds = [];
+        const ci = [];
+        let initialDir = "../../../../";
+        const dataFolder = (0, fileFunctions_1.findSubfolderByName)(initialDir, "data");
+        if (dataFolder !== null) {
+            const files = (0, fileFunctions_1.getFilesInDir)(dataFolder);
+            for (const file of files) {
+                if (file.endsWith("object_data_documentation.txt")) {
+                    (0, fileFunctions_1.readFile)(file).then((text) => {
+                        const lines = text.split("\n");
+                        let lineNum = 0;
+                        for (const line of lines) {
+                            // ignore the first 3 lines
+                            if (lineNum > 2) {
+                                const name = line.substring(0, 31).trim();
+                                let typeCheck = line.substring(31, 48);
+                                const isArr = typeCheck.includes("array");
+                                if (isArr) {
+                                    typeCheck = typeCheck.replace("array", "");
+                                }
+                                typeCheck = typeCheck.trim();
+                                if (isArr) {
+                                    typeCheck = "List[" + typeCheck + "]";
+                                }
+                                const docs = line.substring(48).trim();
+                                this.data_set_entries.push({
+                                    name: name,
+                                    type: typeCheck,
+                                    docs: docs
+                                });
+                                const ci = {
+                                    label: "\"" + name + "\"",
+                                    kind: vscode_languageserver_1.CompletionItemKind.Text,
+                                    documentation: docs
+                                };
+                                this.blob_items.push(ci);
+                            }
+                            lineNum++;
+                        }
+                    });
+                }
+            }
+        }
+        return ds;
     }
     findSkyboxes() {
         const skyboxes = [];
@@ -134,9 +183,9 @@ class MissionCache {
         for (const file of files) {
             //debug(path.extname(file));
             if (path.extname(file) === ".mast") {
-                (0, console_1.debug)(file);
+                //debug(file);
                 if (path.basename(file).includes("__init__")) {
-                    (0, console_1.debug)("INIT file found");
+                    //debug("INIT file found");
                 }
                 else {
                     // Parse MAST File
@@ -145,9 +194,9 @@ class MissionCache {
                 }
             }
             if (path.extname(file) === ".py") {
-                (0, console_1.debug)(file);
+                //debug(file);
                 if (path.basename(file).includes("__init__")) {
-                    (0, console_1.debug)("INIT file found");
+                    //debug("INIT file found");
                 }
                 else {
                     // Parse Python File
@@ -159,7 +208,7 @@ class MissionCache {
     }
     modulesLoaded() {
         const uri = this.missionURI;
-        (0, console_1.debug)(uri);
+        //debug(uri);
         if (uri.includes("sbs_utils")) {
             (0, console_1.debug)("sbs nope");
         }
@@ -169,7 +218,7 @@ class MissionCache {
         for (const zip of lib) {
             const zipPath = path.join(missionLibFolder, zip);
             (0, fileFunctions_1.readZipArchive)(zipPath).then((data) => {
-                (0, console_1.debug)("Zip archive read for " + zipPath);
+                //debug("Zip archive read for " + zipPath);
                 this.handleZipData(data, zip);
             }).catch(err => {
                 (0, console_1.debug)("Error unzipping. \n" + err);
@@ -182,7 +231,7 @@ class MissionCache {
             if (parentFolder !== "") {
                 file = parentFolder + path.sep + file;
             }
-            (0, console_1.debug)(file);
+            //debug(file);
             if (file.endsWith("__init__.mast") || file.endsWith("__init__.py")) {
                 // Do nothing
             }
@@ -203,7 +252,7 @@ class MissionCache {
                 }
             }
             else if (file.endsWith(".mast")) {
-                (0, console_1.debug)("Building file: " + file);
+                //debug("Building file: " + file);
                 const m = new data_1.MastFile(file, data);
                 this.missionMastModules.push(m);
             }

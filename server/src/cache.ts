@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { CompletionItem, SignatureInformation } from 'vscode-languageserver';
+import { CompletionItem, CompletionItemKind, SignatureInformation } from 'vscode-languageserver';
 import { ClassTypings, FileCache, IClassObject, MastFile, PyFile, Function } from './data';
 import { getLabelsInFile, LabelInfo, parseLabels } from './labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -9,16 +9,67 @@ import { prepCompletions } from './autocompletion';
 import { prepSignatures } from './signatureHelp';
 import { parse, RX } from './rx';
 import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } from './routeLabels';
-import { findSubfolderByName, getFilesInDir, getFolders, getMissionFolder, getParentFolder, readZipArchive } from './fileFunctions';
+import { findSubfolderByName, getFilesInDir, getFolders, getMissionFolder, getParentFolder, readFile, readZipArchive } from './fileFunctions';
 import { updateLabelNames } from './server';
 import { URI } from 'vscode-uri';
 
 export class Globals {
 	skyboxes: CompletionItem[];
 	music: CompletionItem[];
+	data_set_entries: DataSetItem[];
+	blob_items: CompletionItem[];
 	constructor() {
 		this.skyboxes = this.findSkyboxes();
 		this.music = this.findMusic();
+		this.blob_items = [];
+		this.data_set_entries = this.loadObjectDataDocumentation();
+		
+	}
+	private loadObjectDataDocumentation(): DataSetItem[] {
+		const ds: DataSetItem[] = [];
+		const ci: CompletionItem[] = [];
+		let initialDir = "../../../../";
+		const dataFolder = findSubfolderByName(initialDir, "data");
+		if (dataFolder !== null) {
+			const files = getFilesInDir(dataFolder);
+			for (const file of files) {
+				if (file.endsWith("object_data_documentation.txt")) {
+					readFile(file).then((text)=>{
+						const lines = text.split("\n");
+						let lineNum = 0;
+						for (const line of lines) {
+							// ignore the first 3 lines
+							if (lineNum > 2) {
+								const name = line.substring(0,31).trim();
+								let typeCheck = line.substring(31,48);
+								const isArr = typeCheck.includes("array");
+								if (isArr) {
+									typeCheck = typeCheck.replace("array","");
+								}
+								typeCheck = typeCheck.trim();
+								if (isArr) {
+									typeCheck = "List[" + typeCheck + "]";
+								}
+								const docs = line.substring(48).trim();
+								this.data_set_entries.push({
+									name: name,
+									type: typeCheck,
+									docs: docs
+								});
+								const ci: CompletionItem = {
+									label: "\"" + name + "\"",
+									kind: CompletionItemKind.Text,
+									documentation: docs
+								};
+								this.blob_items.push(ci);
+							}
+							lineNum++;
+						}
+					});
+				}
+			}
+		}
+		return ds;
 	}
 
 	private findSkyboxes(): CompletionItem[] {
@@ -157,9 +208,9 @@ export class MissionCache {
 		for (const file of files) {
 			//debug(path.extname(file));
 			if (path.extname(file) === ".mast") {
-				debug(file);
+				//debug(file);
 				if (path.basename(file).includes("__init__")) {
-					debug("INIT file found");
+					//debug("INIT file found");
 				} else {
 					// Parse MAST File
 					const m: MastFile = new MastFile(file);
@@ -169,9 +220,9 @@ export class MissionCache {
 				
 			}
 			if (path.extname(file) === ".py") {
-				debug(file);
+				//debug(file);
 				if (path.basename(file).includes("__init__")) {
-					debug("INIT file found");
+					//debug("INIT file found");
 				} else {
 					// Parse Python File
 					const p: PyFile = new PyFile(file);
@@ -184,7 +235,7 @@ export class MissionCache {
 
 	modulesLoaded() {
 		const uri = this.missionURI;
-		debug(uri);
+		//debug(uri);
 		if (uri.includes("sbs_utils")) {
 			debug("sbs nope");
 		}
@@ -194,7 +245,7 @@ export class MissionCache {
 		for (const zip of lib) {
 			const zipPath = path.join(missionLibFolder,zip);
 			readZipArchive(zipPath).then((data)=>{
-				debug("Zip archive read for " + zipPath);
+				//debug("Zip archive read for " + zipPath);
 				this.handleZipData(data,zip);
 			}).catch(err =>{
 				debug("Error unzipping. \n" + err);
@@ -209,7 +260,7 @@ export class MissionCache {
 			if (parentFolder !== "") {
 				file = parentFolder + path.sep + file;
 			}
-			debug(file);
+			//debug(file);
 			if (file.endsWith("__init__.mast") || file.endsWith("__init__.py")) {
 				// Do nothing
 			} else if (file.endsWith(".py")) {
@@ -228,7 +279,7 @@ export class MissionCache {
 					this.missionDefaultSignatures.push(s.signatureInformation);
 				}
 			} else if (file.endsWith(".mast")) {
-				debug("Building file: " + file);
+				//debug("Building file: " + file);
 				const m = new MastFile(file, data);
 				this.missionMastModules.push(m);
 			}
@@ -348,7 +399,11 @@ export class MissionCache {
 
 }
 
-
+interface DataSetItem {
+	name: string,
+	type: string,
+	docs: string
+}
 
 
 

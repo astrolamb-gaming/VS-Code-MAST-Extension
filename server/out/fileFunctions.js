@@ -80,13 +80,14 @@ async function getFileContents(dir) {
     return entries.text();
 }
 async function readFile(dir) {
-    let ret = "";
-    const d = fs.readFile(dir, "utf-8", (err, data) => {
-        if (err) {
-            (0, console_1.debug)("error reading file: " + dir + "\n" + err);
-        }
-        ret = data;
-    });
+    //let ret: string = "";
+    // const d = fs.readFileSync(dir, "utf-8").then( (err,data)=>{
+    // 	if (err) {
+    // 		debug("error reading file: " + dir + "\n" + err);
+    // 	}
+    // 	ret = data;
+    // });
+    const ret = fs.readFileSync(dir, "utf-8");
     return ret;
 }
 function getFilesInDir(dir, includeChildren = true) {
@@ -137,7 +138,7 @@ function readAllFilesIn(folder) {
 }
 async function readZipArchive(filepath) {
     const map = new Map();
-    (0, console_1.debug)(filepath);
+    //debug(filepath);
     const zip = new AdmZip(filepath);
     try {
         for (const zipEntry of zip.getEntries()) {
@@ -182,7 +183,7 @@ function getParentFolder(childUri) {
         childUri = vscode_uri_1.URI.parse(childUri).fsPath;
     }
     let p = path.dirname(childUri);
-    (0, console_1.debug)(p);
+    //debug(p);
     if (p === ".") {
         (0, console_1.debug)(childUri + " getParentFolder() ends with period.");
         p = childUri;

@@ -5,7 +5,7 @@ import { labelNames } from './server';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { ClassObject, ClassTypings, getVariablesInFile, IClassObject, PyFile } from './data';
 import { getRouteLabelAutocompletions, getSkyboxCompletionItems } from './routeLabels';
-import { isInComment, isInString, isTextInBracket } from './comments';
+import { isInComment, isInString, isInYaml, isTextInBracket } from './comments';
 import { getCache, getGlobals } from './cache';
 import path = require('path');
 import { fixFileName } from './fileFunctions';
@@ -68,9 +68,18 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		return ci;
 	}
 
+	if (isInYaml(pos)) {
+		return ci;
+	}
+
 	// TODO: Check and make absolutely sure that isTextInBracket is working properly
 	// TODO: May be useful to have a list of used string words that can be added via autocomplete (i.e. roles)
 	if (isInString(pos) && !isTextInBracket(iStr,pos)) {
+		// Here we check for blob info
+		if (iStr.endsWith("blob.set(\"") || iStr.endsWith("blob.get(\"")) {
+			debug("Is BLobe");
+			return getGlobals().blob_items
+		}
 		debug("Is in string");
 		return ci;
 	}
@@ -172,6 +181,10 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			//}
 		}
 	*/
+
+	
+
+
 	debug("Checking getCompletions");
 	//debug(text.uri);
 	//debug(ci);

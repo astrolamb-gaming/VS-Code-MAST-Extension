@@ -2,14 +2,13 @@ import { debug } from 'console';
 import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 import * as fs from 'fs';
 import { integer } from 'vscode-languageserver';
-interface CRange {
+export interface CRange {
 	start: integer,
 	end: integer
 }
 export function isInComment(loc:integer):boolean {
 	for (const r in commentRanges) {
 		if (commentRanges[r].start < loc && commentRanges[r].end > loc) {
-			debug("In a comment");
 			return true;
 		}
 	}
@@ -17,10 +16,19 @@ export function isInComment(loc:integer):boolean {
 }
 let commentRanges:CRange[] = [];
 let stringRanges: CRange[] = [];
+let yamlRanges: CRange[] = [];
 export function isInString(loc:integer) : boolean {
 	for (const r in stringRanges) {
 		if (stringRanges[r].start < loc && stringRanges[r].end > loc) {
-			debug("In a string");
+			return true;
+		}
+	}
+	return false;
+}
+
+export function isInYaml(loc:integer): boolean {
+	for (const r in yamlRanges) {
+		if (yamlRanges[r].start < loc && yamlRanges[r].end > loc) {
 			return true;
 		}
 	}
@@ -72,6 +80,18 @@ export function getComments(textDocument: TextDocument) {
 	
 }
 
+export function getYamls(textDocument: TextDocument) {
+	const text = textDocument.getText();
+	let yamls: CRange[] = [];
+	let yaml = /^\\s*---$.*^\\s*?...$/gms;
+	yamls = getMatchesForRegex(yaml,text);
+	
+	//debug(strings);
+	//stringRanges = yamls;
+	//debug("Strings found: " + strings.length);
+	return yamls;
+}
+
 const indents: integer[] = [];
 const dedents: integer[] = [];
 /**
@@ -92,7 +112,7 @@ export function getIndentations(textDocument: TextDocument) {
 
 }
 
-function getMatchesForRegex(pattern: RegExp, text: string) {
+export function getMatchesForRegex(pattern: RegExp, text: string) {
 	let matches: CRange[] = [];
 	let m: RegExpExecArray | null;
 	while (m = pattern.exec(text)) {

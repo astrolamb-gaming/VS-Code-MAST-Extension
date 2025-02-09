@@ -199,6 +199,8 @@ function findBadLabels(t) {
     const whiteSpaceWarning = /^ +?/;
     const good = /(^(\s*)(={2,}\s*[ \t]*)(\w+)([ \t]*(={2,})?))|(^(\s*)(-{2,}\s*[ \t]*)(\w+)([ \t]*(-{2,})?))/m;
     const bad = /[\!\@\$\%\^\&\*\(\)\.\,\>\<\?\`\[\]\\\/\+\~\{\}\|\'\"\;\:]+?/m;
+    // Regex for a good await inline label
+    const awaitInlineLabel = /=\w+:/;
     const specialLabel = /=\w+:/;
     let m;
     // Iterate over regular labels

@@ -8,12 +8,15 @@
   "name": "TypeScript",
   "scopeName": "source.mast",
   "patterns": [
+    {"include": "#yaml"},
+    {"include": "#style-definition"},
     {"include": "#comment"},
     {"include": "#string"},
     {"include": "#label"},
     {"include": "#snake-syntax"},
     {"include": "#operator"},
     {"include": "#statements"},
+    
     {"include": "#assignment-operator"}
   ],
   "repository": {
@@ -93,6 +96,30 @@
         }
       ]
     },
+    "style-definition": {
+      "name": "style.definition",
+      "patterns": [
+        {
+          "match": "(=\\$\\w+)([^\\n\\r\\f#]*)",
+          "captures": {
+            "1": {"name": "style.definition.name"},
+            "2": {"name": "style.definition.params"}
+          }
+        }
+      ]
+    },
+    "style": {
+      "name": "style.reference",
+      "patterns": [
+        {
+          "match": "([#\\$]\\w+)(,\\s(#\\w+))?",
+          "captures": {
+            "1": {"name": "style.definition.title"},
+            "3": {"name": "style.definition.body"}
+          }
+        }
+      ]
+    },
     "label":{
       "patterns": [
         {
@@ -124,8 +151,8 @@
           }
           },
           {
-            "match": "(?m)^(\\s*)(=.+)($|\n)",
-            "name": "label.special.mast"
+            "match": "=\\w+:",
+            "name": "label.inline.await.mast"
           },
           {
             "match": "(jump|->)(\\s*)(\\w+)",
@@ -141,7 +168,7 @@
           },
           {
             "name": "label.route.mast",
-            "match": "(?m)^\\s*(\\/{2,})(\\w+)(\\/\\w+)*",
+            "match": "(\\/{2,})(\\w+)(\\/\\w+)*",
             "captures": {
               "2": {
                 "name": "label.route.primary.mast"
@@ -1288,12 +1315,9 @@
       ]
     },
     "function-declaration": {
-      "name": "meta.function.ts",
+      "name": "meta.function-call.python.generic",
       "begin": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(?:(\\bexport)\\s+)?(?:(\\bdeclare)\\s+)?(?:(async)\\s+)?(function\\b)(?:\\s*(\\*))?(?:(?:\\s+|(?<=\\*))([_$[:alpha:]][_$[:alnum:]]*))?\\s*",
       "beginCaptures": {
-        "1": {
-          "name": "keyword.control.export.ts"
-        },
         "2": {
           "name": "storage.modifier.ts"
         },
@@ -1301,7 +1325,7 @@
           "name": "storage.modifier.async.ts"
         },
         "4": {
-          "name": "storage.type.function.ts"
+          "name": "meta.function-call.python"
         },
         "5": {
           "name": "keyword.generator.asterisk.ts"
@@ -3180,66 +3204,6 @@
         }
       ]
     },
-    "cast": {
-      "patterns": [
-        {
-          "name": "cast.expr.ts",
-          "match": "\\s*(<)\\s*(const)\\s*(>)",
-          "captures": {
-            "1": {
-              "name": "meta.brace.angle.ts"
-            },
-            "2": {
-              "name": "storage.modifier.ts"
-            },
-            "3": {
-              "name": "meta.brace.angle.ts"
-            }
-          }
-        },
-        {
-          "name": "cast.expr.ts",
-          "begin": "(?:(?<!\\+\\+|--)(?<=^return|[^\\._$[:alnum:]]return|^throw|[^\\._$[:alnum:]]throw|^yield|[^\\._$[:alnum:]]yield|^await|[^\\._$[:alnum:]]await|^default|[^\\._$[:alnum:]]default|[=(,:>*?\\&\\|\\^]|[^_$[:alnum:]](?:\\+\\+|\\-\\-)|[^\\+]\\+|[^\\-]\\-))\\s*(<)(?!<?\\=)(?!\\s*$)",
-          "beginCaptures": {
-            "1": {
-              "name": "meta.brace.angle.ts"
-            }
-          },
-          "end": "(\\>)",
-          "endCaptures": {
-            "1": {
-              "name": "meta.brace.angle.ts"
-            }
-          },
-          "patterns": [
-            {
-              "include": "#type"
-            }
-          ]
-        },
-        {
-          "name": "cast.expr.ts",
-          "begin": "(?:(?<=^))\\s*(<)(?=[_$[:alpha:]][_$[:alnum:]]*\\s*>)",
-          "beginCaptures": {
-            "1": {
-              "name": "meta.brace.angle.ts"
-            }
-          },
-          "end": "(\\>)",
-          "endCaptures": {
-            "1": {
-              "name": "meta.brace.angle.ts"
-            }
-          },
-          "patterns": [
-            {
-              "include": "#type"
-            }
-          ]
-        }
-      ]
-    },
-    
       "assignment-operator": {
         "name": "keyword.operator.assignment.python",
         "match": "(?x)\n     <<= | >>= | //= | \\*\\*=\n    | \\+= | -= | /= | @=\n    | \\*= | %= | ~= | \\^= | &= | \\|=\n    | =(?!=)\n"
@@ -3311,6 +3275,7 @@
         }
       },
       "patterns": [
+        {"include":"#style"},
         {
           "include": "#expression"
         },
@@ -4924,7 +4889,8 @@
       "patterns": [
         {
           "include": "#template-substitution-element"
-        }
+        },
+        {"include": "#string"}
       ]
     },
     "qstring-double": {
@@ -4964,7 +4930,12 @@
           "name": "string.weighted.percent.weight-value"
         }
       },
-      "end": "(?m)$|\""
+      "end": "(?m)$|\"",
+      "patterns":[
+        {
+          "include": "#template-substitution-element"
+        }
+      ]
     },
     "qstring-single": {
       "name": "string.quoted.single.ts",
@@ -5024,13 +4995,25 @@
     "comms-message-target": {
       "name": "comms.button.target",
       "begin": "^\\s*(\\<\\<|\\>\\>|\\(\\)|\\<(all|scan|client|ship|dialog|dialog_main|dialog_consoles_all|dialog_consoles|dialog_ships)\\>)",
-      "end": "\\n|(\".*\")"
+      "end": "\\n|(\".*\")",
+      "patterns":[
+        {
+          "include": "#template-substitution-element"
+        },
+        {
+          "include": "#expression"
+        }
+      ]
     },
     "qstring-button-definition": {
       "name": "comms.button.build",
-      "comment": "Need to use \\s+ because it has to be indented",
-      "begin": "(?m)^\\s+[\\+\\*]",
-      "end": "\".*\"",
+      "comment": "Need to use \\s+ because it has to be indented?? Can it be not indented?",
+      "begin": "(?m)^\\s*[\\+\\*]",
+      "end": "(\".*?\")(.*?)(?=(if|\\$|\\n|\\{|\\(|\\[))",
+      "endCaptures":{
+        "1":{"name":"comms.button.text"},
+        "2":{"name":"label.jump.to.mast"}
+      },
       "patterns":[
         {
           "include": "#template-substitution-element"
@@ -5213,6 +5196,39 @@
       "begin": "~{2,}",
       "end": "~{2,}",
       "patterns": [
+        {
+          "include": "#template-type-substitution-element"
+        },
+        {
+          "include": "#string"
+        },
+        {
+          "include": "#operator"
+        },
+        {
+          "include": "#statements"
+        },
+        {
+          "include": "#assignment-operator"
+        }
+      ]
+    },
+    "key-value-pair":{
+      "name":"meta.injection.yaml.key-value-pair",
+      "match":"(\\w+):[ \\t](\\w+)",
+      "captures":{
+        "0":{"name":"meta.injection.yaml.key"},
+        "2":{"name":"meta.injection.yaml.value"}
+      }
+    },
+    "yaml": {
+      "name": "meta.injection.yaml",
+      "begin": "\\-{3,3}\\s*($|\\n)",
+      "end": "\\.{3,3}",
+      "patterns": [
+        {
+          "include":"#key-value-pair"
+        },
         {
           "include": "#template-type-substitution-element"
         },
@@ -5449,6 +5465,9 @@
     "comment": {
       "patterns": [
         {
+          "include": "#codetags"
+        },
+        {
           "name": "comment.block.documentation.ts",
           "begin": "/\\*\\*(?!/)",
           "beginCaptures": {
@@ -5498,26 +5517,18 @@
           ]
         },
         {
-          "begin": "(^[ \\t]+)?((#)(?:\\s*((@)internal)(?=\\s|$))?)",
-          "beginCaptures": {
-            "1": {
-              "name": "punctuation.whitespace.comment.leading.ts"
-            },
-            "2": {
-              "name": "comment.line.double-slash.ts"
-            },
-            "3": {
-              "name": "punctuation.definition.comment.ts"
-            },
-            "4": {
-              "name": "storage.type.internaldeclaration.ts"
-            },
-            "5": {
-              "name": "punctuation.decorator.internaldeclaration.ts"
+          "begin": "^\\s*#",
+          "end": "$|\\n",
+          "name": "comment.line-start.number-sign.mast",
+          "patterns": [
+            {
+              "include": "#codetags"
             }
-          },
-          "end": "(?=$)",
-          "contentName": "comment.line.double-slash.ts",
+          ]
+        },
+        {
+          "match": "#[^\\[\\]]*($|\\n)",
+          "name": "comment.line.end.number-sign.mast",
           "patterns": [
             {
               "include": "#codetags"
@@ -5956,7 +5967,8 @@
           "patterns": [
             {
               "include": "#brackets"
-            }
+            },
+            {"include": "#expression"}
           ]
         },
         {
@@ -5965,7 +5977,8 @@
           "patterns": [
             {
               "include": "#brackets"
-            }
+            },
+            {"include": "#style"}
           ]
         }
       ]

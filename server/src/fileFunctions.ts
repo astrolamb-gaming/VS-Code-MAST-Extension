@@ -97,15 +97,18 @@ export async function getFileContents(dir: string): Promise<string> {
 	return entries.text();
 }
 
-export async function readFile(dir: string) {
-	let ret: string = "";
+export async function readFile(dir: string): Promise<string> {
+	//let ret: string = "";
 	
-	const d = fs.readFile(dir, "utf-8", (err,data)=>{
-		if (err) {
-			debug("error reading file: " + dir + "\n" + err);
-		}
-		ret = data;
-	});
+	// const d = fs.readFileSync(dir, "utf-8").then( (err,data)=>{
+	// 	if (err) {
+	// 		debug("error reading file: " + dir + "\n" + err);
+	// 	}
+	// 	ret = data;
+	// });
+
+	const ret = fs.readFileSync(dir, "utf-8");
+	
 	return ret;
 }
 
@@ -164,7 +167,7 @@ export function readAllFilesIn(folder: WorkspaceFolder) {
 
 export async function readZipArchive(filepath: string) {
 	const map: Map<string, string> = new Map();
-	debug(filepath);
+	//debug(filepath);
 	const zip = new AdmZip(filepath);
 	try {
 		
@@ -211,7 +214,7 @@ export function getParentFolder(childUri:string) {
 		childUri = URI.parse(childUri).fsPath;
 	}
 	let p = path.dirname(childUri);
-	debug(p);
+	//debug(p);
 	if (p === ".") {
 		debug(childUri + " getParentFolder() ends with period.");
 		p = childUri;

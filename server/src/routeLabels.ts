@@ -81,7 +81,7 @@ export function loadMediaLabels(textData: string = ""): IRouteLabel[] {
 				labels: label.split("/"),
 				completionItem: ci
 			}
-			debug(label);
+			//debug(label);
 			mediaLabels.push(ri);
 		}
 		let label = "map";

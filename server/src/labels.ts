@@ -219,6 +219,9 @@ function findBadLabels(t: TextDocument) : Diagnostic[] {
 	const whiteSpaceWarning: RegExp = /^ +?/;
 	const good: RegExp = /(^(\s*)(={2,}\s*[ \t]*)(\w+)([ \t]*(={2,})?))|(^(\s*)(-{2,}\s*[ \t]*)(\w+)([ \t]*(-{2,})?))/m;
 	const bad: RegExp = /[\!\@\$\%\^\&\*\(\)\.\,\>\<\?\`\[\]\\\/\+\~\{\}\|\'\"\;\:]+?/m;
+	
+	// Regex for a good await inline label
+	const awaitInlineLabel = /=\w+:/;
 	const specialLabel: RegExp = /=\w+:/;
 	let m: RegExpExecArray | null;
 	// Iterate over regular labels

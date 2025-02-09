@@ -58,9 +58,17 @@ function onCompletion(_textDocumentPosition, text) {
     if ((0, comments_1.isInComment)(pos)) {
         return ci;
     }
+    if ((0, comments_1.isInYaml)(pos)) {
+        return ci;
+    }
     // TODO: Check and make absolutely sure that isTextInBracket is working properly
     // TODO: May be useful to have a list of used string words that can be added via autocomplete (i.e. roles)
     if ((0, comments_1.isInString)(pos) && !(0, comments_1.isTextInBracket)(iStr, pos)) {
+        // Here we check for blob info
+        if (iStr.endsWith("blob.set(\"") || iStr.endsWith("blob.get(\"")) {
+            (0, console_1.debug)("Is BLobe");
+            return (0, cache_1.getGlobals)().blob_items;
+        }
         (0, console_1.debug)("Is in string");
         return ci;
     }

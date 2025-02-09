@@ -26,8 +26,8 @@
 					".mast"
 				],
 				"icon": {
-					"dark": "mast.png",
-					"light": "mast.png"
+					"dark": "mast_dark.svg",
+					"light": "mast_light.svg"
 				},
 				"aliases": [
 					"MAST",
@@ -66,7 +66,7 @@
 					{
 						"scope": "label",
 						"settings": {
-							"foreground": "#C586C0",
+							"foreground": "#89549e",
 							"fontStyle": "bold"
 						}
 					},
@@ -75,18 +75,6 @@
 						"settings": {
 							"foreground": "#C586C0",
 							"fontStyle": ""
-						}
-					},
-					{
-						"scope": "label.main.designator",
-						"settings": {
-							"foreground": "#C586C0"
-						}
-					},
-					{
-						"scope": "label.sub.designator",
-						"settings": {
-							"foreground": "#C586C0"
 						}
 					},
 					{
@@ -142,8 +130,34 @@
 					{
 						"scope": "comms.button",
 						"settings": {
-							"foreground": "#7fad00",
+							"foreground": "#4558c5",
 							"fontStyle": "bold"
+						}
+					},
+					{
+						"scope": "meta.injection.yaml",
+						"settings": {
+							"foreground": "#ffffff"
+						}
+					},
+					{
+						"scope": "meta.injection.yaml.key",
+						"settings": {
+							"foreground": "#5c84da",
+							"fontStyle": "italic"
+						}
+					},
+					{
+						"scope": "meta.injection.yaml.value",
+						"settings": {
+							"foreground": "#7c8fb8",
+							"fontStyle": ""
+						}
+					},
+					{
+						"scope": "style.definition",
+						"settings": {
+							"foreground": "#36a1a5"
 						}
 					}
 				]

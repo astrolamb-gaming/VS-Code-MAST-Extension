@@ -100,10 +100,10 @@ connection.onInitialize((params) => {
     }
     if (params.workspaceFolders) {
         const workspaceFolder = params.workspaceFolders[0];
-        (0, console_1.debug)(workspaceFolder.uri);
+        //debug(workspaceFolder.uri);
         //readAllFilesIn(workspaceFolder);
         const uri = vscode_uri_1.URI.parse(workspaceFolder.uri);
-        (0, console_1.debug)(uri.fsPath);
+        //debug(uri.fsPath);
         (0, cache_1.loadCache)(uri.fsPath);
     }
     else {
@@ -221,6 +221,8 @@ async function validateTextDocument(textDocument) {
     // In this simple example we get the settings for every validate run.
     const settings = await getDocumentSettings(textDocument.uri);
     (0, comments_1.getComments)(textDocument);
+    (0, comments_1.getStrings)(textDocument);
+    (0, comments_1.getYamls)(textDocument);
     // The validator creates diagnostics for all uppercase words length 2 and more
     const text = textDocument.getText();
     currentDocument = textDocument;
