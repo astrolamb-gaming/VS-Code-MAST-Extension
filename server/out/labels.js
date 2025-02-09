@@ -200,8 +200,8 @@ function findBadLabels(t) {
     const good = /(^(\s*)(={2,}\s*[ \t]*)(\w+)([ \t]*(={2,})?))|(^(\s*)(-{2,}\s*[ \t]*)(\w+)([ \t]*(-{2,})?))/m;
     const bad = /[\!\@\$\%\^\&\*\(\)\.\,\>\<\?\`\[\]\\\/\+\~\{\}\|\'\"\;\:]+?/m;
     // Regex for a good await inline label
+    const format = /=\$\w+/;
     const awaitInlineLabel = /=\w+:/;
-    const specialLabel = /=\w+:/;
     let m;
     // Iterate over regular labels
     while (m = any.exec(text)) {
@@ -213,7 +213,7 @@ function findBadLabels(t) {
             continue;
         }
         //debug("Testing " + m[0]);
-        let tr = good.test(lbl);
+        let tr = good.test(lbl) || awaitInlineLabel.test(lbl) || format.test(lbl);
         //debug("  Result: " + tr as string);
         if (!tr) {
             //debug("    Bad result");
@@ -226,7 +226,7 @@ function findBadLabels(t) {
                 message: "Invalid characters in label designation",
                 source: "mast"
             };
-            if (specialLabel.test(m[0])) {
+            if (awaitInlineLabel.test(m[0])) {
                 d.severity = vscode_languageserver_1.DiagnosticSeverity.Warning;
                 d.message = "Possible improper label definition";
                 d.source = __dirname;

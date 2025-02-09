@@ -219,10 +219,10 @@ function findBadLabels(t: TextDocument) : Diagnostic[] {
 	const whiteSpaceWarning: RegExp = /^ +?/;
 	const good: RegExp = /(^(\s*)(={2,}\s*[ \t]*)(\w+)([ \t]*(={2,})?))|(^(\s*)(-{2,}\s*[ \t]*)(\w+)([ \t]*(-{2,})?))/m;
 	const bad: RegExp = /[\!\@\$\%\^\&\*\(\)\.\,\>\<\?\`\[\]\\\/\+\~\{\}\|\'\"\;\:]+?/m;
-	
+
 	// Regex for a good await inline label
-	const awaitInlineLabel = /=\w+:/;
-	const specialLabel: RegExp = /=\w+:/;
+	const format = /=\$\w+/;
+	const awaitInlineLabel: RegExp = /=\w+:/;
 	let m: RegExpExecArray | null;
 	// Iterate over regular labels
 	while (m = any.exec(text)) {
@@ -234,7 +234,7 @@ function findBadLabels(t: TextDocument) : Diagnostic[] {
 			continue;
 		}
 		//debug("Testing " + m[0]);
-		let tr = good.test(lbl);
+		let tr = good.test(lbl) || awaitInlineLabel.test(lbl) || format.test(lbl);
 		//debug("  Result: " + tr as string);
 
 		if (!tr) {
@@ -251,7 +251,7 @@ function findBadLabels(t: TextDocument) : Diagnostic[] {
 				source: "mast"
 			}
 			
-			if (specialLabel.test(m[0])) {
+			if (awaitInlineLabel.test(m[0])) {
 				d.severity = DiagnosticSeverity.Warning;
 				d.message = "Possible improper label definition";
 				d.source = __dirname;
