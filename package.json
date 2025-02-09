@@ -96,6 +96,12 @@
 						}
 					},
 					{
+						"scope": "idle.yield.result",
+						"settings": {
+							"foreground": "#ffee00"
+						}
+					},
+					{
 						"scope": "constant.language.mast",
 						"settings": {
 							"foreground": "#569CD6"

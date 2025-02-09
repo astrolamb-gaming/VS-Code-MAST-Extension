@@ -6,6 +6,7 @@ import { myDebug } from './server';
 import { debug } from 'console';
 import { URI } from 'vscode-uri';
 import { getLabelDescription } from './data';
+import { getCache } from './cache';
 
 
 export interface LabelInfo {
@@ -137,20 +138,21 @@ function checkForDuplicateLabels(t: TextDocument, main:LabelInfo[],sub:LabelInfo
 export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 	const text = textDocument.getText();
 	let diagnostics : Diagnostic[] = [];
-	const calledLabel : RegExp = /(^ *?-> *?[0-9A-Za-z_]{1,})|(^ *?jump *?[0-9A-Za-z_]{1,})/gm;
+	const calledLabel : RegExp = /(^ *?(->|jump) *?\w+)/gm;
 	let m: RegExpExecArray | null;
-	const mainLabels : LabelInfo[] = parseLabels(textDocument.getText(),textDocument.uri, true);
-	const subLabels : LabelInfo[] = parseLabels(textDocument.getText(), textDocument.uri, false);
-	// Add child labels to their parent
-	for (const i in mainLabels) {
-		const ml = mainLabels[i];
-		for (const j in subLabels) {
-			const sl = subLabels[j];
-			if (sl.start > ml.start && sl.start < ml.end) {
-				ml.subLabels.push(sl.name);
-			}
-		}
-	}
+	const mainLabels : LabelInfo[] = getLabelsInFile(text,textDocument.uri);
+	///parseLabels(textDocument.getText(),textDocument.uri, true);
+	// const subLabels : LabelInfo[] = parseLabels(textDocument.getText(), textDocument.uri, false);
+	// // Add child labels to their parent
+	// for (const i in mainLabels) {
+	// 	const ml = mainLabels[i];
+	// 	for (const j in subLabels) {
+	// 		const sl = subLabels[j];
+	// 		if (sl.start > ml.start && sl.start < ml.end) {
+	// 			ml.subLabels.push(sl.name);
+	// 		}
+	// 	}
+	// }
 	updateLabelNames(mainLabels);
 	//debug("Iterating over called labels");
 	while (m = calledLabel.exec(text)) {
@@ -160,9 +162,29 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 		}
 		//debug(str);
 		let found: boolean = false;
+
+		const ml: LabelInfo = getMainLabelAtPos(m.index,mainLabels);
+		
+		// Check if the label is the main label
+		if (str === ml.name) {
+			continue;
+		// Check if the label is a sub-label of the main label.
+		} else {
+			for (const sub of ml.subLabels) {
+				if (str === sub) {
+					found = true;
+					break;
+				}
+			}
+			if (found) continue;
+		}
+
+		// If the label is not a main label, nor a sub-label of the main label,
+		// then we need to see if it exists at all.
 		for (const i in mainLabels) {
 			if (str === mainLabels[i].name) {
 				found = true;
+				break;
 			} else {
 				for (const j in mainLabels[i].subLabels) {
 					const sl = mainLabels[i].subLabels[j];
@@ -174,7 +196,7 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 									end: textDocument.positionAt(m.index + m[0].length)
 								},
 								severity: DiagnosticSeverity.Error,
-								message: "Sub-label cannot be used outside of parent label.",
+								message: "Sub-label cannot be called from outside of its parent label.",
 								source: "mast",
 								
 							}
@@ -182,6 +204,32 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 							diagnostics.push(d);
 						}
 						found = true;
+					}
+				}
+			}
+		}
+
+		const labels: LabelInfo[] = getCache(textDocument.uri).getLabels(textDocument);
+
+		for (const lbl of labels) {
+			if (str === lbl.name) {
+				found = true;
+				break;
+			} else {
+				for (const sl of lbl.subLabels) {
+					if (str === sl) {
+						const d: Diagnostic = {
+							range: {
+								start: textDocument.positionAt(m.index),
+								end: textDocument.positionAt(m.index + m[0].length)
+							},
+							severity: DiagnosticSeverity.Error,
+							message: "Sub-label cannot be called from outside of its parent label.",
+							source: "mast",
+							
+						}
+						d.relatedInformation = relatedMessage(textDocument,d.range, "This sub-label is a child of the " + lbl.name + " main label.\nYou can only jump to a sub-label from within its parent label.");
+						diagnostics.push(d);
 					}
 				}
 			}
@@ -251,6 +299,7 @@ function findBadLabels(t: TextDocument) : Diagnostic[] {
 				source: "mast"
 			}
 			
+			// TODO: Technically this is not reachable. Evaluate if this should be kept around.
 			if (awaitInlineLabel.test(m[0])) {
 				d.severity = DiagnosticSeverity.Warning;
 				d.message = "Possible improper label definition";
@@ -262,7 +311,8 @@ function findBadLabels(t: TextDocument) : Diagnostic[] {
 			diagnostics.push(d);
 		}
 
-		tr = whiteSpaceWarning.test(m[0]);
+		// Await Inline Labels ignore this error, but other labels should NOT be indented.
+		tr = whiteSpaceWarning.test(m[0]) && !awaitInlineLabel.test(lbl);
 		if (tr) {
 			//debug("WARNING: Best practice to start the line with label declaration");
 			const d: Diagnostic = {
@@ -334,6 +384,29 @@ function findBadLabels(t: TextDocument) : Diagnostic[] {
 			d.relatedInformation = relatedMessage(t, d.range, "See https://artemis-sbs.github.io/sbs_utils/mast/routes/ for more details on routes.");
 			diagnostics.push(d);
 		}
+		// TODO: Add this later. Need to account for things like:
+		/**
+		 * comms_navigate("//comms/taunt/raider")
+		 * and
+		 * + "Give Orders" //comms/give_orders
+		 */
+
+
+		// const tr = whiteSpaceWarning.test(m[0]);
+		// if (tr) {
+		// 	//debug("WARNING: Best practice to start the line with label declaration");
+		// 	const d: Diagnostic = {
+		// 		range: {
+		// 			start: t.positionAt(m.index),
+		// 			end: t.positionAt(m.index + m[0].length)
+		// 		},
+		// 		severity: DiagnosticSeverity.Warning,
+		// 		message: "Best practice is to start label declarations at the beginning of the line.",
+		// 		source: "mast"
+		// 	}
+		// 	d.relatedInformation = relatedMessage(t, d.range, "Label declarations can cause Mast compiler errors under some circumstances when there are spaces prior to label declaration.");
+		// 	diagnostics.push(d);
+		// }
 	}
 
 	return diagnostics;

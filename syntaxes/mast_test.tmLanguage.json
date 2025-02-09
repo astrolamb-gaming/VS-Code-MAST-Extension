@@ -17,6 +17,7 @@
     {"include": "#operator"},
     {"include": "#statements"},
     
+    
     {"include": "#assignment-operator"}
   ],
   "repository": {
@@ -71,12 +72,13 @@
     "yield-result": {
       "patterns": [
         {
-          "match": "(?<=yield )success",
-          "name": "success.yield.result"
-        },
-        {
-          "match": "(?<=yield )fail",
-          "name": "fail.yield.result"
+          "match": "(?<=yield )((success|SUCCESS)|(fail|FAIL)|(idle|IDLE))",
+          "captures":{
+            "2":{"name": "success.yield.result"},
+            "3":{"name": "fail.yield.result"},
+            "4":{"name": "idle.yield.result"}
+          }
+          
         }
       ]
     },
@@ -5008,7 +5010,7 @@
     "qstring-button-definition": {
       "name": "comms.button.build",
       "comment": "Need to use \\s+ because it has to be indented?? Can it be not indented?",
-      "begin": "(?m)^\\s*[\\+\\*]",
+      "begin": "(?m)^\\s*[\\+\\*](?!\/)",
       "end": "(\".*?\")(.*?)(?=(if|\\$|\\n|\\{|\\(|\\[))",
       "endCaptures":{
         "1":{"name":"comms.button.text"},
@@ -5534,6 +5536,11 @@
               "include": "#codetags"
             }
           ]
+        },
+        {
+          "begin": "#",
+          "end": "$|\\n",
+          "name": "comment.line.number-sign.mid-line.mast"
         }
       ]
     },

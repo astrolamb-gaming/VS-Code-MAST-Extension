@@ -8,6 +8,7 @@ const vscode_languageserver_1 = require("vscode-languageserver");
 const vscode_languageserver_textdocument_1 = require("vscode-languageserver-textdocument");
 const errorChecking_1 = require("./errorChecking");
 const server_1 = require("./server");
+const cache_1 = require("./cache");
 /**
  * Get valid labels, but only main or sublabels, not both.
  * @param textDocument
@@ -120,20 +121,21 @@ function checkForDuplicateLabels(t, main, sub) {
 function checkLabels(textDocument) {
     const text = textDocument.getText();
     let diagnostics = [];
-    const calledLabel = /(^ *?-> *?[0-9A-Za-z_]{1,})|(^ *?jump *?[0-9A-Za-z_]{1,})/gm;
+    const calledLabel = /(^ *?(->|jump) *?\w+)/gm;
     let m;
-    const mainLabels = parseLabels(textDocument.getText(), textDocument.uri, true);
-    const subLabels = parseLabels(textDocument.getText(), textDocument.uri, false);
-    // Add child labels to their parent
-    for (const i in mainLabels) {
-        const ml = mainLabels[i];
-        for (const j in subLabels) {
-            const sl = subLabels[j];
-            if (sl.start > ml.start && sl.start < ml.end) {
-                ml.subLabels.push(sl.name);
-            }
-        }
-    }
+    const mainLabels = getLabelsInFile(text, textDocument.uri);
+    ///parseLabels(textDocument.getText(),textDocument.uri, true);
+    // const subLabels : LabelInfo[] = parseLabels(textDocument.getText(), textDocument.uri, false);
+    // // Add child labels to their parent
+    // for (const i in mainLabels) {
+    // 	const ml = mainLabels[i];
+    // 	for (const j in subLabels) {
+    // 		const sl = subLabels[j];
+    // 		if (sl.start > ml.start && sl.start < ml.end) {
+    // 			ml.subLabels.push(sl.name);
+    // 		}
+    // 	}
+    // }
     (0, server_1.updateLabelNames)(mainLabels);
     //debug("Iterating over called labels");
     while (m = calledLabel.exec(text)) {
@@ -143,9 +145,28 @@ function checkLabels(textDocument) {
         }
         //debug(str);
         let found = false;
+        const ml = getMainLabelAtPos(m.index, mainLabels);
+        // Check if the label is the main label
+        if (str === ml.name) {
+            continue;
+            // Check if the label is a sub-label of the main label.
+        }
+        else {
+            for (const sub of ml.subLabels) {
+                if (str === sub) {
+                    found = true;
+                    break;
+                }
+            }
+            if (found)
+                continue;
+        }
+        // If the label is not a main label, nor a sub-label of the main label,
+        // then we need to see if it exists at all.
         for (const i in mainLabels) {
             if (str === mainLabels[i].name) {
                 found = true;
+                break;
             }
             else {
                 for (const j in mainLabels[i].subLabels) {
@@ -158,13 +179,37 @@ function checkLabels(textDocument) {
                                     end: textDocument.positionAt(m.index + m[0].length)
                                 },
                                 severity: vscode_languageserver_1.DiagnosticSeverity.Error,
-                                message: "Sub-label cannot be used outside of parent label.",
+                                message: "Sub-label cannot be called from outside of its parent label.",
                                 source: "mast",
                             };
                             d.relatedInformation = (0, errorChecking_1.relatedMessage)(textDocument, d.range, "This sub-label is a child of the " + mainLabels[i].name + " main label.\nYou can only jump to a sub-label from within its parent label.");
                             diagnostics.push(d);
                         }
                         found = true;
+                    }
+                }
+            }
+        }
+        const labels = (0, cache_1.getCache)(textDocument.uri).getLabels(textDocument);
+        for (const lbl of labels) {
+            if (str === lbl.name) {
+                found = true;
+                break;
+            }
+            else {
+                for (const sl of lbl.subLabels) {
+                    if (str === sl) {
+                        const d = {
+                            range: {
+                                start: textDocument.positionAt(m.index),
+                                end: textDocument.positionAt(m.index + m[0].length)
+                            },
+                            severity: vscode_languageserver_1.DiagnosticSeverity.Error,
+                            message: "Sub-label cannot be called from outside of its parent label.",
+                            source: "mast",
+                        };
+                        d.relatedInformation = (0, errorChecking_1.relatedMessage)(textDocument, d.range, "This sub-label is a child of the " + lbl.name + " main label.\nYou can only jump to a sub-label from within its parent label.");
+                        diagnostics.push(d);
                     }
                 }
             }
@@ -226,6 +271,7 @@ function findBadLabels(t) {
                 message: "Invalid characters in label designation",
                 source: "mast"
             };
+            // TODO: Technically this is not reachable. Evaluate if this should be kept around.
             if (awaitInlineLabel.test(m[0])) {
                 d.severity = vscode_languageserver_1.DiagnosticSeverity.Warning;
                 d.message = "Possible improper label definition";
@@ -237,7 +283,8 @@ function findBadLabels(t) {
             }
             diagnostics.push(d);
         }
-        tr = whiteSpaceWarning.test(m[0]);
+        // Await Inline Labels ignore this error, but other labels should NOT be indented.
+        tr = whiteSpaceWarning.test(m[0]) && !awaitInlineLabel.test(lbl);
         if (tr) {
             //debug("WARNING: Best practice to start the line with label declaration");
             const d = {
@@ -306,6 +353,27 @@ function findBadLabels(t) {
             d.relatedInformation = (0, errorChecking_1.relatedMessage)(t, d.range, "See https://artemis-sbs.github.io/sbs_utils/mast/routes/ for more details on routes.");
             diagnostics.push(d);
         }
+        // TODO: Add this later. Need to account for things like:
+        /**
+         * comms_navigate("//comms/taunt/raider")
+         * and
+         * + "Give Orders" //comms/give_orders
+         */
+        // const tr = whiteSpaceWarning.test(m[0]);
+        // if (tr) {
+        // 	//debug("WARNING: Best practice to start the line with label declaration");
+        // 	const d: Diagnostic = {
+        // 		range: {
+        // 			start: t.positionAt(m.index),
+        // 			end: t.positionAt(m.index + m[0].length)
+        // 		},
+        // 		severity: DiagnosticSeverity.Warning,
+        // 		message: "Best practice is to start label declarations at the beginning of the line.",
+        // 		source: "mast"
+        // 	}
+        // 	d.relatedInformation = relatedMessage(t, d.range, "Label declarations can cause Mast compiler errors under some circumstances when there are spaces prior to label declaration.");
+        // 	diagnostics.push(d);
+        // }
     }
     return diagnostics;
 }
