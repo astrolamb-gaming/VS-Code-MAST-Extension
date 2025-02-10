@@ -7,6 +7,17 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## [Unreleased]
 
 - Show token information on hover
+- Determine variable types based on function return values, etc.
+
+### 0.4.0
+
+- Blob string options added to autocomplete when you type .set("
+- Fix some edge-case formatting issues
+- Update mast file icon with two new icons, one each for light and dark mode
+- Fix format definitions and await inline labels showing up as label errors
+- Add idle as a valid yield result
+- Fix for issue where multiple instances of inline labels with different parent labels caused false errors
+- Add check for label warning message if it's not defined in the current folder , instead of just checking the current file.
 
 ### 0.3.0
 

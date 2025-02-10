@@ -76,7 +76,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// TODO: May be useful to have a list of used string words that can be added via autocomplete (i.e. roles)
 	if (isInString(pos) && !isTextInBracket(iStr,pos)) {
 		// Here we check for blob info
-		if (iStr.endsWith("blob.set(\"") || iStr.endsWith("blob.get(\"")) {
+		if (iStr.endsWith(".set(\"") || iStr.endsWith(".get(\"")) {
 			debug("Is BLobe");
 			return getGlobals().blob_items
 		}

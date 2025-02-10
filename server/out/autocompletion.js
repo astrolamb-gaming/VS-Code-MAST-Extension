@@ -65,7 +65,7 @@ function onCompletion(_textDocumentPosition, text) {
     // TODO: May be useful to have a list of used string words that can be added via autocomplete (i.e. roles)
     if ((0, comments_1.isInString)(pos) && !(0, comments_1.isTextInBracket)(iStr, pos)) {
         // Here we check for blob info
-        if (iStr.endsWith("blob.set(\"") || iStr.endsWith("blob.get(\"")) {
+        if (iStr.endsWith(".set(\"") || iStr.endsWith(".get(\"")) {
             (0, console_1.debug)("Is BLobe");
             return (0, cache_1.getGlobals)().blob_items;
         }
