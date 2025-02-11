@@ -11,7 +11,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ### 0.4.0
 
-- Blob string options added to autocomplete when you type .set("
+- Blob string options added to autocomplete when you type `.set(` or `.get(`, followed by double or single quotes.
 - Fix some edge-case formatting issues
 - Update mast file icon with two new icons, one each for light and dark mode
 - Fix format definitions and await inline labels showing up as label errors

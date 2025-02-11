@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { CompletionItem, CompletionItemKind, SignatureInformation } from 'vscode-languageserver';
+import { CompletionItem, CompletionItemKind, CompletionItemLabelDetails, SignatureInformation } from 'vscode-languageserver';
 import { ClassTypings, FileCache, IClassObject, MastFile, PyFile, Function } from './data';
 import { getLabelsInFile, LabelInfo, parseLabels } from './labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -56,10 +56,15 @@ export class Globals {
 									type: typeCheck,
 									docs: docs
 								});
+								const deets: CompletionItemLabelDetails = {
+									description: typeCheck
+								}
 								const ci: CompletionItem = {
-									label: "\"" + name + "\"",
+									label: name,
 									kind: CompletionItemKind.Text,
-									documentation: docs
+									documentation: docs,
+									detail: "Type: " + typeCheck,
+									labelDetails: deets
 								};
 								this.blob_items.push(ci);
 							}

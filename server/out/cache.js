@@ -55,10 +55,15 @@ class Globals {
                                     type: typeCheck,
                                     docs: docs
                                 });
+                                const deets = {
+                                    description: typeCheck
+                                };
                                 const ci = {
-                                    label: "\"" + name + "\"",
+                                    label: name,
                                     kind: vscode_languageserver_1.CompletionItemKind.Text,
-                                    documentation: docs
+                                    documentation: docs,
+                                    detail: "Type: " + typeCheck,
+                                    labelDetails: deets
                                 };
                                 this.blob_items.push(ci);
                             }
