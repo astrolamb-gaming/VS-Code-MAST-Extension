@@ -1,0 +1,103 @@
+
+import math
+from inspect import *
+import traceback
+import sys
+#Prints list of math functions
+#print(dir(math))
+
+# PYTHONPATH=/path/to/myArchive.zip python -m [filename without extension] [args]
+
+#PYPATH = sys.argv[0] [0] is the script path
+sbs_utilsPath = sys.argv[1] # Very important
+sbsPath = sys.argv[2] # Will not be important in the future - v1.0.2 does not require sbs
+mastFile = sys.argv[3] # Very important
+content = sys.argv[4] # Very important
+
+#sys.modules['script'] = sys.modules.get('__main__')
+    # import sbslibs
+    #sys.path.append("../../../PyAddons")
+    #import sbslibs
+#print(sbsPath)
+#print(sbs_utilsPath)
+
+sys.path.append(sbs_utilsPath)
+#if sbsPath != "":
+sys.path.append(sbsPath)
+#print(sys.path)
+errors = None
+try:
+	#from sbs.sbs import *
+	from sbs_utils.mast.mast import Mast
+	class MyMast(Mast):
+		def __init__(self, cmds=None, is_import=False):
+			super().__init__(cmds,is_import)
+			#print("My Mast")
+		def from_text(self, file_name, root, content: str):
+			""" Use this to compile text from a file that hasn't been saved, and therefore is not accessible by reading the file. """
+			if root is None:
+				root = self
+				
+				
+			if self.lib_name is None and root.imported.get(file_name):
+				return
+			elif self.lib_name is not None and root.imported.get(f"{self.lib_name}::{file_name}"):
+				return
+			
+			if self.lib_name is None:
+				root.imported[file_name] = True
+			else: 
+				root.imported[f"{self.lib_name}::{file_name}"] = True
+			
+			errors = None
+				
+			if content is not None:
+				content = content.replace("\r","")
+				errors = self.compile(content, file_name, root)
+
+				# TODO: Might use this to check other files in folder
+				#if len(errors) == 0 and not self.is_import:
+				# 	addons = self.find_add_ons(".")
+				# 	for name in addons:
+				# 		errors = self.import_content("__init__.mast", root, name)
+				# 		if len(errors)>0:
+				# 			return errors
+
+				# 	imports = self.find_imports(".")
+				# 	for name in imports:
+				# 		errors = self.import_content(name, root, None)
+				# 		if len(errors)>0:
+				# 			return errors
+						
+			return errors
+	try:
+		mast = MyMast()
+		errors = mast.from_text(mastFile, None, content)
+	except TypeError as t:
+		print(t)
+		# Extract the traceback object
+		exc_type, exc_value, exc_tb = sys.exc_info()
+		# Format the traceback
+		stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
+		print(stack_trace)
+	#errors = mast.from_text(missionPath, None, content)
+	if errors is not None:
+		print(errors)
+	else:
+		print("No Errors")
+	
+except ModuleNotFoundError as e: 
+	print(e)
+	exc_type, exc_value, exc_tb = sys.exc_info()
+	stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
+	print(stack_trace)
+except Exception as ex:
+	print(ex)
+	exc_type, exc_value, exc_tb = sys.exc_info()
+	stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
+	print(stack_trace)
+
+#print(signature(math.acos).parameters)
+#print(sbsLibPath)
+#print(missionPath)
+#print(sys.argv)

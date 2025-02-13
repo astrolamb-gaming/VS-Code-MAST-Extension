@@ -48,7 +48,8 @@ import { parse, RX } from './rx';
 import { getComments, getStrings, getYamls } from './comments';
 import fs = require("fs");
 import { getFileContents, readAllFilesIn } from './fileFunctions';
-import { loadCache } from './cache';
+import { getCache, loadCache } from './cache';
+import { compileMission } from './python';
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 const connection = createConnection(ProposedFeatures.all);
@@ -153,6 +154,7 @@ connection.onInitialize((params: InitializeParams) => {
 		
 		const uri = URI.parse(workspaceFolder.uri);
 		//debug(uri.fsPath);
+		
 		loadCache(uri.fsPath);
 	} else {
 		debug("No Workspace folders");
@@ -360,6 +362,12 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 	//diagnostics = diagnostics.concat(d1);
 	let d1 = checkLabels(textDocument);
 	diagnostics = diagnostics.concat(d1);
+
+	const mastCompilerErrors:string[] = [];
+	compileMission(textDocument.uri, textDocument.getText(), getCache(textDocument.uri).storyJson.sbslib).then((errors)=>{
+		debug(errors);
+	});
+
 	return diagnostics;
 }
 
