@@ -118,8 +118,29 @@ export class PyFile extends FileCache {
 	}
 
 	parseWholeFile(text: string, source: string) {
+		if (!source.endsWith("timers.py")) return;
 		// super.parseVariables(text); We don't actually want to look for variable names in python files
-		let className : RegExp = /^class .+?:/gm; // Look for "class ClassName:" to parse class names.
+		//let className : RegExp = /^class .+?:/gm; 
+		let className : RegExp = /^class.*?(?=^[^\s])/gms; // Look for "class ClassName:" to parse class names.
+		let functions : RegExp = /^def.*?(?=^[^\s])/gms;
+		let m: RegExpExecArray | null;
+		// Iterate over all classes to get their indices
+		//classIndices.push(0);
+		while(m = className.exec(text)) {
+			const t = text.substring(m.index, m[0].length);
+			const co = new ClassObject(t,source);
+		}
+
+		while (m = functions.exec(text)) {
+			
+		}
+	}
+
+	parseWholeFileOld(text: string, source: string) {
+		if (!source.endsWith("timers.py")) return;
+		// super.parseVariables(text); We don't actually want to look for variable names in python files
+		//let className : RegExp = /^class .+?:/gm; 
+		let className : RegExp = /^class.*?(?=^[^\s])/gms; // Look for "class ClassName:" to parse class names.
 		//const parentClass: RegExp = /\(\w*?\):/
 		let comment : RegExp = /((\"){3,3}(.*?)(\"){3,3})|(\.\.\.)/m;
 		let checkText: string;
