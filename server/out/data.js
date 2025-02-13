@@ -118,8 +118,13 @@ class PyFile extends FileCache {
         while (m = className.exec(text)) {
             const t = text.substring(m.index, m[0].length);
             const co = new ClassObject(t, source);
+            this.classes.push(co);
         }
         while (m = functions.exec(text)) {
+            const f = text.substring(m.index, m[0].length);
+            const func = new Function(f, "");
+            this.defaultFunctions.push(func);
+            this.defaultFunctionCompletionItems.push(func.completionItem);
         }
     }
     parseWholeFileOld(text, source) {
