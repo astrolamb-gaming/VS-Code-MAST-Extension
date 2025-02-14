@@ -201,12 +201,14 @@ export class MissionCache {
 		//debug(files);
 
 		loadSbs().then((p)=>{
-			//debug(p.classes);
-			this.missionPyModules.push(p);
-			this.missionClasses = this.missionClasses.concat(p.classes);
-			this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.defaultFunctionCompletionItems);
-			for (const s of p.defaultFunctions) {
-				this.missionDefaultSignatures.push(s.signatureInformation);
+			if (p !== null) {
+				debug(p.classes);
+				this.missionPyModules.push(p);
+				this.missionClasses = this.missionClasses.concat(p.classes);
+				this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.defaultFunctionCompletionItems);
+				for (const s of p.defaultFunctions) {
+					this.missionDefaultSignatures.push(s.signatureInformation);
+				}
 			}
 		});
 
@@ -474,11 +476,24 @@ async function loadTypings(): Promise<void> {
 	}
 }
 
-async function loadSbs(): Promise<PyFile> {
+async function loadSbs(): Promise<PyFile|null>{
 	let gh: string = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/mock/sbs.py";
-	const data = await fetch(gh);
-	const text = await data.text();
-	return new PyFile(gh, text);
+	let text = "";
+	try {
+		const data = await fetch(gh);
+		text = await data.text();
+		return new PyFile(gh, text);
+	} catch (e) {
+		debug("Can't find sbs.py on github");
+		try {
+			gh = path.join(__dirname, "sbs.py");
+			text = await readFile(gh);
+			return new PyFile(gh, text);
+		} catch (ex) {
+			debug("Can't find sbs.py locally either.");
+		}
+	}
+	return null;
 }
 
 const expressions: RX[] = [];
