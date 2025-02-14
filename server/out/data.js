@@ -106,46 +106,23 @@ class PyFile extends FileCache {
         }
     }
     parseWholeFile(text, source) {
-        if (!source.endsWith("timers.py"))
-            return;
+        //if (!source.endsWith("timers.py")) return;
         // super.parseVariables(text); We don't actually want to look for variable names in python files
-        //let className : RegExp = /^class .+?:/gm; 
-        let className = /^class.*?(?=^[^\s])/gms; // Look for "class ClassName:" to parse class names.
-        let functions = /^def.*?(?=^[^\s])/gms;
-        let m;
-        // Iterate over all classes to get their indices
-        //classIndices.push(0);
-        while (m = className.exec(text)) {
-            const t = text.substring(m.index, m[0].length);
-            const co = new ClassObject(t, source);
-            this.classes.push(co);
-        }
-        while (m = functions.exec(text)) {
-            const f = text.substring(m.index, m[0].length);
-            const func = new Function(f, "");
-            this.defaultFunctions.push(func);
-            this.defaultFunctionCompletionItems.push(func.completionItem);
-        }
-    }
-    parseWholeFileOld(text, source) {
-        if (!source.endsWith("timers.py"))
-            return;
-        // super.parseVariables(text); We don't actually want to look for variable names in python files
-        //let className : RegExp = /^class .+?:/gm; 
-        let className = /^class.*?(?=^[^\s])/gms; // Look for "class ClassName:" to parse class names.
+        // Instead of just assuming that there is always another class following, it could be a function, so we need to account for this.
+        let blockStart = /^(class|def) .+?$/gm;
         //const parentClass: RegExp = /\(\w*?\):/
         let comment = /((\"){3,3}(.*?)(\"){3,3})|(\.\.\.)/m;
         let checkText;
-        let classIndices = [];
+        let blockIndices = [];
         let m;
         // Iterate over all classes to get their indices
         //classIndices.push(0);
-        while (m = className.exec(text)) {
-            classIndices.push(m.index);
+        while (m = blockStart.exec(text)) {
+            blockIndices.push(m.index);
             //debug("" + m.index + ": " +m[0]);
         }
-        classIndices.push(text.length - 1);
-        let len = classIndices.length; // How many indices there are - NOT the same as number of classes (should be # of classes - 1)
+        blockIndices.push(text.length - 1);
+        let len = blockIndices.length; // How many indices there are - NOT the same as number of classes (should be # of classes - 1)
         // const file: PyFile = {
         // 	uri: source,
         // 	defaultFunctions: [],
@@ -158,23 +135,32 @@ class PyFile extends FileCache {
         for (let i = 0; i < len; i++) {
             let t;
             if (i === 0) {
-                t = text.substring(0, classIndices[0]);
+                t = text.substring(0, blockIndices[0]);
             }
             else {
-                t = text.substring(classIndices[i - 1], classIndices[i]);
+                t = text.substring(blockIndices[i - 1], blockIndices[i]);
             }
-            const co = new ClassObject(t, source);
-            // Since sbs functions aren't part of a class, but do need a "sbs." prefix, we pretend sbs is its own class. 
-            // PyFile handles that.
-            if (co.name === "") {
-                this.defaultFunctions = co.methods;
-                for (const m in co.methods) {
-                    this.defaultFunctionCompletionItems.push(co.methods[m].completionItem);
+            if (t.startsWith("class")) {
+                const co = new ClassObject(t, source);
+                // Since sbs functions aren't part of a class, but do need a "sbs." prefix, we pretend sbs is its own class. 
+                // PyFile handles that.
+                if (co.name === "") {
+                    this.defaultFunctions = co.methods;
+                    for (const m in co.methods) {
+                        this.defaultFunctionCompletionItems.push(co.methods[m].completionItem);
+                    }
+                }
+                else {
+                    // Only add to class list if it's actually a class (or sbs)
+                    this.classes.push(co);
+                    (0, console_1.debug)(co);
                 }
             }
-            else {
-                // Only add to class list if it's actually a class (or sbs)
-                this.classes.push(co);
+            else if (t.startsWith("def")) {
+                const f = new Function(t, "");
+                this.defaultFunctions.push(f);
+                this.defaultFunctionCompletionItems.push(f.completionItem);
+                (0, console_1.debug)(f);
             }
         }
     }
@@ -241,9 +227,10 @@ class Function {
         this.name = "";
         this.className = className;
         this.parameters = [];
-        const functionName = /((def\s)(.+?)\()/gm; // Look for "def functionName(" to parse function names.
+        const functionName = /(?:def\s)(.+?)(?:\()/gm; ///((def\s)(.+?)\()/gm; // Look for "def functionName(" to parse function names.
         //let className : RegExp = /class (.+?):/gm; // Look for "class ClassName:" to parse class names.
         const functionParam = /\((.*?)\)/m; // Find parameters of function, if any.
+        // Could replace functionParam regex with : (?:def\s.+?\()(.*?)(?:\)(:|\s*->))
         const returnValue = /->(.+?):/gm; // Get the return value (None, boolean, int, etc)
         const comment = /((\"){3,3}(.*?)(\"){3,3})|(\.\.\.)/gms;
         const isProperty = /(@property)/;
