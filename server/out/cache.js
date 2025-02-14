@@ -298,17 +298,17 @@ class MissionCache {
             fileUri = vscode_uri_1.URI.parse(fileUri).fsPath;
         }
         let li = [];
-        (0, console_1.debug)(this.mastFileInfo);
+        //debug(this.mastFileInfo);
         for (const f of this.mastFileInfo) {
             if (f.uri === fileUri) {
                 li = li.concat(f.labelNames);
             }
             // Check if the mast files are in scope
             // TODO: Check init.mast for if any files should not be included
-            (0, console_1.debug)(fileUri);
+            //debug(fileUri);
             if (f.parentFolder === (0, fileFunctions_1.getParentFolder)(fileUri)) {
-                (0, console_1.debug)("adding labels for: ");
-                (0, console_1.debug)(f);
+                //debug("adding labels for: ");
+                //debug(f);
                 li = li.concat(f.labelNames);
             }
         }

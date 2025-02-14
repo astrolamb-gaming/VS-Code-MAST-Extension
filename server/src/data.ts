@@ -168,13 +168,13 @@ export class PyFile extends FileCache {
 				} else {
 					// Only add to class list if it's actually a class (or sbs)
 					this.classes.push(co);
-					debug(co);
+					//debug(co);
 				}
 			} else if (t.startsWith("def")) {
 				const f = new Function(t, "");
 				this.defaultFunctions.push(f);
 				this.defaultFunctionCompletionItems.push(f.completionItem);
-				debug(f);
+				//debug(f);
 			}
 		}
 	}
@@ -599,23 +599,30 @@ export function getVariablesInFile(textDocument:TextDocument) {
 			const equal = line.indexOf("=")+1;
 			const typeEvalStr = line.substring(equal).trim();
 			debug(typeEvalStr);
-			const t = getVariableType(typeEvalStr,textDocument.uri);
+			const t = getVariableTypes(typeEvalStr,textDocument.uri);
 			debug(t);
 
 			// Check if the variable is already found
+			let found = false;
 			for (const _var of variables) {
 				if (_var.name === v) {
+					found = true;
 					// If it's already part of the list, then do this:
-					
+					for (const varType of t) {
+						if (!_var.possibleTypes.includes(varType)) {
+							_var.possibleTypes.push(varType);
+						}
+					}
 					break;
 				}
 			}
 			
-
-			const variable:Variable = {
-				name: v,
-				possibleTypes: [],
-				modifiers: []
+			if (!found) {
+				const variable:Variable = {
+					name: v,
+					possibleTypes: t,
+					modifiers: []
+				}
 			}
 		}
 	}
@@ -624,29 +631,30 @@ export function getVariablesInFile(textDocument:TextDocument) {
 
 
 
-function getVariableType(typeEvalStr:string, uri:string) {
+function getVariableTypes(typeEvalStr:string, uri:string): string[] {
+	let types: string[] = [];
 	const test:boolean = "to_object(amb_id)" === typeEvalStr;
 	const isNumberType = (s: string) => !isNaN(+s) && isFinite(+s) && !/e/i.test(s)
 	const cache = getCache(uri);
-	let type: string = "any";
+	//let type: string = "any";
 	// Check if it's a string
 	if (typeEvalStr.startsWith("\"") || typeEvalStr.startsWith("'")) {
-		return "string";
+		types.push("string");
 	// Check if its an f-string
 	} else if (typeEvalStr.startsWith("f\"") || typeEvalStr.startsWith("f'")) {
-		return "string";
+		types.push("string");
 	// Check if it's a multiline string
 	} else if (typeEvalStr.startsWith("\"\"\"") || typeEvalStr.startsWith("'''")) {
-		return "string";
+		types.push("string");
 	} else if (typeEvalStr === "True" || typeEvalStr === "False") {
-		return "boolean";
+		types.push("boolean");
 	} else if (isNumberType(typeEvalStr)) {
 		// Check if it's got a decimal
 		if (typeEvalStr.includes(".")) {
-			return "float";
+			types.push("float");
 		}
 		// Default to integer
-		return "int";
+		types.push("int");
 	}
 	
 
@@ -654,29 +662,28 @@ function getVariableType(typeEvalStr:string, uri:string) {
 	for (const f of cache.missionDefaultFunctions) {
 		if (typeEvalStr.startsWith(f.name)) {
 			if (test) debug(f);
-			return f.returnType;
+			types.push(f.returnType);
 		}
 	}
 
 	// Is this a class, or a class function?
 	for (const co of cache.missionClasses) {
 		if (typeEvalStr.startsWith(co.name)) {
-			type = co.name;
 			// Check if it's a static method of the class
 			for (const func of co.methods) {
 				if (typeEvalStr.startsWith(co.name + "." + func.name)) {
 					if (test) debug(co.name + "." + func.name);
-					return func.returnType;
+					types.push(func.returnType);
 				}
 			}
 			// If it's not a static method, then just return the class
 			if (test) debug(co);
-			return type;
+			types.push(co.name);
 		}
 	}
 
 	// If it's none of the above, then it's probably an object, or a parameter of that object
-	if (test)  debug(type);
-	return type;
+	if (test)  debug(types);
+	return types;
 
 }

@@ -119,7 +119,7 @@ connection.onInitialize((params: InitializeParams) => {
 			completionProvider: {
 				resolveProvider: false, // FOR NOW - MAY USE LATER
 				// TODO: The /, >, and especially the space are hopefully temporary workarounds.
-				triggerCharacters: [".","/",">"," ","\"","\'","@","("]
+				triggerCharacters: [".","/",">"," ","\"","\'","@"]
 			},
 			diagnosticProvider: {
 				interFileDependencies: false,

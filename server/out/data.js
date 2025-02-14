@@ -153,14 +153,14 @@ class PyFile extends FileCache {
                 else {
                     // Only add to class list if it's actually a class (or sbs)
                     this.classes.push(co);
-                    (0, console_1.debug)(co);
+                    //debug(co);
                 }
             }
             else if (t.startsWith("def")) {
                 const f = new Function(t, "");
                 this.defaultFunctions.push(f);
                 this.defaultFunctionCompletionItems.push(f.completionItem);
-                (0, console_1.debug)(f);
+                //debug(f);
             }
         }
     }
@@ -485,81 +485,90 @@ function getVariablesInFile(textDocument) {
             const equal = line.indexOf("=") + 1;
             const typeEvalStr = line.substring(equal).trim();
             (0, console_1.debug)(typeEvalStr);
-            const t = getVariableType(typeEvalStr, textDocument.uri);
+            const t = getVariableTypes(typeEvalStr, textDocument.uri);
             (0, console_1.debug)(t);
             // Check if the variable is already found
+            let found = false;
             for (const _var of variables) {
                 if (_var.name === v) {
+                    found = true;
                     // If it's already part of the list, then do this:
+                    for (const varType of t) {
+                        if (!_var.possibleTypes.includes(varType)) {
+                            _var.possibleTypes.push(varType);
+                        }
+                    }
                     break;
                 }
             }
-            const variable = {
-                name: v,
-                possibleTypes: [],
-                modifiers: []
-            };
+            if (!found) {
+                const variable = {
+                    name: v,
+                    possibleTypes: t,
+                    modifiers: []
+                };
+            }
         }
     }
     return variables;
 }
-function getVariableType(typeEvalStr, uri) {
+function getVariableTypes(typeEvalStr, uri) {
+    let types = [];
     const test = "to_object(amb_id)" === typeEvalStr;
     const isNumberType = (s) => !isNaN(+s) && isFinite(+s) && !/e/i.test(s);
     const cache = (0, cache_1.getCache)(uri);
-    let type = "any";
+    //let type: string = "any";
     // Check if it's a string
     if (typeEvalStr.startsWith("\"") || typeEvalStr.startsWith("'")) {
-        return "string";
+        types.push("string");
         // Check if its an f-string
     }
     else if (typeEvalStr.startsWith("f\"") || typeEvalStr.startsWith("f'")) {
-        return "string";
+        types.push("string");
         // Check if it's a multiline string
     }
     else if (typeEvalStr.startsWith("\"\"\"") || typeEvalStr.startsWith("'''")) {
-        return "string";
+        types.push("string");
     }
     else if (typeEvalStr === "True" || typeEvalStr === "False") {
-        return "boolean";
+        types.push("boolean");
     }
     else if (isNumberType(typeEvalStr)) {
         // Check if it's got a decimal
         if (typeEvalStr.includes(".")) {
-            return "float";
+            types.push("float");
         }
         // Default to integer
-        return "int";
+        types.push("int");
     }
     // Check over all default functions
     for (const f of cache.missionDefaultFunctions) {
         if (typeEvalStr.startsWith(f.name)) {
             if (test)
                 (0, console_1.debug)(f);
-            return f.returnType;
+            types.push(f.returnType);
         }
     }
     // Is this a class, or a class function?
     for (const co of cache.missionClasses) {
         if (typeEvalStr.startsWith(co.name)) {
-            type = co.name;
             // Check if it's a static method of the class
             for (const func of co.methods) {
                 if (typeEvalStr.startsWith(co.name + "." + func.name)) {
                     if (test)
                         (0, console_1.debug)(co.name + "." + func.name);
-                    return func.returnType;
+                    types.push(func.returnType);
                 }
             }
             // If it's not a static method, then just return the class
             if (test)
                 (0, console_1.debug)(co);
-            return type;
+            types.push(co.name);
         }
     }
     // If it's none of the above, then it's probably an object, or a parameter of that object
     if (test)
-        (0, console_1.debug)(type);
-    return type;
+        (0, console_1.debug)(types);
+    return types;
 }
 //# sourceMappingURL=data.js.map

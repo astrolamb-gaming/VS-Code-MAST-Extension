@@ -2,7 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TokenType = void 0;
 exports.getAllTokens = getAllTokens;
+const data_1 = require("./data");
 function getAllTokens(textDocument) {
+    let variables = (0, data_1.getVariablesInFile)(textDocument);
 }
 var TokenType;
 (function (TokenType) {
