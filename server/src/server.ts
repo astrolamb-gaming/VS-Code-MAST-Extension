@@ -47,8 +47,11 @@ import { loadRouteLabels } from './routeLabels';
 import { parse, RX } from './rx';
 import { getComments, getStrings, getYamls } from './comments';
 import fs = require("fs");
+
 import { getArtemisDirFromChild, getFileContents, getParentFolder, readAllFilesIn } from './fileFunctions';
-import { loadCache } from './cache';
+import { getCache, loadCache } from './cache';
+import { compileMission } from './python';
+
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 const connection = createConnection(ProposedFeatures.all);
@@ -152,6 +155,7 @@ connection.onInitialize((params: InitializeParams) => {
 		//readAllFilesIn(workspaceFolder);
 		
 		const uri = URI.parse(workspaceFolder.uri);
+
 		// let adir = getArtemisDirFromChild(uri.fsPath);
 		// debug(adir);
 		// try {
@@ -160,6 +164,7 @@ connection.onInitialize((params: InitializeParams) => {
 		// 	debug(e);
 		// 	console.error(e);
 		// }
+
 		loadCache(uri.fsPath);
 	} else {
 		debug("No Workspace folders");
@@ -369,6 +374,7 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 	}
 	//let d1: Diagnostic[] = findDiagnostic(pattern, textDocument, DiagnosticSeverity.Error, "Message", "Source", "Testing", settings.maxNumberOfProblems, 0);
 	//diagnostics = diagnostics.concat(d1);
+
 	try {
 		let d1 = checkLabels(textDocument);
 		diagnostics = diagnostics.concat(d1);
@@ -376,7 +382,12 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 		debug(e);
 		debug("Couldn't get labels?");
 	}
-	
+
+	const mastCompilerErrors:string[] = [];
+  compileMission(textDocument.uri, textDocument.getText(), getCache(textDocument.uri).storyJson.sbslib).then((errors)=>{
+    debug(errors);
+  });
+
 	return diagnostics;
 }
 

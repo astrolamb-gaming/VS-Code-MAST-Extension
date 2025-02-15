@@ -218,6 +218,7 @@
 	},
 	"dependencies": {
 		"adm-zip": "^0.5.16",
+		"python-shell": "^5.0.0",
 		"vscode-uri": "^3.0.8"
 	}
 }
