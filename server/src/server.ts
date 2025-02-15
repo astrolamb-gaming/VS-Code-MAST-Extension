@@ -47,9 +47,11 @@ import { loadRouteLabels } from './routeLabels';
 import { parse, RX } from './rx';
 import { getComments, getStrings, getYamls } from './comments';
 import fs = require("fs");
-import { getFileContents, readAllFilesIn } from './fileFunctions';
+
+import { getArtemisDirFromChild, getFileContents, getParentFolder, readAllFilesIn } from './fileFunctions';
 import { getCache, loadCache } from './cache';
 import { compileMission } from './python';
+
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 const connection = createConnection(ProposedFeatures.all);
@@ -120,7 +122,7 @@ connection.onInitialize((params: InitializeParams) => {
 			completionProvider: {
 				resolveProvider: false, // FOR NOW - MAY USE LATER
 				// TODO: The /, >, and especially the space are hopefully temporary workarounds.
-				triggerCharacters: [".","/",">"," ","\"","@"]
+				triggerCharacters: [".","/",">"," ","\"","\'","@"]
 			},
 			diagnosticProvider: {
 				interFileDependencies: false,
@@ -153,8 +155,16 @@ connection.onInitialize((params: InitializeParams) => {
 		//readAllFilesIn(workspaceFolder);
 		
 		const uri = URI.parse(workspaceFolder.uri);
-		//debug(uri.fsPath);
-		
+
+		// let adir = getArtemisDirFromChild(uri.fsPath);
+		// debug(adir);
+		// try {
+		// 	notifyClient("Sending the message");
+		// } catch (e) {
+		// 	debug(e);
+		// 	console.error(e);
+		// }
+
 		loadCache(uri.fsPath);
 	} else {
 		debug("No Workspace folders");
@@ -286,8 +296,12 @@ connection.languages.diagnostics.on(async (params) => {
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent(change => {
-	
-	validateTextDocument(change.document);
+	try {
+		validateTextDocument(change.document);
+	} catch (e) {
+		debug(e);
+		console.error(e);
+	}
 });
 
 export interface ErrorInstance {
@@ -360,13 +374,19 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 	}
 	//let d1: Diagnostic[] = findDiagnostic(pattern, textDocument, DiagnosticSeverity.Error, "Message", "Source", "Testing", settings.maxNumberOfProblems, 0);
 	//diagnostics = diagnostics.concat(d1);
-	let d1 = checkLabels(textDocument);
-	diagnostics = diagnostics.concat(d1);
+
+	try {
+		let d1 = checkLabels(textDocument);
+		diagnostics = diagnostics.concat(d1);
+	} catch (e) {
+		debug(e);
+		debug("Couldn't get labels?");
+	}
 
 	const mastCompilerErrors:string[] = [];
-	compileMission(textDocument.uri, textDocument.getText(), getCache(textDocument.uri).storyJson.sbslib).then((errors)=>{
-		debug(errors);
-	});
+  compileMission(textDocument.uri, textDocument.getText(), getCache(textDocument.uri).storyJson.sbslib).then((errors)=>{
+    debug(errors);
+  });
 
 	return diagnostics;
 }
@@ -455,4 +475,9 @@ export function myDebug(str:any) {
     fs.writeFileSync('outputLog.txt', str, { flag: "a+" });
 	debug(str);
 	console.log(str);
+}
+
+
+export function notifyClient(message:string) {
+	connection.sendNotification("custom/notif", message);
 }

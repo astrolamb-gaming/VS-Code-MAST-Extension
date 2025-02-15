@@ -2,9 +2,10 @@ import { debug } from 'console';
 import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 import * as fs from 'fs';
 import { integer } from 'vscode-languageserver';
+import { getVariablesInFile } from './data';
 
 export function getAllTokens(textDocument: TextDocument) {
-
+	let variables = getVariablesInFile(textDocument);
 }
 
 export interface Token {

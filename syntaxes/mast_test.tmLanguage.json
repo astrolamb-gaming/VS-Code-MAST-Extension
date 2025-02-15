@@ -5011,9 +5011,14 @@
       "name": "comms.button.build",
       "comment": "Need to use \\s+ because it has to be indented?? Can it be not indented?",
       "begin": "(?m)^\\s*[\\+\\*](?!\/)",
-      "end": "(\".*?\")(.*?)(?=(if|\\$|\\n|\\{|\\(|\\[))",
+      "end": "(\".*?\")(.*?)(?=( if|\\$|\\n|\\{|\\(|\\[))",
       "endCaptures":{
-        "1":{"name":"comms.button.text"},
+        "1":{
+          "name":"comms.button.text",
+          "patterns":[
+            {"include":"#template-substitution-element"}
+          ]
+        },
         "2":{"name":"label.jump.to.mast"}
       },
       "patterns":[

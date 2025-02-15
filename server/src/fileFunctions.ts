@@ -25,36 +25,8 @@ import {
 import { myDebug } from './server';
 import { debug } from 'console';
 import AdmZip = require("adm-zip");
-import { StoryJson } from './cache';
+import { getGlobals, StoryJson } from './cache';
 import { URI } from 'vscode-uri';
-
-/**
- * TODO: Use parsers.py to determine the style definitions available for UI elements
- * See https://github.com/artemis-sbs/sbs_utils/blob/master/sbs_utils/mast/parsers.py
- */
-
-export function getRootFolder() : string | null{
-	// let initialDir = "./";
-	// let dir = findSubfolderByName(initialDir,"__lib__");
-	// if (dir === null) {
-	
-	// Need to be sure we're capturing the right folder - we don't know if the user
-	// is using the root Artemis folder or the missions folder, or anything in between.
-		let initialDir = "../../../../";
-		let dir = findSubfolderByName(initialDir, "data");
-		debug(dir + "\n");
-		if (dir !== null) {
-			dir =findSubfolderByName(dir, "missions");
-			if (dir !== null) {
-				dir = findSubfolderByName(dir, "__lib__");
-				if (dir !== null) {
-					//dir = dir.replace(/\.\.\\/g,"");
-					return dir;
-				}
-			}
-		}
-		return null;
-}
 
 export function findSubfolderByName(dir: string, folderName: string): string | null {
 	const files = fs.readdirSync(dir, { withFileTypes: true });
@@ -112,6 +84,12 @@ export async function readFile(dir: string): Promise<string> {
 	return ret;
 }
 
+/**
+ * 
+ * @param dir directory or uri of folder
+ * @param includeChildren boolean, set true if all files within all subfolders should be gotten. Set false if only the files in the specified directory should be gotten.
+ * @returns 
+ */
 export function getFilesInDir(dir: string, includeChildren: boolean = true): string[] {
 	let ret: string[] = [];
 	try {
@@ -184,7 +162,7 @@ export async function readZipArchive(filepath: string) {
 }
 
 export function getStoryJson(uri: string) {
-	let mission = findSubfolderByName("../../../","missions");
+	let mission = findSubfolderByName(getGlobals().artemisDir,"missions");
 	debug(mission);
 	debug(uri);
 	let ret = "";
@@ -222,7 +200,7 @@ export function getParentFolder(childUri:string) {
 	fs.lstat(p, (err,stats) => {
 		if (err) {
 			debug(err);
-			throw new URIError(err.message);
+			//throw new URIError(err.message);
 			return p;
 		}
 		if (stats.isSymbolicLink()) {
@@ -277,6 +255,29 @@ export function fixFileName(uri:string) {
 		uri = URI.parse(uri).fsPath;
 	}
 	return uri;
+}
+
+export function getArtemisDirFromChild(child: string): string | null {
+	if (child.endsWith(":\\")) {
+		return null;
+	}
+	child = fixFileName(child);
+	child = path.normalize(child);
+	let files = getFilesInDir(child, false);
+	if (files.includes("Artemis3-x64-release.exe")) {
+		return child;
+	} else if (getFolders(child).includes("PyAddons")) {
+		return child;
+	}
+
+	child = getParentFolder(child);
+	let aDir = getArtemisDirFromChild(child);
+	if (aDir === null) {
+		return null;
+	} else {
+		return aDir;
+	}
+
 }
 
 //readZipArchive("C:/Users/mholderbaum/Documents/Cosmos-1-0-0/data/missions/__lib__/artemis-sbs.LegendaryMissions.autoplay.v3.9.39.mastlib");

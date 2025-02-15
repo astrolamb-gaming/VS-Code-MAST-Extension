@@ -19,20 +19,40 @@ const fileFunctions_1 = require("./fileFunctions");
 const vscode_uri_1 = require("vscode-uri");
 class Globals {
     constructor() {
-        this.skyboxes = this.findSkyboxes();
-        this.music = this.findMusic();
-        this.blob_items = [];
-        this.data_set_entries = this.loadObjectDataDocumentation();
+        this.artemisDir = "";
+        const thisDir = path.resolve("../");
+        const adir = (0, fileFunctions_1.getArtemisDirFromChild)(thisDir);
+        (0, console_1.debug)("Artemis Directory: ");
+        (0, console_1.debug)(adir);
+        if (adir === null) {
+            // Do something, throw an error, whatever it takes, artemis dir not found
+            this.skyboxes = [];
+            this.music = [];
+            this.blob_items = [];
+            this.data_set_entries = [];
+            (0, console_1.debug)("Artemis directory not found. Global information not loaded.");
+        }
+        else {
+            // Valid artemis dir has been found
+            this.artemisDir = adir;
+            this.skyboxes = this.findSkyboxes();
+            this.music = this.findMusic();
+            this.blob_items = [];
+            this.data_set_entries = this.loadObjectDataDocumentation();
+            (0, console_1.debug)(this.data_set_entries);
+            (0, console_1.debug)(this.blob_items);
+        }
     }
     loadObjectDataDocumentation() {
         const ds = [];
         const ci = [];
-        let initialDir = "../../../../";
-        const dataFolder = (0, fileFunctions_1.findSubfolderByName)(initialDir, "data");
+        const dataFolder = (0, fileFunctions_1.findSubfolderByName)(this.artemisDir, "data");
         if (dataFolder !== null) {
-            const files = (0, fileFunctions_1.getFilesInDir)(dataFolder);
+            const files = (0, fileFunctions_1.getFilesInDir)(dataFolder, false);
             for (const file of files) {
+                //debug(file);
                 if (file.endsWith("object_data_documentation.txt")) {
+                    (0, console_1.debug)("Reading file");
                     (0, fileFunctions_1.readFile)(file).then((text) => {
                         const lines = text.split("\n");
                         let lineNum = 0;
@@ -69,7 +89,10 @@ class Globals {
                             }
                             lineNum++;
                         }
+                        (0, console_1.debug)(this.blob_items);
+                        console.log(this.blob_items);
                     });
+                    break;
                 }
             }
         }
@@ -78,8 +101,7 @@ class Globals {
     findSkyboxes() {
         const skyboxes = [];
         const ci = [];
-        let initialDir = "../../../../";
-        const graphics = (0, fileFunctions_1.findSubfolderByName)(initialDir, "graphics");
+        const graphics = (0, fileFunctions_1.findSubfolderByName)(this.artemisDir, "graphics");
         if (graphics !== null) {
             const files = (0, fileFunctions_1.getFilesInDir)(graphics);
             for (const file of files) {
@@ -98,8 +120,7 @@ class Globals {
     findMusic() {
         const options = [];
         const ci = [];
-        let initialDir = "../../../../";
-        const music = (0, fileFunctions_1.findSubfolderByName)(initialDir, "music");
+        const music = (0, fileFunctions_1.findSubfolderByName)(this.artemisDir, "music");
         if (music !== null) {
             const files = (0, fileFunctions_1.getFolders)(music);
             for (const file of files) {
@@ -112,8 +133,17 @@ class Globals {
     }
 }
 exports.Globals = Globals;
-const globals = new Globals();
+let globals = new Globals();
 function getGlobals() {
+    if (globals === null) {
+        try {
+            globals = new Globals();
+        }
+        catch (e) {
+            (0, console_1.debug)(e);
+            (0, console_1.debug)("Error getting Globals information");
+        }
+    }
     return globals;
 }
 function loadCache(dir) {
@@ -177,12 +207,15 @@ class MissionCache {
         let files = (0, fileFunctions_1.getFilesInDir)(this.missionURI);
         //debug(files);
         loadSbs().then((p) => {
-            //debug(p.classes);
-            this.missionPyModules.push(p);
-            this.missionClasses = this.missionClasses.concat(p.classes);
-            this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.defaultFunctionCompletionItems);
-            for (const s of p.defaultFunctions) {
-                this.missionDefaultSignatures.push(s.signatureInformation);
+            (0, console_1.debug)("Loaded SBS, starting to parse.");
+            if (p !== null) {
+                //debug(p.classes);
+                this.missionPyModules.push(p);
+                this.missionClasses = this.missionClasses.concat(p.classes);
+                this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.defaultFunctionCompletionItems);
+                for (const s of p.defaultFunctions) {
+                    this.missionDefaultSignatures.push(s.signatureInformation);
+                }
             }
         });
         for (const file of files) {
@@ -217,17 +250,24 @@ class MissionCache {
         if (uri.includes("sbs_utils")) {
             (0, console_1.debug)("sbs nope");
         }
-        const missionLibFolder = path.join((0, fileFunctions_1.getParentFolder)(uri), "__lib__");
-        (0, console_1.debug)(missionLibFolder);
-        const lib = this.storyJson.mastlib.concat(this.storyJson.sbslib);
-        for (const zip of lib) {
-            const zipPath = path.join(missionLibFolder, zip);
-            (0, fileFunctions_1.readZipArchive)(zipPath).then((data) => {
-                //debug("Zip archive read for " + zipPath);
-                this.handleZipData(data, zip);
-            }).catch(err => {
-                (0, console_1.debug)("Error unzipping. \n" + err);
-            });
+        try {
+            let parent = (0, fileFunctions_1.getParentFolder)(uri);
+            const missionLibFolder = path.join(parent, "__lib__");
+            (0, console_1.debug)(missionLibFolder);
+            const lib = this.storyJson.mastlib.concat(this.storyJson.sbslib);
+            for (const zip of lib) {
+                const zipPath = path.join(missionLibFolder, zip);
+                (0, fileFunctions_1.readZipArchive)(zipPath).then((data) => {
+                    //debug("Zip archive read for " + zipPath);
+                    this.handleZipData(data, zip);
+                }).catch(err => {
+                    (0, console_1.debug)("Error unzipping. \n" + err);
+                });
+            }
+        }
+        catch (e) {
+            (0, console_1.debug)("Error in modulesLoaded()");
+            (0, console_1.debug)(e);
         }
     }
     handleZipData(zip, parentFolder = "") {
@@ -296,17 +336,17 @@ class MissionCache {
             fileUri = vscode_uri_1.URI.parse(fileUri).fsPath;
         }
         let li = [];
-        (0, console_1.debug)(this.mastFileInfo);
+        //debug(this.mastFileInfo);
         for (const f of this.mastFileInfo) {
             if (f.uri === fileUri) {
                 li = li.concat(f.labelNames);
             }
             // Check if the mast files are in scope
             // TODO: Check init.mast for if any files should not be included
-            (0, console_1.debug)(fileUri);
+            //debug(fileUri);
             if (f.parentFolder === (0, fileFunctions_1.getParentFolder)(fileUri)) {
-                (0, console_1.debug)("adding labels for: ");
-                (0, console_1.debug)(f);
+                //debug("adding labels for: ");
+                //debug(f);
                 li = li.concat(f.labelNames);
             }
         }
@@ -424,9 +464,24 @@ async function loadTypings() {
 }
 async function loadSbs() {
     let gh = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/mock/sbs.py";
-    const data = await fetch(gh);
-    const text = await data.text();
-    return new data_1.PyFile(gh, text);
+    let text = "";
+    try {
+        const data = await fetch(gh);
+        text = await data.text();
+        return new data_1.PyFile(gh, text);
+    }
+    catch (e) {
+        (0, console_1.debug)("Can't find sbs.py on github");
+        try {
+            gh = path.join(__dirname, "sbs.py");
+            text = await (0, fileFunctions_1.readFile)(gh);
+            return new data_1.PyFile(gh, text);
+        }
+        catch (ex) {
+            (0, console_1.debug)("Can't find sbs.py locally either.");
+        }
+    }
+    return null;
 }
 const expressions = [];
 const exp = new Map();

@@ -9,7 +9,7 @@ import { prepCompletions } from './autocompletion';
 import { prepSignatures } from './signatureHelp';
 import { parse, RX } from './rx';
 import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } from './routeLabels';
-import { findSubfolderByName, getFilesInDir, getFolders, getMissionFolder, getParentFolder, readFile, readZipArchive } from './fileFunctions';
+import { findSubfolderByName, getArtemisDirFromChild, getFilesInDir, getFolders, getMissionFolder, getParentFolder, readFile, readZipArchive } from './fileFunctions';
 import { updateLabelNames } from './server';
 import { URI } from 'vscode-uri';
 import { compileMission } from './python';
@@ -19,22 +19,41 @@ export class Globals {
 	music: CompletionItem[];
 	data_set_entries: DataSetItem[];
 	blob_items: CompletionItem[];
+	artemisDir: string = "";
 	constructor() {
-		this.skyboxes = this.findSkyboxes();
-		this.music = this.findMusic();
-		this.blob_items = [];
-		this.data_set_entries = this.loadObjectDataDocumentation();
+		const thisDir = path.resolve("../");
+		const adir = getArtemisDirFromChild(thisDir);
+		debug("Artemis Directory: ");
+		debug(adir);
+		if (adir ===  null) {
+			// Do something, throw an error, whatever it takes, artemis dir not found
+			this.skyboxes = [];
+			this.music = [];
+			this.blob_items = [];
+			this.data_set_entries = [];
+			debug("Artemis directory not found. Global information not loaded.");
+		} else {
+			// Valid artemis dir has been found
+			this.artemisDir = adir;
+			this.skyboxes = this.findSkyboxes();
+			this.music = this.findMusic();
+			this.blob_items = [];
+			this.data_set_entries = this.loadObjectDataDocumentation();
+			debug(this.data_set_entries);
+			debug(this.blob_items);
+		}
 		
 	}
 	private loadObjectDataDocumentation(): DataSetItem[] {
 		const ds: DataSetItem[] = [];
 		const ci: CompletionItem[] = [];
-		let initialDir = "../../../../";
-		const dataFolder = findSubfolderByName(initialDir, "data");
+		const dataFolder = findSubfolderByName(this.artemisDir, "data");
 		if (dataFolder !== null) {
-			const files = getFilesInDir(dataFolder);
+			const files = getFilesInDir(dataFolder, false);
 			for (const file of files) {
+				//debug(file);
 				if (file.endsWith("object_data_documentation.txt")) {
+					debug("Reading file");
 					readFile(file).then((text)=>{
 						const lines = text.split("\n");
 						let lineNum = 0;
@@ -71,7 +90,10 @@ export class Globals {
 							}
 							lineNum++;
 						}
+						debug(this.blob_items);
+						console.log(this.blob_items)
 					});
+					break;
 				}
 			}
 		}
@@ -81,8 +103,7 @@ export class Globals {
 	private findSkyboxes(): CompletionItem[] {
 		const skyboxes: string[] = [];
 		const ci: CompletionItem[] = [];
-		let initialDir = "../../../../";
-		const graphics = findSubfolderByName(initialDir, "graphics");
+		const graphics = findSubfolderByName(this.artemisDir, "graphics");
 		if (graphics !== null) {
 			const files = getFilesInDir(graphics);
 			for (const file of files) {
@@ -102,8 +123,7 @@ export class Globals {
 	private findMusic(): CompletionItem[] {
 		const options: string[] = [];
 		const ci: CompletionItem[] = [];
-		let initialDir = "../../../../";
-		const music = findSubfolderByName(initialDir, "music");
+		const music = findSubfolderByName(this.artemisDir, "music");
 		if (music !== null) {
 			const files = getFolders(music);
 			for (const file of files) {
@@ -116,9 +136,17 @@ export class Globals {
 	}
 }
 
-const globals: Globals = new Globals();
+let globals: Globals = new Globals();
 
 export function getGlobals() {
+	if (globals === null) {
+		try {
+			globals = new Globals();
+		} catch (e) {
+			debug(e);
+			debug("Error getting Globals information");
+		}
+	}
 	return globals;
 }
 
@@ -202,12 +230,15 @@ export class MissionCache {
 		//debug(files);
 
 		loadSbs().then((p)=>{
-			//debug(p.classes);
-			this.missionPyModules.push(p);
-			this.missionClasses = this.missionClasses.concat(p.classes);
-			this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.defaultFunctionCompletionItems);
-			for (const s of p.defaultFunctions) {
-				this.missionDefaultSignatures.push(s.signatureInformation);
+			debug("Loaded SBS, starting to parse.");
+			if (p !== null) {
+				//debug(p.classes);
+				this.missionPyModules.push(p);
+				this.missionClasses = this.missionClasses.concat(p.classes);
+				this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.defaultFunctionCompletionItems);
+				for (const s of p.defaultFunctions) {
+					this.missionDefaultSignatures.push(s.signatureInformation);
+				}
 			}
 		});
 
@@ -245,17 +276,23 @@ export class MissionCache {
 		if (uri.includes("sbs_utils")) {
 			debug("sbs nope");
 		}
-		const missionLibFolder = path.join(getParentFolder(uri), "__lib__");
-		debug(missionLibFolder);
-		const lib = this.storyJson.mastlib.concat(this.storyJson.sbslib);
-		for (const zip of lib) {
-			const zipPath = path.join(missionLibFolder,zip);
-			readZipArchive(zipPath).then((data)=>{
-				//debug("Zip archive read for " + zipPath);
-				this.handleZipData(data,zip);
-			}).catch(err =>{
-				debug("Error unzipping. \n" + err);
-			});
+		try {
+			let parent = getParentFolder(uri);
+			const missionLibFolder = path.join(parent, "__lib__");
+			debug(missionLibFolder);
+			const lib = this.storyJson.mastlib.concat(this.storyJson.sbslib);
+			for (const zip of lib) {
+				const zipPath = path.join(missionLibFolder,zip);
+				readZipArchive(zipPath).then((data)=>{
+					//debug("Zip archive read for " + zipPath);
+					this.handleZipData(data,zip);
+				}).catch(err =>{
+					debug("Error unzipping. \n" + err);
+				});
+			}
+		}catch(e) {
+			debug("Error in modulesLoaded()");
+			debug(e);
 		}
 		
 	}
@@ -331,17 +368,17 @@ export class MissionCache {
 			fileUri = URI.parse(fileUri).fsPath;
 		}
 		let li: LabelInfo[] = [];
-		debug(this.mastFileInfo);
+		//debug(this.mastFileInfo);
 		for (const f of this.mastFileInfo) {
 			if (f.uri === fileUri) {
 				li = li.concat(f.labelNames);
 			}
 			// Check if the mast files are in scope
 			// TODO: Check init.mast for if any files should not be included
-			debug(fileUri);
+			//debug(fileUri);
 			if (f.parentFolder === getParentFolder(fileUri)) {
-				debug("adding labels for: ");
-				debug(f);
+				//debug("adding labels for: ");
+				//debug(f);
 				li = li.concat(f.labelNames);
 			}
 		}
@@ -475,11 +512,24 @@ async function loadTypings(): Promise<void> {
 	}
 }
 
-async function loadSbs(): Promise<PyFile> {
+async function loadSbs(): Promise<PyFile|null>{
 	let gh: string = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/mock/sbs.py";
-	const data = await fetch(gh);
-	const text = await data.text();
-	return new PyFile(gh, text);
+	let text = "";
+	try {
+		const data = await fetch(gh);
+		text = await data.text();
+		return new PyFile(gh, text);
+	} catch (e) {
+		debug("Can't find sbs.py on github");
+		try {
+			gh = path.join(__dirname, "sbs.py");
+			text = await readFile(gh);
+			return new PyFile(gh, text);
+		} catch (ex) {
+			debug("Can't find sbs.py locally either.");
+		}
+	}
+	return null;
 }
 
 const expressions: RX[] = [];

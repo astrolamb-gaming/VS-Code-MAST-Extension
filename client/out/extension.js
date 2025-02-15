@@ -78,7 +78,12 @@ function activate(context) {
     // });
     // context.subscriptions.push(vscode.languages.registerCompletionItemProvider(GO_MODE, new GoCompletionItemProvider(), ".", "\""));
     // Create the language client and start the client.
-    client = new node_1.LanguageClient('languageServerExample', 'Language Server Example', serverOptions, clientOptions);
+    client = new node_1.LanguageClient('MAST-Language-Server', 'MAST Language Server', serverOptions, clientOptions);
+    const notifListener = client.onNotification('custom/notif', (message) => {
+        debug("Notificaiton recieved");
+        debug(message);
+    });
+    context.subscriptions.push(notifListener);
     // Start the client. This will also launch the server
     client.start();
 }

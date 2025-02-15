@@ -63,9 +63,10 @@ function onCompletion(_textDocumentPosition, text) {
     }
     // TODO: Check and make absolutely sure that isTextInBracket is working properly
     // TODO: May be useful to have a list of used string words that can be added via autocomplete (i.e. roles)
+    const blobStr = iStr.substring(0, iStr.length - 1);
     if ((0, comments_1.isInString)(pos) && !(0, comments_1.isTextInBracket)(iStr, pos)) {
         // Here we check for blob info
-        if (iStr.endsWith(".set(\"") || iStr.endsWith(".get(\"")) {
+        if (blobStr.endsWith(".set(") || blobStr.endsWith(".get(")) {
             (0, console_1.debug)("Is BLobe");
             return (0, cache_1.getGlobals)().blob_items;
         }

@@ -11,13 +11,15 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ### 0.4.0
 
-- Blob string options added to autocomplete when you type .set("
+- Blob string options added to autocomplete when you type `.set(` or `.get(`, followed by double or single quotes.
 - Fix some edge-case formatting issues
 - Update mast file icon with two new icons, one each for light and dark mode
 - Fix format definitions and await inline labels showing up as label errors
 - Add idle as a valid yield result
 - Fix for issue where multiple instances of inline labels with different parent labels caused false errors
 - Add check for label warning message if it's not defined in the current folder , instead of just checking the current file.
+- Add lots of error handling to prevent crashes, and error messages with what caused the error.
+- Fix for button names not formatted properly if variables used in them (i.e. "Button {name}" )
 
 ### 0.3.0
 
