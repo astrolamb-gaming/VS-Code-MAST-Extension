@@ -100,12 +100,17 @@ export function activate(context: ExtensionContext) {
 
 	// Create the language client and start the client.
 	client = new LanguageClient(
-		'languageServerExample',
-		'Language Server Example',
+		'MAST-Language-Server',
+		'MAST Language Server',
 		serverOptions,
 		clientOptions
 	);
 
+	const notifListener = client.onNotification('custom/notif', (message:string)=>{
+		debug("Notificaiton recieved");
+		debug(message);
+	});
+	context.subscriptions.push(notifListener);
 	// Start the client. This will also launch the server
 	client.start();
 }

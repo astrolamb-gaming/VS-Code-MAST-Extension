@@ -18,6 +18,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Add idle as a valid yield result
 - Fix for issue where multiple instances of inline labels with different parent labels caused false errors
 - Add check for label warning message if it's not defined in the current folder , instead of just checking the current file.
+- Add lots of error handling to prevent crashes, and error messages with what caused the error.
+- Fix for button names not formatted properly if variables used in them (i.e. "Button {name}" )
 
 ### 0.3.0
 

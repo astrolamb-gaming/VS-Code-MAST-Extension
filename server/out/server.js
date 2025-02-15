@@ -5,6 +5,7 @@ exports.getPyTypings = getPyTypings;
 exports.getClassTypings = getClassTypings;
 exports.updateLabelNames = updateLabelNames;
 exports.myDebug = myDebug;
+exports.notifyClient = notifyClient;
 /* --------------------------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
@@ -103,7 +104,14 @@ connection.onInitialize((params) => {
         //debug(workspaceFolder.uri);
         //readAllFilesIn(workspaceFolder);
         const uri = vscode_uri_1.URI.parse(workspaceFolder.uri);
-        //debug(uri.fsPath);
+        // let adir = getArtemisDirFromChild(uri.fsPath);
+        // debug(adir);
+        // try {
+        // 	notifyClient("Sending the message");
+        // } catch (e) {
+        // 	debug(e);
+        // 	console.error(e);
+        // }
         (0, cache_1.loadCache)(uri.fsPath);
     }
     else {
@@ -215,7 +223,13 @@ connection.languages.diagnostics.on(async (params) => {
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent(change => {
-    validateTextDocument(change.document);
+    try {
+        validateTextDocument(change.document);
+    }
+    catch (e) {
+        (0, console_1.debug)(e);
+        console.error(e);
+    }
 });
 async function validateTextDocument(textDocument) {
     // In this simple example we get the settings for every validate run.
@@ -260,8 +274,14 @@ async function validateTextDocument(textDocument) {
     }
     //let d1: Diagnostic[] = findDiagnostic(pattern, textDocument, DiagnosticSeverity.Error, "Message", "Source", "Testing", settings.maxNumberOfProblems, 0);
     //diagnostics = diagnostics.concat(d1);
-    let d1 = (0, labels_1.checkLabels)(textDocument);
-    diagnostics = diagnostics.concat(d1);
+    try {
+        let d1 = (0, labels_1.checkLabels)(textDocument);
+        diagnostics = diagnostics.concat(d1);
+    }
+    catch (e) {
+        (0, console_1.debug)(e);
+        (0, console_1.debug)("Couldn't get labels?");
+    }
     return diagnostics;
 }
 connection.onDidChangeWatchedFiles(_change => {
@@ -336,5 +356,8 @@ function myDebug(str) {
     fs.writeFileSync('outputLog.txt', str, { flag: "a+" });
     (0, console_1.debug)(str);
     console.log(str);
+}
+function notifyClient(message) {
+    connection.sendNotification("custom/notif", message);
 }
 //# sourceMappingURL=server.js.map

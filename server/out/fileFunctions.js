@@ -1,6 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getRootFolder = getRootFolder;
 exports.findSubfolderByName = findSubfolderByName;
 exports.getFolders = getFolders;
 exports.getFileContents = getFileContents;
@@ -13,36 +12,13 @@ exports.getStoryJson = getStoryJson;
 exports.getParentFolder = getParentFolder;
 exports.getMissionFolder = getMissionFolder;
 exports.fixFileName = fixFileName;
+exports.getArtemisDirFromChild = getArtemisDirFromChild;
 const path = require("path");
 const fs = require("fs");
 const console_1 = require("console");
 const AdmZip = require("adm-zip");
+const cache_1 = require("./cache");
 const vscode_uri_1 = require("vscode-uri");
-/**
- * TODO: Use parsers.py to determine the style definitions available for UI elements
- * See https://github.com/artemis-sbs/sbs_utils/blob/master/sbs_utils/mast/parsers.py
- */
-function getRootFolder() {
-    // let initialDir = "./";
-    // let dir = findSubfolderByName(initialDir,"__lib__");
-    // if (dir === null) {
-    // Need to be sure we're capturing the right folder - we don't know if the user
-    // is using the root Artemis folder or the missions folder, or anything in between.
-    let initialDir = "../../../../";
-    let dir = findSubfolderByName(initialDir, "data");
-    (0, console_1.debug)(dir + "\n");
-    if (dir !== null) {
-        dir = findSubfolderByName(dir, "missions");
-        if (dir !== null) {
-            dir = findSubfolderByName(dir, "__lib__");
-            if (dir !== null) {
-                //dir = dir.replace(/\.\.\\/g,"");
-                return dir;
-            }
-        }
-    }
-    return null;
-}
 function findSubfolderByName(dir, folderName) {
     const files = fs.readdirSync(dir, { withFileTypes: true });
     for (const file of files) {
@@ -90,6 +66,12 @@ async function readFile(dir) {
     const ret = fs.readFileSync(dir, "utf-8");
     return ret;
 }
+/**
+ *
+ * @param dir directory or uri of folder
+ * @param includeChildren boolean, set true if all files within all subfolders should be gotten. Set false if only the files in the specified directory should be gotten.
+ * @returns
+ */
 function getFilesInDir(dir, includeChildren = true) {
     let ret = [];
     try {
@@ -154,7 +136,7 @@ async function readZipArchive(filepath) {
     return map;
 }
 function getStoryJson(uri) {
-    let mission = findSubfolderByName("../../../", "missions");
+    let mission = findSubfolderByName((0, cache_1.getGlobals)().artemisDir, "missions");
     (0, console_1.debug)(mission);
     (0, console_1.debug)(uri);
     let ret = "";
@@ -191,7 +173,7 @@ function getParentFolder(childUri) {
     fs.lstat(p, (err, stats) => {
         if (err) {
             (0, console_1.debug)(err);
-            throw new URIError(err.message);
+            //throw new URIError(err.message);
             return p;
         }
         if (stats.isSymbolicLink()) {
@@ -245,6 +227,28 @@ function fixFileName(uri) {
         uri = vscode_uri_1.URI.parse(uri).fsPath;
     }
     return uri;
+}
+function getArtemisDirFromChild(child) {
+    if (child.endsWith(":\\")) {
+        return null;
+    }
+    child = fixFileName(child);
+    child = path.normalize(child);
+    let files = getFilesInDir(child, false);
+    if (files.includes("Artemis3-x64-release.exe")) {
+        return child;
+    }
+    else if (getFolders(child).includes("PyAddons")) {
+        return child;
+    }
+    child = getParentFolder(child);
+    let aDir = getArtemisDirFromChild(child);
+    if (aDir === null) {
+        return null;
+    }
+    else {
+        return aDir;
+    }
 }
 //readZipArchive("C:/Users/mholderbaum/Documents/Cosmos-1-0-0/data/missions/__lib__/artemis-sbs.LegendaryMissions.autoplay.v3.9.39.mastlib");
 //# sourceMappingURL=fileFunctions.js.map
