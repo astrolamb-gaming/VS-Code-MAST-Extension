@@ -23,7 +23,6 @@ const signatureHelp_1 = require("./signatureHelp");
 const comments_1 = require("./comments");
 const fs = require("fs");
 const cache_1 = require("./cache");
-const python_1 = require("./python");
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 const connection = (0, node_1.createConnection)(node_1.ProposedFeatures.all);
@@ -275,7 +274,6 @@ async function validateTextDocument(textDocument) {
     }
     //let d1: Diagnostic[] = findDiagnostic(pattern, textDocument, DiagnosticSeverity.Error, "Message", "Source", "Testing", settings.maxNumberOfProblems, 0);
     //diagnostics = diagnostics.concat(d1);
-
     try {
         let d1 = (0, labels_1.checkLabels)(textDocument);
         diagnostics = diagnostics.concat(d1);
@@ -284,11 +282,6 @@ async function validateTextDocument(textDocument) {
         (0, console_1.debug)(e);
         (0, console_1.debug)("Couldn't get labels?");
     }
-
-    const mastCompilerErrors = [];
-    (0, python_1.compileMission)(textDocument.uri, textDocument.getText(), (0, cache_1.getCache)(textDocument.uri).storyJson.sbslib).then((errors) => {
-        (0, console_1.debug)(errors);
-    });
     return diagnostics;
 }
 connection.onDidChangeWatchedFiles(_change => {
