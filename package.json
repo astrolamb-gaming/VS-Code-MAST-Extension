@@ -149,8 +149,7 @@
 					{
 						"scope": "meta.injection.yaml.key",
 						"settings": {
-							"foreground": "#5c84da",
-							"fontStyle": "italic"
+							"foreground": "#ffffff"
 						}
 					},
 					{
