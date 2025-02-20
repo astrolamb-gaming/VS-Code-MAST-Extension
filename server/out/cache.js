@@ -273,7 +273,7 @@ class MissionCache {
     handleZipData(zip, parentFolder = "") {
         //debug(zip);
         zip.forEach((data, file) => {
-            (0, console_1.debug)(file);
+            //debug(file)
             if (parentFolder !== "") {
                 file = parentFolder + path.sep + file;
             }
@@ -287,6 +287,10 @@ class MissionCache {
                 // this.resourceLabels = this.resourceLabels.concat(loadResourceLabels(data));
                 const p = new data_1.PyFile(file, data);
                 this.missionPyModules.push(p);
+                if (file.includes("sbs_utils") && !file.includes("procedural")) {
+                    // Don't wanat anything not procedural included???
+                    return;
+                }
                 this.missionClasses = this.missionClasses.concat(p.classes);
                 //debug(this.missionClasses);
                 this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.defaultFunctionCompletionItems);
@@ -381,9 +385,9 @@ class MissionCache {
         if (_class === "") {
             //debug(ci.length);
             ci = ci.concat(this.missionDefaultCompletions);
-            for (const c of this.missionClasses) {
-                ci.push(c.completionItem);
-            }
+            // for (const c of this.missionClasses) {
+            // 	ci.push(c.completionItem);
+            // }
             // TODO: Add variables in scope
             return ci;
         }

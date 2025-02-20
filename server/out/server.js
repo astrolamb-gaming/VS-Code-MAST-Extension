@@ -236,7 +236,7 @@ documents.onDidChangeContent(change => {
     }
 });
 async function validateTextDocument(textDocument) {
-    (0, console_1.debug)("Validating document");
+    //debug("Validating document");
     // In this simple example we get the settings for every validate run.
     const settings = await getDocumentSettings(textDocument.uri);
     (0, comments_1.getComments)(textDocument);

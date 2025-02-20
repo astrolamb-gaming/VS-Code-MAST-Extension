@@ -82,23 +82,22 @@ async function bigFile(options, content) {
     var results = [];
     myscript.send(content);
     myscript.on('message', (message) => {
-        (0, console_1.debug)(message);
-        if (message.length === 0) {
-            return;
+        //debug(message);
+        if (message !== "[]") { // if there's errors, parse them
+            let mj = message.replace(/[\[\]]/g, "");
+            let errs = mj.split("', '");
+            errors = errors.concat(errs);
+            (0, console_1.debug)(errors);
         }
-        let mj = message.replace(/[\[\]]/g, "");
-        let errs = mj.split("', '");
-        errors = errors.concat(errs);
-        (0, console_1.debug)(errors);
     });
     // end the input stream and allow the process to exit
     await myscript.end(function (err, code, signal) {
         compiled = true;
         if (err)
             throw err;
-        console.log('The exit code was: ' + code);
-        console.log('The exit signal was: ' + signal);
-        console.log('finished');
+        // console.log('The exit code was: ' + code);
+        // console.log('The exit signal was: ' + signal);
+        // console.log('finished');
     });
     while (!compiled) {
         await sleep(100);

@@ -331,7 +331,7 @@ export interface ErrorInstance {
 }
 
 async function validateTextDocument(textDocument: TextDocument): Promise<Diagnostic[]> {
-	debug("Validating document");
+	//debug("Validating document");
 	// In this simple example we get the settings for every validate run.
 	const settings = await getDocumentSettings(textDocument.uri);
 	
