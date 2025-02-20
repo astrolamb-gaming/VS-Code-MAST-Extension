@@ -300,7 +300,7 @@ export function loadRouteLabels(textData:string): IRouteLabel[] {
 	} catch (e) {
 		debug("Error in loadRouteLabels(): " + e as string);
 	}
-	debug(routeLabels);
+	//debug(routeLabels);
 	//throw new Error("Route Labels");
 	return routeLabels;
 }

@@ -89,8 +89,8 @@ class Globals {
                             }
                             lineNum++;
                         }
-                        (0, console_1.debug)(this.blob_items);
-                        console.log(this.blob_items);
+                        //debug(this.blob_items);
+                        //console.log(this.blob_items)
                     });
                     break;
                 }

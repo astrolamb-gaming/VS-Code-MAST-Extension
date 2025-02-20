@@ -1,35 +1,43 @@
 
-import math
 from inspect import *
 import traceback
 import sys
-#Prints list of math functions
-#print(dir(math))
 
 # PYTHONPATH=/path/to/myArchive.zip python -m [filename without extension] [args]
 
-#PYPATH = sys.argv[0] [0] is the script path
+content = ""
+sbsPath = ""
+sbs_utilsPath = ""
+lineCount = 0
+getData = False
+
 sbs_utilsPath = sys.argv[1] # Very important
 sbsPath = sys.argv[2] # Will not be important in the future - v1.0.2 does not require sbs
 mastFile = sys.argv[3] # Very important
-content = sys.argv[4] # Very important
 
-#sys.modules['script'] = sys.modules.get('__main__')
-    # import sbslibs
-    #sys.path.append("../../../PyAddons")
-    #import sbslibs
-#print(sbsPath)
-#print(sbs_utilsPath)
+try: 
+	
+	content = sys.argv[4] # Very important
+except Exception as e:
+
+	content = sys.stdin.read().replace("\r","")
+	lines = content.split("\n")
 
 sys.path.append(sbs_utilsPath)
-#if sbsPath != "":
-sys.path.append(sbsPath)
-#print(sys.path)
+
 errors = None
 try:
 	#from sbs.sbs import *
-	from sbs_utils.mast.mast import Mast
-	class MyMast(Mast):
+	try:
+		from sbs_utils.mast.maststory import MastStory
+	except Exception as e:
+		
+		sys.path.append(sbsPath)
+		sys.path.append(sbs_utilsPath)
+		from sbs import *
+		from sbs_utils.mast.maststory import MastStory
+		
+	class MyMast(MastStory):
 		def __init__(self, cmds=None, is_import=False):
 			super().__init__(cmds,is_import)
 			#print("My Mast")
@@ -52,7 +60,7 @@ try:
 			errors = None
 				
 			if content is not None:
-				content = content.replace("\r","")
+				content = content.replace('\r','')
 				errors = self.compile(content, file_name, root)
 
 				# TODO: Might use this to check other files in folder
@@ -80,9 +88,11 @@ try:
 		# Format the traceback
 		stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
 		print(stack_trace)
-	#errors = mast.from_text(missionPath, None, content)
+
 	if errors is not None:
 		print(errors)
+		# for err in errors:
+		# 	print(err)
 	else:
 		print("No Errors")
 	
@@ -96,8 +106,3 @@ except Exception as ex:
 	exc_type, exc_value, exc_tb = sys.exc_info()
 	stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
 	print(stack_trace)
-
-#print(signature(math.acos).parameters)
-#print(sbsLibPath)
-#print(missionPath)
-#print(sys.argv)

@@ -90,8 +90,8 @@ export class Globals {
 							}
 							lineNum++;
 						}
-						debug(this.blob_items);
-						console.log(this.blob_items)
+						//debug(this.blob_items);
+						//console.log(this.blob_items)
 					});
 					break;
 				}

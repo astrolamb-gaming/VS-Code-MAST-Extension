@@ -307,7 +307,7 @@ function loadRouteLabels(textData) {
     catch (e) {
         (0, console_1.debug)("Error in loadRouteLabels(): " + e);
     }
-    (0, console_1.debug)(routeLabels);
+    //debug(routeLabels);
     //throw new Error("Route Labels");
     return routeLabels;
 }
