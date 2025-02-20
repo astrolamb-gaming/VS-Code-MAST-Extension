@@ -5222,19 +5222,16 @@
     },
     "key-value-pair":{
       "name":"meta.injection.yaml.key-value-pair",
-      "match":"([\\s\\w]+):",
+      "match":"(\\w+):[ \\t](\\w+)",
       "captures":{
-        "0":{"name":"meta.injection.yaml.key"}
+        "0":{"name":"meta.injection.yaml.key"},
+        "2":{"name":"meta.injection.yaml.value"}
       }
     },
     "yaml": {
       "name": "meta.injection.yaml",
-      "begin": "`{3,3} yaml\\s*($|\\n)",
-      "beginCaptures":{
-        "name": "meta.injection.yaml"
-      },
-      "end": "`{3,3}\\s*($|\\n)",
-      "endCaptures":{"name": "meta.injection.yaml"},
+      "begin": "\\-{3,3}\\s*($|\\n)",
+      "end": "\\.{3,3}",
       "patterns": [
         {
           "include":"#key-value-pair"
@@ -5253,8 +5250,7 @@
         },
         {
           "include": "#assignment-operator"
-        },
-        {"include": "#expression"}
+        }
       ]
     },
     "regex": {

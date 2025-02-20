@@ -12,6 +12,7 @@ import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } fro
 import { findSubfolderByName, getArtemisDirFromChild, getFilesInDir, getFolders, getMissionFolder, getParentFolder, readFile, readZipArchive } from './fileFunctions';
 import { updateLabelNames } from './server';
 import { URI } from 'vscode-uri';
+import { compileMission } from './python';
 
 export class Globals {
 	skyboxes: CompletionItem[];
