@@ -9,7 +9,7 @@ let pyPath = "";
 let scriptPath = "";
 
 export async function compileMission(mastFile: string, content: string, sbs_utils: string[]): Promise<string[]> {
-	debug(sbs_utils)
+	//debug(sbs_utils)
 	if (sbs_utils[0] !== 'artemis-sbs.sbs_utils.v1.0.1.sbslib') {
 		return [];
 	}
@@ -24,7 +24,7 @@ export async function compileMission(mastFile: string, content: string, sbs_util
 		} else {
 			return [];
 		}
-		debug(pyPath);
+		//debug(pyPath);
 	}
 
 	if (scriptPath === "") {
@@ -44,7 +44,7 @@ export async function compileMission(mastFile: string, content: string, sbs_util
 	// Get sbs, if necessary
 	let sbsPath = path.join(scriptPath, "sbs.zip");
 	//sbsPath = path.join(libFolder, "mock");
-	
+	mastFile = path.basename(mastFile);
 	const basicOptions: Options = {
 		pythonPath: path.join(pyPath,"python.exe"),
 		scriptPath: scriptPath,
@@ -56,10 +56,10 @@ export async function compileMission(mastFile: string, content: string, sbs_util
 		scriptPath: scriptPath,
 		args: [sbsLibPath, sbsPath, mastFile]
 	}
-	debug(o);
+	//debug(o);
 	
 	//errors = await runScript(basicOptions);
-	errors = await bigFile(o, sbsLibPath, sbsPath, mastFile, content);
+	errors = await bigFile(o, content);
 	return errors;
 }
 
@@ -86,7 +86,7 @@ async function runScript(o: Options): Promise<string[]> {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function bigFile(options: Options, sbsLibPath: string, sbsPath: string, mastFile: string, content: string): Promise<string[]> {
+async function bigFile(options: Options, content: string): Promise<string[]> {
 	let errors: string[] = [];
 	let compiled = false;
 
@@ -99,6 +99,9 @@ async function bigFile(options: Options, sbsLibPath: string, sbsPath: string, ma
 	myscript.on('message', (message) => {
 
 		debug(message);
+		if (message.length === 0) {
+			return;
+		}
 		let mj = message.replace(/[\[\]]/g, "");
 		let errs = mj.split("', '");
 		errors = errors.concat(errs);

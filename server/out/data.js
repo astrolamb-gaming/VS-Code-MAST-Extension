@@ -58,7 +58,7 @@ class MastFile extends FileCache {
                         throw err;
                     }
                     else {
-                        (0, console_1.debug)("parsing, no error");
+                        //debug("parsing, no error");
                         this.parse(data);
                     }
                 });
@@ -175,7 +175,7 @@ class ClassObject {
         const parentClass = /\(\w*?\):/;
         let comment = /((\"){3,3}(.*?)(\"){3,3})|(\.\.\.)/m;
         // TODO: Could pull the class parent and interfaces (if any). Would this be useful?
-        this.name = getRegExMatch(raw, className).replace("class ", "").replace(/\(.*?\):/, "");
+        this.name = getRegExMatch(raw, className).replace("class ", "").replace(/(\(.*?\))?:/, "");
         if (this.name === "" && sourceFile.endsWith("sbs.py")) {
             this.name = "sbs";
         }

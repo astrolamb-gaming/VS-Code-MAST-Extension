@@ -53,15 +53,6 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	//debug("" + startOfLine as string);
 	//
 	debug(iStr);
-	let keywords : string[] = [
-		"def",
-		"async",
-		"on change",
-		"await",
-		"shared"
-	]
-
-
 
 	// If we're inside a comment or a string, we don't want autocompletion.
 	if (isInComment(pos)) {
@@ -208,6 +199,26 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	}
 	//debug(ci.length);
 	ci = cache.getCompletions();
+	let keywords : string[] = [
+		"def",
+		"async",
+		"on change",
+		"await",
+		"shared",
+		"import",
+		"if",
+		"else",
+		"match",
+		"case"
+	]
+	// Add keywords to completions
+	for (const key in keywords) {
+		let i: CompletionItem = {
+			label: key,
+			kind: CompletionItemKind.Keyword
+		}
+		ci.push(i);
+	}
 	//debug(ci.length);
 	//ci = ci.concat(defaultFunctionCompletionItems);
 	// TODO: Account for text that's already present?? I don't think that's necessary

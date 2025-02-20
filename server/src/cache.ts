@@ -38,9 +38,9 @@ export class Globals {
 			this.skyboxes = this.findSkyboxes();
 			this.music = this.findMusic();
 			this.blob_items = [];
+			// this.data_set_entries is not populated here, since loadObjectDataDocumentation() has a promise in it. 
+			// That promise then populates the field when complete.
 			this.data_set_entries = this.loadObjectDataDocumentation();
-			debug(this.data_set_entries);
-			debug(this.blob_items);
 		}
 		
 	}
@@ -300,6 +300,7 @@ export class MissionCache {
 	handleZipData(zip: Map<string, string>, parentFolder:string = "") {
 		//debug(zip);
 		zip.forEach((data, file)=>{
+			debug(file)
 			if (parentFolder !== "") {
 				file = parentFolder + path.sep + file;
 			}
@@ -481,7 +482,7 @@ export class StoryJson {
 	/** Only call this from readFile() */
 	private parseFile(text:string) {
 		const story: StoryJsonContents = JSON.parse(text);
-		debug(story);
+		//debug(story);
 		if (story.sbslib) this.sbslib = story.sbslib;
 		if (story.mastlib) this.mastlib = story.mastlib;
 		this.complete = true;

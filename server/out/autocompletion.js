@@ -47,13 +47,6 @@ function onCompletion(_textDocumentPosition, text) {
     //debug("" + startOfLine as string);
     //
     (0, console_1.debug)(iStr);
-    let keywords = [
-        "def",
-        "async",
-        "on change",
-        "await",
-        "shared"
-    ];
     // If we're inside a comment or a string, we don't want autocompletion.
     if ((0, comments_1.isInComment)(pos)) {
         return ci;
@@ -180,6 +173,26 @@ function onCompletion(_textDocumentPosition, text) {
     }
     //debug(ci.length);
     ci = cache.getCompletions();
+    let keywords = [
+        "def",
+        "async",
+        "on change",
+        "await",
+        "shared",
+        "import",
+        "if",
+        "else",
+        "match",
+        "case"
+    ];
+    // Add keywords to completions
+    for (const key in keywords) {
+        let i = {
+            label: key,
+            kind: vscode_languageserver_1.CompletionItemKind.Keyword
+        };
+        ci.push(i);
+    }
     //debug(ci.length);
     //ci = ci.concat(defaultFunctionCompletionItems);
     // TODO: Account for text that's already present?? I don't think that's necessary

@@ -9,7 +9,7 @@ const cache_1 = require("./cache");
 let pyPath = "";
 let scriptPath = "";
 async function compileMission(mastFile, content, sbs_utils) {
-    (0, console_1.debug)(sbs_utils);
+    //debug(sbs_utils)
     if (sbs_utils[0] !== 'artemis-sbs.sbs_utils.v1.0.1.sbslib') {
         return [];
     }
@@ -25,7 +25,7 @@ async function compileMission(mastFile, content, sbs_utils) {
         else {
             return [];
         }
-        (0, console_1.debug)(pyPath);
+        //debug(pyPath);
     }
     if (scriptPath === "") {
         scriptPath = __dirname.replace("out", "src");
@@ -40,6 +40,7 @@ async function compileMission(mastFile, content, sbs_utils) {
     // Get sbs, if necessary
     let sbsPath = path.join(scriptPath, "sbs.zip");
     //sbsPath = path.join(libFolder, "mock");
+    mastFile = path.basename(mastFile);
     const basicOptions = {
         pythonPath: path.join(pyPath, "python.exe"),
         scriptPath: scriptPath,
@@ -50,9 +51,9 @@ async function compileMission(mastFile, content, sbs_utils) {
         scriptPath: scriptPath,
         args: [sbsLibPath, sbsPath, mastFile]
     };
-    (0, console_1.debug)(o);
+    //debug(o);
     //errors = await runScript(basicOptions);
-    errors = await bigFile(o, sbsLibPath, sbsPath, mastFile, content);
+    errors = await bigFile(o, content);
     return errors;
 }
 async function runScript(o) {
@@ -74,7 +75,7 @@ async function runScript(o) {
     return errors;
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-async function bigFile(options, sbsLibPath, sbsPath, mastFile, content) {
+async function bigFile(options, content) {
     let errors = [];
     let compiled = false;
     let myscript = new python_shell_1.PythonShell('mastCompile.py', options);
@@ -82,6 +83,9 @@ async function bigFile(options, sbsLibPath, sbsPath, mastFile, content) {
     myscript.send(content);
     myscript.on('message', (message) => {
         (0, console_1.debug)(message);
+        if (message.length === 0) {
+            return;
+        }
         let mj = message.replace(/[\[\]]/g, "");
         let errs = mj.split("', '");
         errors = errors.concat(errs);

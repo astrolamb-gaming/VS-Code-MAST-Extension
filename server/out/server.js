@@ -207,6 +207,8 @@ connection.languages.diagnostics.on(async (params) => {
     // 	}
     // })
     if (document !== undefined) {
+        (0, console_1.debug)("languages.diagnostics.on");
+        (0, console_1.debug)(document.uri);
         return {
             kind: node_1.DocumentDiagnosticReportKind.Full,
             items: await validateTextDocument(document)
@@ -225,6 +227,7 @@ connection.languages.diagnostics.on(async (params) => {
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent(change => {
     try {
+        (0, console_1.debug)("onDidChangeContent");
         validateTextDocument(change.document);
     }
     catch (e) {
@@ -233,6 +236,7 @@ documents.onDidChangeContent(change => {
     }
 });
 async function validateTextDocument(textDocument) {
+    (0, console_1.debug)("Validating document");
     // In this simple example we get the settings for every validate run.
     const settings = await getDocumentSettings(textDocument.uri);
     (0, comments_1.getComments)(textDocument);

@@ -29,13 +29,13 @@ errors = None
 try:
 	#from sbs.sbs import *
 	try:
-		from sbs_utils.mast.maststory import MastStory
+		from sbs_utils.mast.maststory import MastStory # type: ignore
 	except Exception as e:
 		
 		sys.path.append(sbsPath)
 		sys.path.append(sbs_utilsPath)
-		from sbs import *
-		from sbs_utils.mast.maststory import MastStory
+		from sbs import * # type: ignore
+		from sbs_utils.mast.maststory import MastStory # type: ignore
 		
 	class MyMast(MastStory):
 		def __init__(self, cmds=None, is_import=False):

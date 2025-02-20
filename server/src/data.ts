@@ -70,7 +70,7 @@ export class MastFile extends FileCache {
 						debug("error reading file: " + uri + "\n" + err);
 						throw err;
 					} else {
-						debug("parsing, no error");
+						//debug("parsing, no error");
 						this.parse(data);
 					}
 				});
@@ -253,7 +253,7 @@ export class ClassObject implements IClassObject {
 		let comment : RegExp = /((\"){3,3}(.*?)(\"){3,3})|(\.\.\.)/m;
 		
 		// TODO: Could pull the class parent and interfaces (if any). Would this be useful?
-		this.name = getRegExMatch(raw,className).replace("class ","").replace(/\(.*?\):/,"");
+		this.name = getRegExMatch(raw,className).replace("class ","").replace(/(\(.*?\))?:/,"");
 		if (this.name === "" && sourceFile.endsWith("sbs.py")) {
 			this.name = "sbs";
 		}

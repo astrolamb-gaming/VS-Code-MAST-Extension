@@ -279,6 +279,8 @@ connection.languages.diagnostics.on(async (params) => {
 	// })
 	
 	if (document !== undefined) {
+		debug("languages.diagnostics.on");
+		debug(document.uri);
 		return {
 			kind: DocumentDiagnosticReportKind.Full,
 			items: await validateTextDocument(document)
@@ -297,6 +299,7 @@ connection.languages.diagnostics.on(async (params) => {
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent(change => {
 	try {
+		debug("onDidChangeContent");
 		validateTextDocument(change.document);
 	} catch (e) {
 		debug(e);
@@ -328,6 +331,7 @@ export interface ErrorInstance {
 }
 
 async function validateTextDocument(textDocument: TextDocument): Promise<Diagnostic[]> {
+	debug("Validating document");
 	// In this simple example we get the settings for every validate run.
 	const settings = await getDocumentSettings(textDocument.uri);
 	
@@ -384,9 +388,9 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 	}
 
 	const mastCompilerErrors:string[] = [];
-  compileMission(textDocument.uri, textDocument.getText(), getCache(textDocument.uri).storyJson.sbslib).then((errors)=>{
-    debug(errors);
-  });
+	compileMission(textDocument.uri, textDocument.getText(), getCache(textDocument.uri).storyJson.sbslib).then((errors)=>{
+		debug(errors);
+	});
 
 	return diagnostics;
 }
