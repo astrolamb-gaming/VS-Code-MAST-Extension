@@ -183,7 +183,8 @@ function onCompletion(_textDocumentPosition, text) {
         "if",
         "else",
         "match",
-        "case"
+        "case",
+        "yield"
     ];
     // Add keywords to completions
     for (const key in keywords) {

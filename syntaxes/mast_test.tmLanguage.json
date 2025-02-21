@@ -5222,35 +5222,29 @@
     },
     "key-value-pair":{
       "name":"meta.injection.yaml.key-value-pair",
-      "match":"(\\w+):[ \\t](\\w+)",
+      "match":"(\\w+):",
       "captures":{
         "0":{"name":"meta.injection.yaml.key"},
         "2":{"name":"meta.injection.yaml.value"}
       }
     },
+    "yaml-value" :{
+      "name": "meta.injection.yaml.value",
+      "match": "(?<=:\\s*).*$"
+    },
+    "yaml-string":{
+      "name":"meta.injection.yaml.value.string",
+      "patterns": [
+        {"include":"#expression"}
+      ]
+    },
     "yaml": {
       "name": "meta.injection.yaml",
-      "begin": "\\-{3,3}\\s*($|\\n)",
-      "end": "\\.{3,3}",
+      "begin": "``` yaml\\s*($|\\n)",
+      "end": "```",
       "patterns": [
-        {
-          "include":"#key-value-pair"
-        },
-        {
-          "include": "#template-type-substitution-element"
-        },
-        {
-          "include": "#string"
-        },
-        {
-          "include": "#operator"
-        },
-        {
-          "include": "#statements"
-        },
-        {
-          "include": "#assignment-operator"
-        }
+        {"include":"#key-value-pair"},
+        {"include":"#yaml-value"}
       ]
     },
     "regex": {

@@ -114,6 +114,8 @@ connection.onInitialize((params) => {
         // 	console.error(e);
         // }
         (0, cache_1.loadCache)(uri.fsPath);
+        let cache = (0, cache_1.getCache)(uri.fsPath);
+        (0, python_1.getGlobalFunctions)(cache.storyJson.sbslib);
     }
     else {
         (0, console_1.debug)("No Workspace folders");

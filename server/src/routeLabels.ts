@@ -201,6 +201,7 @@ export function loadRouteLabels(textData:string): IRouteLabel[] {
 		// const data = await fetch(routeDefSource);
 		// const textData = await data.text();
 		// Get the text of function that defines route labels
+		// see route_label.py, and there is a chance that this changes in the future!!!!!
 		let pattern = /RouteDecoratorLabel\(DecoratorLabel\):.+?generate_label_begin_cmds.+?[\s](def |class)/gs;
 		let m: RegExpExecArray | null;
 		while (m = pattern.exec(textData)) {

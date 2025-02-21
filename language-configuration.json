@@ -207,6 +207,11 @@
         "notIn": [
           "comment"
         ]
+      },
+      {
+        "open": "```",
+        "close": "```",
+        "notIn": ["comment","string"]
       }
     ],
     "surroundingPairs": [

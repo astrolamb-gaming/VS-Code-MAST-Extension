@@ -209,7 +209,8 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		"if",
 		"else",
 		"match",
-		"case"
+		"case",
+		"yield"
 	]
 	// Add keywords to completions
 	for (const key in keywords) {

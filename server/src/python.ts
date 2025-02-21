@@ -8,6 +8,44 @@ import { getCache, getGlobals } from './cache';
 let pyPath = "";
 let scriptPath = "";
 
+export async function getGlobalFunctions(sbs_utils: string[]): Promise<string[]> {
+	let ret: string[] = [];
+	if (pyPath === "") {
+		let adir = getGlobals().artemisDir;
+		let f = findSubfolderByName(adir,"PyRuntime");
+		if (f !== null) {
+			pyPath = path.resolve(f);
+		} else {
+			return [];
+		}
+		//debug(pyPath);
+	}
+	if (scriptPath === "") {
+		scriptPath = __dirname.replace("out","src");
+	}
+	let sbsPath = path.join(scriptPath, "sbs.zip");
+	let libFolder = path.join(getGlobals().artemisDir,"data","missions");
+	const sbsLibPath = "D:\\Cosmos Dev\\Cosmos-1-0-1\\data\\missions\\sbs_utils"//path.join(libFolder,"__lib__",sbs_utils[0]);
+	const o: Options = {
+		pythonPath: path.join(pyPath,"python.exe"),
+		scriptPath: scriptPath,
+		args: [sbsLibPath,sbsPath]
+	}
+
+	try {
+		await PythonShell.run('mastGlobals.py', o).then((messages: any)=>{
+			for (let m of messages) {
+				debug(m);
+			}
+			console.log('finished');
+		});
+	} catch (e) {
+		debug(e);
+	}
+
+	return ret;
+}
+
 export async function compileMission(mastFile: string, content: string, sbs_utils: string[]): Promise<string[]> {
 	//debug(sbs_utils)
 	if (sbs_utils[0] !== 'artemis-sbs.sbs_utils.v1.0.1.sbslib') {

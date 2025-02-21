@@ -50,7 +50,7 @@ import fs = require("fs");
 
 import { getArtemisDirFromChild, getFileContents, getParentFolder, readAllFilesIn } from './fileFunctions';
 import { getCache, loadCache } from './cache';
-import { compileMission } from './python';
+import { compileMission, getGlobalFunctions } from './python';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -166,6 +166,8 @@ connection.onInitialize((params: InitializeParams) => {
 		// }
 
 		loadCache(uri.fsPath);
+		let cache = getCache(uri.fsPath);
+		getGlobalFunctions(cache.storyJson.sbslib);
 	} else {
 		debug("No Workspace folders");
 	}
