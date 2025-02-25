@@ -9,6 +9,7 @@ const path = require("path");
 const cache_1 = require("./cache");
 let pyPath = "";
 let scriptPath = "";
+let regularOptions;
 async function getGlobalFunctions(sbs_utils) {
     let ret = [];
     if (pyPath === "") {
@@ -27,12 +28,14 @@ async function getGlobalFunctions(sbs_utils) {
     }
     let sbsPath = path.join(scriptPath, "sbs.zip");
     let libFolder = path.join((0, cache_1.getGlobals)().artemisDir, "data", "missions");
-    const sbsLibPath = "D:\\Cosmos Dev\\Cosmos-1-0-1\\data\\missions\\sbs_utils"; //path.join(libFolder,"__lib__",sbs_utils[0]);
+    //const sbsLibPath = "D:\\Cosmos Dev\\Cosmos-1-0-1\\data\\missions\\sbs_utils"//
+    const sbsLibPath = path.join(libFolder, "__lib__", sbs_utils[0]);
     const o = {
         pythonPath: path.join(pyPath, "python.exe"),
         scriptPath: scriptPath,
         args: [sbsLibPath, sbsPath]
     };
+    regularOptions = o;
     try {
         await python_shell_1.PythonShell.run('mastGlobals.py', o).then((messages) => {
             for (let m of messages) {
@@ -89,10 +92,18 @@ async function compileMission(mastFile, content, sbs_utils) {
         scriptPath: scriptPath,
         args: [sbsLibPath, sbsPath, mastFile]
     };
+    regularOptions = o;
     //debug(o);
     //errors = await runScript(basicOptions);
     errors = await bigFile(o, content);
     return errors;
+}
+let shell;
+async function getTokenInfo(token) {
+    if (shell === undefined || shell === null) {
+        shell = new python_shell_1.PythonShell('mastCompile.py', regularOptions);
+    }
+    shell.send(token);
 }
 async function runScript(o) {
     let errors = [];

@@ -7,6 +7,7 @@ import { getCache, getGlobals } from './cache';
 
 let pyPath = "";
 let scriptPath = "";
+let regularOptions:Options;
 
 export async function getGlobalFunctions(sbs_utils: string[]): Promise<string[]> {
 	let ret: string[] = [];
@@ -25,12 +26,14 @@ export async function getGlobalFunctions(sbs_utils: string[]): Promise<string[]>
 	}
 	let sbsPath = path.join(scriptPath, "sbs.zip");
 	let libFolder = path.join(getGlobals().artemisDir,"data","missions");
-	const sbsLibPath = "D:\\Cosmos Dev\\Cosmos-1-0-1\\data\\missions\\sbs_utils"//path.join(libFolder,"__lib__",sbs_utils[0]);
+	//const sbsLibPath = "D:\\Cosmos Dev\\Cosmos-1-0-1\\data\\missions\\sbs_utils"//
+	const sbsLibPath = path.join(libFolder,"__lib__",sbs_utils[0]);
 	const o: Options = {
 		pythonPath: path.join(pyPath,"python.exe"),
 		scriptPath: scriptPath,
 		args: [sbsLibPath,sbsPath]
 	}
+	regularOptions = o;
 
 	try {
 		await PythonShell.run('mastGlobals.py', o).then((messages: any)=>{
@@ -94,11 +97,20 @@ export async function compileMission(mastFile: string, content: string, sbs_util
 		scriptPath: scriptPath,
 		args: [sbsLibPath, sbsPath, mastFile]
 	}
+	regularOptions = o;
 	//debug(o);
 	
 	//errors = await runScript(basicOptions);
 	errors = await bigFile(o, content);
 	return errors;
+}
+
+let shell: PythonShell;
+async function getTokenInfo(token: string) {
+	if (shell === undefined || shell === null) {
+		shell = new PythonShell('mastCompile.py', regularOptions);
+	}
+	shell.send(token);
 }
 
 async function runScript(o: Options): Promise<string[]> {

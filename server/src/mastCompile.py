@@ -22,21 +22,45 @@ except Exception as e:
 
 	content = sys.stdin.read().replace("\r","")
 	lines = content.split("\n")
-
+sys.path.append(sbsPath)
 sys.path.append(sbs_utilsPath)
 
 errors = None
+
 try:
-	#from sbs.sbs import *
+	from sbs_utils.mast.maststory import MastStory # type: ignore
+except Exception as e:
+	
+	sys.path.append(sbsPath)
+	sys.path.append(sbs_utilsPath)
+	from sbs import * # type: ignore
+	from sbs_utils.mast.maststory import MastStory # type: ignore
+		
+loaded = False
+try:
+	from sbs_utils.mast.mast_sbs_procedural import * # type: ignore
+	#from sbs_utils.mast.mast import Mast # type: ignore
+	loaded = True
+except:
+	exc_type, exc_value, exc_tb = sys.exc_info()
+	stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
+	print(stack_trace)
+if not loaded:
 	try:
-		from sbs_utils.mast.maststory import MastStory # type: ignore
-	except Exception as e:
+		# Works
+		from sbs_utils.mast.mast_node import MastNode, mast_node, IF_EXP_REGEX
+		from sbs_utils.mast.mast import Mast
+		from sbs_utils.mast import core_nodes
+		from sbs_utils.mast_sbs import story_nodes
+		from sbs_utils.mast_sbs.mast_sbs_procedural import * # type: ignore
+		# # type: ignore
 		
-		sys.path.append(sbsPath)
-		sys.path.append(sbs_utilsPath)
-		from sbs import * # type: ignore
-		from sbs_utils.mast.maststory import MastStory # type: ignore
-		
+
+	except:
+		exc_type, exc_value, exc_tb = sys.exc_info()
+		stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
+		print(stack_trace)
+
 	class MyMast(MastStory):
 		def __init__(self, cmds=None, is_import=False):
 			super().__init__(cmds,is_import)
@@ -96,13 +120,13 @@ try:
 	else:
 		print("No Errors")
 	
-except ModuleNotFoundError as e: 
-	print(e)
-	exc_type, exc_value, exc_tb = sys.exc_info()
-	stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
-	print(stack_trace)
-except Exception as ex:
-	print(ex)
-	exc_type, exc_value, exc_tb = sys.exc_info()
-	stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
-	print(stack_trace)
+# except ModuleNotFoundError as e: 
+# 	print(e)
+# 	exc_type, exc_value, exc_tb = sys.exc_info()
+# 	stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
+# 	print(stack_trace)
+# except Exception as ex:
+# 	print(ex)
+# 	exc_type, exc_value, exc_tb = sys.exc_info()
+# 	stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
+# 	print(stack_trace)

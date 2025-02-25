@@ -67,7 +67,7 @@ function onCompletion(_textDocumentPosition, text) {
         return ci;
     }
     // If we're defining a label, we don't want autocomplete.
-    if (iStr.trim().startsWith("--") || iStr.trim().startsWith("==")) {
+    if (iStr.trim().startsWith("--") || iStr.trim().startsWith("==") || iStr.trim().startsWith("++")) {
         return ci;
     }
     // Media labels only get the skybox names

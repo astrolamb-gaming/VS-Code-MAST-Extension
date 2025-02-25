@@ -6,13 +6,13 @@ import numbers
 
 
 sys.modules['script'] = sys.modules.get('__main__')
-# sbs_utilsPath = sys.argv[1] # Very important
-# sbsPath = sys.argv[2]
-# print(sbs_utilsPath)
+sbs_utilsPath = sys.argv[1] # Very important
+sbsPath = sys.argv[2]
+print(sbs_utilsPath)
 
 # for testing:
-sbs_utilsPath = "D:\\Cosmos Dev\\Cosmos-1-0-1\\data\missions\\__lib__\\artemis-sbs.sbs_utils.v1.0.2.01.sbslib"
-sbsPath = "C:\\Users\\matts\\.vscode\\extensions\\mast\\server\\src\\sbs.zip"
+# sbs_utilsPath = "D:\\Cosmos Dev\\Cosmos-1-0-1\\data\missions\\__lib__\\artemis-sbs.sbs_utils.v1.0.2.01.sbslib"
+# sbsPath = "C:\\Users\\matts\\.vscode\\extensions\\mast\\server\\src\\sbs.zip"
 callables = []
 modules = []
 
@@ -20,8 +20,9 @@ def compare():
 	global callables
 	global modules
 	for c in callables:
-		if c in modules:
-			print("Has the same")
+		for m in modules:
+			if c in inspect.getmembers(m,inspect.isfunction):
+				print("Has the same")
 
 def getGlobals(globals):
 	count = 0
@@ -46,9 +47,12 @@ def getGlobals(globals):
 				# 	print(stack_trace)
 				# 	continue
 
-			if ("module" in str(globals[k]) or "class" in str(globals[k])):
+			if ("module" in str(globals[k])):
 				modules.append(globals[k])
 				if str(globals[k]) == "script":
+					# Don't do anything, this is THIS script, we don't want this stuff contaminating the results
+					# But there are functions here that aren't in this script.... layout_list_box_control and others
+					# Might need to specifically exclude the functions in this file.
 					continue
 				print("Module " + k)
 				funcs = inspect.getmembers(globals[k],inspect.isfunction)
