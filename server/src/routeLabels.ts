@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import { CompletionItem, CompletionItemKind, CompletionItemLabelDetails } from 'vscode-languageserver';
 import { findSubfolderByName, getFilesInDir, getFolders } from './fileFunctions';
 import { getGlobals } from './cache';
+import { Runnable } from 'mocha';
 
 //const routeLabels: IRouteLabel[] = [];
 //const mediaLabels: IRouteLabel[] = [];
@@ -182,6 +183,88 @@ export function loadMediaLabels(textData: string = ""): IRouteLabel[] {
 	}
 	return mediaLabels;
 }
+
+// I'd love to find a way to get all these programmatically, but for now....
+export function getRouteLabelVars(route:string) {
+
+	let retVars: string[] = [];
+
+	if (route.includes("collision")) {
+		const vars = [
+			"COLLISION_SOURCE_ID",
+			"COLLISION_PARENT_ID",
+			"COLLISION_TARGET_ID",
+			"COLLISION_ORIGIN_ID",
+			"COLLISION_SELECTED_ID"
+		];
+		retVars = retVars.concat(vars);
+	}
+	if (route.includes("damage")) {
+		const vars = [
+			"DAMAGE_ORIGIN_ID",
+			"DAMAGE_PARENT_ID",
+			"DAMAGE_SELECTED_ID",
+			"DAMAGE_SOURCE_ID",
+			"DAMAGE_TARGET_ID"
+		];
+		retVars = retVars.concat(vars);
+	}
+
+
+	const consoles = [
+		"comms",
+		"science",
+		"helm",
+		"weapons",
+		"engineering",
+		"dock"
+	];
+
+	const lifeCycle = ["spawn", "destory", "kill"];
+
+	for (const con of consoles) {
+		if (route.includes(con)) {
+			const caps = con.toUpperCase();
+			const 
+			vars = [
+				caps+"_ID",
+				caps
+			];
+			if (con!=="dock") {
+				vars.push(caps+"_POINT");
+			}
+			retVars = retVars.concat(vars);
+		}
+	}
+
+	for (const life of lifeCycle) {
+		if (route.includes(life)) {
+			const caps = life.toUpperCase() + "ED";
+			const vars = [
+				caps+"_ID",
+				caps
+			];
+			retVars = retVars.concat(vars);
+		}
+	}
+
+
+	const uids = [
+		["comms", "comms_target_UID"],
+		["comms2d", "comms_2d_target_UID"],
+		["science", "science_target_UID"],
+		["weapons", "weapon_target_UID"],
+		["grid", "grid_selected_UID"],
+		["normal", "normal_target_UID"]
+	];
+	for (const arr of uids) {
+		if (route.includes(arr[0])) {
+			retVars.push(arr[1]);
+		}
+	}
+	return retVars;
+}
+
 /**
  * Parse any file containing the RouteDecoratorLabel class to get the route labels
  * TODO: Add all the provided variables

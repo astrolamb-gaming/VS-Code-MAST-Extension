@@ -5,6 +5,7 @@ exports.onCompletion = onCompletion;
 const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
 const labels_1 = require("./labels");
+const routeLabels_1 = require("./routeLabels");
 const comments_1 = require("./comments");
 const cache_1 = require("./cache");
 const path = require("path");
@@ -80,8 +81,20 @@ function onCompletion(_textDocumentPosition, text) {
     }
     // Route Label autocompletion
     if (iStr.trim().startsWith("//")) {
-        ci = cache.getRouteLabels(); //getRouteLabelAutocompletions(iStr);
-        return ci;
+        // If this is a route label, but NOT anything after it, then we only return route labels
+        if (!iStr.trim().includes(" ")) {
+            ci = cache.getRouteLabels(); //getRouteLabelAutocompletions(iStr);
+            const rlvs = (0, routeLabels_1.getRouteLabelVars)(iStr);
+            for (const s of rlvs) {
+                const c = {
+                    label: s,
+                    kind: vscode_languageserver_1.CompletionItemKind.EnumMember,
+                    labelDetails: { description: "Route-specific Variable" }
+                };
+                ci.push(c);
+            }
+            return ci;
+        }
         // TODO: Add media, map, gui/tab, and console autocompletion items
     }
     else if (iStr.trim().startsWith("@")) {
@@ -105,6 +118,9 @@ function onCompletion(_textDocumentPosition, text) {
      * //spawn
      * SPAWNED_ID
      * SPAWNED
+     *
+     *
+     *  List: https://artemis-sbs.github.io/sbs_utils/mast/routes/lifetime/
      */
     // Handle label autocompletion
     let jump = /(->|jump) *?$/;
@@ -172,7 +188,7 @@ function onCompletion(_textDocumentPosition, text) {
         }
     }
     //debug(ci.length);
-    ci = cache.getCompletions();
+    ci = ci.concat(cache.getCompletions());
     let keywords = [
         "def",
         "async",

@@ -4,7 +4,7 @@ import { getMainLabelAtPos } from './labels';
 import { labelNames } from './server';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { ClassObject, ClassTypings, getVariablesInFile, IClassObject, PyFile } from './data';
-import { getRouteLabelAutocompletions, getSkyboxCompletionItems } from './routeLabels';
+import { getRouteLabelAutocompletions, getRouteLabelVars, getSkyboxCompletionItems } from './routeLabels';
 import { isInComment, isInString, isInYaml, isTextInBracket } from './comments';
 import { getCache, getGlobals } from './cache';
 import path = require('path');
@@ -93,8 +93,20 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 
 	// Route Label autocompletion
 	if(iStr.trim().startsWith("//")) {
-		ci = cache.getRouteLabels();//getRouteLabelAutocompletions(iStr);
-		return ci;
+		// If this is a route label, but NOT anything after it, then we only return route labels
+		if (!iStr.trim().includes(" ")) {
+			ci = cache.getRouteLabels();//getRouteLabelAutocompletions(iStr);
+			const rlvs = getRouteLabelVars(iStr);
+			for (const s of rlvs) {
+				const c: CompletionItem = {
+					label: s,
+					kind: CompletionItemKind.EnumMember,
+					labelDetails: {description: "Route-specific Variable"}
+				}
+				ci.push(c);
+			}
+			return ci;
+		}
 		// TODO: Add media, map, gui/tab, and console autocompletion items
 	} else if (iStr.trim().startsWith("@")) {
 		ci = cache.getMediaLabels();
@@ -119,6 +131,9 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	 * //spawn
 	 * SPAWNED_ID
 	 * SPAWNED
+	 * 
+	 * 
+	 *  List: https://artemis-sbs.github.io/sbs_utils/mast/routes/lifetime/
 	 */
 
 	// Handle label autocompletion
@@ -198,7 +213,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		}
 	}
 	//debug(ci.length);
-	ci = cache.getCompletions();
+	ci = ci.concat(cache.getCompletions());
 	let keywords : string[] = [
 		"def",
 		"async",
