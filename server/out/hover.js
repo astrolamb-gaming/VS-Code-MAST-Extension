@@ -3,6 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.onHover = onHover;
 const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
+const comments_1 = require("./comments");
+const cache_1 = require("./cache");
 function onHover(_pos, text) {
     // Get Hover Range
     const pos = text.offsetAt(_pos.position);
@@ -22,17 +24,27 @@ function onHover(_pos, text) {
     //debug("Getting line");
     let hoveredLine = getCurrentLineFromTextDocument(_pos, text);
     // If it's a comment, we'll just ignore it.
-    const comment = hoveredLine.indexOf("#");
-    if (comment !== -1 && comment < _pos.position.character) {
+    if ((0, comments_1.isInComment)(pos)) {
+        hover.contents = "comment";
+        return hover;
+    }
+    if ((0, comments_1.isInString)(pos)) {
+        hover.contents = "string";
         return hover;
     }
     const symbol = getHoveredSymbol(hoveredLine, _pos.position.character);
-    //debug(symbol);
+    (0, console_1.debug)(symbol);
+    hover.contents = symbol;
+    if (isClassMethod(hoveredLine, symbol)) {
+        const c = getClassOfMethod(hoveredLine, symbol);
+        const classObj = (0, cache_1.getCache)(text.uri).missionClasses.find((value) => { value.name === c; });
+        const func = classObj?.methods.find((value) => { value.name === symbol; });
+        hover.contents;
+    }
+    else if (isFunction(hoveredLine, symbol)) {
+        hover.contents += "\nFunction";
+    }
     return hover;
-}
-function getEndOfSymbol(str) {
-    let ret = 0;
-    const eosList = [" ", "(", ")", ".", "\n"];
 }
 function getCurrentLineFromTextDocument(_pos, text) {
     const pos = text.offsetAt(_pos.position);
@@ -78,12 +90,13 @@ function getHoveredSymbolOld(str, pos) {
  * @param pos The position in the string where you're hovering. Get this from {@link TextDocumentPositionParams TextDocumentPositionParams}.{@link Position Position}.character
  */
 function getHoveredSymbol(str, pos) {
-    const words = /\w+/g;
+    const words = /[a-zA-Z_]\w*/g;
     let m;
     let res = "";
     let regexCounter = 0;
     while (m = words.exec(str)) {
-        const start = str.indexOf(m[0]);
+        //const start = str.indexOf(m[0]);
+        const start = m.index;
         const end = start + m[0].length;
         if (pos >= start && pos <= end) {
             res = str.substring(start, end);
@@ -94,38 +107,39 @@ function getHoveredSymbol(str, pos) {
             break;
         }
     }
-    regexCounter = 0;
-    const checkIsString = /\".+\w+.+\"/;
-    let isString = false;
-    while (m = checkIsString.exec(str)) {
-        if (m[0].indexOf(res) !== -1) {
-            isString = true;
-            break;
-        }
-        regexCounter += 1;
-        if (regexCounter > 10) {
-            break;
-        }
-    }
-    const isVariableInString = /\{.+\w+.+\}/;
-    let isVar = false;
-    if (isString) {
-        regexCounter = 0;
-        while (m = isVariableInString.exec(str)) {
-            if (m[0].indexOf(res) !== -1) {
-                isVar = true;
-                break;
-            }
-            regexCounter += 1;
-            if (regexCounter > 10) {
-                break;
-            }
-        }
-    }
-    if (isString && !isVar) {
-        return "";
-    }
     return res;
+}
+function isFunction(line, token) {
+    const start = line.indexOf(token);
+    const end = start + token.length;
+    (0, console_1.debug)(line.substring(end).trim());
+    if (line.substring(end).trim().startsWith("(")) {
+        (0, console_1.debug)("TRUE");
+        return true;
+    }
+    return false;
+}
+function isClassMethod(line, token) {
+    const start = line.indexOf(token);
+    const end = start + token.length;
+    if (isFunction(line, token)) {
+        if (line.substring(0, start).endsWith(".")) {
+            return true;
+        }
+    }
+    return false;
+}
+function getClassOfMethod(line, token) {
+    const start = line.indexOf(token);
+    const end = start + token.length;
+    line = line.substring(0, start - 1);
+    const className = /[a-zA-Z_]\w*$/m;
+    let m;
+    while (m = className.exec(line)) {
+        const c = m[0];
+        (0, console_1.debug)(c);
+        return c;
+    }
 }
 /**
  * a shared variable is shared by all tasks. i.e. global.

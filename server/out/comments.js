@@ -150,16 +150,45 @@ function getStrings(textDocument) {
     let strings = [];
     //let pattern: RegExp = //gm;
     // TODO: Get all sets of {} to see if we're in an f-string and need to exclude sections of the string
-    let strDouble = /([\"'].*?[\"'])/gm;
+    let strDouble = /(\".*?\")|('.*?')/gm;
     let strDoubleStartOnly = /(^\\s*?(\")[^\"]*?(\\n|$))/gm;
     let multiDouble = /(\^{3,}.*?\^{3,})/gm;
-    let caretDouble = /([\"']{3,}.*?[\"']{3,})/gs;
-    strings = getMatchesForRegex(strDouble, text);
-    strings = strings.concat(getMatchesForRegex(strDoubleStartOnly, text));
-    strings = strings.concat(getMatchesForRegex(multiDouble, text));
-    strings = strings.concat(getMatchesForRegex(caretDouble, text));
+    let caretDouble = /(\"{3,}.*?\"{3,})|('{3,}.*?'{3,})/gs;
+    let brackets = /{.*?}/gm;
+    let fstrings = getMatchesForRegex(brackets, text); // f-strings
+    let test = [];
+    test = getMatchesForRegex(strDouble, text);
+    test = test.concat(getMatchesForRegex(strDoubleStartOnly, text));
+    test = test.concat(getMatchesForRegex(multiDouble, text));
+    test = test.concat(getMatchesForRegex(caretDouble, text));
+    for (const s of test) {
+        const str = text.substring(s.start, s.end);
+        fstrings = getMatchesForRegex(brackets, str);
+        // If it doesn't contain any brackets, we move on.
+        if (fstrings.length === 0) {
+            strings.push(s);
+            continue;
+        }
+        // Effectively an else statement:
+        let start = s.start;
+        for (const f of fstrings) {
+            const newRange = {
+                start: start,
+                end: f.start
+            };
+            strings.push(newRange);
+            start = f.end + 1;
+        }
+        const finalRange = {
+            start: start,
+            end: s.end
+        };
+        strings.push(finalRange);
+    }
     //debug(strings);
-    stringRanges = strings;
+    // for (const r of strings) {
+    // 	debug(text.substring(r.start,r.end));
+    // }
     //debug("Strings found: " + strings.length);
     return strings;
 }
