@@ -390,9 +390,9 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 	}
 
 	const mastCompilerErrors:string[] = [];
-	compileMission(textDocument.uri, textDocument.getText(), getCache(textDocument.uri).storyJson.sbslib).then((errors)=>{
-		debug(errors);
-	});
+	// compileMission(textDocument.uri, textDocument.getText(), getCache(textDocument.uri).storyJson.sbslib).then((errors)=>{
+	// 	debug(errors);
+	// });
 
 	return diagnostics;
 }

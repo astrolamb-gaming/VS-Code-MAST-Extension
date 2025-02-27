@@ -39,7 +39,7 @@ async function getGlobalFunctions(sbs_utils) {
     try {
         await python_shell_1.PythonShell.run('mastGlobals.py', o).then((messages) => {
             for (let m of messages) {
-                (0, console_1.debug)(m);
+                //debug(m);
             }
             console.log('finished');
         });
@@ -95,7 +95,8 @@ async function compileMission(mastFile, content, sbs_utils) {
     regularOptions = o;
     //debug(o);
     //errors = await runScript(basicOptions);
-    errors = await bigFile(o, content);
+    //errors = await bigFile(o, content);
+    errors = [];
     return errors;
 }
 let shell;
@@ -140,7 +141,7 @@ async function bigFile(options, content) {
         }
     });
     // end the input stream and allow the process to exit
-    await myscript.end(function (err, code, signal) {
+    await myscript.end(function (err) {
         compiled = true;
         if (err)
             throw err;

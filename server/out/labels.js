@@ -8,6 +8,7 @@ const vscode_languageserver_1 = require("vscode-languageserver");
 const vscode_languageserver_textdocument_1 = require("vscode-languageserver-textdocument");
 const errorChecking_1 = require("./errorChecking");
 const server_1 = require("./server");
+const console_1 = require("console");
 const cache_1 = require("./cache");
 /**
  * Get valid labels, but only main or sublabels, not both.
@@ -15,32 +16,43 @@ const cache_1 = require("./cache");
  * @param main search for main labels (==main_label==) if true, or sublabels (--sublabel--) if false
  * @returns
  */
-function parseLabels(text, src, main = true) {
+function parseLabels(text, src, type = "main") {
     let td = vscode_languageserver_textdocument_1.TextDocument.create(src, "mast", 0, text);
     // let src = textDocument.uri;
     // if (src.startsWith("file")) {
     // 	src = URI.parse(src).fsPath;
     // }
+    const routeLabel = /^(\s*)(\/{2,})(\w+)(\/\w+)*/gm;
+    const mainLabel = /^(\s*)(={2,}\s*[ \t]*)(\w+)([ \t]*(={2,})?)/gm;
+    const combined = /^(\s*)(((\/{2,})(\w+)(\/\w+)*)|((={2,}\s*[ \t]*)(\w+)([ \t]*(={2,})?)))/gm;
     let definedLabel;
-    if (main) {
-        definedLabel = /^(\s*)(={2,}\s*[ \t]*)(\w+)([ \t]*(={2,})?)/gm;
+    if (type === "main") {
+        definedLabel = combined;
+        //definedLabel = /^(\s*)(={2,}\s*[ \t]*)(\w+)([ \t]*(={2,})?)/gm
+    }
+    else if (type === "inline") {
+        definedLabel = /^(\s*)((-|\+){2,}\s*[ \t]*)(\w+)([ \t]*((-|\+){2,})?)/gm;
     }
     else {
-        definedLabel = /^(\s*)(-{2,}\s*[ \t]*)(\w+)([ \t]*(-{2,})?)/gm;
+        (0, console_1.debug)("Label type not valid!");
+        return [];
     }
     let m;
     //const text = textDocument.getText();
     const labels = [];
     //debug("Iterating over defined labels");
     while (m = definedLabel.exec(text)) {
-        const str = m[0].replace(/(=|-)/g, "").trim();
-        if (main) {
+        const str = m[0].replace(/(=|-|\+)/g, "").trim();
+        if (text.match(routeLabel)) {
+            type = "route";
+        }
+        if (type === "main") {
             const lbl = m[3];
             //debug(m[0]);
             //debug("Main label: " + lbl);
         }
         const li = {
-            main: main,
+            type: type,
             name: str,
             start: m.index,
             end: 0,
@@ -67,8 +79,8 @@ function parseLabels(text, src, main = true) {
     // }
     // Add END as a main label, last so we don't need to mess with it in earlier iterations.
     // Also add "main" as a main label, since it can happen that sublabels are defined before any user-defined main labels.
-    if (main) {
-        const endLabel = { main: true, name: "END", start: text.length - 1, end: text.length, length: 3, subLabels: [], srcFile: src };
+    if (type === "main") {
+        const endLabel = { type: "main", name: "END", start: text.length - 1, end: text.length, length: 3, subLabels: [], srcFile: src };
         labels.push(endLabel);
         let end = text.length;
         for (const i in labels) {
@@ -76,15 +88,18 @@ function parseLabels(text, src, main = true) {
                 end = labels[i].start - 1;
             }
         }
-        const mainLabel = { main: true, name: "main", start: 0, end: end, length: 4, subLabels: [], srcFile: src };
+        const mainLabel = { type: "main", name: "main", start: 0, end: end, length: 4, subLabels: [], srcFile: src };
         labels.push(mainLabel);
     }
     return labels;
 }
 function getLabelsInFile(text, src) {
-    const mainLabels = parseLabels(text, src, true);
+    let mainLabels = parseLabels(text, src, "main");
     //debug(mainLabels);
-    const subLabels = parseLabels(text, src, false);
+    const subLabels = parseLabels(text, src, "inline");
+    //const routeLabels : LabelInfo[] = parseLabels(text, src, "route");
+    //debug(src);
+    //debug(routeLabels);
     // Add child labels to their parent
     for (const i in mainLabels) {
         const ml = mainLabels[i];
@@ -95,6 +110,7 @@ function getLabelsInFile(text, src) {
             }
         }
     }
+    //mainLabels = mainLabels.concat(routeLabels);
     return mainLabels;
 }
 function checkForDuplicateLabels(t, main, sub) {
@@ -121,7 +137,7 @@ function checkForDuplicateLabels(t, main, sub) {
 function checkLabels(textDocument) {
     const text = textDocument.getText();
     let diagnostics = [];
-    const calledLabel = /(^ *?(->|jump) *?\w+)/gm;
+    const calledLabel = /(^[ \t]*?(->|jump)[ \t]*?\w+)/gm;
     let m;
     const mainLabels = getLabelsInFile(text, textDocument.uri);
     ///parseLabels(textDocument.getText(),textDocument.uri, true);
@@ -284,7 +300,7 @@ function findBadLabels(t) {
             diagnostics.push(d);
         }
         // Await Inline Labels ignore this error, but other labels should NOT be indented.
-        tr = whiteSpaceWarning.test(m[0]) && !awaitInlineLabel.test(lbl);
+        tr = whiteSpaceWarning.test(m[0]) && !awaitInlineLabel.test(lbl) && !format.test(lbl);
         if (tr) {
             //debug("WARNING: Best practice to start the line with label declaration");
             const d = {
@@ -377,12 +393,22 @@ function findBadLabels(t) {
     }
     return diagnostics;
 }
-function getMainLabelAtPos(pos, labels) {
+function getMainLabelAtPos(pos, labels = []) {
+    if (labels.length === 0) {
+        // TODO: labelNames is a global variable. Should change?
+        labels = server_1.labelNames;
+    }
+    // debug(labels)
+    // debug(pos);
     let closestLabel = labels[0];
     for (const i in labels) {
-        if (labels[i].start < pos && labels[i].end > pos) {
-            closestLabel = labels[i];
-            return closestLabel;
+        // Could be route or main label
+        //debug(labels[i]);
+        if (labels[i].type !== "inline") {
+            if (labels[i].start <= pos && labels[i].end >= pos) {
+                closestLabel = labels[i];
+                return closestLabel;
+            }
         }
     }
     return closestLabel;

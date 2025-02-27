@@ -1,7 +1,7 @@
 import { Diagnostic, DiagnosticSeverity, integer } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { relatedMessage } from './errorChecking';
-import { updateLabelNames } from "./server";
+import { labelNames, updateLabelNames } from "./server";
 import { myDebug } from './server';
 import { debug } from 'console';
 import { URI } from 'vscode-uri';
@@ -10,7 +10,7 @@ import { getCache } from './cache';
 
 
 export interface LabelInfo {
-	main: boolean,
+	type: string,
 	name: string,
 	start: integer,
 	end: integer,
@@ -25,17 +25,25 @@ export interface LabelInfo {
  * @param main search for main labels (==main_label==) if true, or sublabels (--sublabel--) if false
  * @returns 
  */
-export function parseLabels(text: string, src: string, main: boolean = true): LabelInfo[] {
+export function parseLabels(text: string, src: string, type: string = "main"): LabelInfo[] {
 	let td: TextDocument = TextDocument.create(src, "mast", 0, text);
 	// let src = textDocument.uri;
 	// if (src.startsWith("file")) {
 	// 	src = URI.parse(src).fsPath;
 	// }
+	const routeLabel: RegExp = /^(\s*)(\/{2,})(\w+)(\/\w+)*/gm;
+	const mainLabel: RegExp = /^(\s*)(={2,}\s*[ \t]*)(\w+)([ \t]*(={2,})?)/gm;
+	const combined: RegExp = /^(\s*)(((\/{2,})(\w+)(\/\w+)*)|((={2,}\s*[ \t]*)(\w+)([ \t]*(={2,})?)))/gm;
+
 	let definedLabel : RegExp;
-	if (main) {
-		definedLabel = /^(\s*)(={2,}\s*[ \t]*)(\w+)([ \t]*(={2,})?)/gm
+	if (type === "main") {
+		definedLabel = combined;
+		//definedLabel = /^(\s*)(={2,}\s*[ \t]*)(\w+)([ \t]*(={2,})?)/gm
+	} else if (type === "inline") {
+		definedLabel = /^(\s*)((-|\+){2,}\s*[ \t]*)(\w+)([ \t]*((-|\+){2,})?)/gm
 	} else {
-		definedLabel = /^(\s*)(-{2,}\s*[ \t]*)(\w+)([ \t]*(-{2,})?)/gm
+		debug("Label type not valid!");
+		return [];
 	}
 	let m: RegExpExecArray | null;
 	//const text = textDocument.getText();
@@ -44,14 +52,18 @@ export function parseLabels(text: string, src: string, main: boolean = true): La
 	//debug("Iterating over defined labels");
 	
 	while (m = definedLabel.exec(text)) {
-		const str = m[0].replace(/(=|-)/g,"").trim();
-		if (main) {
+		const str = m[0].replace(/(=|-|\+)/g,"").trim();
+		if (text.match(routeLabel)) {
+			type = "route";
+		}
+		if (type === "main") {
 			const lbl = m[3];
 			//debug(m[0]);
 			//debug("Main label: " + lbl);
 		}
+		
 		const li: LabelInfo = {
-			main: main,
+			type: type,
 			name: str,
 			start: m.index,
 			end: 0,
@@ -80,8 +92,8 @@ export function parseLabels(text: string, src: string, main: boolean = true): La
 
 	// Add END as a main label, last so we don't need to mess with it in earlier iterations.
 	// Also add "main" as a main label, since it can happen that sublabels are defined before any user-defined main labels.
-	if (main) {
-		const endLabel: LabelInfo = { main: true, name: "END", start: text.length-1,end: text.length, length: 3, subLabels: [], srcFile: src }
+	if (type === "main") {
+		const endLabel: LabelInfo = { type: "main", name: "END", start: text.length-1,end: text.length, length: 3, subLabels: [], srcFile: src }
 		labels.push(endLabel);
 		let end:integer = text.length;
 		for (const i in labels) {
@@ -89,16 +101,19 @@ export function parseLabels(text: string, src: string, main: boolean = true): La
 				end = labels[i].start-1;
 			}
 		}
-		const mainLabel: LabelInfo = { main: true, name: "main", start: 0, end: end, length: 4, subLabels: [], srcFile: src }
+		const mainLabel: LabelInfo = { type: "main", name: "main", start: 0, end: end, length: 4, subLabels: [], srcFile: src }
 		labels.push(mainLabel);
 	}
 	return labels
 }
 
 export function getLabelsInFile(text: string, src: string): LabelInfo[] {
-	const mainLabels : LabelInfo[] = parseLabels(text, src, true);
+	let mainLabels : LabelInfo[] = parseLabels(text, src, "main");
 	//debug(mainLabels);
-	const subLabels : LabelInfo[] = parseLabels(text, src, false);
+	const subLabels : LabelInfo[] = parseLabels(text, src, "inline");
+	//const routeLabels : LabelInfo[] = parseLabels(text, src, "route");
+	//debug(src);
+	//debug(routeLabels);
 	// Add child labels to their parent
 	for (const i in mainLabels) {
 		const ml = mainLabels[i];
@@ -109,6 +124,7 @@ export function getLabelsInFile(text: string, src: string): LabelInfo[] {
 			}
 		}
 	}
+	//mainLabels = mainLabels.concat(routeLabels);
 	return mainLabels;
 }
 
@@ -138,7 +154,7 @@ function checkForDuplicateLabels(t: TextDocument, main:LabelInfo[],sub:LabelInfo
 export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 	const text = textDocument.getText();
 	let diagnostics : Diagnostic[] = [];
-	const calledLabel : RegExp = /(^ *?(->|jump) *?\w+)/gm;
+	const calledLabel : RegExp = /(^[ \t]*?(->|jump)[ \t]*?\w+)/gm;
 	let m: RegExpExecArray | null;
 	const mainLabels : LabelInfo[] = getLabelsInFile(text,textDocument.uri);
 	///parseLabels(textDocument.getText(),textDocument.uri, true);
@@ -271,6 +287,7 @@ function findBadLabels(t: TextDocument) : Diagnostic[] {
 	// Regex for a good await inline label
 	const format = /=\$\w+/;
 	const awaitInlineLabel: RegExp = /=\w+:/;
+	
 	let m: RegExpExecArray | null;
 	// Iterate over regular labels
 	while (m = any.exec(text)) {
@@ -312,7 +329,7 @@ function findBadLabels(t: TextDocument) : Diagnostic[] {
 		}
 
 		// Await Inline Labels ignore this error, but other labels should NOT be indented.
-		tr = whiteSpaceWarning.test(m[0]) && !awaitInlineLabel.test(lbl);
+		tr = whiteSpaceWarning.test(m[0]) && !awaitInlineLabel.test(lbl) && !format.test(lbl);
 		if (tr) {
 			//debug("WARNING: Best practice to start the line with label declaration");
 			const d: Diagnostic = {
@@ -412,12 +429,22 @@ function findBadLabels(t: TextDocument) : Diagnostic[] {
 	return diagnostics;
 }
 
-export function getMainLabelAtPos(pos: integer, labels: LabelInfo[]): LabelInfo {
+export function getMainLabelAtPos(pos: integer, labels: LabelInfo[] = []): LabelInfo {
+	if (labels.length === 0) {
+		// TODO: labelNames is a global variable. Should change?
+		labels = labelNames;
+	}
+	// debug(labels)
+	// debug(pos);
 	let closestLabel = labels[0];
 	for (const i in labels) {
-		if (labels[i].start < pos && labels[i].end > pos) {
-			closestLabel = labels[i];
-			return closestLabel
+		// Could be route or main label
+		//debug(labels[i]);
+		if (labels[i].type !== "inline") {
+			if (labels[i].start <= pos && labels[i].end >= pos) {
+				closestLabel = labels[i];
+				return closestLabel
+			}
 		}
 	}
 	return closestLabel;

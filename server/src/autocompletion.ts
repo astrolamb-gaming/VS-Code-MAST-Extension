@@ -1,7 +1,7 @@
 import { debug } from 'console';
 import { CompletionItem, CompletionItemKind, integer, MarkupContent, TextDocumentPositionParams } from 'vscode-languageserver';
-import { getMainLabelAtPos } from './labels';
-import { labelNames } from './server';
+import { checkLabels, getMainLabelAtPos } from './labels';
+import { labelNames, updateLabelNames } from './server';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { ClassObject, ClassTypings, getVariablesInFile, IClassObject, PyFile } from './data';
 import { getRouteLabelAutocompletions, getRouteLabelVars, getSkyboxCompletionItems } from './routeLabels';
@@ -30,7 +30,13 @@ export function prepCompletions(files: PyFile[]) {
 	// TODO: Send message to user if classes or defaultFunctionCompletionItems have a length of 0
 }
 
+let currentLine = 0;
+
 export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, text: TextDocument): CompletionItem[] {
+	if (currentLine != _textDocumentPosition.position.line) {
+		currentLine = _textDocumentPosition.position.line;
+		// Here we can do any logic that doesn't need to be done every character change
+	}
 	let ci : CompletionItem[] = [];
 	const t = text?.getText();
 	if (text === undefined) {
@@ -96,7 +102,10 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		// If this is a route label, but NOT anything after it, then we only return route labels
 		if (!iStr.trim().includes(" ")) {
 			ci = cache.getRouteLabels();//getRouteLabelAutocompletions(iStr);
-			const rlvs = getRouteLabelVars(iStr);
+			return ci;
+		} else {
+			const route = iStr.trim().substring(0,iStr.trim().indexOf(" "));
+			const rlvs = getRouteLabelVars(route);
 			for (const s of rlvs) {
 				const c: CompletionItem = {
 					label: s,
@@ -105,7 +114,6 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				}
 				ci.push(c);
 			}
-			return ci;
 		}
 		// TODO: Add media, map, gui/tab, and console autocompletion items
 	} else if (iStr.trim().startsWith("@")) {
@@ -235,6 +243,21 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		}
 		ci.push(i);
 	}
+	const lbl = getMainLabelAtPos(pos);
+	debug("Main label at pos: ");
+	debug(lbl)
+	if (lbl.type === "route") {
+		const vars = getRouteLabelVars(lbl.name);
+			for (const s of vars) {
+				const c: CompletionItem = {
+					label: s,
+					kind: CompletionItemKind.EnumMember,
+					labelDetails: {description: "Route-specific Variable"}
+				}
+				ci.push(c);
+			}
+	}
+
 	//debug(ci.length);
 	//ci = ci.concat(defaultFunctionCompletionItems);
 	// TODO: Account for text that's already present?? I don't think that's necessary

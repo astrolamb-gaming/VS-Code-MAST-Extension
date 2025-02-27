@@ -27,7 +27,12 @@ function prepCompletions(files) {
     //debug(defaultFunctionCompletionItems);
     // TODO: Send message to user if classes or defaultFunctionCompletionItems have a length of 0
 }
+let currentLine = 0;
 function onCompletion(_textDocumentPosition, text) {
+    if (currentLine != _textDocumentPosition.position.line) {
+        currentLine = _textDocumentPosition.position.line;
+        // Here we can do any logic that doesn't need to be done every character change
+    }
     let ci = [];
     const t = text?.getText();
     if (text === undefined) {
@@ -84,7 +89,11 @@ function onCompletion(_textDocumentPosition, text) {
         // If this is a route label, but NOT anything after it, then we only return route labels
         if (!iStr.trim().includes(" ")) {
             ci = cache.getRouteLabels(); //getRouteLabelAutocompletions(iStr);
-            const rlvs = (0, routeLabels_1.getRouteLabelVars)(iStr);
+            return ci;
+        }
+        else {
+            const route = iStr.trim().substring(0, iStr.trim().indexOf(" "));
+            const rlvs = (0, routeLabels_1.getRouteLabelVars)(route);
             for (const s of rlvs) {
                 const c = {
                     label: s,
@@ -93,7 +102,6 @@ function onCompletion(_textDocumentPosition, text) {
                 };
                 ci.push(c);
             }
-            return ci;
         }
         // TODO: Add media, map, gui/tab, and console autocompletion items
     }
@@ -209,6 +217,20 @@ function onCompletion(_textDocumentPosition, text) {
             kind: vscode_languageserver_1.CompletionItemKind.Keyword
         };
         ci.push(i);
+    }
+    const lbl = (0, labels_1.getMainLabelAtPos)(pos);
+    (0, console_1.debug)("Main label at pos: ");
+    (0, console_1.debug)(lbl);
+    if (lbl.type === "route") {
+        const vars = (0, routeLabels_1.getRouteLabelVars)(lbl.name);
+        for (const s of vars) {
+            const c = {
+                label: s,
+                kind: vscode_languageserver_1.CompletionItemKind.EnumMember,
+                labelDetails: { description: "Route-specific Variable" }
+            };
+            ci.push(c);
+        }
     }
     //debug(ci.length);
     //ci = ci.concat(defaultFunctionCompletionItems);

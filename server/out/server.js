@@ -290,9 +290,9 @@ async function validateTextDocument(textDocument) {
         (0, console_1.debug)("Couldn't get labels?");
     }
     const mastCompilerErrors = [];
-    (0, python_1.compileMission)(textDocument.uri, textDocument.getText(), (0, cache_1.getCache)(textDocument.uri).storyJson.sbslib).then((errors) => {
-        (0, console_1.debug)(errors);
-    });
+    // compileMission(textDocument.uri, textDocument.getText(), getCache(textDocument.uri).storyJson.sbslib).then((errors)=>{
+    // 	debug(errors);
+    // });
     return diagnostics;
 }
 connection.onDidChangeWatchedFiles(_change => {

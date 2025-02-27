@@ -137,9 +137,9 @@
               "name": "label.main.designator.mast"
             }
           }
-          },
-          {
-          "match": "(?m)^(\\s*)(-{2,}\\s*[ \\t]*)(\\w+)([ \\t]*(-{2,})?)",
+        },
+        {
+          "match": "(?m)^(\\s*)((-|\\+){2,}\\s*[ \\t]*)(\\w+)([ \\t]*((-|\\+){2,})?)",
           "captures": {
             "2": {
               "name": "label.sub.designator.mast"
@@ -151,40 +151,40 @@
               "name": "label.sub.designator.mast"
             }
           }
-          },
-          {
-            "match": "=\\w+:",
-            "name": "label.inline.await.mast"
-          },
-          {
-            "match": "(jump|->)(\\s*)(\\w+)",
-            "captures": {
-              "1": {
-                "name": "label.jump.keyword.mast"
-              },
-              "3": {
-                "name": "label.jump.to.mast"
-              }
-              
+        },
+        {
+          "match": "=\\w+:",
+          "name": "label.inline.await.mast"
+        },
+        {
+          "match": "(jump|->)(\\s*)(\\w+)",
+          "captures": {
+            "1": {
+              "name": "label.jump.keyword.mast"
+            },
+            "3": {
+              "name": "label.jump.to.mast"
             }
-          },
-          {
-            "name": "label.route.mast",
-            "match": "(\\/{2,})(\\w+)(\\/\\w+)*",
-            "captures": {
-              "2": {
-                "name": "label.route.primary.mast"
-              },
-              "3": {
-                "name": "label.route.secondary.mast"
-              }
-              
-            }
-          },
-          {
-            "name": "label.media.mast",
-            "match": "@[\\w-]+(/[\\w-]+)*"
+            
           }
+        },
+        {
+          "name": "label.route.mast",
+          "match": "(\\/{2,})(\\w+)(\\/\\w+)*",
+          "captures": {
+            "2": {
+              "name": "label.route.primary.mast"
+            },
+            "3": {
+              "name": "label.route.secondary.mast"
+            }
+            
+          }
+        },
+        {
+          "name": "label.media.mast",
+          "match": "@[\\w-]+(/[\\w-]+)*"
+        }
       ]
     },
     "statement-keyword": {
@@ -5222,15 +5222,14 @@
     },
     "key-value-pair":{
       "name":"meta.injection.yaml.key-value-pair",
-      "match":"(\\w+):",
+      "match":"(?m)^[ \\t]*(\\w+):",
       "captures":{
-        "0":{"name":"meta.injection.yaml.key"},
-        "2":{"name":"meta.injection.yaml.value"}
+        "0":{"name":"meta.injection.yaml.key"}
       }
     },
     "yaml-value" :{
       "name": "meta.injection.yaml.value",
-      "match": "(?<=:\\s*).*$"
+      "match": "(?m)(?<=:)[ \\t]*.*?$"
     },
     "yaml-string":{
       "name":"meta.injection.yaml.value.string",
@@ -5240,7 +5239,7 @@
     },
     "yaml": {
       "name": "meta.injection.yaml",
-      "begin": "``` yaml\\s*($|\\n)",
+      "begin": "```[ \\t]*yaml\\s*$",
       "end": "```",
       "patterns": [
         {"include":"#key-value-pair"},

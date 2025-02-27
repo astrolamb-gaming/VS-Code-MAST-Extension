@@ -4,6 +4,7 @@ import { debug } from 'console';
 import path = require('path');
 import * as fs from 'fs';
 import { getCache, getGlobals } from './cache';
+import { integer } from 'vscode-languageserver';
 
 let pyPath = "";
 let scriptPath = "";
@@ -38,7 +39,7 @@ export async function getGlobalFunctions(sbs_utils: string[]): Promise<string[]>
 	try {
 		await PythonShell.run('mastGlobals.py', o).then((messages: any)=>{
 			for (let m of messages) {
-				debug(m);
+				//debug(m);
 			}
 			console.log('finished');
 		});
@@ -101,7 +102,8 @@ export async function compileMission(mastFile: string, content: string, sbs_util
 	//debug(o);
 	
 	//errors = await runScript(basicOptions);
-	errors = await bigFile(o, content);
+	//errors = await bigFile(o, content);
+	errors = [];
 	return errors;
 }
 
@@ -146,7 +148,7 @@ async function bigFile(options: Options, content: string): Promise<string[]> {
 
 	myscript.send(content);
 
-	myscript.on('message', (message) => {
+	myscript.on('message', (message:string) => {
 
 		//debug(message);
 		if (message !== "[]") { // if there's errors, parse them
@@ -158,7 +160,7 @@ async function bigFile(options: Options, content: string): Promise<string[]> {
 	});
 
 	// end the input stream and allow the process to exit
-	await myscript.end(function (err,code,signal) {
+	await myscript.end(function (err:Error) {
 		compiled = true
 		if (err) throw err;
 		// console.log('The exit code was: ' + code);
