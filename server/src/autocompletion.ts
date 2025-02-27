@@ -9,6 +9,7 @@ import { isInComment, isInString, isInYaml, isTextInBracket } from './comments';
 import { getCache, getGlobals } from './cache';
 import path = require('path');
 import { fixFileName } from './fileFunctions';
+import { getVariableNamesInDoc, variables } from './tokens';
 
 let classes: IClassObject[] = [];
 let defaultFunctionCompletionItems: CompletionItem[] = [];
@@ -36,6 +37,8 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	if (currentLine != _textDocumentPosition.position.line) {
 		currentLine = _textDocumentPosition.position.line;
 		// Here we can do any logic that doesn't need to be done every character change
+		debug("Updating variables list")
+		getVariableNamesInDoc(text);
 	}
 	let ci : CompletionItem[] = [];
 	const t = text?.getText();
@@ -85,6 +88,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	
 
 	// If we're defining a label, we don't want autocomplete.
+	// TODO: ++ labels should have specific names
 	if (iStr.trim().startsWith("--") || iStr.trim().startsWith("==") || iStr.trim().startsWith("++")) {
 		return ci;
 	}
@@ -121,28 +125,6 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		return ci;
 	}
 	
-	
-	// TODO: Add variables provided by routes to autocompletion
-	/**
-	 * //science
-	 * SCIENCE_ORIGIN_ID - The engine ID of the player ship doing the scan
-	 * SCIENCE_ORIGIN - The python Agent of the player ship doing the scan
-	 * SCIENCE_SELECTED_ID - The engine ID of the Agent being scanned
-	 * SCIENCE_SELECTED - The python Agent of being scanned
-	 * 
-	 * //comms
-	 * COMMS_ORIGIN_ID - The engine ID of the player ship for the comms console
-	 * COMMS_ORIGIN - The python Agent of the player ship for the comms console
-	 * COMMS_SELECTED_ID - The engine ID of the Agent being communicated with
-	 * COMMS_SELECTED - The python Agent of being communicated with
-	 * 
-	 * //spawn
-	 * SPAWNED_ID
-	 * SPAWNED
-	 * 
-	 * 
-	 *  List: https://artemis-sbs.github.io/sbs_utils/mast/routes/lifetime/
-	 */
 
 	// Handle label autocompletion
 	let jump: RegExp = /(->|jump) *?$/;
@@ -243,20 +225,27 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		}
 		ci.push(i);
 	}
+
+	// Add Route-specific variables, e.g. COLLISION_ID or SCIENCE_TARGET
 	const lbl = getMainLabelAtPos(pos);
 	debug("Main label at pos: ");
 	debug(lbl)
 	if (lbl.type === "route") {
 		const vars = getRouteLabelVars(lbl.name);
-			for (const s of vars) {
-				const c: CompletionItem = {
-					label: s,
-					kind: CompletionItemKind.EnumMember,
-					labelDetails: {description: "Route-specific Variable"}
-				}
-				ci.push(c);
+		for (const s of vars) {
+			const c: CompletionItem = {
+				label: s,
+				kind: CompletionItemKind.EnumMember,
+				labelDetails: {description: "Route-specific Variable"}
 			}
+			ci.push(c);
+		}
 	}
+
+	// Add variable names to autocomplete list
+	// TODO: Add variables from other files in scope?
+	debug(variables)
+	ci = ci.concat(variables);
 
 	//debug(ci.length);
 	//ci = ci.concat(defaultFunctionCompletionItems);

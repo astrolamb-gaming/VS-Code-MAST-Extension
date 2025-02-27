@@ -24,6 +24,7 @@ const comments_1 = require("./comments");
 const fs = require("fs");
 const cache_1 = require("./cache");
 const python_1 = require("./python");
+const tokens_1 = require("./tokens");
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 const connection = (0, node_1.createConnection)(node_1.ProposedFeatures.all);
@@ -211,6 +212,7 @@ connection.languages.diagnostics.on(async (params) => {
     if (document !== undefined) {
         (0, console_1.debug)("languages.diagnostics.on");
         (0, console_1.debug)(document.uri);
+        (0, tokens_1.getVariableNamesInDoc)(document);
         return {
             kind: node_1.DocumentDiagnosticReportKind.Full,
             items: await validateTextDocument(document)

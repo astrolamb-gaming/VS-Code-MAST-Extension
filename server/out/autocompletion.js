@@ -10,6 +10,7 @@ const comments_1 = require("./comments");
 const cache_1 = require("./cache");
 const path = require("path");
 const fileFunctions_1 = require("./fileFunctions");
+const tokens_1 = require("./tokens");
 let classes = [];
 let defaultFunctionCompletionItems = [];
 /**
@@ -32,6 +33,8 @@ function onCompletion(_textDocumentPosition, text) {
     if (currentLine != _textDocumentPosition.position.line) {
         currentLine = _textDocumentPosition.position.line;
         // Here we can do any logic that doesn't need to be done every character change
+        (0, console_1.debug)("Updating variables list");
+        (0, tokens_1.getVariableNamesInDoc)(text);
     }
     let ci = [];
     const t = text?.getText();
@@ -73,6 +76,7 @@ function onCompletion(_textDocumentPosition, text) {
         return ci;
     }
     // If we're defining a label, we don't want autocomplete.
+    // TODO: ++ labels should have specific names
     if (iStr.trim().startsWith("--") || iStr.trim().startsWith("==") || iStr.trim().startsWith("++")) {
         return ci;
     }
@@ -109,27 +113,6 @@ function onCompletion(_textDocumentPosition, text) {
         ci = cache.getMediaLabels();
         return ci;
     }
-    // TODO: Add variables provided by routes to autocompletion
-    /**
-     * //science
-     * SCIENCE_ORIGIN_ID - The engine ID of the player ship doing the scan
-     * SCIENCE_ORIGIN - The python Agent of the player ship doing the scan
-     * SCIENCE_SELECTED_ID - The engine ID of the Agent being scanned
-     * SCIENCE_SELECTED - The python Agent of being scanned
-     *
-     * //comms
-     * COMMS_ORIGIN_ID - The engine ID of the player ship for the comms console
-     * COMMS_ORIGIN - The python Agent of the player ship for the comms console
-     * COMMS_SELECTED_ID - The engine ID of the Agent being communicated with
-     * COMMS_SELECTED - The python Agent of being communicated with
-     *
-     * //spawn
-     * SPAWNED_ID
-     * SPAWNED
-     *
-     *
-     *  List: https://artemis-sbs.github.io/sbs_utils/mast/routes/lifetime/
-     */
     // Handle label autocompletion
     let jump = /(->|jump) *?$/;
     if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (")) {
@@ -218,6 +201,7 @@ function onCompletion(_textDocumentPosition, text) {
         };
         ci.push(i);
     }
+    // Add Route-specific variables, e.g. COLLISION_ID or SCIENCE_TARGET
     const lbl = (0, labels_1.getMainLabelAtPos)(pos);
     (0, console_1.debug)("Main label at pos: ");
     (0, console_1.debug)(lbl);
@@ -232,6 +216,10 @@ function onCompletion(_textDocumentPosition, text) {
             ci.push(c);
         }
     }
+    // Add variable names to autocomplete list
+    // TODO: Add variables from other files in scope?
+    (0, console_1.debug)(tokens_1.variables);
+    ci = ci.concat(tokens_1.variables);
     //debug(ci.length);
     //ci = ci.concat(defaultFunctionCompletionItems);
     // TODO: Account for text that's already present?? I don't think that's necessary

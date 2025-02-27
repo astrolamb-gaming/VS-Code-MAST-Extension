@@ -51,6 +51,7 @@ import fs = require("fs");
 import { getArtemisDirFromChild, getFileContents, getParentFolder, readAllFilesIn } from './fileFunctions';
 import { getCache, loadCache } from './cache';
 import { compileMission, getGlobalFunctions } from './python';
+import { getVariableNamesInDoc } from './tokens';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -283,6 +284,7 @@ connection.languages.diagnostics.on(async (params) => {
 	if (document !== undefined) {
 		debug("languages.diagnostics.on");
 		debug(document.uri);
+		getVariableNamesInDoc(document);
 		return {
 			kind: DocumentDiagnosticReportKind.Full,
 			items: await validateTextDocument(document)
