@@ -317,8 +317,6 @@ documents.onDidChangeContent(change => {
 	}
 });
 
-connection.on
-
 export interface ErrorInstance {
 	/**
 	 * A regular expression of the diagnostic

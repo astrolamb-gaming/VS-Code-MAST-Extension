@@ -245,7 +245,6 @@ documents.onDidChangeContent(change => {
         console.error(e);
     }
 });
-connection.on;
 async function validateTextDocument(textDocument) {
     //debug("Validating document");
     // In this simple example we get the settings for every validate run.
