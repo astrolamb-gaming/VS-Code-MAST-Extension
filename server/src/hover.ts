@@ -8,19 +8,15 @@ import { IClassObject } from './data';
 
 export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : Hover {
 
+	const docPos = text.offsetAt(_pos.position);
+
 	// Get Hover Range
 	const pos : integer = text.offsetAt(_pos.position);
 	const startOfLine : integer = pos - _pos.position.character;
 	const after: string = text.getText().substring(startOfLine);
 	
 
-	let str: MarkupContent = {
-		kind: 'plaintext', // 'markdown' or 'plaintext'
-		value: ''
-	}
-	const hover: Hover = {
-		contents: str
-	}
+	
 	// const range: Range = {
 	// 	start: t.positionAt(m.index),
 	// 	end: t.positionAt(m.index + m[0].length)
@@ -29,24 +25,31 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 	let hoveredLine = getCurrentLineFromTextDocument(_pos, text);
 	// If it's a comment, we'll just ignore it.
 	if (isInComment(pos)) {
-		hover.contents = "comment"
-		return hover;
+		return {contents: "comment"};
 	}
 	if (isInString(pos)) {
-		hover.contents = "string";
-		return hover;
+		return {contents: "string"};
 	}
 	const symbol = getHoveredSymbol(hoveredLine, _pos.position.character);
 	debug(symbol);
-	hover.contents = symbol;
+	//hover.contents = symbol;
+	let hoverText = symbol;
 	if (isClassMethod(hoveredLine, symbol)) {
 		const c = getClassOfMethod(hoveredLine,symbol);
 		const classObj = getCache(text.uri).missionClasses.find((value)=>{value.name===c});
 		const func = classObj?.methods.find((value)=>{value.name===symbol});
 		
-		hover.contents
+		hoverText = ""
 	} else if (isFunction(hoveredLine,symbol)) {
-		hover.contents += "\nFunction"
+		hoverText += "\nFunction"
+	}
+
+	let str: MarkupContent = {
+		kind: 'plaintext', // 'markdown' or 'plaintext'
+		value: ''
+	}
+	const hover: Hover = {
+		contents: str
 	}
 
 	return hover;
@@ -134,7 +137,8 @@ function isClassMethod(line:string,token:string) {
 	const start = line.indexOf(token);
 	const end = start + token.length;
 	if (isFunction(line,token)) {
-		if (line.substring(0,start).endsWith(".")) {
+		debug(line.substring(0,start));
+		if (line.substring(0,start).trim().endsWith(".")) {
 			return true;
 		}
 	}

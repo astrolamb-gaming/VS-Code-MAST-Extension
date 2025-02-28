@@ -229,6 +229,12 @@ connection.languages.diagnostics.on(async (params) => {
 });
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
+// 
+//
+/**
+ * {@link TextDocument TextDocument}
+ * {@link TextDocumentChangeEvent TextDocumentChangeEvent}
+ */
 documents.onDidChangeContent(change => {
     try {
         (0, console_1.debug)("onDidChangeContent");
@@ -239,6 +245,7 @@ documents.onDidChangeContent(change => {
         console.error(e);
     }
 });
+connection.on;
 async function validateTextDocument(textDocument) {
     //debug("Validating document");
     // In this simple example we get the settings for every validate run.

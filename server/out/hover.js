@@ -6,17 +6,11 @@ const vscode_languageserver_1 = require("vscode-languageserver");
 const comments_1 = require("./comments");
 const cache_1 = require("./cache");
 function onHover(_pos, text) {
+    const docPos = text.offsetAt(_pos.position);
     // Get Hover Range
     const pos = text.offsetAt(_pos.position);
     const startOfLine = pos - _pos.position.character;
     const after = text.getText().substring(startOfLine);
-    let str = {
-        kind: 'plaintext', // 'markdown' or 'plaintext'
-        value: ''
-    };
-    const hover = {
-        contents: str
-    };
     // const range: Range = {
     // 	start: t.positionAt(m.index),
     // 	end: t.positionAt(m.index + m[0].length)
@@ -25,25 +19,31 @@ function onHover(_pos, text) {
     let hoveredLine = getCurrentLineFromTextDocument(_pos, text);
     // If it's a comment, we'll just ignore it.
     if ((0, comments_1.isInComment)(pos)) {
-        hover.contents = "comment";
-        return hover;
+        return { contents: "comment" };
     }
     if ((0, comments_1.isInString)(pos)) {
-        hover.contents = "string";
-        return hover;
+        return { contents: "string" };
     }
     const symbol = getHoveredSymbol(hoveredLine, _pos.position.character);
     (0, console_1.debug)(symbol);
-    hover.contents = symbol;
+    //hover.contents = symbol;
+    let hoverText = symbol;
     if (isClassMethod(hoveredLine, symbol)) {
         const c = getClassOfMethod(hoveredLine, symbol);
         const classObj = (0, cache_1.getCache)(text.uri).missionClasses.find((value) => { value.name === c; });
         const func = classObj?.methods.find((value) => { value.name === symbol; });
-        hover.contents;
+        hoverText = "";
     }
     else if (isFunction(hoveredLine, symbol)) {
-        hover.contents += "\nFunction";
+        hoverText += "\nFunction";
     }
+    let str = {
+        kind: 'plaintext', // 'markdown' or 'plaintext'
+        value: ''
+    };
+    const hover = {
+        contents: str
+    };
     return hover;
 }
 function getCurrentLineFromTextDocument(_pos, text) {
@@ -123,7 +123,8 @@ function isClassMethod(line, token) {
     const start = line.indexOf(token);
     const end = start + token.length;
     if (isFunction(line, token)) {
-        if (line.substring(0, start).endsWith(".")) {
+        (0, console_1.debug)(line.substring(0, start));
+        if (line.substring(0, start).trim().endsWith(".")) {
             return true;
         }
     }

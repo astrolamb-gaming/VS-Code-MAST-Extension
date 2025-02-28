@@ -51,7 +51,7 @@ import fs = require("fs");
 import { getArtemisDirFromChild, getFileContents, getParentFolder, readAllFilesIn } from './fileFunctions';
 import { getCache, loadCache } from './cache';
 import { compileMission, getGlobalFunctions } from './python';
-import { getVariableNamesInDoc } from './tokens';
+import { getVariableNamesInDoc, updateTokensForLine } from './tokens';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -301,6 +301,12 @@ connection.languages.diagnostics.on(async (params) => {
 
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
+// 
+//
+/**
+ * {@link TextDocument TextDocument}
+ * {@link TextDocumentChangeEvent TextDocumentChangeEvent}
+ */
 documents.onDidChangeContent(change => {
 	try {
 		debug("onDidChangeContent");
@@ -310,6 +316,8 @@ documents.onDidChangeContent(change => {
 		console.error(e);
 	}
 });
+
+connection.on
 
 export interface ErrorInstance {
 	/**

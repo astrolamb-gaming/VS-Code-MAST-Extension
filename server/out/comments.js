@@ -78,6 +78,7 @@ function getComments(textDocument) {
             commentRanges.push(r);
         }
     }
+    return commentRanges;
 }
 function getYamls(textDocument) {
     const text = textDocument.getText();
@@ -190,6 +191,8 @@ function getStrings(textDocument) {
     // 	debug(text.substring(r.start,r.end));
     // }
     //debug("Strings found: " + strings.length);
+    // Update the global stringRanges variable
+    stringRanges = strings;
     return strings;
 }
 //# sourceMappingURL=comments.js.map

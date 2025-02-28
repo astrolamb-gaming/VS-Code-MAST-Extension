@@ -9,7 +9,7 @@ import { isInComment, isInString, isInYaml, isTextInBracket } from './comments';
 import { getCache, getGlobals } from './cache';
 import path = require('path');
 import { fixFileName } from './fileFunctions';
-import { getVariableNamesInDoc, variables } from './tokens';
+import { getVariableNamesInDoc, updateTokensForLine, variables } from './tokens';
 
 let classes: IClassObject[] = [];
 let defaultFunctionCompletionItems: CompletionItem[] = [];
@@ -40,6 +40,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		debug("Updating variables list")
 		getVariableNamesInDoc(text);
 	}
+	updateTokensForLine(currentLine);
 	let ci : CompletionItem[] = [];
 	const t = text?.getText();
 	if (text === undefined) {

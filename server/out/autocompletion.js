@@ -36,6 +36,7 @@ function onCompletion(_textDocumentPosition, text) {
         (0, console_1.debug)("Updating variables list");
         (0, tokens_1.getVariableNamesInDoc)(text);
     }
+    (0, tokens_1.updateTokensForLine)(currentLine);
     let ci = [];
     const t = text?.getText();
     if (text === undefined) {

@@ -77,7 +77,7 @@ export function getComments(textDocument: TextDocument) {
 			commentRanges.push(r);
 		}
 	}
-	
+	return commentRanges;
 }
 
 export function getYamls(textDocument: TextDocument) {
@@ -201,5 +201,8 @@ export function getStrings(textDocument: TextDocument) {
 	// 	debug(text.substring(r.start,r.end));
 	// }
 	//debug("Strings found: " + strings.length);
+
+	// Update the global stringRanges variable
+	stringRanges = strings;
 	return strings;
 }
