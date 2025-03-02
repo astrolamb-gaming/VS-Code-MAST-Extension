@@ -15,6 +15,7 @@ export interface LabelInfo {
 	start: integer,
 	end: integer,
 	length: integer,
+	metadata: string,
 	subLabels: string[],
 	srcFile: string
 }
@@ -68,6 +69,7 @@ export function parseLabels(text: string, src: string, type: string = "main"): L
 			start: m.index,
 			end: 0,
 			length: m[0].length,
+			metadata: "",
 			subLabels: [],
 			srcFile: src
 		}
@@ -78,6 +80,7 @@ export function parseLabels(text: string, src: string, type: string = "main"): L
 	let i = 0;
 	while (i < labels.length - 1) {
 		labels[i].end = labels[i+1].start-1;
+		labels[i].metadata = getMetadata(text.substring(labels[i].start,labels[i].end));
 		i++;
 	}
 	if (labels[i] !== undefined) {
@@ -93,7 +96,7 @@ export function parseLabels(text: string, src: string, type: string = "main"): L
 	// Add END as a main label, last so we don't need to mess with it in earlier iterations.
 	// Also add "main" as a main label, since it can happen that sublabels are defined before any user-defined main labels.
 	if (type === "main") {
-		const endLabel: LabelInfo = { type: "main", name: "END", start: text.length-1,end: text.length, length: 3, subLabels: [], srcFile: src }
+		const endLabel: LabelInfo = { type: "main", name: "END", start: text.length-1,end: text.length, length: 3, metadata: "", subLabels: [], srcFile: src }
 		labels.push(endLabel);
 		let end:integer = text.length;
 		for (const i in labels) {
@@ -101,10 +104,23 @@ export function parseLabels(text: string, src: string, type: string = "main"): L
 				end = labels[i].start-1;
 			}
 		}
-		const mainLabel: LabelInfo = { type: "main", name: "main", start: 0, end: end, length: 4, subLabels: [], srcFile: src }
+		const mainLabel: LabelInfo = { type: "main", name: "main", start: 0, end: end, length: 4, metadata: "", subLabels: [], srcFile: src }
 		labels.push(mainLabel);
 	}
+	debug(labels);
 	return labels
+}
+
+function getMetadata(text:string):string {
+	let ret = "";
+	const start = text.indexOf("```");
+	const end = text.lastIndexOf("```");
+	if (start === -1 || end === -1) {
+		return ret;
+	}
+	text = text.replace(/```/g,"").trim();
+	text = text.substring(text.indexOf("\n"));
+	return text;
 }
 
 export function getLabelsInFile(text: string, src: string): LabelInfo[] {

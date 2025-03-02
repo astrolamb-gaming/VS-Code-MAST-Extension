@@ -5222,9 +5222,10 @@
     },
     "key-value-pair":{
       "name":"meta.injection.yaml.key-value-pair",
-      "match":"(?m)^[ \\t]*(\\w+):",
+      "match":"(?m)^[ \\t]*(\\w+:)(.*$)",
       "captures":{
-        "0":{"name":"meta.injection.yaml.key"}
+        "0":{"name":"meta.injection.yaml.key"},
+        "1":{"name":"meta.injection.yaml.value"}
       }
     },
     "yaml-value" :{
@@ -5242,8 +5243,7 @@
       "begin": "```[ \\t]*yaml\\s*$",
       "end": "```",
       "patterns": [
-        {"include":"#key-value-pair"},
-        {"include":"#yaml-value"}
+        {"include":"#key-value-pair"}
       ]
     },
     "regex": {

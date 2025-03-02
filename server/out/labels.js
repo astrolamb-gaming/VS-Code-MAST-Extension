@@ -57,6 +57,7 @@ function parseLabels(text, src, type = "main") {
             start: m.index,
             end: 0,
             length: m[0].length,
+            metadata: "",
             subLabels: [],
             srcFile: src
         };
@@ -67,6 +68,7 @@ function parseLabels(text, src, type = "main") {
     let i = 0;
     while (i < labels.length - 1) {
         labels[i].end = labels[i + 1].start - 1;
+        labels[i].metadata = getMetadata(text.substring(labels[i].start, labels[i].end));
         i++;
     }
     if (labels[i] !== undefined) {
@@ -80,7 +82,7 @@ function parseLabels(text, src, type = "main") {
     // Add END as a main label, last so we don't need to mess with it in earlier iterations.
     // Also add "main" as a main label, since it can happen that sublabels are defined before any user-defined main labels.
     if (type === "main") {
-        const endLabel = { type: "main", name: "END", start: text.length - 1, end: text.length, length: 3, subLabels: [], srcFile: src };
+        const endLabel = { type: "main", name: "END", start: text.length - 1, end: text.length, length: 3, metadata: "", subLabels: [], srcFile: src };
         labels.push(endLabel);
         let end = text.length;
         for (const i in labels) {
@@ -88,10 +90,22 @@ function parseLabels(text, src, type = "main") {
                 end = labels[i].start - 1;
             }
         }
-        const mainLabel = { type: "main", name: "main", start: 0, end: end, length: 4, subLabels: [], srcFile: src };
+        const mainLabel = { type: "main", name: "main", start: 0, end: end, length: 4, metadata: "", subLabels: [], srcFile: src };
         labels.push(mainLabel);
     }
+    (0, console_1.debug)(labels);
     return labels;
+}
+function getMetadata(text) {
+    let ret = "";
+    const start = text.indexOf("```");
+    const end = text.lastIndexOf("```");
+    if (start === -1 || end === -1) {
+        return ret;
+    }
+    text = text.replace(/```/g, "").trim();
+    text = text.substring(text.indexOf("\n"));
+    return text;
 }
 function getLabelsInFile(text, src) {
     let mainLabels = parseLabels(text, src, "main");
