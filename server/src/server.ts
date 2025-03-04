@@ -259,7 +259,7 @@ function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
 	if (!result) {
 		result = connection.workspace.getConfiguration({
 			scopeUri: resource,
-			section: 'languageServerExample'
+			section: 'MAST Language Server'
 		});
 		documentSettings.set(resource, result);
 	}
@@ -343,7 +343,11 @@ export interface ErrorInstance {
 async function validateTextDocument(textDocument: TextDocument): Promise<Diagnostic[]> {
 	//debug("Validating document");
 	// In this simple example we get the settings for every validate run.
+	let maxNumberOfProblems = 100;
 	const settings = await getDocumentSettings(textDocument.uri);
+	if (settings !== null) {
+		maxNumberOfProblems = settings.maxNumberOfProblems;
+	}
 	
 	getComments(textDocument);
 	getStrings(textDocument);
@@ -383,7 +387,7 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 	//errorSources.push(e1);
 
 	for (let i = 0; i < errorSources.length; i++) {
-		let d1: Diagnostic[] = findDiagnostic(errorSources[i].pattern,textDocument,errorSources[i].severity,errorSources[i].message,errorSources[i].source, errorSources[i].relatedMessage, settings.maxNumberOfProblems,problems);
+		let d1: Diagnostic[] = findDiagnostic(errorSources[i].pattern,textDocument,errorSources[i].severity,errorSources[i].message,errorSources[i].source, errorSources[i].relatedMessage, maxNumberOfProblems,problems);
 		diagnostics = diagnostics.concat(d1);
 	}
 	//let d1: Diagnostic[] = findDiagnostic(pattern, textDocument, DiagnosticSeverity.Error, "Message", "Source", "Testing", settings.maxNumberOfProblems, 0);

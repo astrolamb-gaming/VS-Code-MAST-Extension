@@ -191,7 +191,7 @@ function getDocumentSettings(resource) {
     if (!result) {
         result = connection.workspace.getConfiguration({
             scopeUri: resource,
-            section: 'languageServerExample'
+            section: 'MAST Language Server'
         });
         documentSettings.set(resource, result);
     }
@@ -248,7 +248,11 @@ documents.onDidChangeContent(change => {
 async function validateTextDocument(textDocument) {
     //debug("Validating document");
     // In this simple example we get the settings for every validate run.
+    let maxNumberOfProblems = 100;
     const settings = await getDocumentSettings(textDocument.uri);
+    if (settings !== null) {
+        maxNumberOfProblems = settings.maxNumberOfProblems;
+    }
     (0, comments_1.getComments)(textDocument);
     (0, comments_1.getStrings)(textDocument);
     (0, comments_1.getYamls)(textDocument);
@@ -284,7 +288,7 @@ async function validateTextDocument(textDocument) {
     };
     //errorSources.push(e1);
     for (let i = 0; i < errorSources.length; i++) {
-        let d1 = (0, errorChecking_1.findDiagnostic)(errorSources[i].pattern, textDocument, errorSources[i].severity, errorSources[i].message, errorSources[i].source, errorSources[i].relatedMessage, settings.maxNumberOfProblems, problems);
+        let d1 = (0, errorChecking_1.findDiagnostic)(errorSources[i].pattern, textDocument, errorSources[i].severity, errorSources[i].message, errorSources[i].source, errorSources[i].relatedMessage, maxNumberOfProblems, problems);
         diagnostics = diagnostics.concat(d1);
     }
     //let d1: Diagnostic[] = findDiagnostic(pattern, textDocument, DiagnosticSeverity.Error, "Message", "Source", "Testing", settings.maxNumberOfProblems, 0);
