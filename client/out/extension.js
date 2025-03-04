@@ -8,8 +8,10 @@ exports.activate = activate;
 exports.deactivate = deactivate;
 const path = require("path");
 const vscode_1 = require("vscode");
+const vscode = require("vscode");
 const fs = require("fs");
 const node_1 = require("vscode-languageclient/node");
+const console_1 = require("console");
 let client;
 function activate(context) {
     // The server is implemented in node
@@ -79,13 +81,57 @@ function activate(context) {
     // context.subscriptions.push(vscode.languages.registerCompletionItemProvider(GO_MODE, new GoCompletionItemProvider(), ".", "\""));
     // Create the language client and start the client.
     client = new node_1.LanguageClient('MAST-Language-Server', 'MAST Language Server', serverOptions, clientOptions);
-    const notifListener = client.onNotification('custom/notif', (message) => {
-        debug("Notificaiton recieved");
-        debug(message);
+    const storyJsonListener = client.onNotification('custom/storyJson', (message) => {
+        (0, console_1.debug)("Story Json Notification recieved");
+        (0, console_1.debug)(message);
+        // const storyJson = JSON.parse(message);
+        // debug(storyJson);
+        // // Next we'll want to show the notification for the user...
+        // showJsonNotif(storyJson);
     });
-    context.subscriptions.push(notifListener);
+    // const notifListener = client.onNotification('custom/mastNotif', (message:string)=>{
+    // 	debug("Notificaiton recieved");
+    // 	debug(message);
+    // 	let sj: StoryJson = {
+    // 		errorType: 'Warning',
+    // 		jsonUri: '',
+    // 		currentVersion: '',
+    // 		newestVersion: ''
+    // 	}
+    // 	showJsonNotif(sj);
+    // });
+    //context.subscriptions.push(notifListener);
+    context.subscriptions.push(storyJsonListener);
     // Start the client. This will also launch the server
     client.start();
+}
+async function showJsonNotif(storyJson) {
+    const useLatest = "Use latest local version";
+    const keep = "Keep current version";
+    const download = "Download latest";
+    (0, console_1.debug)(storyJson);
+    let selection = "";
+    if (storyJson.errorType === "Error") {
+        selection = await vscode.window.showErrorMessage("story.json is specifies a file that does not exist.", useLatest, keep, download);
+        (0, console_1.debug)(selection);
+    }
+    else if (storyJson.errorType === "Warning") {
+        selection = await vscode.window.showWarningMessage("story.json references file versions that have been superceded.", useLatest, keep, download);
+        (0, console_1.debug)(selection);
+    }
+    if (selection === undefined) {
+        return;
+    }
+    if (selection === useLatest) {
+        // Update the story.json with latest version number
+    }
+    else if (selection === keep) {
+        // do nothing
+    }
+    else if (selection === download) {
+        // Download the latest version from github
+        client.sendNotification("custom/download");
+    }
 }
 function deactivate() {
     if (!client) {
@@ -96,13 +142,13 @@ function deactivate() {
 function getIndentations(td) {
     for (let i = 0; i < td.lineCount; i++) {
         let indents = td.lineAt(i).firstNonWhitespaceCharacterIndex;
-        debug("Indents: " + indents);
-        debug(td.lineAt(i).text);
+        (0, console_1.debug)("Indents: " + indents);
+        (0, console_1.debug)(td.lineAt(i).text);
         let pattern = /.*/g;
         let m;
         let c = 0;
         while (m = pattern.exec(td.lineAt(i).text)) {
-            debug(m[0]);
+            (0, console_1.debug)(m[0]);
             c = c + 1;
             if (c > 10) {
                 break;
@@ -117,7 +163,7 @@ function getIndentations(td) {
 // 			vscode.execute
 //     }
 // }
-function debug(str) {
+function mydebug(str) {
     if (str === undefined) {
         str = "UNDEFINED";
     }

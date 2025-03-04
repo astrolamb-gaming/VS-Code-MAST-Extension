@@ -51,7 +51,7 @@ export function getVariableNamesInDoc(textDocument: TextDocument) {
 	let m: RegExpExecArray | null;
 	while (m = variableRX.exec(text)) {
 		const v = m[0].trim();
-		debug(m[0])
+		//debug(m[0])
 		if (!vars.includes(v)) {
 			vars.push(v);
 		}

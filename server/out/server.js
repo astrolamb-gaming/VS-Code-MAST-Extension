@@ -6,6 +6,7 @@ exports.getClassTypings = getClassTypings;
 exports.updateLabelNames = updateLabelNames;
 exports.myDebug = myDebug;
 exports.notifyClient = notifyClient;
+exports.storyJsonNotif = storyJsonNotif;
 /* --------------------------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
@@ -245,7 +246,19 @@ documents.onDidChangeContent(change => {
         console.error(e);
     }
 });
+exports.connection.onDidChangeTextDocument((params) => {
+    (0, console_1.debug)("OnDidChangetextDocument");
+    let changes = params.contentChanges;
+    (0, console_1.debug)(changes);
+    throw new Error;
+    // for (const c of changes) {
+    // }
+    // The content of a text document did change in VS Code.
+    // params.uri uniquely identifies the document.
+    // params.contentChanges describe the content changes to the document.
+});
 async function validateTextDocument(textDocument) {
+    notifyClient("Validating doc");
     //debug("Validating document");
     // In this simple example we get the settings for every validate run.
     let maxNumberOfProblems = 100;
@@ -316,6 +329,7 @@ exports.connection.onDidChangeWatchedFiles(_change => {
  * Triggered when ending a function name with an open parentheses, e.g. "functionName( "
  */
 exports.connection.onSignatureHelp((_textDocPos) => {
+    notifyClient("onSignatureHelpFired");
     //debug(functionData.length);
     const text = documents.get(_textDocPos.textDocument.uri);
     if (text === undefined) {
@@ -325,6 +339,7 @@ exports.connection.onSignatureHelp((_textDocPos) => {
 });
 // This handler provides the initial list of the completion items.
 exports.connection.onCompletion((_textDocumentPosition) => {
+    notifyClient("onCompletion fired");
     const text = documents.get(_textDocumentPosition.textDocument.uri);
     if (text === undefined) {
         return [];
@@ -381,6 +396,23 @@ function myDebug(str) {
     console.log(str);
 }
 function notifyClient(message) {
-    exports.connection.sendNotification("custom/notif", message);
+    exports.connection.sendNotification("custom/mastNotif", message);
 }
+function storyJsonNotif(errorType, jsonUri, currentVersion, newestVersion) {
+    let data = {
+        errorType: errorType,
+        jsonUri: jsonUri,
+        currentVersion: currentVersion,
+        newestVersion: newestVersion
+    };
+    (0, console_1.debug)(data);
+    let message = JSON.stringify(data);
+    (0, console_1.debug)(message);
+    message = "TEST";
+    exports.connection.sendNotification('custom/storyJson', message);
+    (0, console_1.debug)("Message sent: " + message);
+}
+exports.connection.onNotification("custom/download", () => {
+    (0, console_1.debug)("Download command recieved");
+});
 //# sourceMappingURL=server.js.map

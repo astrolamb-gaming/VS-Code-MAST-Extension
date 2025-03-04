@@ -32,7 +32,8 @@ import {
 	ServerRequestHandler,
 	ParameterInformation,
 	Hover,
-	WorkspaceFolder
+	WorkspaceFolder,
+	TextDocumentChangeEvent
 } from 'vscode-languageserver/node';
 import { URI } from 'vscode-uri';
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -317,6 +318,21 @@ documents.onDidChangeContent(change => {
 	}
 });
 
+
+connection.onDidChangeTextDocument((params) => {
+	debug("OnDidChangetextDocument");
+	let changes = params.contentChanges;
+	debug(changes);
+	throw new Error;
+	// for (const c of changes) {
+		
+	// }
+    // The content of a text document did change in VS Code.
+    // params.uri uniquely identifies the document.
+    // params.contentChanges describe the content changes to the document.
+});
+
+
 export interface ErrorInstance {
 	/**
 	 * A regular expression of the diagnostic
@@ -341,6 +357,7 @@ export interface ErrorInstance {
 }
 
 async function validateTextDocument(textDocument: TextDocument): Promise<Diagnostic[]> {
+	notifyClient("Validating doc");
 	//debug("Validating document");
 	// In this simple example we get the settings for every validate run.
 	let maxNumberOfProblems = 100;
@@ -421,6 +438,7 @@ connection.onDidChangeWatchedFiles(_change => {
  * Triggered when ending a function name with an open parentheses, e.g. "functionName( "
  */
 connection.onSignatureHelp((_textDocPos: SignatureHelpParams): SignatureHelp | undefined =>{
+	notifyClient("onSignatureHelpFired");
 	//debug(functionData.length);
 	const text = documents.get(_textDocPos.textDocument.uri);
 	if (text === undefined) {
@@ -432,6 +450,7 @@ connection.onSignatureHelp((_textDocPos: SignatureHelpParams): SignatureHelp | u
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
 	(_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] | undefined => {
+		notifyClient("onCompletion fired");
 		const text = documents.get(_textDocumentPosition.textDocument.uri);
 		if (text === undefined) {
 			return [];
@@ -497,5 +516,24 @@ export function myDebug(str:any) {
 
 
 export function notifyClient(message:string) {
-	connection.sendNotification("custom/notif", message);
+	connection.sendNotification("custom/mastNotif", message);
 }
+
+export function storyJsonNotif(errorType: string, jsonUri: string, currentVersion:string, newestVersion:string) {
+	let data = {
+		errorType: errorType, 
+		jsonUri: jsonUri, 
+		currentVersion: currentVersion, 
+		newestVersion: newestVersion
+	};
+	debug(data);
+	let message = JSON.stringify(data);
+	debug(message);
+	message = "TEST"
+	connection.sendNotification('custom/storyJson', message);
+	debug("Message sent: " + message);
+}
+
+connection.onNotification("custom/download",()=>{
+	debug("Download command recieved")
+});

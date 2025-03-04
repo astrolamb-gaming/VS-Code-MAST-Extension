@@ -47,7 +47,7 @@ function getVariableNamesInDoc(textDocument) {
     let m;
     while (m = variableRX.exec(text)) {
         const v = m[0].trim();
-        (0, console_1.debug)(m[0]);
+        //debug(m[0])
         if (!vars.includes(v)) {
             vars.push(v);
         }

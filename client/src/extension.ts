@@ -14,6 +14,7 @@ import {
 	ServerOptions,
 	TransportKind
 } from 'vscode-languageclient/node';
+import { debug } from 'console';
 
 let client: LanguageClient;
 
@@ -106,13 +107,63 @@ export function activate(context: ExtensionContext) {
 		clientOptions
 	);
 
-	const notifListener = client.onNotification('custom/notif', (message:string)=>{
-		debug("Notificaiton recieved");
+	const storyJsonListener = client.onNotification('custom/storyJson', (message:string)=>{
+		debug("Story Json Notification recieved")
 		debug(message);
+		// const storyJson = JSON.parse(message);
+		// debug(storyJson);
+		// // Next we'll want to show the notification for the user...
+		// showJsonNotif(storyJson);
 	});
-	context.subscriptions.push(notifListener);
+	// const notifListener = client.onNotification('custom/mastNotif', (message:string)=>{
+	// 	debug("Notificaiton recieved");
+	// 	debug(message);
+	// 	let sj: StoryJson = {
+	// 		errorType: 'Warning',
+	// 		jsonUri: '',
+	// 		currentVersion: '',
+	// 		newestVersion: ''
+	// 	}
+	// 	showJsonNotif(sj);
+	// });
+	
+	
+	
+	//context.subscriptions.push(notifListener);
+	context.subscriptions.push(storyJsonListener);
 	// Start the client. This will also launch the server
 	client.start();
+}
+interface StoryJson {
+	errorType: string,
+	jsonUri: string, 
+	currentVersion: string, 
+	newestVersion: string
+}
+async function showJsonNotif(storyJson: StoryJson) {
+	const useLatest: string = "Use latest local version";
+	const keep: string = "Keep current version";
+	const download: string = "Download latest";
+	debug(storyJson);
+	let selection:string = "";
+	if (storyJson.errorType === "Error") {
+		selection = await vscode.window.showErrorMessage("story.json is specifies a file that does not exist.", useLatest, keep, download);
+		debug(selection);
+	} else if (storyJson.errorType === "Warning") {
+		selection = await vscode.window.showWarningMessage("story.json references file versions that have been superceded.", useLatest, keep, download);
+		debug(selection);
+	}
+	if (selection === undefined) {
+		return;
+	}
+	if (selection === useLatest) {
+		// Update the story.json with latest version number
+	} else if (selection === keep) {
+		// do nothing
+	} else if (selection === download) {
+		// Download the latest version from github
+		client.sendNotification("custom/download");
+	}
 }
 
 export function deactivate(): Thenable<void> | undefined {
@@ -146,7 +197,7 @@ function getIndentations(td: vscode.TextDocument) {
 //     }
 // }
 
-function debug(str:any) {
+function mydebug(str:any) {
     if (str === undefined) {
         str = "UNDEFINED";
     }

@@ -107,7 +107,7 @@ export function parseLabels(text: string, src: string, type: string = "main"): L
 		const mainLabel: LabelInfo = { type: "main", name: "main", start: 0, end: end, length: 4, metadata: "", subLabels: [], srcFile: src }
 		labels.push(mainLabel);
 	}
-	debug(labels);
+	//debug(labels);
 	return labels
 }
 

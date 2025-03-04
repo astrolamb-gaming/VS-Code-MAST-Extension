@@ -93,7 +93,7 @@ function parseLabels(text, src, type = "main") {
         const mainLabel = { type: "main", name: "main", start: 0, end: end, length: 4, metadata: "", subLabels: [], srcFile: src };
         labels.push(mainLabel);
     }
-    (0, console_1.debug)(labels);
+    //debug(labels);
     return labels;
 }
 function getMetadata(text) {

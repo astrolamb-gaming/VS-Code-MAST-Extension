@@ -16,6 +16,7 @@ const signatureHelp_1 = require("./signatureHelp");
 const rx_1 = require("./rx");
 const routeLabels_1 = require("./routeLabels");
 const fileFunctions_1 = require("./fileFunctions");
+const server_1 = require("./server");
 const vscode_uri_1 = require("vscode-uri");
 class Globals {
     constructor() {
@@ -30,6 +31,7 @@ class Globals {
             this.music = [];
             this.blob_items = [];
             this.data_set_entries = [];
+            this.libEntries = [];
             (0, console_1.debug)("Artemis directory not found. Global information not loaded.");
         }
         else {
@@ -41,7 +43,14 @@ class Globals {
             // this.data_set_entries is not populated here, since loadObjectDataDocumentation() has a promise in it. 
             // That promise then populates the field when complete.
             this.data_set_entries = this.loadObjectDataDocumentation();
+            this.libEntries = this.loadLibs();
         }
+    }
+    loadLibs() {
+        let libs = [];
+        let libPath = path.join(this.artemisDir, 'data', 'missions', '__lib__');
+        libs = (0, fileFunctions_1.getFilesInDir)(libPath, false);
+        return libs;
     }
     loadObjectDataDocumentation() {
         const ds = [];
@@ -442,6 +451,8 @@ class StoryJson {
         if (story.mastlib)
             this.mastlib = story.mastlib;
         this.complete = true;
+        (0, console_1.debug)("Sending notification to client");
+        (0, server_1.storyJsonNotif)("Error", this.uri, "", "");
     }
 }
 exports.StoryJson = StoryJson;

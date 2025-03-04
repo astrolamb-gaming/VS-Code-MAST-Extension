@@ -10,7 +10,7 @@ import { prepSignatures } from './signatureHelp';
 import { parse, RX } from './rx';
 import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } from './routeLabels';
 import { findSubfolderByName, getArtemisDirFromChild, getFilesInDir, getFolders, getMissionFolder, getParentFolder, readFile, readZipArchive } from './fileFunctions';
-import { updateLabelNames } from './server';
+import { storyJsonNotif, updateLabelNames } from './server';
 import { URI } from 'vscode-uri';
 import { compileMission } from './python';
 
@@ -19,6 +19,7 @@ export class Globals {
 	music: CompletionItem[];
 	data_set_entries: DataSetItem[];
 	blob_items: CompletionItem[];
+	libEntries: string[];
 	artemisDir: string = "";
 	constructor() {
 		const thisDir = path.resolve("../");
@@ -31,6 +32,7 @@ export class Globals {
 			this.music = [];
 			this.blob_items = [];
 			this.data_set_entries = [];
+			this.libEntries = [];
 			debug("Artemis directory not found. Global information not loaded.");
 		} else {
 			// Valid artemis dir has been found
@@ -41,9 +43,18 @@ export class Globals {
 			// this.data_set_entries is not populated here, since loadObjectDataDocumentation() has a promise in it. 
 			// That promise then populates the field when complete.
 			this.data_set_entries = this.loadObjectDataDocumentation();
+			this.libEntries = this.loadLibs();
 		}
 		
 	}
+
+	private loadLibs(): string[] {
+		let libs: string[] = [];
+		let libPath = path.join(this.artemisDir,'data','missions','__lib__');
+		libs = getFilesInDir(libPath,false);
+		return libs;
+	}
+
 	private loadObjectDataDocumentation(): DataSetItem[] {
 		const ds: DataSetItem[] = [];
 		const ci: CompletionItem[] = [];
@@ -492,6 +503,8 @@ export class StoryJson {
 		if (story.sbslib) this.sbslib = story.sbslib;
 		if (story.mastlib) this.mastlib = story.mastlib;
 		this.complete = true;
+		debug("Sending notification to client");
+		storyJsonNotif("Error",this.uri,"","");
 	}
 }
 
