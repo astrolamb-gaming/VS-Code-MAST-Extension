@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.labelNames = exports.hasDiagnosticRelatedInformationCapability = void 0;
+exports.labelNames = exports.hasDiagnosticRelatedInformationCapability = exports.connection = void 0;
 exports.getPyTypings = getPyTypings;
 exports.getClassTypings = getClassTypings;
 exports.updateLabelNames = updateLabelNames;
@@ -27,7 +27,7 @@ const python_1 = require("./python");
 const tokens_1 = require("./tokens");
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
-const connection = (0, node_1.createConnection)(node_1.ProposedFeatures.all);
+exports.connection = (0, node_1.createConnection)(node_1.ProposedFeatures.all);
 // Create a simple text document manager.
 const documents = new node_1.TextDocuments(vscode_languageserver_textdocument_1.TextDocument);
 let hasConfigurationCapability = false;
@@ -53,7 +53,7 @@ let currentDocument;
  * TODO: Implement system using semantic tokens
  * https://stackoverflow.com/questions/70490767/language-server-semantic-tokens
  */
-connection.onInitialize((params) => {
+exports.connection.onInitialize((params) => {
     // These are only executed on startup
     //const zip : Promise<void> = extractZip("","./sbs");
     //pyTypings = pyTypings.concat(parseTyping(fs.readFileSync("sbs.pyi","utf-8")));
@@ -123,18 +123,18 @@ connection.onInitialize((params) => {
     }
     return result;
 });
-connection.onInitialized(() => {
+exports.connection.onInitialized(() => {
     if (hasConfigurationCapability) {
         // Register for all configuration changes.
-        connection.client.register(node_1.DidChangeConfigurationNotification.type, undefined);
+        exports.connection.client.register(node_1.DidChangeConfigurationNotification.type, undefined);
     }
     if (hasWorkspaceFolderCapability) {
-        connection.workspace.onDidChangeWorkspaceFolders(_event => {
-            connection.console.log('Workspace folder change event received.');
+        exports.connection.workspace.onDidChangeWorkspaceFolders(_event => {
+            exports.connection.console.log('Workspace folder change event received.');
         });
     }
 });
-connection.onCodeAction((params) => {
+exports.connection.onCodeAction((params) => {
     const textDocument = documents.get(params.textDocument.uri);
     if (textDocument === undefined) {
         return undefined;
@@ -145,7 +145,7 @@ connection.onCodeAction((params) => {
     //CodeAction.create(title, Command.create(title, 'sample.fixMe', textDocument.uri), CodeActionKind.QuickFix)
     ];
 });
-connection.onExecuteCommand(async (params) => {
+exports.connection.onExecuteCommand(async (params) => {
     //TODO: Here we execute the commands
     if (params.command !== 'labels.fix' || params.arguments === undefined) {
         return;
@@ -170,7 +170,7 @@ const defaultSettings = { maxNumberOfProblems: 1000 };
 let globalSettings = defaultSettings;
 // Cache the settings of all open documents
 const documentSettings = new Map();
-connection.onDidChangeConfiguration(change => {
+exports.connection.onDidChangeConfiguration(change => {
     if (hasConfigurationCapability) {
         // Reset all cached document settings
         documentSettings.clear();
@@ -181,7 +181,7 @@ connection.onDidChangeConfiguration(change => {
     // Refresh the diagnostics since the `maxNumberOfProblems` could have changed.
     // We could optimize things here and re-fetch the setting first can compare it
     // to the existing setting, but this is out of scope for this example.
-    connection.languages.diagnostics.refresh();
+    exports.connection.languages.diagnostics.refresh();
 });
 function getDocumentSettings(resource) {
     if (!hasConfigurationCapability) {
@@ -189,7 +189,7 @@ function getDocumentSettings(resource) {
     }
     let result = documentSettings.get(resource);
     if (!result) {
-        result = connection.workspace.getConfiguration({
+        result = exports.connection.workspace.getConfiguration({
             scopeUri: resource,
             section: 'MAST Language Server'
         });
@@ -201,7 +201,7 @@ function getDocumentSettings(resource) {
 documents.onDidClose(e => {
     documentSettings.delete(e.document.uri);
 });
-connection.languages.diagnostics.on(async (params) => {
+exports.connection.languages.diagnostics.on(async (params) => {
     //TODO: get info from other files in same directory
     const document = documents.get(params.textDocument.uri);
     // connection.workspace.getWorkspaceFolders().then((value:WorkspaceFolder[] | null) => {
@@ -307,15 +307,15 @@ async function validateTextDocument(textDocument) {
     // });
     return diagnostics;
 }
-connection.onDidChangeWatchedFiles(_change => {
+exports.connection.onDidChangeWatchedFiles(_change => {
     // Monitored files have change in VSCode
     (0, console_1.debug)(_change.changes);
-    connection.console.log('We received a file change event');
+    exports.connection.console.log('We received a file change event');
 });
 /**
  * Triggered when ending a function name with an open parentheses, e.g. "functionName( "
  */
-connection.onSignatureHelp((_textDocPos) => {
+exports.connection.onSignatureHelp((_textDocPos) => {
     //debug(functionData.length);
     const text = documents.get(_textDocPos.textDocument.uri);
     if (text === undefined) {
@@ -324,7 +324,7 @@ connection.onSignatureHelp((_textDocPos) => {
     return (0, signatureHelp_1.onSignatureHelp)(_textDocPos, text);
 });
 // This handler provides the initial list of the completion items.
-connection.onCompletion((_textDocumentPosition) => {
+exports.connection.onCompletion((_textDocumentPosition) => {
     const text = documents.get(_textDocumentPosition.textDocument.uri);
     if (text === undefined) {
         return [];
@@ -358,7 +358,7 @@ function updateLabelNames(li) {
 // 		return item;
 // 	}
 // );
-connection.onHover((_textDocumentPosition) => {
+exports.connection.onHover((_textDocumentPosition) => {
     const text = documents.get(_textDocumentPosition.textDocument.uri);
     if (text === undefined) {
         (0, console_1.debug)("Undefined");
@@ -368,9 +368,9 @@ connection.onHover((_textDocumentPosition) => {
 });
 // Make the text document manager listen on the connection
 // for open, change and close text document events
-documents.listen(connection);
+documents.listen(exports.connection);
 // Listen on the connection
-connection.listen();
+exports.connection.listen();
 function myDebug(str) {
     if (str === undefined) {
         str = "UNDEFINED";
@@ -381,6 +381,6 @@ function myDebug(str) {
     console.log(str);
 }
 function notifyClient(message) {
-    connection.sendNotification("custom/notif", message);
+    exports.connection.sendNotification("custom/notif", message);
 }
 //# sourceMappingURL=server.js.map

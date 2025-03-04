@@ -55,7 +55,7 @@ import { getVariableNamesInDoc, updateTokensForLine } from './tokens';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
-const connection = createConnection(ProposedFeatures.all);
+export const connection = createConnection(ProposedFeatures.all);
 
 // Create a simple text document manager.
 const documents = new TextDocuments(TextDocument);
