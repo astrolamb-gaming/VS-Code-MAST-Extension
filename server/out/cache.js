@@ -175,6 +175,7 @@ class MissionCache {
         //debug(workspaceUri);
         this.missionName = "";
         this.missionURI = "";
+        this.missionLibFolder = "";
         // The Modules are the default sbslib and mastlib files.
         // They apply to ALL files in the mission folder.
         this.missionPyModules = [];
@@ -201,6 +202,8 @@ class MissionCache {
         this.mediaLabels = this.mediaLabels.concat((0, routeLabels_1.loadMediaLabels)());
         this.missionURI = (0, fileFunctions_1.getMissionFolder)(workspaceUri);
         (0, console_1.debug)(this.missionURI);
+        let parent = (0, fileFunctions_1.getParentFolder)(this.missionURI);
+        this.missionLibFolder = path.join(parent, "__lib__");
         this.missionName = path.basename(this.missionURI);
         this.storyJson = new StoryJson(path.join(this.missionURI, "story.json"));
         this.storyJson.readFile().then(() => { this.modulesLoaded(); });
@@ -251,12 +254,10 @@ class MissionCache {
             (0, console_1.debug)("sbs nope");
         }
         try {
-            let parent = (0, fileFunctions_1.getParentFolder)(uri);
-            const missionLibFolder = path.join(parent, "__lib__");
-            (0, console_1.debug)(missionLibFolder);
+            (0, console_1.debug)(this.missionLibFolder);
             const lib = this.storyJson.mastlib.concat(this.storyJson.sbslib);
             for (const zip of lib) {
-                const zipPath = path.join(missionLibFolder, zip);
+                const zipPath = path.join(this.missionLibFolder, zip);
                 (0, fileFunctions_1.readZipArchive)(zipPath).then((data) => {
                     //debug("Zip archive read for " + zipPath);
                     this.handleZipData(data, zip);
