@@ -519,7 +519,16 @@ export function notifyClient(message:string) {
 	connection.sendNotification("custom/mastNotif", message);
 }
 
-export function storyJsonNotif(errorType: string, jsonUri: string, currentVersion:string, newestVersion:string) {
+/**
+ * @param errorType 
+ * story.json error types:
+ * 0 - Error - Referenced file does not exist
+ * 1 - Warning - Referenced file is not the latest version
+ * @param jsonUri 
+ * @param currentVersion 
+ * @param newestVersion 
+ */
+export function storyJsonNotif(errorType: integer, jsonUri: string, newestVersion:string, currentVersion:string="") {
 	let data = {
 		errorType: errorType, 
 		jsonUri: jsonUri, 
@@ -528,11 +537,9 @@ export function storyJsonNotif(errorType: string, jsonUri: string, currentVersio
 	};
 	debug(data);
 	let message = JSON.stringify(data);
-	// message = "TEST"
-	connection.sendNotification('custom/storyJson', message);
-	debug("Message sent: " + message);
+	connection.sendNotification('custom/storyJson', data);
 }
 
-connection.onNotification("custom/download",()=>{
-	debug("Download command recieved")
+connection.onNotification("custom/storyJsonResponse",(response)=>{
+	debug("Download command recieved: " + response);
 });

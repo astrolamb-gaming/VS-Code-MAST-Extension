@@ -32,7 +32,7 @@ class Globals {
             this.music = [];
             this.blob_items = [];
             this.data_set_entries = [];
-            this.libEntries = [];
+            this.libModules = [];
             (0, console_1.debug)("Artemis directory not found. Global information not loaded.");
         }
         else {
@@ -44,7 +44,7 @@ class Globals {
             // this.data_set_entries is not populated here, since loadObjectDataDocumentation() has a promise in it. 
             // That promise then populates the field when complete.
             this.data_set_entries = this.loadObjectDataDocumentation();
-            this.libEntries = this.loadLibs();
+            this.libModules = this.loadLibs();
         }
     }
     loadLibs() {
@@ -216,9 +216,23 @@ class MissionCache {
         this.missionLibFolder = path.join(parent, "__lib__");
         this.missionName = path.basename(this.missionURI);
         this.storyJson = new StoryJson(path.join(this.missionURI, "story.json"));
-        this.storyJson.readFile().then(() => { this.modulesLoaded(); });
         let files = (0, fileFunctions_1.getFilesInDir)(this.missionURI);
         //debug(files);
+        this.load();
+    }
+    load() {
+        // (re)set all the arrays before (re)populating them.
+        this.missionClasses = [];
+        this.missionDefaultCompletions = [];
+        this.missionDefaultFunctions = [];
+        this.missionDefaultSignatures = [];
+        this.missionMastModules = [];
+        this.missionPyModules = [];
+        this.pyFileInfo = [];
+        this.resourceLabels = [];
+        this.mediaLabels = [];
+        this.mastFileInfo = [];
+        this.storyJson.readFile().then(() => { this.modulesLoaded(); });
         loadSbs().then((p) => {
             (0, console_1.debug)("Loaded SBS, starting to parse.");
             if (p !== null) {
@@ -267,25 +281,26 @@ class MissionCache {
             const libErrs = [];
             (0, console_1.debug)(this.missionLibFolder);
             const lib = this.storyJson.mastlib.concat(this.storyJson.sbslib);
-            let complete = false;
+            let complete = 0;
             for (const zip of lib) {
                 const zipPath = path.join(this.missionLibFolder, zip);
                 (0, fileFunctions_1.readZipArchive)(zipPath).then((data) => {
                     //debug("Zip archive read for " + zipPath);
                     this.handleZipData(data, zip);
-                    libErrs.push("");
+                    complete += 1;
                 }).catch(err => {
                     (0, console_1.debug)("Error unzipping. \n" + err);
                     if (("" + err).includes("Invalid filename")) {
                         libErrs.push("File does not exist:\n" + zipPath);
                     }
+                    complete += 1;
                 });
             }
-            while (libErrs.length !== lib.length) {
+            while (complete < lib.length) {
                 await (0, python_1.sleep)(50);
             }
             if (libErrs.length > 0) {
-                (0, server_1.storyJsonNotif)("Error", this.storyJson.uri, "", libErrs.join("\n"));
+                (0, server_1.storyJsonNotif)(0, this.storyJson.uri, "", libErrs.join("\n"));
             }
         }
         catch (e) {
@@ -439,8 +454,100 @@ class StoryJson {
         this.uri = "";
         this.sbslib = [];
         this.mastlib = [];
+        this.storyJsonErrors = [];
         this.complete = false;
+        this.regex = /\.v(\d+)\.(\d+)\.(\d+)\.(((mast|sbs)lib)|(zip))/;
         this.uri = uri;
+    }
+    checkForErrors() {
+        const files = this.mastlib.concat(this.sbslib);
+        for (const m of files) {
+            const libDir = path.join(globals.artemisDir, "data", "missions", "__lib__", m);
+            const res = this.regex.exec(m);
+            if (res === null)
+                break; // Should never occur
+            const libName = m.substring(0, res.index);
+            (0, console_1.debug)(res);
+            if (globals.libModules.includes(libDir)) {
+                // Module found. Check for updated versions
+                const latest = this.getLatestVersion(libName);
+                if (latest === m) {
+                    continue;
+                }
+                else {
+                    // Recommend latest version
+                    const err = {
+                        libName: libName,
+                        exists: true,
+                        latestVersion: latest
+                    };
+                    this.storyJsonErrors.push(err);
+                }
+            }
+            else {
+                // Module NOT found. Show error message and recommend latest version.
+                const lv = this.getLatestVersion(libName);
+                const err = {
+                    libName: libName,
+                    exists: false,
+                    latestVersion: lv
+                };
+                this.storyJsonErrors.push(err);
+            }
+        }
+        let message = "story.json references the following files that do not exist:\n";
+        let send = false;
+        for (const err of this.storyJsonErrors) {
+            if (!err.exists) {
+                send = true;
+                message += err.libName + "\n";
+            }
+        }
+        if (send) {
+            (0, server_1.storyJsonNotif)(0, this.uri, "", message);
+        }
+        message = "story.json references files that are not the latest version:\n";
+        send = false;
+        for (const err of this.storyJsonErrors) {
+            if (err.exists) {
+                send = true;
+                message += "\nCurrent: " + err.libName + "\n -- Latest: " + err.latestVersion;
+            }
+        }
+        if (send) {
+            (0, server_1.storyJsonNotif)(1, this.uri, "", message);
+        }
+    }
+    getVersionPriority(version) {
+        try {
+            const res = this.regex.exec(version);
+            if (res === null)
+                return 0; // Should never occur
+            const major = res[1].padStart(4, "0");
+            const minor = res[2].padStart(4, "0");
+            const incremental = res[3].padStart(4, "0");
+            const ret = major + minor + incremental;
+            if (ret === "000300090039")
+                return 0;
+            return Number.parseInt(ret);
+        }
+        catch (e) {
+            return 0;
+        }
+    }
+    getLatestVersion(name) {
+        let version = 0;
+        let latestFile = "";
+        for (const file of globals.libModules) {
+            if (file.includes(name)) {
+                const v = this.getVersionPriority(file);
+                if (v > version) {
+                    version = v;
+                    latestFile = file;
+                }
+            }
+        }
+        return latestFile;
     }
     /**
      * Must be called after instantiating the object.
@@ -449,10 +556,11 @@ class StoryJson {
         try {
             const data = fs.readFileSync(this.uri, "utf-8");
             this.parseFile(data);
+            this.checkForErrors();
         }
         catch (e) {
             (0, console_1.debug)("Couldn't read file");
-            (0, server_1.storyJsonNotif)("Error", this.uri, "", "");
+            (0, server_1.storyJsonNotif)(0, this.uri, "", "");
             (0, console_1.debug)(e);
         }
     }
@@ -466,7 +574,7 @@ class StoryJson {
             this.mastlib = story.mastlib;
         this.complete = true;
         (0, console_1.debug)("Sending notification to client");
-        (0, server_1.storyJsonNotif)("Error", this.uri, "", "");
+        (0, server_1.storyJsonNotif)(0, this.uri, "", "");
     }
 }
 exports.StoryJson = StoryJson;
@@ -593,7 +701,7 @@ let caches = [];
  * @param name Can be either the name of the mission folder, or a URI to that folder or any folder within the mission folder.
  * @returns
  */
-function getCache(name) {
+function getCache(name, reloadCache = false) {
     let ret = undefined;
     if (name.startsWith("file")) {
         name = vscode_uri_1.URI.parse(name).fsPath;
@@ -603,6 +711,7 @@ function getCache(name) {
     //debug(mf);
     for (const cache of caches) {
         if (cache.missionName === name || cache.missionURI === mf) {
+            cache.load();
             return cache;
         }
     }

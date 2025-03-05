@@ -398,7 +398,16 @@ function myDebug(str) {
 function notifyClient(message) {
     exports.connection.sendNotification("custom/mastNotif", message);
 }
-function storyJsonNotif(errorType, jsonUri, currentVersion, newestVersion) {
+/**
+ * @param errorType
+ * story.json error types:
+ * 0 - Error - Referenced file does not exist
+ * 1 - Warning - Referenced file is not the latest version
+ * @param jsonUri
+ * @param currentVersion
+ * @param newestVersion
+ */
+function storyJsonNotif(errorType, jsonUri, newestVersion, currentVersion = "") {
     let data = {
         errorType: errorType,
         jsonUri: jsonUri,
@@ -407,11 +416,9 @@ function storyJsonNotif(errorType, jsonUri, currentVersion, newestVersion) {
     };
     (0, console_1.debug)(data);
     let message = JSON.stringify(data);
-    // message = "TEST"
-    exports.connection.sendNotification('custom/storyJson', message);
-    (0, console_1.debug)("Message sent: " + message);
+    exports.connection.sendNotification('custom/storyJson', data);
 }
-exports.connection.onNotification("custom/download", () => {
-    (0, console_1.debug)("Download command recieved");
+exports.connection.onNotification("custom/storyJsonResponse", (response) => {
+    (0, console_1.debug)("Download command recieved: " + response);
 });
 //# sourceMappingURL=server.js.map

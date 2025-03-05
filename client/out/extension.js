@@ -87,7 +87,7 @@ function activate(context) {
         // const storyJson = JSON.parse(message);
         // debug(storyJson);
         // // Next we'll want to show the notification for the user...
-        // showJsonNotif(storyJson);
+        showJsonNotif(message);
     });
     // const notifListener = client.onNotification('custom/mastNotif', (message:string)=>{
     // 	debug("Notificaiton recieved");
@@ -110,28 +110,36 @@ async function showJsonNotif(storyJson) {
     const keep = "Keep current version";
     const download = "Download latest";
     (0, console_1.debug)(storyJson);
+    (0, console_1.debug)("149");
     let selection = "";
-    if (storyJson.errorType === "Error") {
-        selection = await vscode.window.showErrorMessage("story.json is specifies a file that does not exist.", useLatest, keep, download);
+    let response = 1;
+    if (storyJson.errorType === 0) {
+        (0, console_1.debug)("Error message");
+        selection = await vscode.window.showErrorMessage(storyJson.newestVersion, useLatest, keep, download);
         (0, console_1.debug)(selection);
     }
-    else if (storyJson.errorType === "Warning") {
-        selection = await vscode.window.showWarningMessage("story.json references file versions that have been superceded.", useLatest, keep, download);
+    else if (storyJson.errorType === 1) {
+        (0, console_1.debug)("Warning message");
+        selection = await vscode.window.showWarningMessage(storyJson.newestVersion, useLatest, keep, download);
         (0, console_1.debug)(selection);
     }
     if (selection === undefined) {
+        // Equivalent to "keep"
         return;
     }
     if (selection === useLatest) {
         // Update the story.json with latest version number
+        response = 0;
     }
     else if (selection === keep) {
         // do nothing
+        // Response = 1 by default
     }
     else if (selection === download) {
         // Download the latest version from github
-        client.sendNotification("custom/download");
+        response = 2;
     }
+    client.sendNotification("custom/storyJsonResponse", response);
 }
 function deactivate() {
     if (!client) {
