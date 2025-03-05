@@ -136,7 +136,7 @@ async function runScript(o: Options): Promise<string[]> {
 	return errors;
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function bigFile(options: Options, content: string): Promise<string[]> {
 	let errors: string[] = [];

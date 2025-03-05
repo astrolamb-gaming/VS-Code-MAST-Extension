@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.sleep = void 0;
 exports.getGlobalFunctions = getGlobalFunctions;
 exports.compileMission = compileMission;
 const python_shell_1 = require("python-shell");
@@ -125,6 +126,7 @@ async function runScript(o) {
     return errors;
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+exports.sleep = sleep;
 async function bigFile(options, content) {
     let errors = [];
     let compiled = false;
@@ -150,7 +152,7 @@ async function bigFile(options, content) {
         // console.log('finished');
     });
     while (!compiled) {
-        await sleep(100);
+        await (0, exports.sleep)(100);
     }
     return errors;
 }

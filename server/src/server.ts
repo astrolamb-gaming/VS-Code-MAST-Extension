@@ -528,8 +528,7 @@ export function storyJsonNotif(errorType: string, jsonUri: string, currentVersio
 	};
 	debug(data);
 	let message = JSON.stringify(data);
-	debug(message);
-	message = "TEST"
+	// message = "TEST"
 	connection.sendNotification('custom/storyJson', message);
 	debug("Message sent: " + message);
 }

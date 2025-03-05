@@ -18,6 +18,7 @@ const routeLabels_1 = require("./routeLabels");
 const fileFunctions_1 = require("./fileFunctions");
 const server_1 = require("./server");
 const vscode_uri_1 = require("vscode-uri");
+const python_1 = require("./python");
 class Globals {
     constructor() {
         this.artemisDir = "";
@@ -256,23 +257,35 @@ class MissionCache {
             }
         }
     }
-    modulesLoaded() {
+    async modulesLoaded() {
         const uri = this.missionURI;
         //debug(uri);
         if (uri.includes("sbs_utils")) {
             (0, console_1.debug)("sbs nope");
         }
         try {
+            const libErrs = [];
             (0, console_1.debug)(this.missionLibFolder);
             const lib = this.storyJson.mastlib.concat(this.storyJson.sbslib);
+            let complete = false;
             for (const zip of lib) {
                 const zipPath = path.join(this.missionLibFolder, zip);
                 (0, fileFunctions_1.readZipArchive)(zipPath).then((data) => {
                     //debug("Zip archive read for " + zipPath);
                     this.handleZipData(data, zip);
+                    libErrs.push("");
                 }).catch(err => {
                     (0, console_1.debug)("Error unzipping. \n" + err);
+                    if (("" + err).includes("Invalid filename")) {
+                        libErrs.push("File does not exist:\n" + zipPath);
+                    }
                 });
+            }
+            while (libErrs.length !== lib.length) {
+                await (0, python_1.sleep)(50);
+            }
+            if (libErrs.length > 0) {
+                (0, server_1.storyJsonNotif)("Error", this.storyJson.uri, "", libErrs.join("\n"));
             }
         }
         catch (e) {
@@ -439,6 +452,7 @@ class StoryJson {
         }
         catch (e) {
             (0, console_1.debug)("Couldn't read file");
+            (0, server_1.storyJsonNotif)("Error", this.uri, "", "");
             (0, console_1.debug)(e);
         }
     }

@@ -407,8 +407,7 @@ function storyJsonNotif(errorType, jsonUri, currentVersion, newestVersion) {
     };
     (0, console_1.debug)(data);
     let message = JSON.stringify(data);
-    (0, console_1.debug)(message);
-    message = "TEST";
+    // message = "TEST"
     exports.connection.sendNotification('custom/storyJson', message);
     (0, console_1.debug)("Message sent: " + message);
 }

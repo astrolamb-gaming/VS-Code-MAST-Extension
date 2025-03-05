@@ -12,7 +12,7 @@ import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } fro
 import { findSubfolderByName, getArtemisDirFromChild, getFilesInDir, getFolders, getMissionFolder, getParentFolder, readFile, readZipArchive } from './fileFunctions';
 import { storyJsonNotif, updateLabelNames } from './server';
 import { URI } from 'vscode-uri';
-import { compileMission } from './python';
+import { compileMission, sleep } from './python';
 
 export class Globals {
 	skyboxes: CompletionItem[];
@@ -284,24 +284,35 @@ export class MissionCache {
 
 	}
 
-	modulesLoaded() {
+	async modulesLoaded() {
 		const uri = this.missionURI;
 		//debug(uri);
 		if (uri.includes("sbs_utils")) {
 			debug("sbs nope");
 		}
 		try {
-			
+			const libErrs: string[] = [];
 			debug(this.missionLibFolder);
 			const lib = this.storyJson.mastlib.concat(this.storyJson.sbslib);
+			let complete = false;
 			for (const zip of lib) {
 				const zipPath = path.join(this.missionLibFolder,zip);
 				readZipArchive(zipPath).then((data)=>{
 					//debug("Zip archive read for " + zipPath);
 					this.handleZipData(data,zip);
+					libErrs.push("");
 				}).catch(err =>{
 					debug("Error unzipping. \n" + err);
+					if (("" + err).includes("Invalid filename")) {
+						libErrs.push("File does not exist:\n" + zipPath);
+					}
 				});
+			}
+			while (libErrs.length !== lib.length) {
+				await sleep(50);
+			}
+			if (libErrs.length > 0) {
+				storyJsonNotif("Error",this.storyJson.uri,"",libErrs.join("\n"));
 			}
 		}catch(e) {
 			debug("Error in modulesLoaded()");
@@ -492,6 +503,7 @@ export class StoryJson {
 			this.parseFile(data);
 		} catch (e) {
 			debug("Couldn't read file");
+			storyJsonNotif("Error",this.uri,"","");
 			debug(e);
 		}
 	}
