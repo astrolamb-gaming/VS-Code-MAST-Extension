@@ -4,7 +4,7 @@
  * ------------------------------------------------------------------------------------------ */
 
 import * as path from 'path';
-import { workspace, ExtensionContext , window as Window} from 'vscode';
+import { workspace, ExtensionContext , window as Window, window, OutputChannel} from 'vscode';
 import * as vscode from 'vscode';
 import fs = require("fs");
 
@@ -15,15 +15,17 @@ import {
 	ServerOptions,
 	TransportKind
 } from 'vscode-languageclient/node';
-import { debug } from 'console';
 
 let client: LanguageClient;
+let outputChannel: OutputChannel;
 
 export function activate(context: ExtensionContext) {
 	// The server is implemented in node
 	const serverModule = context.asAbsolutePath(
 		path.join('server', 'out', 'server.js')
 	);
+
+	outputChannel = window.createOutputChannel("MAST Client Output");
 
 	// If the extension is launched in debug mode then the debug server options are used
 	// Otherwise the run options are used
@@ -142,20 +144,20 @@ interface StoryJson {
 	newestVersion: string
 }
 async function showJsonNotif(storyJson: StoryJson) {
-	const useLatest: string = "Use latest local version";
-	const keep: string = "Keep current version";
-	const download: string = "Download latest";
+	const useLatest: string = "Use latest";
+	const keep: string = "Keep current";
+	const download: string = "Download newest";
 	debug(storyJson);
 	debug("149")
 	let selection:string = "";
 	let response = 1;
 	if (storyJson.errorType === 0) {
 		debug("Error message")
-		selection = await vscode.window.showErrorMessage(storyJson.newestVersion, useLatest, keep, download);
+		selection = await vscode.window.showErrorMessage("story.json contains references to files that do not exist", useLatest, keep, download);
 		debug(selection);
 	} else if (storyJson.errorType === 1) {
 		debug("Warning message");
-		selection = await vscode.window.showWarningMessage(storyJson.newestVersion, useLatest, keep, download);
+		selection = await vscode.window.showWarningMessage("story.json can be updated with more recent file versions", useLatest, keep, download);
 		debug(selection);
 	}
 	if (selection === undefined) {
@@ -214,4 +216,8 @@ function mydebug(str:any) {
     fs.writeFileSync('outputLog.txt', str, { flag: "a+" });
 	console.debug(str);
 	console.log(str);
+}
+
+function debug(str:any) {
+	outputChannel.appendLine(str);
 }

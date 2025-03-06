@@ -11,11 +11,12 @@ const vscode_1 = require("vscode");
 const vscode = require("vscode");
 const fs = require("fs");
 const node_1 = require("vscode-languageclient/node");
-const console_1 = require("console");
 let client;
+let outputChannel;
 function activate(context) {
     // The server is implemented in node
     const serverModule = context.asAbsolutePath(path.join('server', 'out', 'server.js'));
+    outputChannel = vscode_1.window.createOutputChannel("MAST Client Output");
     // If the extension is launched in debug mode then the debug server options are used
     // Otherwise the run options are used
     const serverOptions = {
@@ -82,8 +83,8 @@ function activate(context) {
     // Create the language client and start the client.
     client = new node_1.LanguageClient('MAST-Language-Server', 'MAST Language Server', serverOptions, clientOptions);
     const storyJsonListener = client.onNotification('custom/storyJson', (message) => {
-        (0, console_1.debug)("Story Json Notification recieved");
-        (0, console_1.debug)(message);
+        debug("Story Json Notification recieved");
+        debug(message);
         // const storyJson = JSON.parse(message);
         // debug(storyJson);
         // // Next we'll want to show the notification for the user...
@@ -106,22 +107,22 @@ function activate(context) {
     client.start();
 }
 async function showJsonNotif(storyJson) {
-    const useLatest = "Use latest local version";
-    const keep = "Keep current version";
-    const download = "Download latest";
-    (0, console_1.debug)(storyJson);
-    (0, console_1.debug)("149");
+    const useLatest = "Use latest";
+    const keep = "Keep current";
+    const download = "Download newest";
+    debug(storyJson);
+    debug("149");
     let selection = "";
     let response = 1;
     if (storyJson.errorType === 0) {
-        (0, console_1.debug)("Error message");
-        selection = await vscode.window.showErrorMessage(storyJson.newestVersion, useLatest, keep, download);
-        (0, console_1.debug)(selection);
+        debug("Error message");
+        selection = await vscode.window.showErrorMessage("story.json contains references to files that do not exist", useLatest, keep, download);
+        debug(selection);
     }
     else if (storyJson.errorType === 1) {
-        (0, console_1.debug)("Warning message");
-        selection = await vscode.window.showWarningMessage(storyJson.newestVersion, useLatest, keep, download);
-        (0, console_1.debug)(selection);
+        debug("Warning message");
+        selection = await vscode.window.showWarningMessage("story.json can be updated with more recent file versions", useLatest, keep, download);
+        debug(selection);
     }
     if (selection === undefined) {
         // Equivalent to "keep"
@@ -150,13 +151,13 @@ function deactivate() {
 function getIndentations(td) {
     for (let i = 0; i < td.lineCount; i++) {
         let indents = td.lineAt(i).firstNonWhitespaceCharacterIndex;
-        (0, console_1.debug)("Indents: " + indents);
-        (0, console_1.debug)(td.lineAt(i).text);
+        debug("Indents: " + indents);
+        debug(td.lineAt(i).text);
         let pattern = /.*/g;
         let m;
         let c = 0;
         while (m = pattern.exec(td.lineAt(i).text)) {
-            (0, console_1.debug)(m[0]);
+            debug(m[0]);
             c = c + 1;
             if (c > 10) {
                 break;
@@ -179,5 +180,8 @@ function mydebug(str) {
     fs.writeFileSync('outputLog.txt', str, { flag: "a+" });
     console.debug(str);
     console.log(str);
+}
+function debug(str) {
+    outputChannel.appendLine(str);
 }
 //# sourceMappingURL=extension.js.map

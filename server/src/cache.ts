@@ -511,6 +511,7 @@ export class StoryJson {
 	storyJsonErrors: StoryJsonError[] = [];
 	complete: boolean = false;
 	regex: RegExp = /\.v(\d+)\.(\d+)\.(\d+)\.(((mast|sbs)lib)|(zip))/;
+	errorCheckIgnore = false;
 
 	constructor(uri: string) {
 		this.uri = uri;
@@ -518,59 +519,30 @@ export class StoryJson {
 
 	checkForErrors() {
 		const files = this.mastlib.concat(this.sbslib);
+		let errors = false;
+		debug(files)
 		for (const m of files) {
 			const libDir = path.join(globals.artemisDir,"data","missions","__lib__",m);
 			const res = this.regex.exec(m);
 			if (res === null) break; // Should never occur
 			const libName = m.substring(0,res.index);
-			debug(res);
 			
 			if (globals.libModules.includes(libDir)) {
 				// Module found. Check for updated versions
-				const latest = this.getLatestVersion(libName);
+				const latest = path.basename(this.getLatestVersion(libName));
 				if (latest === m) {
 					continue;
 				} else {
 					// Recommend latest version
-					const err: StoryJsonError = {
-						libName: libName,
-						exists: true,
-						latestVersion: latest
-					}
-					this.storyJsonErrors.push(err);
+					errors = true;
+					storyJsonNotif(1,this.uri,latest,m)
 				}
 			} else {
 				// Module NOT found. Show error message and recommend latest version.
-				const lv = this.getLatestVersion(libName);
-				const err: StoryJsonError = {
-					libName: libName,
-					exists: false,
-					latestVersion: lv
-				}
-				this.storyJsonErrors.push(err);
+				const lv = path.basename(this.getLatestVersion(libName));
+				debug("Module NOT found");
+				storyJsonNotif(0,this.uri,lv,m);
 			}
-		}
-		let message = "story.json references the following files that do not exist:\n";
-		let send = false;
-		for (const err of this.storyJsonErrors) {
-			if (!err.exists) {
-				send = true;
-				message += err.libName + "\n";
-			}
-		}
-		if (send) {
-			storyJsonNotif(0,this.uri,"",message)
-		}
-		message = "story.json references files that are not the latest version:\n";
-		send = false;
-		for (const err of this.storyJsonErrors) {
-			if (err.exists) {
-				send = true;
-				message += "\nCurrent: " + err.libName + "\n -- Latest: " + err.latestVersion;
-			}
-		}
-		if (send) {
-			storyJsonNotif(1,this.uri,"", message);
 		}
 	}
 
@@ -626,8 +598,8 @@ export class StoryJson {
 		if (story.sbslib) this.sbslib = story.sbslib;
 		if (story.mastlib) this.mastlib = story.mastlib;
 		this.complete = true;
-		debug("Sending notification to client");
-		storyJsonNotif(0,this.uri,"","");
+		// debug("Sending notification to client");
+		// storyJsonNotif(0,this.uri,"","");
 	}
 }
 

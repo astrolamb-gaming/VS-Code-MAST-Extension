@@ -542,4 +542,18 @@ export function storyJsonNotif(errorType: integer, jsonUri: string, newestVersio
 
 connection.onNotification("custom/storyJsonResponse",(response)=>{
 	debug("Download command recieved: " + response);
+	switch(response) {
+		case 0:
+			// Update to use latest local versions
+			break;
+		case 1:
+			// Do nothing
+			break;
+		case 2: 
+			// Download most recent version and update
+			break;
+		default:
+			// Do nothing
+			break;
+	}
 });

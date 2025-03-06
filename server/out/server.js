@@ -420,5 +420,19 @@ function storyJsonNotif(errorType, jsonUri, newestVersion, currentVersion = "") 
 }
 exports.connection.onNotification("custom/storyJsonResponse", (response) => {
     (0, console_1.debug)("Download command recieved: " + response);
+    switch (response) {
+        case 0:
+            // Update to use latest local versions
+            break;
+        case 1:
+            // Do nothing
+            break;
+        case 2:
+            // Download most recent version and update
+            break;
+        default:
+            // Do nothing
+            break;
+    }
 });
 //# sourceMappingURL=server.js.map
