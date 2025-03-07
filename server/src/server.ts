@@ -33,7 +33,8 @@ import {
 	ParameterInformation,
 	Hover,
 	WorkspaceFolder,
-	TextDocumentChangeEvent
+	TextDocumentChangeEvent,
+	MessageActionItem
 } from 'vscode-languageserver/node';
 import { URI } from 'vscode-uri';
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -528,7 +529,7 @@ export function notifyClient(message:string) {
  * @param currentVersion 
  * @param newestVersion 
  */
-export function storyJsonNotif(errorType: integer, jsonUri: string, newestVersion:string, currentVersion:string="") {
+export async function storyJsonError(errorType: integer, jsonUri: string, newestVersion:string, currentVersion:string="") {
 	let data = {
 		errorType: errorType, 
 		jsonUri: jsonUri, 
@@ -536,10 +537,43 @@ export function storyJsonNotif(errorType: integer, jsonUri: string, newestVersio
 		newestVersion: newestVersion
 	};
 	debug(data);
-	let err = new Error();
-	debug(err.stack);
+	// let err = new Error();
+	// debug(err.stack);
 	let message = JSON.stringify(data);
-	connection.sendNotification('custom/storyJson', data);
+	debug("Sending data");
+	debug(connection)
+
+	const useLatest: string = "Use latest";
+	const updateAll: string = "Update all";
+	const keep: string = "Keep current";
+	const download: string = "Don't show again";
+	
+	let ret = await connection.window.showErrorMessage(
+		"Testing an error message\nLet's try this",
+		{title: useLatest},
+		{title: updateAll},
+		{title: keep},
+		{title: download}
+	);
+	
+	// debug(ret);
+
+	sendToClient('custom/storyJson', data).then(()=>{debug("Sent")}).finally(()=>{}).catch((err)=>{debug(err)});
+}
+
+async function sendToClient(notifName: string, data: any) {
+	connection.sendNotification(notifName, data);
+}
+
+async function artemisDirNotFoundError() {
+	const res = await connection.window.showErrorMessage("Root Artemis directory not found.",{title:"Ignore"},{title:"Don't show again"});
+	if (res !== undefined) {
+		if (res.title === "Ignore") {
+			// Do nothing
+		} else if (res.title === "Don't show again") {
+			// TODO: Add persistence to extension.
+		}
+	}
 }
 
 connection.onNotification("custom/storyJsonResponse",(response)=>{

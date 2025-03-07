@@ -4,7 +4,7 @@
  * ------------------------------------------------------------------------------------------ */
 
 import * as path from 'path';
-import { workspace, ExtensionContext , window as Window, window, OutputChannel} from 'vscode';
+import { workspace, ExtensionContext , window as Window, window, OutputChannel, LogOutputChannel} from 'vscode';
 import * as vscode from 'vscode';
 import fs = require("fs");
 
@@ -17,15 +17,18 @@ import {
 } from 'vscode-languageclient/node';
 
 let client: LanguageClient;
-let outputChannel: OutputChannel;
+let outputChannel: LogOutputChannel;
+outputChannel = window.createOutputChannel("MAST Client Output",{log:true});
+debug("Output channel created")
 
 export function activate(context: ExtensionContext) {
+	debug("Activating extension.");
 	// The server is implemented in node
 	const serverModule = context.asAbsolutePath(
 		path.join('server', 'out', 'server.js')
 	);
 
-	outputChannel = window.createOutputChannel("MAST Client Output");
+	
 
 	// If the extension is launched in debug mode then the debug server options are used
 	// Otherwise the run options are used
@@ -109,9 +112,13 @@ export function activate(context: ExtensionContext) {
 		serverOptions,
 		clientOptions
 	);
-
+	//window.showQuickPick([{label:"One"},{label:"Two"}]);
+	let ib = window.createInputBox();
+	ib.prompt = "Choose modules"
+	ib.show();
 	const storyJsonListener = client.onNotification('custom/storyJson', (message)=>{
 		debug("Story Json Notification recieved")
+		//window.showQuickPick([{label:"One"},{label:"Two"}]);
 		debug(message);
 		// const storyJson = JSON.parse(message);
 		// debug(storyJson);
@@ -147,8 +154,10 @@ async function showJsonNotif(storyJson: StoryJson) {
 	const useLatest: string = "Use latest";
 	const keep: string = "Keep current";
 	const download: string = "Download newest";
-	debug(JSON.stringify(storyJson));
-	debug("149")
+	try {
+		debug(JSON.stringify(storyJson));
+	} catch (e) {}
+	debug("153");
 	let selection:string = "";
 	let response = 1;
 	if (storyJson.errorType === 0) {

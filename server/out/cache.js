@@ -33,6 +33,7 @@ class Globals {
             this.data_set_entries = [];
             this.libModules = [];
             (0, console_1.debug)("Artemis directory not found. Global information not loaded.");
+            artemisDirNotFoundError();
         }
         else {
             // Valid artemis dir has been found
@@ -278,7 +279,7 @@ class MissionCache {
         }
         try {
             const libErrs = [];
-            (0, console_1.debug)(this.missionLibFolder);
+            //debug(this.missionLibFolder);
             const lib = this.storyJson.mastlib.concat(this.storyJson.sbslib);
             let complete = 0;
             for (const zip of lib) {
@@ -462,7 +463,7 @@ class StoryJson {
     checkForErrors() {
         const files = this.mastlib.concat(this.sbslib);
         let errors = false;
-        (0, console_1.debug)(files);
+        //debug(files)
         for (const m of files) {
             const libDir = path.join(globals.artemisDir, "data", "missions", "__lib__", m);
             const res = this.regex.exec(m);
@@ -480,7 +481,7 @@ class StoryJson {
                     errors = true;
                     (0, console_1.debug)(latest);
                     (0, console_1.debug)(m);
-                    (0, server_1.storyJsonNotif)(1, this.uri, latest, m);
+                    (0, server_1.storyJsonError)(1, this.uri, latest, m);
                     return;
                 }
             }
@@ -488,7 +489,7 @@ class StoryJson {
                 // Module NOT found. Show error message and recommend latest version.
                 const lv = path.basename(this.getLatestVersion(libName));
                 (0, console_1.debug)("Module NOT found");
-                (0, server_1.storyJsonNotif)(0, this.uri, lv, m);
+                (0, server_1.storyJsonError)(0, this.uri, lv, m);
                 return;
             }
         }
@@ -695,5 +696,8 @@ function getCache(name, reloadCache = false) {
         caches.push(ret);
     }
     return ret;
+}
+function artemisDirNotFoundError() {
+    throw new Error('Function not implemented.');
 }
 //# sourceMappingURL=cache.js.map

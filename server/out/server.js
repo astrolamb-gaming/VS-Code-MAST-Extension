@@ -6,7 +6,7 @@ exports.getClassTypings = getClassTypings;
 exports.updateLabelNames = updateLabelNames;
 exports.myDebug = myDebug;
 exports.notifyClient = notifyClient;
-exports.storyJsonNotif = storyJsonNotif;
+exports.storyJsonError = storyJsonError;
 /* --------------------------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
@@ -407,7 +407,7 @@ function notifyClient(message) {
  * @param currentVersion
  * @param newestVersion
  */
-function storyJsonNotif(errorType, jsonUri, newestVersion, currentVersion = "") {
+async function storyJsonError(errorType, jsonUri, newestVersion, currentVersion = "") {
     let data = {
         errorType: errorType,
         jsonUri: jsonUri,
@@ -415,10 +415,32 @@ function storyJsonNotif(errorType, jsonUri, newestVersion, currentVersion = "") 
         newestVersion: newestVersion
     };
     (0, console_1.debug)(data);
-    let err = new Error();
-    (0, console_1.debug)(err.stack);
+    // let err = new Error();
+    // debug(err.stack);
     let message = JSON.stringify(data);
-    exports.connection.sendNotification('custom/storyJson', data);
+    (0, console_1.debug)("Sending data");
+    (0, console_1.debug)(exports.connection);
+    const useLatest = "Use latest";
+    const updateAll = "Update all";
+    const keep = "Keep current";
+    const download = "Don't show again";
+    let ret = await exports.connection.window.showErrorMessage("Testing an error message\nLet's try this", { title: useLatest }, { title: updateAll }, { title: keep }, { title: download });
+    // debug(ret);
+    sendToClient('custom/storyJson', data).then(() => { (0, console_1.debug)("Sent"); }).finally(() => { }).catch((err) => { (0, console_1.debug)(err); });
+}
+async function sendToClient(notifName, data) {
+    exports.connection.sendNotification(notifName, data);
+}
+async function artemisDirNotFoundError() {
+    const res = await exports.connection.window.showErrorMessage("Root Artemis directory not found.", { title: "Ignore" }, { title: "Don't show again" });
+    if (res !== undefined) {
+        if (res.title === "Ignore") {
+            // Do nothing
+        }
+        else if (res.title === "Don't show again") {
+            // TODO: Add persistence to extension.
+        }
+    }
 }
 exports.connection.onNotification("custom/storyJsonResponse", (response) => {
     (0, console_1.debug)("Download command recieved: " + response);

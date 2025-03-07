@@ -10,7 +10,7 @@ import { prepSignatures } from './signatureHelp';
 import { parse, RX } from './rx';
 import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } from './routeLabels';
 import { findSubfolderByName, getArtemisDirFromChild, getFilesInDir, getFolders, getMissionFolder, getParentFolder, readFile, readZipArchive } from './fileFunctions';
-import { storyJsonNotif, updateLabelNames } from './server';
+import { storyJsonError, updateLabelNames } from './server';
 import { URI } from 'vscode-uri';
 import { compileMission, sleep } from './python';
 
@@ -34,6 +34,7 @@ export class Globals {
 			this.data_set_entries = [];
 			this.libModules = [];
 			debug("Artemis directory not found. Global information not loaded.");
+			artemisDirNotFoundError();
 		} else {
 			// Valid artemis dir has been found
 			this.artemisDir = adir;
@@ -305,7 +306,7 @@ export class MissionCache {
 		}
 		try {
 			const libErrs: string[] = [];
-			debug(this.missionLibFolder);
+			//debug(this.missionLibFolder);
 			const lib = this.storyJson.mastlib.concat(this.storyJson.sbslib);
 			let complete = 0;
 			for (const zip of lib) {
@@ -520,7 +521,7 @@ export class StoryJson {
 	checkForErrors() {
 		const files = this.mastlib.concat(this.sbslib);
 		let errors = false;
-		debug(files)
+		//debug(files)
 		for (const m of files) {
 			const libDir = path.join(globals.artemisDir,"data","missions","__lib__",m);
 			const res = this.regex.exec(m);
@@ -537,14 +538,14 @@ export class StoryJson {
 					errors = true;
 					debug(latest);
 					debug(m)
-					storyJsonNotif(1,this.uri,latest,m);
+					storyJsonError(1,this.uri,latest,m);
 					return;
 				}
 			} else {
 				// Module NOT found. Show error message and recommend latest version.
 				const lv = path.basename(this.getLatestVersion(libName));
 				debug("Module NOT found");
-				storyJsonNotif(0,this.uri,lv,m);
+				storyJsonError(0,this.uri,lv,m);
 				return;
 			}
 		}
@@ -753,4 +754,8 @@ export function getCache(name:string, reloadCache:boolean = false): MissionCache
 		caches.push(ret);
 	}
 	return ret;
+}
+
+function artemisDirNotFoundError() {
+	throw new Error('Function not implemented.');
 }

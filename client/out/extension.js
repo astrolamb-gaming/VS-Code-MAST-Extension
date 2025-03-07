@@ -13,10 +13,12 @@ const fs = require("fs");
 const node_1 = require("vscode-languageclient/node");
 let client;
 let outputChannel;
+outputChannel = vscode_1.window.createOutputChannel("MAST Client Output", { log: true });
+debug("Output channel created");
 function activate(context) {
+    debug("Activating extension.");
     // The server is implemented in node
     const serverModule = context.asAbsolutePath(path.join('server', 'out', 'server.js'));
-    outputChannel = vscode_1.window.createOutputChannel("MAST Client Output");
     // If the extension is launched in debug mode then the debug server options are used
     // Otherwise the run options are used
     const serverOptions = {
@@ -82,8 +84,13 @@ function activate(context) {
     // context.subscriptions.push(vscode.languages.registerCompletionItemProvider(GO_MODE, new GoCompletionItemProvider(), ".", "\""));
     // Create the language client and start the client.
     client = new node_1.LanguageClient('MAST-Language-Server', 'MAST Language Server', serverOptions, clientOptions);
+    //window.showQuickPick([{label:"One"},{label:"Two"}]);
+    let ib = vscode_1.window.createInputBox();
+    ib.prompt = "Choose modules";
+    ib.show();
     const storyJsonListener = client.onNotification('custom/storyJson', (message) => {
         debug("Story Json Notification recieved");
+        //window.showQuickPick([{label:"One"},{label:"Two"}]);
         debug(message);
         // const storyJson = JSON.parse(message);
         // debug(storyJson);
@@ -110,8 +117,11 @@ async function showJsonNotif(storyJson) {
     const useLatest = "Use latest";
     const keep = "Keep current";
     const download = "Download newest";
-    debug(JSON.stringify(storyJson));
-    debug("149");
+    try {
+        debug(JSON.stringify(storyJson));
+    }
+    catch (e) { }
+    debug("153");
     let selection = "";
     let response = 1;
     if (storyJson.errorType === 0) {
