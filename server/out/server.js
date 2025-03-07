@@ -415,6 +415,8 @@ function storyJsonNotif(errorType, jsonUri, newestVersion, currentVersion = "") 
         newestVersion: newestVersion
     };
     (0, console_1.debug)(data);
+    let err = new Error();
+    (0, console_1.debug)(err.stack);
     let message = JSON.stringify(data);
     exports.connection.sendNotification('custom/storyJson', data);
 }

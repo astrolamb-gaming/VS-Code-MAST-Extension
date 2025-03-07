@@ -536,6 +536,8 @@ export function storyJsonNotif(errorType: integer, jsonUri: string, newestVersio
 		newestVersion: newestVersion
 	};
 	debug(data);
+	let err = new Error();
+	debug(err.stack);
 	let message = JSON.stringify(data);
 	connection.sendNotification('custom/storyJson', data);
 }

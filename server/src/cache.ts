@@ -322,12 +322,12 @@ export class MissionCache {
 					complete += 1;
 				});
 			}
-			while (complete < lib.length) {
-				await sleep(50);
-			}
-			if (libErrs.length > 0) {
-				storyJsonNotif(0,this.storyJson.uri,"",libErrs.join("\n"));
-			}
+			// while (complete < lib.length) {
+			// 	await sleep(50);
+			// }
+			// if (libErrs.length > 0) {
+			// 	storyJsonNotif(0,this.storyJson.uri,"",libErrs.join("\n"));
+			// }
 		}catch(e) {
 			debug("Error in modulesLoaded()");
 			debug(e);
@@ -535,13 +535,17 @@ export class StoryJson {
 				} else {
 					// Recommend latest version
 					errors = true;
-					storyJsonNotif(1,this.uri,latest,m)
+					debug(latest);
+					debug(m)
+					storyJsonNotif(1,this.uri,latest,m);
+					return;
 				}
 			} else {
 				// Module NOT found. Show error message and recommend latest version.
 				const lv = path.basename(this.getLatestVersion(libName));
 				debug("Module NOT found");
 				storyJsonNotif(0,this.uri,lv,m);
+				return;
 			}
 		}
 	}
@@ -586,7 +590,7 @@ export class StoryJson {
 			this.checkForErrors();
 		} catch (e) {
 			debug("Couldn't read file");
-			storyJsonNotif(0,this.uri,"","");
+			// storyJsonNotif(0,this.uri,"","");
 			debug(e);
 		}
 	}

@@ -110,7 +110,7 @@ async function showJsonNotif(storyJson) {
     const useLatest = "Use latest";
     const keep = "Keep current";
     const download = "Download newest";
-    debug(storyJson);
+    debug(JSON.stringify(storyJson));
     debug("149");
     let selection = "";
     let response = 1;

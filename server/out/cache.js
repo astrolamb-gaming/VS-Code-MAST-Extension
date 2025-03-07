@@ -18,7 +18,6 @@ const routeLabels_1 = require("./routeLabels");
 const fileFunctions_1 = require("./fileFunctions");
 const server_1 = require("./server");
 const vscode_uri_1 = require("vscode-uri");
-const python_1 = require("./python");
 class Globals {
     constructor() {
         this.artemisDir = "";
@@ -296,12 +295,12 @@ class MissionCache {
                     complete += 1;
                 });
             }
-            while (complete < lib.length) {
-                await (0, python_1.sleep)(50);
-            }
-            if (libErrs.length > 0) {
-                (0, server_1.storyJsonNotif)(0, this.storyJson.uri, "", libErrs.join("\n"));
-            }
+            // while (complete < lib.length) {
+            // 	await sleep(50);
+            // }
+            // if (libErrs.length > 0) {
+            // 	storyJsonNotif(0,this.storyJson.uri,"",libErrs.join("\n"));
+            // }
         }
         catch (e) {
             (0, console_1.debug)("Error in modulesLoaded()");
@@ -479,7 +478,10 @@ class StoryJson {
                 else {
                     // Recommend latest version
                     errors = true;
+                    (0, console_1.debug)(latest);
+                    (0, console_1.debug)(m);
                     (0, server_1.storyJsonNotif)(1, this.uri, latest, m);
+                    return;
                 }
             }
             else {
@@ -487,6 +489,7 @@ class StoryJson {
                 const lv = path.basename(this.getLatestVersion(libName));
                 (0, console_1.debug)("Module NOT found");
                 (0, server_1.storyJsonNotif)(0, this.uri, lv, m);
+                return;
             }
         }
     }
@@ -532,7 +535,7 @@ class StoryJson {
         }
         catch (e) {
             (0, console_1.debug)("Couldn't read file");
-            (0, server_1.storyJsonNotif)(0, this.uri, "", "");
+            // storyJsonNotif(0,this.uri,"","");
             (0, console_1.debug)(e);
         }
     }

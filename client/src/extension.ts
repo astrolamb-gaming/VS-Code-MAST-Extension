@@ -147,7 +147,7 @@ async function showJsonNotif(storyJson: StoryJson) {
 	const useLatest: string = "Use latest";
 	const keep: string = "Keep current";
 	const download: string = "Download newest";
-	debug(storyJson);
+	debug(JSON.stringify(storyJson));
 	debug("149")
 	let selection:string = "";
 	let response = 1;
