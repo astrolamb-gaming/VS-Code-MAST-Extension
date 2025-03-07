@@ -113,9 +113,9 @@ export function activate(context: ExtensionContext) {
 		clientOptions
 	);
 	//window.showQuickPick([{label:"One"},{label:"Two"}]);
-	let ib = window.createInputBox();
-	ib.prompt = "Choose modules"
-	ib.show();
+	//let ib = window.createInputBox();
+	// ib.prompt = "Choose modules"
+	// ib.show();
 	const storyJsonListener = client.onNotification('custom/storyJson', (message)=>{
 		debug("Story Json Notification recieved")
 		//window.showQuickPick([{label:"One"},{label:"Two"}]);
@@ -123,7 +123,7 @@ export function activate(context: ExtensionContext) {
 		// const storyJson = JSON.parse(message);
 		// debug(storyJson);
 		// // Next we'll want to show the notification for the user...
-		showJsonNotif(message);
+		//showJsonNotif(message);
 	});
 	// const notifListener = client.onNotification('custom/mastNotif', (message:string)=>{
 	// 	debug("Notificaiton recieved");
@@ -138,7 +138,7 @@ export function activate(context: ExtensionContext) {
 	// });
 	
 	
-	
+	//window.showTextDocument()
 	//context.subscriptions.push(notifListener);
 	context.subscriptions.push(storyJsonListener);
 	// Start the client. This will also launch the server

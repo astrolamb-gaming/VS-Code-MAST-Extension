@@ -34,7 +34,8 @@ import {
 	Hover,
 	WorkspaceFolder,
 	TextDocumentChangeEvent,
-	MessageActionItem
+	MessageActionItem,
+	ShowDocumentParams
 } from 'vscode-languageserver/node';
 import { URI } from 'vscode-uri';
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -541,24 +542,36 @@ export async function storyJsonError(errorType: integer, jsonUri: string, newest
 	// debug(err.stack);
 	let message = JSON.stringify(data);
 	debug("Sending data");
-	debug(connection)
 
-	const useLatest: string = "Use latest";
-	const updateAll: string = "Update all";
-	const keep: string = "Keep current";
-	const download: string = "Don't show again";
+	const useLatest: string = "Update to latest";
+	const manual: string = "Manually update";
+	const hide: string = "Don't show again";
 	
 	let ret = await connection.window.showErrorMessage(
 		"Testing an error message\nLet's try this",
 		{title: useLatest},
-		{title: updateAll},
-		{title: keep},
-		{title: download}
+		{title: manual},
+		{title: hide}
 	);
+	if (ret === undefined) return;
+	if (ret.title === useLatest) {
+		// Update story.json to reference latest file versions
+	} else if (ret.title === manual) {
+		// Open story.json
+		debug("Open story.json");
+		//let s: ShowDocumentParams
+		connection.window.showDocument({
+			uri: jsonUri,
+			external: false,
+			takeFocus: true
+		})
+	} else if (ret.title === hide) {
+		// Add persistence setting to this
+	}
 	
 	// debug(ret);
 
-	sendToClient('custom/storyJson', data).then(()=>{debug("Sent")}).finally(()=>{}).catch((err)=>{debug(err)});
+	// sendToClient('custom/storyJson', data).then(()=>{debug("Sent")}).finally(()=>{}).catch((err)=>{debug(err)});
 }
 
 async function sendToClient(notifName: string, data: any) {

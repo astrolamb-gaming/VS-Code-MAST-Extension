@@ -85,9 +85,9 @@ function activate(context) {
     // Create the language client and start the client.
     client = new node_1.LanguageClient('MAST-Language-Server', 'MAST Language Server', serverOptions, clientOptions);
     //window.showQuickPick([{label:"One"},{label:"Two"}]);
-    let ib = vscode_1.window.createInputBox();
-    ib.prompt = "Choose modules";
-    ib.show();
+    //let ib = window.createInputBox();
+    // ib.prompt = "Choose modules"
+    // ib.show();
     const storyJsonListener = client.onNotification('custom/storyJson', (message) => {
         debug("Story Json Notification recieved");
         //window.showQuickPick([{label:"One"},{label:"Two"}]);
@@ -95,7 +95,7 @@ function activate(context) {
         // const storyJson = JSON.parse(message);
         // debug(storyJson);
         // // Next we'll want to show the notification for the user...
-        showJsonNotif(message);
+        //showJsonNotif(message);
     });
     // const notifListener = client.onNotification('custom/mastNotif', (message:string)=>{
     // 	debug("Notificaiton recieved");
@@ -108,6 +108,7 @@ function activate(context) {
     // 	}
     // 	showJsonNotif(sj);
     // });
+    //window.showTextDocument()
     //context.subscriptions.push(notifListener);
     context.subscriptions.push(storyJsonListener);
     // Start the client. This will also launch the server

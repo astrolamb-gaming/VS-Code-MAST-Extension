@@ -419,14 +419,30 @@ async function storyJsonError(errorType, jsonUri, newestVersion, currentVersion 
     // debug(err.stack);
     let message = JSON.stringify(data);
     (0, console_1.debug)("Sending data");
-    (0, console_1.debug)(exports.connection);
-    const useLatest = "Use latest";
-    const updateAll = "Update all";
-    const keep = "Keep current";
-    const download = "Don't show again";
-    let ret = await exports.connection.window.showErrorMessage("Testing an error message\nLet's try this", { title: useLatest }, { title: updateAll }, { title: keep }, { title: download });
+    const useLatest = "Update to latest";
+    const manual = "Manually update";
+    const hide = "Don't show again";
+    let ret = await exports.connection.window.showErrorMessage("Testing an error message\nLet's try this", { title: useLatest }, { title: manual }, { title: hide });
+    if (ret === undefined)
+        return;
+    if (ret.title === useLatest) {
+        // Update story.json to reference latest file versions
+    }
+    else if (ret.title === manual) {
+        // Open story.json
+        (0, console_1.debug)("Open story.json");
+        //let s: ShowDocumentParams
+        exports.connection.window.showDocument({
+            uri: jsonUri,
+            external: false,
+            takeFocus: true
+        });
+    }
+    else if (ret.title === hide) {
+        // Add persistence setting to this
+    }
     // debug(ret);
-    sendToClient('custom/storyJson', data).then(() => { (0, console_1.debug)("Sent"); }).finally(() => { }).catch((err) => { (0, console_1.debug)(err); });
+    // sendToClient('custom/storyJson', data).then(()=>{debug("Sent")}).finally(()=>{}).catch((err)=>{debug(err)});
 }
 async function sendToClient(notifName, data) {
     exports.connection.sendNotification(notifName, data);
