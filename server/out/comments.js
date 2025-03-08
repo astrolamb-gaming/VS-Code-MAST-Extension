@@ -10,6 +10,7 @@ exports.getMatchesForRegex = getMatchesForRegex;
 exports.getBrackets = getBrackets;
 exports.isTextInBracket = isTextInBracket;
 exports.getStrings = getStrings;
+const console_1 = require("console");
 const fs = require("fs");
 function isInComment(loc) {
     for (const r in commentRanges) {
@@ -155,6 +156,7 @@ function getStrings(textDocument) {
     let strDoubleStartOnly = /(^\\s*?(\")[^\"]*?(\\n|$))/gm;
     let multiDouble = /(\^{3,}.*?\^{3,})/gm;
     let caretDouble = /(\"{3,}.*?\"{3,})|('{3,}.*?'{3,})/gs;
+    let weighted = /^[ \t]*%\d+?.*?(\n|$)/gs;
     let brackets = /{.*?}/gm;
     let fstrings = getMatchesForRegex(brackets, text); // f-strings
     let test = [];
@@ -162,8 +164,11 @@ function getStrings(textDocument) {
     test = test.concat(getMatchesForRegex(strDoubleStartOnly, text));
     test = test.concat(getMatchesForRegex(multiDouble, text));
     test = test.concat(getMatchesForRegex(caretDouble, text));
+    test = test.concat(getMatchesForRegex(weighted, text));
     for (const s of test) {
+        (0, console_1.debug)(s);
         const str = text.substring(s.start, s.end);
+        (0, console_1.debug)(str);
         fstrings = getMatchesForRegex(brackets, str);
         // If it doesn't contain any brackets, we move on.
         if (fstrings.length === 0) {

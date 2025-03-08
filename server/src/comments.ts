@@ -163,6 +163,7 @@ export function getStrings(textDocument: TextDocument) {
 	let strDoubleStartOnly = /(^\\s*?(\")[^\"]*?(\\n|$))/gm;
 	let multiDouble = /(\^{3,}.*?\^{3,})/gm;
 	let caretDouble = /(\"{3,}.*?\"{3,})|('{3,}.*?'{3,})/gs;
+	let weighted = /^[ \t]*%\d+?.*?(\n|$)/gs
 	let brackets = /{.*?}/gm;
 	let fstrings = getMatchesForRegex(brackets,text);// f-strings
 	let test: CRange[] = [];
@@ -170,9 +171,12 @@ export function getStrings(textDocument: TextDocument) {
 	test = test.concat(getMatchesForRegex(strDoubleStartOnly,text));
 	test = test.concat(getMatchesForRegex(multiDouble,text));
 	test = test.concat(getMatchesForRegex(caretDouble,text));
+	test = test.concat(getMatchesForRegex(weighted,text));
 	
 	for (const s of test) {
+		debug(s);
 		const str: string = text.substring(s.start,s.end);
+		debug(str);
 		fstrings = getMatchesForRegex(brackets,str);
 		// If it doesn't contain any brackets, we move on.
 		if (fstrings.length === 0) {
