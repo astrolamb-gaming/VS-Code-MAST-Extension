@@ -6,7 +6,7 @@ exports.getClassTypings = getClassTypings;
 exports.updateLabelNames = updateLabelNames;
 exports.myDebug = myDebug;
 exports.notifyClient = notifyClient;
-exports.storyJsonError = storyJsonError;
+exports.sendToClient = sendToClient;
 /* --------------------------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
@@ -115,8 +115,11 @@ exports.connection.onInitialize((params) => {
         // 	debug(e);
         // 	console.error(e);
         // }
+        (0, console_1.debug)("Loading cache");
         (0, cache_1.loadCache)(uri.fsPath);
+        (0, console_1.debug)("Cache loaded");
         let cache = (0, cache_1.getCache)(uri.fsPath);
+        (0, console_1.debug)("Getting globals");
         (0, python_1.getGlobalFunctions)(cache.storyJson.sbslib);
     }
     else {
@@ -258,7 +261,6 @@ exports.connection.onDidChangeTextDocument((params) => {
     // params.contentChanges describe the content changes to the document.
 });
 async function validateTextDocument(textDocument) {
-    notifyClient("Validating doc");
     //debug("Validating document");
     // In this simple example we get the settings for every validate run.
     let maxNumberOfProblems = 100;
@@ -329,7 +331,6 @@ exports.connection.onDidChangeWatchedFiles(_change => {
  * Triggered when ending a function name with an open parentheses, e.g. "functionName( "
  */
 exports.connection.onSignatureHelp((_textDocPos) => {
-    notifyClient("onSignatureHelpFired");
     //debug(functionData.length);
     const text = documents.get(_textDocPos.textDocument.uri);
     if (text === undefined) {
@@ -339,7 +340,6 @@ exports.connection.onSignatureHelp((_textDocPos) => {
 });
 // This handler provides the initial list of the completion items.
 exports.connection.onCompletion((_textDocumentPosition) => {
-    notifyClient("onCompletion fired");
     const text = documents.get(_textDocumentPosition.textDocument.uri);
     if (text === undefined) {
         return [];
@@ -396,56 +396,11 @@ function myDebug(str) {
     console.log(str);
 }
 function notifyClient(message) {
+    (0, console_1.debug)("Sending to client: " + message);
     exports.connection.sendNotification("custom/mastNotif", message);
 }
-/**
- * @param errorType
- * story.json error types:
- * 0 - Error - Referenced file does not exist
- * 1 - Warning - Referenced file is not the latest version
- * @param jsonUri
- * @param currentVersion
- * @param newestVersion
- */
-async function storyJsonError(errorType, jsonUri, newestVersion, currentVersion = "") {
-    let data = {
-        errorType: errorType,
-        jsonUri: jsonUri,
-        currentVersion: currentVersion,
-        newestVersion: newestVersion
-    };
-    (0, console_1.debug)(data);
-    // let err = new Error();
-    // debug(err.stack);
-    let message = JSON.stringify(data);
-    (0, console_1.debug)("Sending data");
-    const useLatest = "Update to latest";
-    const manual = "Manually update";
-    const hide = "Don't show again";
-    let ret = await exports.connection.window.showErrorMessage("Testing an error message\nLet's try this", { title: useLatest }, { title: manual }, { title: hide });
-    if (ret === undefined)
-        return;
-    if (ret.title === useLatest) {
-        // Update story.json to reference latest file versions
-    }
-    else if (ret.title === manual) {
-        // Open story.json
-        (0, console_1.debug)("Open story.json");
-        //let s: ShowDocumentParams
-        exports.connection.window.showDocument({
-            uri: jsonUri,
-            external: false,
-            takeFocus: true
-        });
-    }
-    else if (ret.title === hide) {
-        // Add persistence setting to this
-    }
-    // debug(ret);
-    // sendToClient('custom/storyJson', data).then(()=>{debug("Sent")}).finally(()=>{}).catch((err)=>{debug(err)});
-}
-async function sendToClient(notifName, data) {
-    exports.connection.sendNotification(notifName, data);
+function sendToClient(notifName, data) {
+    exports.connection.sendNotification("custom/" + notifName, data);
 }
 async function artemisDirNotFoundError() {
     const res = await exports.connection.window.showErrorMessage("Root Artemis directory not found.", { title: "Ignore" }, { title: "Don't show again" });

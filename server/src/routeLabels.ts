@@ -4,7 +4,6 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { CompletionItem, CompletionItemKind, CompletionItemLabelDetails } from 'vscode-languageserver';
 import { findSubfolderByName, getFilesInDir, getFolders } from './fileFunctions';
-import { getGlobals } from './cache';
 import { Runnable } from 'mocha';
 
 //const routeLabels: IRouteLabel[] = [];

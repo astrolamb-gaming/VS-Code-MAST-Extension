@@ -1,13 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.StoryJson = exports.MissionCache = exports.Globals = void 0;
-exports.getGlobals = getGlobals;
+exports.StoryJson = exports.MissionCache = void 0;
 exports.loadCache = loadCache;
 exports.getSourceFiles = getSourceFiles;
 exports.getCache = getCache;
+exports.artemisDirNotFoundError = artemisDirNotFoundError;
 const fs = require("fs");
 const path = require("path");
-const vscode_languageserver_1 = require("vscode-languageserver");
 const data_1 = require("./data");
 const labels_1 = require("./labels");
 const console_1 = require("console");
@@ -18,144 +17,7 @@ const routeLabels_1 = require("./routeLabels");
 const fileFunctions_1 = require("./fileFunctions");
 const server_1 = require("./server");
 const vscode_uri_1 = require("vscode-uri");
-class Globals {
-    constructor() {
-        this.artemisDir = "";
-        const thisDir = path.resolve("../");
-        const adir = (0, fileFunctions_1.getArtemisDirFromChild)(thisDir);
-        (0, console_1.debug)("Artemis Directory: ");
-        (0, console_1.debug)(adir);
-        if (adir === null) {
-            // Do something, throw an error, whatever it takes, artemis dir not found
-            this.skyboxes = [];
-            this.music = [];
-            this.blob_items = [];
-            this.data_set_entries = [];
-            this.libModules = [];
-            (0, console_1.debug)("Artemis directory not found. Global information not loaded.");
-            artemisDirNotFoundError();
-        }
-        else {
-            // Valid artemis dir has been found
-            this.artemisDir = adir;
-            this.skyboxes = this.findSkyboxes();
-            this.music = this.findMusic();
-            this.blob_items = [];
-            // this.data_set_entries is not populated here, since loadObjectDataDocumentation() has a promise in it. 
-            // That promise then populates the field when complete.
-            this.data_set_entries = this.loadObjectDataDocumentation();
-            this.libModules = this.loadLibs();
-        }
-    }
-    loadLibs() {
-        let libs = [];
-        let libPath = path.join(this.artemisDir, 'data', 'missions', '__lib__');
-        libs = (0, fileFunctions_1.getFilesInDir)(libPath, false);
-        return libs;
-    }
-    loadObjectDataDocumentation() {
-        const ds = [];
-        const ci = [];
-        const dataFolder = (0, fileFunctions_1.findSubfolderByName)(this.artemisDir, "data");
-        if (dataFolder !== null) {
-            const files = (0, fileFunctions_1.getFilesInDir)(dataFolder, false);
-            for (const file of files) {
-                //debug(file);
-                if (file.endsWith("object_data_documentation.txt")) {
-                    (0, console_1.debug)("Reading file");
-                    (0, fileFunctions_1.readFile)(file).then((text) => {
-                        const lines = text.split("\n");
-                        let lineNum = 0;
-                        for (const line of lines) {
-                            // ignore the first 3 lines
-                            if (lineNum > 2) {
-                                const name = line.substring(0, 31).trim();
-                                let typeCheck = line.substring(31, 48);
-                                const isArr = typeCheck.includes("array");
-                                if (isArr) {
-                                    typeCheck = typeCheck.replace("array", "");
-                                }
-                                typeCheck = typeCheck.trim();
-                                if (isArr) {
-                                    typeCheck = "List[" + typeCheck + "]";
-                                }
-                                const docs = line.substring(48).trim();
-                                this.data_set_entries.push({
-                                    name: name,
-                                    type: typeCheck,
-                                    docs: docs
-                                });
-                                const deets = {
-                                    description: typeCheck
-                                };
-                                const ci = {
-                                    label: name,
-                                    kind: vscode_languageserver_1.CompletionItemKind.Text,
-                                    documentation: docs,
-                                    detail: "Type: " + typeCheck,
-                                    labelDetails: deets
-                                };
-                                this.blob_items.push(ci);
-                            }
-                            lineNum++;
-                        }
-                        //debug(this.blob_items);
-                        //console.log(this.blob_items)
-                    });
-                    break;
-                }
-            }
-        }
-        return ds;
-    }
-    findSkyboxes() {
-        const skyboxes = [];
-        const ci = [];
-        const graphics = (0, fileFunctions_1.findSubfolderByName)(this.artemisDir, "graphics");
-        if (graphics !== null) {
-            const files = (0, fileFunctions_1.getFilesInDir)(graphics);
-            for (const file of files) {
-                if (file.includes("sky") && file.endsWith(".png")) {
-                    const last = file.lastIndexOf("/");
-                    let sb = file.substring(last + 1).replace(".png", "");
-                    skyboxes.push(sb);
-                    ci.push({
-                        label: path.basename(file).replace(".png", "")
-                    });
-                }
-            }
-        }
-        return ci;
-    }
-    findMusic() {
-        const options = [];
-        const ci = [];
-        const music = (0, fileFunctions_1.findSubfolderByName)(this.artemisDir, "music");
-        if (music !== null) {
-            const files = (0, fileFunctions_1.getFolders)(music);
-            for (const file of files) {
-                ci.push({
-                    label: path.basename(file)
-                });
-            }
-        }
-        return ci;
-    }
-}
-exports.Globals = Globals;
-let globals = new Globals();
-function getGlobals() {
-    if (globals === null) {
-        try {
-            globals = new Globals();
-        }
-        catch (e) {
-            (0, console_1.debug)(e);
-            (0, console_1.debug)("Error getting Globals information");
-        }
-    }
-    return globals;
-}
+const globals_1 = require("./globals");
 function loadCache(dir) {
     // TODO: Need a list of caches, in case there are files from more than one mission folder open
     let cache = getCache(dir);
@@ -393,6 +255,7 @@ class MissionCache {
                 li = li.concat(f.labelNames);
             }
         }
+        (0, console_1.debug)(li);
         // Remove duplicates (should just be a bunch of END entries)
         const arrUniq = [...new Map(li.map(v => [v.name, v])).values()];
         return arrUniq;
@@ -455,43 +318,52 @@ class StoryJson {
         this.sbslib = [];
         this.mastlib = [];
         this.storyJsonErrors = [];
-        this.complete = false;
         this.regex = /\.v(\d+)\.(\d+)\.(\d+)\.(((mast|sbs)lib)|(zip))/;
         this.errorCheckIgnore = false;
         this.uri = uri;
     }
+    getModuleBaseName(module) {
+        const res = this.regex.exec(module);
+        if (res === null)
+            return ""; // Should never occur
+        return module.substring(0, res.index);
+    }
     checkForErrors() {
         const files = this.mastlib.concat(this.sbslib);
-        let errors = false;
+        let errors = -1;
         //debug(files)
         for (const m of files) {
-            const libDir = path.join(globals.artemisDir, "data", "missions", "__lib__", m);
-            const res = this.regex.exec(m);
-            if (res === null)
-                break; // Should never occur
-            const libName = m.substring(0, res.index);
-            if (globals.libModules.includes(libDir)) {
+            const libDir = path.join((0, globals_1.getGlobals)().artemisDir, "data", "missions", "__lib__", m);
+            const libName = this.getModuleBaseName(m);
+            (0, console_1.debug)(libName);
+            if ((0, globals_1.getGlobals)().libModules.includes(libDir)) {
                 // Module found. Check for updated versions
-                const latest = path.basename(this.getLatestVersion(libName));
+                const latestFull = this.getLatestVersion(libName);
+                if (latestFull === "") {
+                    continue;
+                }
+                const latest = path.basename(latestFull);
                 if (latest === m) {
                     continue;
                 }
                 else {
                     // Recommend latest version
-                    errors = true;
+                    errors = 1;
                     (0, console_1.debug)(latest);
                     (0, console_1.debug)(m);
-                    (0, server_1.storyJsonError)(1, this.uri, latest, m);
-                    return;
+                    break;
                 }
             }
             else {
                 // Module NOT found. Show error message and recommend latest version.
+                errors = 0;
                 const lv = path.basename(this.getLatestVersion(libName));
                 (0, console_1.debug)("Module NOT found");
-                (0, server_1.storyJsonError)(0, this.uri, lv, m);
-                return;
+                break;
             }
+        }
+        if (errors != -1) {
+            this.storyJsonError(errors);
         }
     }
     getVersionPriority(version) {
@@ -511,12 +383,21 @@ class StoryJson {
             return 0;
         }
     }
+    /**
+     *
+     * @param name Name of the module
+     * @returns String with the name of the most recent version. If the
+     */
     getLatestVersion(name) {
         let version = 0;
-        let latestFile = "";
-        for (const file of globals.libModules) {
+        let latestFile = name;
+        (0, console_1.debug)(name);
+        name = this.getModuleBaseName(name);
+        for (const file of (0, globals_1.getGlobals)().libModules) {
             if (file.includes(name)) {
                 const v = this.getVersionPriority(file);
+                // debug(v);
+                // debug(version);
                 if (v > version) {
                     version = v;
                     latestFile = file;
@@ -540,17 +421,82 @@ class StoryJson {
             (0, console_1.debug)(e);
         }
     }
+    async updateModule(module, newVersion = "") {
+        try {
+            let data = fs.readFileSync(this.uri, "utf-8");
+            if (newVersion === "") {
+                newVersion = this.getLatestVersion(module);
+                (0, console_1.debug)(newVersion);
+            }
+            data = data.replace(module, newVersion);
+            fs.writeFileSync(this.uri, data);
+            this.parseFile(data);
+            this.checkForErrors();
+        }
+        catch (e) {
+            (0, console_1.debug)(e);
+            (0, server_1.notifyClient)("Could not update module\n" + e);
+        }
+    }
+    async updateAllModules() {
+        const libs = this.mastlib.concat(this.sbslib);
+        try {
+            let data = fs.readFileSync(this.uri, "utf-8");
+            for (const module of libs) {
+                const newest = this.getLatestVersion(module);
+                data = data.replace(module, path.basename(newest));
+            }
+            fs.writeFileSync(this.uri, data);
+            this.parseFile(data);
+            this.checkForErrors();
+        }
+        catch (e) {
+            (0, console_1.debug)(e);
+            (0, server_1.notifyClient)("Could not update module\n" + e);
+        }
+    }
     /** Only call this from readFile() */
     parseFile(text) {
         const story = JSON.parse(text);
-        //debug(story);
         if (story.sbslib)
             this.sbslib = story.sbslib;
         if (story.mastlib)
             this.mastlib = story.mastlib;
-        this.complete = true;
-        // debug("Sending notification to client");
-        // storyJsonNotif(0,this.uri,"","");
+    }
+    /**
+     * @param errorType
+     * story.json error types:
+     * 0 - Error - Referenced file does not exist
+     * 1 - Warning - Referenced file is not the latest version
+     * @param jsonUri
+     */
+    async storyJsonError(errorType) {
+        const useLatest = "Update to latest";
+        const manual = "Update manually";
+        const hide = "Don't show again";
+        const err = "story.json contains references to files that do not exist";
+        const warn = "Newer versions are available for story.json references";
+        let message;
+        if (errorType === 0)
+            message = err;
+        if (errorType === 1)
+            message = warn;
+        if (message === undefined)
+            return;
+        let ret = await server_1.connection.window.showErrorMessage(message, { title: useLatest }, { title: manual });
+        if (ret === undefined)
+            return;
+        if (ret.title === useLatest) {
+            // Update story.json to reference latest file versions
+            this.updateAllModules();
+        }
+        else if (ret.title === manual) {
+            // Open story.json
+            (0, server_1.sendToClient)("showFile", this.uri);
+        }
+        else if (ret.title === hide) {
+            // Add persistence setting to this
+        }
     }
 }
 exports.StoryJson = StoryJson;
@@ -698,6 +644,6 @@ function getCache(name, reloadCache = false) {
     return ret;
 }
 function artemisDirNotFoundError() {
-    throw new Error('Function not implemented.');
+    server_1.connection.window.showWarningMessage("Artemis root directory not found! Cannot load some important information.");
 }
 //# sourceMappingURL=cache.js.map

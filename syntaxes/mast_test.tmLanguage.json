@@ -11,8 +11,8 @@
     {"include": "#yaml"},
     {"include": "#style-definition"},
     {"include": "#comment"},
-    {"include": "#string"},
     {"include": "#label"},
+    {"include": "#string"},
     {"include": "#snake-syntax"},
     {"include": "#operator"},
     {"include": "#statements"},
@@ -184,6 +184,10 @@
         {
           "name": "label.media.mast",
           "match": "@[\\w-]+(/[\\w-]+)*"
+        },
+        {
+          "name": "label.inline.builtins",
+          "match": "\\+\\+\\++[ \\t]*\\w+"
         }
       ]
     },
@@ -5010,7 +5014,7 @@
     "qstring-button-definition": {
       "name": "comms.button.build",
       "comment": "Need to use \\s+ because it has to be indented?? Can it be not indented?",
-      "begin": "(?m)^\\s*[\\+\\*](?!\/)",
+      "begin": "(?m)^\\s*[\\+\\*](?!\/)(\".*\")",
       "end": "(\".*?\")(.*?)(?=( if|\\$|\\n|\\{|\\(|\\[))",
       "endCaptures":{
         "1":{
@@ -5240,7 +5244,7 @@
     },
     "yaml": {
       "name": "meta.injection.yaml",
-      "begin": "```[ \\t]*yaml\\s*$",
+      "begin": "```[ \\t]*(yaml)?\\s*$",
       "end": "```",
       "patterns": [
         {"include":"#key-value-pair"}

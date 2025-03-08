@@ -11,6 +11,7 @@ const cache_1 = require("./cache");
 const path = require("path");
 const fileFunctions_1 = require("./fileFunctions");
 const tokens_1 = require("./tokens");
+const globals_1 = require("./globals");
 let classes = [];
 let defaultFunctionCompletionItems = [];
 /**
@@ -71,7 +72,7 @@ function onCompletion(_textDocumentPosition, text) {
         // Here we check for blob info
         if (blobStr.endsWith(".set(") || blobStr.endsWith(".get(")) {
             (0, console_1.debug)("Is BLobe");
-            return (0, cache_1.getGlobals)().blob_items;
+            return (0, globals_1.getGlobals)().blob_items;
         }
         (0, console_1.debug)("Is in string");
         return ci;
@@ -83,11 +84,11 @@ function onCompletion(_textDocumentPosition, text) {
     }
     // Media labels only get the skybox names
     else if (iStr.endsWith("@media/skybox/")) {
-        return (0, cache_1.getGlobals)().skyboxes;
+        return (0, globals_1.getGlobals)().skyboxes;
         // Get Music Options (default vs Artemis2)
     }
     else if (iStr.endsWith("@media/music/")) {
-        return (0, cache_1.getGlobals)().music;
+        return (0, globals_1.getGlobals)().music;
     }
     // Route Label autocompletion
     if (iStr.trim().startsWith("//")) {
@@ -116,7 +117,7 @@ function onCompletion(_textDocumentPosition, text) {
     }
     // Handle label autocompletion
     let jump = /(->|jump) *?$/;
-    if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (")) {
+    if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (") || iStr.endsWith("objective_add(") || iStr.endsWith("brain_add(")) {
         let labelNames = cache.getLabels(text);
         (0, console_1.debug)(labelNames);
         // Iterate over parent label info objects

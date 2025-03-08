@@ -52,7 +52,7 @@ import { getComments, getStrings, getYamls } from './comments';
 import fs = require("fs");
 
 import { getArtemisDirFromChild, getFileContents, getParentFolder, readAllFilesIn } from './fileFunctions';
-import { getCache, loadCache } from './cache';
+import { getCache, loadCache, StoryJson } from './cache';
 import { compileMission, getGlobalFunctions } from './python';
 import { getVariableNamesInDoc, updateTokensForLine } from './tokens';
 
@@ -168,9 +168,11 @@ connection.onInitialize((params: InitializeParams) => {
 		// 	debug(e);
 		// 	console.error(e);
 		// }
-
+		debug("Loading cache");
 		loadCache(uri.fsPath);
+		debug("Cache loaded")
 		let cache = getCache(uri.fsPath);
+		debug("Getting globals");
 		getGlobalFunctions(cache.storyJson.sbslib);
 	} else {
 		debug("No Workspace folders");
@@ -359,7 +361,6 @@ export interface ErrorInstance {
 }
 
 async function validateTextDocument(textDocument: TextDocument): Promise<Diagnostic[]> {
-	notifyClient("Validating doc");
 	//debug("Validating document");
 	// In this simple example we get the settings for every validate run.
 	let maxNumberOfProblems = 100;
@@ -440,7 +441,6 @@ connection.onDidChangeWatchedFiles(_change => {
  * Triggered when ending a function name with an open parentheses, e.g. "functionName( "
  */
 connection.onSignatureHelp((_textDocPos: SignatureHelpParams): SignatureHelp | undefined =>{
-	notifyClient("onSignatureHelpFired");
 	//debug(functionData.length);
 	const text = documents.get(_textDocPos.textDocument.uri);
 	if (text === undefined) {
@@ -452,7 +452,6 @@ connection.onSignatureHelp((_textDocPos: SignatureHelpParams): SignatureHelp | u
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
 	(_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] | undefined => {
-		notifyClient("onCompletion fired");
 		const text = documents.get(_textDocumentPosition.textDocument.uri);
 		if (text === undefined) {
 			return [];
@@ -518,64 +517,14 @@ export function myDebug(str:any) {
 
 
 export function notifyClient(message:string) {
+	debug("Sending to client: " + message);
 	connection.sendNotification("custom/mastNotif", message);
 }
 
-/**
- * @param errorType 
- * story.json error types:
- * 0 - Error - Referenced file does not exist
- * 1 - Warning - Referenced file is not the latest version
- * @param jsonUri 
- * @param currentVersion 
- * @param newestVersion 
- */
-export async function storyJsonError(errorType: integer, jsonUri: string, newestVersion:string, currentVersion:string="") {
-	let data = {
-		errorType: errorType, 
-		jsonUri: jsonUri, 
-		currentVersion: currentVersion, 
-		newestVersion: newestVersion
-	};
-	debug(data);
-	// let err = new Error();
-	// debug(err.stack);
-	let message = JSON.stringify(data);
-	debug("Sending data");
 
-	const useLatest: string = "Update to latest";
-	const manual: string = "Manually update";
-	const hide: string = "Don't show again";
-	
-	let ret = await connection.window.showErrorMessage(
-		"Testing an error message\nLet's try this",
-		{title: useLatest},
-		{title: manual},
-		{title: hide}
-	);
-	if (ret === undefined) return;
-	if (ret.title === useLatest) {
-		// Update story.json to reference latest file versions
-	} else if (ret.title === manual) {
-		// Open story.json
-		debug("Open story.json");
-		//let s: ShowDocumentParams
-		connection.window.showDocument({
-			uri: jsonUri,
-			external: false,
-			takeFocus: true
-		})
-	} else if (ret.title === hide) {
-		// Add persistence setting to this
-	}
-	
-	// debug(ret);
 
-	// sendToClient('custom/storyJson', data).then(()=>{debug("Sent")}).finally(()=>{}).catch((err)=>{debug(err)});
-}
-
-async function sendToClient(notifName: string, data: any) {
-	connection.sendNotification(notifName, data);
+export function sendToClient(notifName: string, data: any) {
+	connection.sendNotification("custom/" + notifName, data);
 }
 
 async function artemisDirNotFoundError() {

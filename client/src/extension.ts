@@ -43,7 +43,7 @@ export function activate(context: ExtensionContext) {
 	// Options to control the language client
 	const clientOptions: LanguageClientOptions = {
 		// Register the server for plain text documents
-		documentSelector: [{ scheme: 'file', language: 'mast' }],
+		documentSelector: [{ scheme: 'file', language: 'mast' },{scheme:'file',language:'json'}],
 		synchronize: {
 			// Notify the server about file changes to '.clientrc files contained in the workspace
 			fileEvents: workspace.createFileSystemWatcher('**/.mast')
@@ -125,21 +125,17 @@ export function activate(context: ExtensionContext) {
 		// // Next we'll want to show the notification for the user...
 		//showJsonNotif(message);
 	});
-	// const notifListener = client.onNotification('custom/mastNotif', (message:string)=>{
-	// 	debug("Notificaiton recieved");
-	// 	debug(message);
-	// 	let sj: StoryJson = {
-	// 		errorType: 'Warning',
-	// 		jsonUri: '',
-	// 		currentVersion: '',
-	// 		newestVersion: ''
-	// 	}
-	// 	showJsonNotif(sj);
-	// });
-	
-	
-	//window.showTextDocument()
-	//context.subscriptions.push(notifListener);
+
+	// This just sends a debug message to the client.
+	const mastNotif = client.onNotification('custom/mastNotif', (message)=>{debug(message);})
+	context.subscriptions.push(mastNotif);
+
+	// This opens the specified file in the editor.
+	const showJson = client.onNotification('custom/showFile', (file)=>{
+		file = vscode.Uri.file(file);
+		window.showTextDocument(file);
+	});
+	context.subscriptions.push(showJson);
 	context.subscriptions.push(storyJsonListener);
 	// Start the client. This will also launch the server
 	client.start();

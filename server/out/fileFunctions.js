@@ -8,7 +8,6 @@ exports.getFilesInDir = getFilesInDir;
 exports.getInitFileInFolder = getInitFileInFolder;
 exports.readAllFilesIn = readAllFilesIn;
 exports.readZipArchive = readZipArchive;
-exports.getStoryJson = getStoryJson;
 exports.getParentFolder = getParentFolder;
 exports.getMissionFolder = getMissionFolder;
 exports.fixFileName = fixFileName;
@@ -17,7 +16,6 @@ const path = require("path");
 const fs = require("fs");
 const console_1 = require("console");
 const AdmZip = require("adm-zip");
-const cache_1 = require("./cache");
 const vscode_uri_1 = require("vscode-uri");
 function findSubfolderByName(dir, folderName) {
     const files = fs.readdirSync(dir, { withFileTypes: true });
@@ -77,7 +75,7 @@ function getFilesInDir(dir, includeChildren = true) {
     try {
         // Not sure why workspace.uri returns this weird initial designator, but we can fix it just fine.
         // Probably because we're using fetch()
-        const uri = dir.replace("file:///c%3A", "C:");
+        let uri = dir.replace("file:///", "").replace("%3A", ":");
         const files = fs.readdirSync(uri, { withFileTypes: true });
         for (const f in files) {
             if (files[f].isDirectory()) {
@@ -134,31 +132,6 @@ async function readZipArchive(filepath) {
         console.log(`Unzipping ${filepath} failed. \n${e}`);
     }
     return map;
-}
-function getStoryJson(uri) {
-    let mission = findSubfolderByName((0, cache_1.getGlobals)().artemisDir, "missions");
-    (0, console_1.debug)(mission);
-    (0, console_1.debug)(uri);
-    let ret = "";
-    getFilesInDir(uri).forEach((file) => {
-        if (file.endsWith("story.json")) {
-            (0, console_1.debug)("Found file");
-            ret = file;
-        }
-    });
-    if (ret !== "") {
-        return ret;
-    }
-    const m = uri.indexOf("missions");
-    const end = m + 9;
-    const dir1 = uri.substring(end);
-    (0, console_1.debug)(dir1);
-    const n = dir1.indexOf(path.sep);
-    if (n === -1) {
-        return uri;
-    }
-    ret = uri.substring(0, end + n + 1);
-    return ret;
 }
 function getParentFolder(childUri) {
     if (childUri.startsWith("file")) {

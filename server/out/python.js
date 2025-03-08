@@ -7,14 +7,14 @@ const python_shell_1 = require("python-shell");
 const fileFunctions_1 = require("./fileFunctions");
 const console_1 = require("console");
 const path = require("path");
-const cache_1 = require("./cache");
+const globals_1 = require("./globals");
 let pyPath = "";
 let scriptPath = "";
 let regularOptions;
 async function getGlobalFunctions(sbs_utils) {
     let ret = [];
     if (pyPath === "") {
-        let adir = (0, cache_1.getGlobals)().artemisDir;
+        let adir = (0, globals_1.getGlobals)().artemisDir;
         let f = (0, fileFunctions_1.findSubfolderByName)(adir, "PyRuntime");
         if (f !== null) {
             pyPath = path.resolve(f);
@@ -28,7 +28,7 @@ async function getGlobalFunctions(sbs_utils) {
         scriptPath = __dirname.replace("out", "src");
     }
     let sbsPath = path.join(scriptPath, "sbs.zip");
-    let libFolder = path.join((0, cache_1.getGlobals)().artemisDir, "data", "missions");
+    let libFolder = path.join((0, globals_1.getGlobals)().artemisDir, "data", "missions");
     //const sbsLibPath = "D:\\Cosmos Dev\\Cosmos-1-0-1\\data\\missions\\sbs_utils"//
     const sbsLibPath = path.join(libFolder, "__lib__", sbs_utils[0]);
     const o = {
@@ -37,6 +37,7 @@ async function getGlobalFunctions(sbs_utils) {
         args: [sbsLibPath, sbsPath]
     };
     regularOptions = o;
+    (0, console_1.debug)("Starting python shell");
     try {
         await python_shell_1.PythonShell.run('mastGlobals.py', o).then((messages) => {
             for (let m of messages) {
@@ -51,15 +52,15 @@ async function getGlobalFunctions(sbs_utils) {
     return ret;
 }
 async function compileMission(mastFile, content, sbs_utils) {
-    //debug(sbs_utils)
-    if (sbs_utils[0] !== 'artemis-sbs.sbs_utils.v1.0.1.sbslib') {
-        return [];
-    }
+    (0, console_1.debug)(sbs_utils);
+    // if (sbs_utils[0] !== 'artemis-sbs.sbs_utils.v1.0.1.sbslib') {
+    // 	return [];
+    // }
     mastFile = (0, fileFunctions_1.fixFileName)(mastFile);
     let errors = [];
     let missionPath = (0, fileFunctions_1.getMissionFolder)(mastFile);
     if (pyPath === "") {
-        let adir = (0, cache_1.getGlobals)().artemisDir;
+        let adir = (0, globals_1.getGlobals)().artemisDir;
         let f = (0, fileFunctions_1.findSubfolderByName)(adir, "PyRuntime");
         if (f !== null) {
             pyPath = path.resolve(f);

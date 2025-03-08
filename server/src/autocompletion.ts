@@ -6,10 +6,11 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { ClassObject, ClassTypings, getVariablesInFile, IClassObject, PyFile } from './data';
 import { getRouteLabelAutocompletions, getRouteLabelVars, getSkyboxCompletionItems } from './routeLabels';
 import { isInComment, isInString, isInYaml, isTextInBracket } from './comments';
-import { getCache, getGlobals } from './cache';
+import { getCache } from './cache';
 import path = require('path');
 import { fixFileName } from './fileFunctions';
 import { getVariableNamesInDoc, updateTokensForLine, variables } from './tokens';
+import { getGlobals } from './globals';
 
 let classes: IClassObject[] = [];
 let defaultFunctionCompletionItems: CompletionItem[] = [];
@@ -129,7 +130,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 
 	// Handle label autocompletion
 	let jump: RegExp = /(->|jump) *?$/;
-	if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (")) {
+	if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (") || iStr.endsWith("objective_add(") || iStr.endsWith("brain_add(")) {
 		let labelNames = cache.getLabels(text);
 		debug(labelNames);
 		// Iterate over parent label info objects

@@ -25,8 +25,9 @@ import {
 import { myDebug } from './server';
 import { debug } from 'console';
 import AdmZip = require("adm-zip");
-import { getGlobals, StoryJson } from './cache';
+import { StoryJson } from './cache';
 import { URI } from 'vscode-uri';
+import { getGlobals } from './globals';
 
 export function findSubfolderByName(dir: string, folderName: string): string | null {
 	const files = fs.readdirSync(dir, { withFileTypes: true });
@@ -95,7 +96,7 @@ export function getFilesInDir(dir: string, includeChildren: boolean = true): str
 	try {
 		// Not sure why workspace.uri returns this weird initial designator, but we can fix it just fine.
 		// Probably because we're using fetch()
-		const uri = dir.replace("file:///c%3A","C:");
+		let uri = dir.replace("file:///","").replace("%3A",":")
 		const files =  fs.readdirSync(uri, { withFileTypes: true });
 		for (const f in files) {
 			if (files[f].isDirectory()) {
@@ -159,32 +160,6 @@ export async function readZipArchive(filepath: string) {
 		console.log(`Unzipping ${filepath} failed. \n${e}`);
 	}
 	return map;
-}
-
-export function getStoryJson(uri: string) {
-	let mission = findSubfolderByName(getGlobals().artemisDir,"missions");
-	debug(mission);
-	debug(uri);
-	let ret = "";
-	getFilesInDir(uri).forEach((file)=>{
-		if (file.endsWith("story.json")) {
-			debug("Found file");
-			ret = file;
-		}
-	});
-	if (ret !== "") {
-		return ret;
-	}
-	const m = uri.indexOf("missions");
-	const end = m + 9;
-	const dir1 = uri.substring(end);
-	debug(dir1);
-	const n = dir1.indexOf(path.sep);
-	if (n === -1) {
-		return uri;
-	}
-	ret = uri.substring(0,end + n + 1);
-	return ret;
 }
 
 export function getParentFolder(childUri:string) {

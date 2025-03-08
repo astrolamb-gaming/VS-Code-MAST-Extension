@@ -3,8 +3,9 @@ import { findSubfolderByName, fixFileName, getArtemisDirFromChild, getMissionFol
 import { debug } from 'console';
 import path = require('path');
 import * as fs from 'fs';
-import { getCache, getGlobals } from './cache';
+import { getCache } from './cache';
 import { integer } from 'vscode-languageserver';
+import { getGlobals } from './globals';
 
 let pyPath = "";
 let scriptPath = "";
@@ -35,7 +36,7 @@ export async function getGlobalFunctions(sbs_utils: string[]): Promise<string[]>
 		args: [sbsLibPath,sbsPath]
 	}
 	regularOptions = o;
-
+	debug("Starting python shell")
 	try {
 		await PythonShell.run('mastGlobals.py', o).then((messages: any)=>{
 			for (let m of messages) {
@@ -51,10 +52,10 @@ export async function getGlobalFunctions(sbs_utils: string[]): Promise<string[]>
 }
 
 export async function compileMission(mastFile: string, content: string, sbs_utils: string[]): Promise<string[]> {
-	//debug(sbs_utils)
-	if (sbs_utils[0] !== 'artemis-sbs.sbs_utils.v1.0.1.sbslib') {
-		return [];
-	}
+	debug(sbs_utils)
+	// if (sbs_utils[0] !== 'artemis-sbs.sbs_utils.v1.0.1.sbslib') {
+	// 	return [];
+	// }
 	mastFile = fixFileName(mastFile);
 	let errors: string[] = [];
 	let missionPath: string = getMissionFolder(mastFile);
