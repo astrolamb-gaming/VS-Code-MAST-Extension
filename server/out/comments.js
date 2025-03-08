@@ -83,7 +83,7 @@ function getComments(textDocument) {
 function getYamls(textDocument) {
     const text = textDocument.getText();
     let yamls = [];
-    let yaml = /^\\s*---$.*^\\s*?...$/gms;
+    let yaml = /```[ \t]*.*?[ \t]*?```/gms;
     yamls = getMatchesForRegex(yaml, text);
     //debug(strings);
     //stringRanges = yamls;

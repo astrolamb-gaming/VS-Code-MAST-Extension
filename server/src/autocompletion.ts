@@ -67,10 +67,12 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 
 	// If we're inside a comment or a string, we don't want autocompletion.
 	if (isInComment(pos)) {
+		debug("Is in Comment")
 		return ci;
 	}
 
 	if (isInYaml(pos)) {
+		debug("Is in Yaml")
 		return ci;
 	}
 

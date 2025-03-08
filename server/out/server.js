@@ -301,7 +301,14 @@ async function validateTextDocument(textDocument) {
         message: "CAPS " + debugStrs,
         relatedMessage: "Is all caps intentional?"
     };
-    //errorSources.push(e1);
+    e1 = {
+        pattern: /\w+\.($|\n)/gs,
+        severity: node_1.DiagnosticSeverity.Error,
+        source: "mast",
+        message: "Property for object not specified.",
+        relatedMessage: ""
+    };
+    errorSources.push(e1);
     for (let i = 0; i < errorSources.length; i++) {
         let d1 = (0, errorChecking_1.findDiagnostic)(errorSources[i].pattern, textDocument, errorSources[i].severity, errorSources[i].message, errorSources[i].source, errorSources[i].relatedMessage, maxNumberOfProblems, problems);
         diagnostics = diagnostics.concat(d1);

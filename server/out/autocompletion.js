@@ -60,9 +60,11 @@ function onCompletion(_textDocumentPosition, text) {
     (0, console_1.debug)(iStr);
     // If we're inside a comment or a string, we don't want autocompletion.
     if ((0, comments_1.isInComment)(pos)) {
+        (0, console_1.debug)("Is in Comment");
         return ci;
     }
     if ((0, comments_1.isInYaml)(pos)) {
+        (0, console_1.debug)("Is in Yaml");
         return ci;
     }
     // TODO: Check and make absolutely sure that isTextInBracket is working properly
