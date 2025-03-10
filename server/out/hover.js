@@ -37,12 +37,12 @@ function onHover(_pos, text) {
     else if (isFunction(hoveredLine, symbol)) {
         hoverText += "\nFunction";
     }
-    let str = {
-        kind: 'plaintext', // 'markdown' or 'plaintext'
-        value: ''
-    };
+    // let str: MarkupContent = {
+    // 	kind: 'plaintext', // 'markdown' or 'plaintext'
+    // 	value: ''
+    // }
     const hover = {
-        contents: str
+        contents: symbol //str
     };
     return hover;
 }

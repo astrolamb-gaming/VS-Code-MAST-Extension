@@ -153,15 +153,19 @@ function getStrings(textDocument) {
     //let pattern: RegExp = //gm;
     // TODO: Get all sets of {} to see if we're in an f-string and need to exclude sections of the string
     let strDouble = /(\".*?\")|('.*?')/gm;
-    let strDoubleStartOnly = /(^\\s*?(\")[^\"]*?(\\n|$))/gm;
+    // let strDoubleStartOnly = /(^\\s*?(\")[^\"]*?(\\n|$))/gm;
     let multiDouble = /(\^{3,}.*?\^{3,})/gm;
     let caretDouble = /(\"{3,}.*?\"{3,})|('{3,}.*?'{3,})/gs;
-    let weighted = /^[ \t]*%\d+?.*?(\n|$)/gs;
+    let weighted = /(\%\d*|\")([^\n\r\f]*)/gs;
+    // TODO: Use a single regex if possible
+    // e.g.
+    // Problem is that some need the /s flag while some cannot have it
+    let all = /(\"{3,}.*?\"{3,})|('{3,}.*?'{3,})|(\".*?\")|('.*?')|(\%\d*|\")([^\n\r\f]*)/gm;
     let brackets = /{.*?}/gm;
     let fstrings = getMatchesForRegex(brackets, text); // f-strings
     let test = [];
     test = getMatchesForRegex(strDouble, text);
-    test = test.concat(getMatchesForRegex(strDoubleStartOnly, text));
+    // test = test.concat(getMatchesForRegex(strDoubleStartOnly,text));
     test = test.concat(getMatchesForRegex(multiDouble, text));
     test = test.concat(getMatchesForRegex(caretDouble, text));
     test = test.concat(getMatchesForRegex(weighted, text));

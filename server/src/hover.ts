@@ -44,12 +44,12 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 		hoverText += "\nFunction"
 	}
 
-	let str: MarkupContent = {
-		kind: 'plaintext', // 'markdown' or 'plaintext'
-		value: ''
-	}
+	// let str: MarkupContent = {
+	// 	kind: 'plaintext', // 'markdown' or 'plaintext'
+	// 	value: ''
+	// }
 	const hover: Hover = {
-		contents: str
+		contents: symbol//str
 	}
 
 	return hover;
