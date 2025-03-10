@@ -4,7 +4,6 @@ exports.StoryJson = exports.MissionCache = void 0;
 exports.loadCache = loadCache;
 exports.getSourceFiles = getSourceFiles;
 exports.getCache = getCache;
-exports.artemisDirNotFoundError = artemisDirNotFoundError;
 const fs = require("fs");
 const path = require("path");
 const data_1 = require("./data");
@@ -642,8 +641,5 @@ function getCache(name, reloadCache = false) {
         caches.push(ret);
     }
     return ret;
-}
-function artemisDirNotFoundError() {
-    server_1.connection.window.showWarningMessage("Artemis root directory not found! Cannot load some important information.");
 }
 //# sourceMappingURL=cache.js.map

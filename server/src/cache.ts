@@ -689,6 +689,4 @@ export function getCache(name:string, reloadCache:boolean = false): MissionCache
 	return ret;
 }
 
-export function artemisDirNotFoundError() {
-	connection.window.showWarningMessage("Artemis root directory not found! Cannot load some important information.");
-}
+

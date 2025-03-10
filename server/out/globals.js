@@ -6,7 +6,7 @@ const console_1 = require("console");
 const fileFunctions_1 = require("./fileFunctions");
 const path = require("path");
 const vscode_languageserver_1 = require("vscode-languageserver");
-const cache_1 = require("./cache");
+const server_1 = require("./server");
 class Globals {
     constructor() {
         this.artemisDir = "";
@@ -22,7 +22,7 @@ class Globals {
             this.data_set_entries = [];
             this.libModules = [];
             (0, console_1.debug)("Artemis directory not found. Global information not loaded.");
-            (0, cache_1.artemisDirNotFoundError)();
+            artemisDirNotFoundError();
         }
         else {
             // Valid artemis dir has been found
@@ -144,5 +144,16 @@ function getGlobals() {
         }
     }
     return globals;
+}
+async function artemisDirNotFoundError() {
+    const res = await server_1.connection.window.showErrorMessage("Root Artemis directory not found. Cannot load some important information.", { title: "Ignore" }, { title: "Don't show again" });
+    if (res !== undefined) {
+        if (res.title === "Ignore") {
+            // Do nothing
+        }
+        else if (res.title === "Don't show again") {
+            // TODO: Add persistence to extension.
+        }
+    }
 }
 //# sourceMappingURL=globals.js.map

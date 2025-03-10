@@ -2,7 +2,7 @@ import { debug } from 'console';
 import { findSubfolderByName, getArtemisDirFromChild, getFilesInDir, getFolders, readFile } from './fileFunctions';
 import path = require('path');
 import { CompletionItem, CompletionItemLabelDetails, CompletionItemKind } from 'vscode-languageserver';
-import { artemisDirNotFoundError } from './cache';
+import { connection } from './server';
 
 interface DataSetItem {
 	name: string,
@@ -156,4 +156,15 @@ export function getGlobals() {
 		}
 	}
 	return globals;
+}
+
+async function artemisDirNotFoundError() {
+	const res = await connection.window.showErrorMessage("Root Artemis directory not found. Cannot load some important information.",{title:"Ignore"},{title:"Don't show again"});
+	if (res !== undefined) {
+		if (res.title === "Ignore") {
+			// Do nothing
+		} else if (res.title === "Don't show again") {
+			// TODO: Add persistence to extension.
+		}
+	}
 }

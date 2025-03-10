@@ -409,17 +409,6 @@ function notifyClient(message) {
 function sendToClient(notifName, data) {
     exports.connection.sendNotification("custom/" + notifName, data);
 }
-async function artemisDirNotFoundError() {
-    const res = await exports.connection.window.showErrorMessage("Root Artemis directory not found.", { title: "Ignore" }, { title: "Don't show again" });
-    if (res !== undefined) {
-        if (res.title === "Ignore") {
-            // Do nothing
-        }
-        else if (res.title === "Don't show again") {
-            // TODO: Add persistence to extension.
-        }
-    }
-}
 exports.connection.onNotification("custom/storyJsonResponse", (response) => {
     (0, console_1.debug)("Download command recieved: " + response);
     switch (response) {
