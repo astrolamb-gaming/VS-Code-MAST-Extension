@@ -44,7 +44,7 @@ async function getGlobalFunctions(sbs_utils) {
                 //debug(m);
             }
             console.log('finished');
-        });
+        }).catch((e) => { (0, console_1.debug)(e); });
     }
     catch (e) {
         (0, console_1.debug)(e);

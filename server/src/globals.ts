@@ -16,6 +16,7 @@ export class Globals {
 	data_set_entries: DataSetItem[];
 	blob_items: CompletionItem[];
 	libModules: string[];
+	libModuleCompletionItems: CompletionItem[];
 	artemisDir: string = "";
 	constructor() {
 		const thisDir = path.resolve("../");
@@ -29,6 +30,7 @@ export class Globals {
 			this.blob_items = [];
 			this.data_set_entries = [];
 			this.libModules = [];
+			this.libModuleCompletionItems = [];
 			debug("Artemis directory not found. Global information not loaded.");
 			artemisDirNotFoundError();
 		} else {
@@ -41,6 +43,14 @@ export class Globals {
 			// That promise then populates the field when complete.
 			this.data_set_entries = this.loadObjectDataDocumentation();
 			this.libModules = this.loadLibs();
+			this.libModuleCompletionItems = [];
+			for (const lib of this.libModules) {
+				const ci: CompletionItem = {
+					label: path.basename(lib),
+					kind: CompletionItemKind.File
+				}
+				this.libModuleCompletionItems.push(ci);
+			}
 		}
 		
 	}

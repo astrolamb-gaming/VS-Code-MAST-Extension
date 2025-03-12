@@ -317,7 +317,7 @@ class StoryJson {
         this.sbslib = [];
         this.mastlib = [];
         this.storyJsonErrors = [];
-        this.regex = /\.v(\d+)\.(\d+)\.(\d+)\.(((mast|sbs)lib)|(zip))/;
+        this.regex = /\.v(\d+)\.(\d+)\.((\d+)\.)+(((mast|sbs)lib)|(zip))/;
         this.errorCheckIgnore = false;
         this.uri = uri;
     }

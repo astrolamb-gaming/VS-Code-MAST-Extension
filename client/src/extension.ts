@@ -16,10 +16,25 @@ import {
 	TransportKind
 } from 'vscode-languageclient/node';
 
+
+
 let client: LanguageClient;
 let outputChannel: LogOutputChannel;
 outputChannel = window.createOutputChannel("MAST Client Output",{log:true});
-debug("Output channel created")
+debug("Output channel created");
+
+(function() {
+	debug("Startings")
+    var childProcess = require("child_process");
+    var oldSpawn = childProcess.spawn;
+    function mySpawn() {
+        console.log('spawn called');
+        console.log(arguments);
+        var result = oldSpawn.apply(this, arguments);
+        return result;
+    }
+    childProcess.spawn = mySpawn;
+})();
 
 export function activate(context: ExtensionContext) {
 	debug("Activating extension.");
@@ -46,7 +61,7 @@ export function activate(context: ExtensionContext) {
 		documentSelector: [{ scheme: 'file', language: 'mast' },{scheme:'file',language:'json'}],
 		synchronize: {
 			// Notify the server about file changes to '.clientrc files contained in the workspace
-			fileEvents: workspace.createFileSystemWatcher('**/.mast')
+			fileEvents: [workspace.createFileSystemWatcher('**/.mast'),workspace.createFileSystemWatcher('**/.json')]
 		},
 		middleware: {
 			executeCommand: async (command, args, next) => {

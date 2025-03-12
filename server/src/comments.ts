@@ -56,8 +56,13 @@ export function getComments(textDocument: TextDocument) {
 	strRng = stringRanges;//getMatchesForRegex(pattern,text);
 	
 	pattern = /\#.*?(\"|$)/gm;
+	const color: RegExp = /#([0-9a-fA-F]{3}){1,2}[\:\,\"\' ]/g;
 	while (m = pattern.exec(text)) {
 		let comment = m[0];
+		if (comment.match(color) !== null) {
+			debug("Skipping: " + comment);
+			continue;
+		}
 		let inString = false;
 		// Now we iterate of strRange, which is all the strings in the file.
 		// We're checking to make sure that the start index of the presumed comment is not 
@@ -155,14 +160,14 @@ export function isTextInBracket(text:string, pos: integer) {
 }
 
 export function getStrings(textDocument: TextDocument) {
-	const text = textDocument.getText();
+	let text = textDocument.getText();
 	let strings: CRange[] = [];
 	//let pattern: RegExp = //gm;
 	// TODO: Get all sets of {} to see if we're in an f-string and need to exclude sections of the string
 	let strDouble = /(\".*?\")|('.*?')/gm;
 	// let strDoubleStartOnly = /(^\\s*?(\")[^\"]*?(\\n|$))/gm;
-	let multiDouble = /(\^{3,}.*?\^{3,})/gm;
-	let caretDouble = /(\"{3,}.*?\"{3,})|('{3,}.*?'{3,})/gs;
+	let caretDouble = /(\^{3,}.*?\^{3,})/gm;
+	let multiDouble = /(\"{3,}.*?\"{3,})|('{3,}.*?'{3,})/gs;
 	let weighted = /(\%\d*|\")([^\n\r\f]*)/gs
 
 	// TODO: Use a single regex if possible
@@ -172,16 +177,37 @@ export function getStrings(textDocument: TextDocument) {
 
 
 
+
+
 	let brackets = /{.*?}/gm;
 	let fstrings = getMatchesForRegex(brackets,text);// f-strings
 	let test: CRange[] = [];
+	let stringRanges: CRange[] = [];
+
+	test = getMatchesForRegex(multiDouble,text);
+	stringRanges = stringRanges.concat(test);
+	for (const t of test) {
+		text = replaceRegexMatchWithUnderscore(text, t);
+	}
+	test = getMatchesForRegex(caretDouble,text);
+	stringRanges = stringRanges.concat(test);
+	for (const t of test) {
+		text = replaceRegexMatchWithUnderscore(text, t);
+	}
+	test = getMatchesForRegex(weighted,text);
+	stringRanges = stringRanges.concat(test);
+	for (const t of test) {
+		text = replaceRegexMatchWithUnderscore(text, t);
+	}
 	test = getMatchesForRegex(strDouble,text);
-	// test = test.concat(getMatchesForRegex(strDoubleStartOnly,text));
-	test = test.concat(getMatchesForRegex(multiDouble,text));
-	test = test.concat(getMatchesForRegex(caretDouble,text));
-	test = test.concat(getMatchesForRegex(weighted,text));
+	stringRanges = stringRanges.concat(test);
+	// for (const t of test) {
+	// 	text = replaceRegexMatchWithUnderscore(text, t);
+	// }
+
+	text = textDocument.getText();
 	
-	for (const s of test) {
+	for (const s of stringRanges) {
 		debug(s);
 		const str: string = text.substring(s.start,s.end);
 		debug(str);
@@ -217,4 +243,9 @@ export function getStrings(textDocument: TextDocument) {
 	// Update the global stringRanges variable
 	stringRanges = strings;
 	return strings;
+}
+
+function replaceRegexMatchWithUnderscore(text: string, match: CRange) {
+	text = text.replace(text.substring(match.start,match.end),"".padEnd(match.end - match.start,"_"));
+	return text;
 }

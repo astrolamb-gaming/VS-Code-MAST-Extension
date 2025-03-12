@@ -356,7 +356,7 @@ export class StoryJson {
 	sbslib: string[] = [];
 	mastlib: string[] = [];
 	storyJsonErrors: StoryJsonError[] = [];
-	regex: RegExp = /\.v(\d+)\.(\d+)\.(\d+)\.(((mast|sbs)lib)|(zip))/;
+	regex: RegExp = /\.v(\d+)\.(\d+)\.((\d+)\.)+(((mast|sbs)lib)|(zip))/;
 	errorCheckIgnore = false;
 
 	constructor(uri: string) {

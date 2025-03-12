@@ -15,6 +15,18 @@ let client;
 let outputChannel;
 outputChannel = vscode_1.window.createOutputChannel("MAST Client Output", { log: true });
 debug("Output channel created");
+(function () {
+    debug("Startings");
+    var childProcess = require("child_process");
+    var oldSpawn = childProcess.spawn;
+    function mySpawn() {
+        console.log('spawn called');
+        console.log(arguments);
+        var result = oldSpawn.apply(this, arguments);
+        return result;
+    }
+    childProcess.spawn = mySpawn;
+})();
 function activate(context) {
     debug("Activating extension.");
     // The server is implemented in node
@@ -34,7 +46,7 @@ function activate(context) {
         documentSelector: [{ scheme: 'file', language: 'mast' }, { scheme: 'file', language: 'json' }],
         synchronize: {
             // Notify the server about file changes to '.clientrc files contained in the workspace
-            fileEvents: vscode_1.workspace.createFileSystemWatcher('**/.mast')
+            fileEvents: [vscode_1.workspace.createFileSystemWatcher('**/.mast'), vscode_1.workspace.createFileSystemWatcher('**/.json')]
         },
         middleware: {
             executeCommand: async (command, args, next) => {

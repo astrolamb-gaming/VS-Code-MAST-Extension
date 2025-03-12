@@ -35,7 +35,10 @@ import {
 	WorkspaceFolder,
 	TextDocumentChangeEvent,
 	MessageActionItem,
-	ShowDocumentParams
+	ShowDocumentParams,
+	SemanticTokensParams,
+	SemanticTokens,
+	SemanticTokensBuilder
 } from 'vscode-languageserver/node';
 import { URI } from 'vscode-uri';
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -55,6 +58,7 @@ import { getArtemisDirFromChild, getFileContents, getParentFolder, readAllFilesI
 import { getCache, loadCache, StoryJson } from './cache';
 import { compileMission, getGlobalFunctions } from './python';
 import { getVariableNamesInDoc, updateTokensForLine } from './tokens';
+import { getGlobals } from './globals';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -142,7 +146,14 @@ connection.onInitialize((params: InitializeParams) => {
 			signatureHelpProvider: {
 				triggerCharacters: ['(',',']
 			},
-			hoverProvider: true
+			hoverProvider: true,
+			// semanticTokensProvider: {
+            //     legend: {
+            //         // set your tokens here
+            //         tokenTypes: ['class','function','label','inline_label','variable','property','method','comment','string','keyword','number','operator'], 
+            //         tokenModifiers: ['declaration','documentation']
+            //     }
+            // }
 		}
 	};
 	if (hasWorkspaceFolderCapability) {
@@ -361,6 +372,10 @@ export interface ErrorInstance {
 }
 
 async function validateTextDocument(textDocument: TextDocument): Promise<Diagnostic[]> {
+	if (textDocument.languageId === "json") {
+		debug("THIS IS A JSON FILE");
+		return [];
+	}
 	//debug("Validating document");
 	// In this simple example we get the settings for every validate run.
 	let maxNumberOfProblems = 100;
@@ -448,6 +463,10 @@ connection.onDidChangeWatchedFiles(_change => {
  */
 connection.onSignatureHelp((_textDocPos: SignatureHelpParams): SignatureHelp | undefined =>{
 	//debug(functionData.length);
+	if (_textDocPos.textDocument.uri.endsWith("json")) {
+		debug("THIS IS A JSON FILE");
+		return;
+	}
 	const text = documents.get(_textDocPos.textDocument.uri);
 	if (text === undefined) {
 		return undefined;
@@ -458,6 +477,10 @@ connection.onSignatureHelp((_textDocPos: SignatureHelpParams): SignatureHelp | u
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
 	(_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] | undefined => {
+		if (_textDocumentPosition.textDocument.uri.endsWith("json")) {
+			debug("THIS IS A JSON FILE");
+			return getGlobals().libModuleCompletionItems;
+		}
 		const text = documents.get(_textDocumentPosition.textDocument.uri);
 		if (text === undefined) {
 			return [];
@@ -503,6 +526,25 @@ connection.onHover((_textDocumentPosition: TextDocumentPositionParams): Hover | 
 	}
 	return onHover(_textDocumentPosition,text);
 });
+
+// connection.onRequest("textDocument/semanticTokens/full", (params: SemanticTokensParams) => {
+//     // Implement your logic to provide semantic tokens for the given document here.
+//     // You should return the semantic tokens as a response.
+//     const semanticTokens = computeSemanticTokens(params.textDocument.uri);
+//     return semanticTokens;
+// });
+
+// function computeSemanticTokens(params: string): SemanticTokens {
+// 	let doc = documents.get(params);
+// 	if (doc === undefined) { return {data: []};}
+//     let tokens: SemanticTokens = {
+// 		data: []
+// 	};
+// 	debug(params);
+// 	let strings = getStrings(doc);
+// 	SemanticTokensBuilder.
+// 	return tokens;
+// }
 
 // Make the text document manager listen on the connection
 // for open, change and close text document events

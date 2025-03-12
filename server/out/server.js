@@ -26,6 +26,7 @@ const fs = require("fs");
 const cache_1 = require("./cache");
 const python_1 = require("./python");
 const tokens_1 = require("./tokens");
+const globals_1 = require("./globals");
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 exports.connection = (0, node_1.createConnection)(node_1.ProposedFeatures.all);
@@ -92,7 +93,14 @@ exports.connection.onInitialize((params) => {
             signatureHelpProvider: {
                 triggerCharacters: ['(', ',']
             },
-            hoverProvider: true
+            hoverProvider: true,
+            // semanticTokensProvider: {
+            //     legend: {
+            //         // set your tokens here
+            //         tokenTypes: ['class','function','label','inline_label','variable','property','method','comment','string','keyword','number','operator'], 
+            //         tokenModifiers: ['declaration','documentation']
+            //     }
+            // }
         }
     };
     if (hasWorkspaceFolderCapability) {
@@ -261,6 +269,10 @@ exports.connection.onDidChangeTextDocument((params) => {
     // params.contentChanges describe the content changes to the document.
 });
 async function validateTextDocument(textDocument) {
+    if (textDocument.languageId === "json") {
+        (0, console_1.debug)("THIS IS A JSON FILE");
+        return [];
+    }
     //debug("Validating document");
     // In this simple example we get the settings for every validate run.
     let maxNumberOfProblems = 100;
@@ -339,6 +351,10 @@ exports.connection.onDidChangeWatchedFiles(_change => {
  */
 exports.connection.onSignatureHelp((_textDocPos) => {
     //debug(functionData.length);
+    if (_textDocPos.textDocument.uri.endsWith("json")) {
+        (0, console_1.debug)("THIS IS A JSON FILE");
+        return;
+    }
     const text = documents.get(_textDocPos.textDocument.uri);
     if (text === undefined) {
         return undefined;
@@ -347,6 +363,10 @@ exports.connection.onSignatureHelp((_textDocPos) => {
 });
 // This handler provides the initial list of the completion items.
 exports.connection.onCompletion((_textDocumentPosition) => {
+    if (_textDocumentPosition.textDocument.uri.endsWith("json")) {
+        (0, console_1.debug)("THIS IS A JSON FILE");
+        return (0, globals_1.getGlobals)().libModuleCompletionItems;
+    }
     const text = documents.get(_textDocumentPosition.textDocument.uri);
     if (text === undefined) {
         return [];
@@ -388,6 +408,23 @@ exports.connection.onHover((_textDocumentPosition) => {
     }
     return (0, hover_1.onHover)(_textDocumentPosition, text);
 });
+// connection.onRequest("textDocument/semanticTokens/full", (params: SemanticTokensParams) => {
+//     // Implement your logic to provide semantic tokens for the given document here.
+//     // You should return the semantic tokens as a response.
+//     const semanticTokens = computeSemanticTokens(params.textDocument.uri);
+//     return semanticTokens;
+// });
+// function computeSemanticTokens(params: string): SemanticTokens {
+// 	let doc = documents.get(params);
+// 	if (doc === undefined) { return {data: []};}
+//     let tokens: SemanticTokens = {
+// 		data: []
+// 	};
+// 	debug(params);
+// 	let strings = getStrings(doc);
+// 	SemanticTokensBuilder.
+// 	return tokens;
+// }
 // Make the text document manager listen on the connection
 // for open, change and close text document events
 documents.listen(exports.connection);

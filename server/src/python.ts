@@ -43,7 +43,7 @@ export async function getGlobalFunctions(sbs_utils: string[]): Promise<string[]>
 				//debug(m);
 			}
 			console.log('finished');
-		});
+		}).catch((e)=>{debug(e);});
 	} catch (e) {
 		debug(e);
 	}

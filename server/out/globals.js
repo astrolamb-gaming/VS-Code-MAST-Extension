@@ -21,6 +21,7 @@ class Globals {
             this.blob_items = [];
             this.data_set_entries = [];
             this.libModules = [];
+            this.libModuleCompletionItems = [];
             (0, console_1.debug)("Artemis directory not found. Global information not loaded.");
             artemisDirNotFoundError();
         }
@@ -34,6 +35,14 @@ class Globals {
             // That promise then populates the field when complete.
             this.data_set_entries = this.loadObjectDataDocumentation();
             this.libModules = this.loadLibs();
+            this.libModuleCompletionItems = [];
+            for (const lib of this.libModules) {
+                const ci = {
+                    label: path.basename(lib),
+                    kind: vscode_languageserver_1.CompletionItemKind.File
+                };
+                this.libModuleCompletionItems.push(ci);
+            }
         }
     }
     loadLibs() {
