@@ -41,7 +41,7 @@ import {
 	SemanticTokensBuilder
 } from 'vscode-languageserver/node';
 import { URI } from 'vscode-uri';
-import { TextDocument } from 'vscode-languageserver-textdocument';
+import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 import { findDiagnostic } from './errorChecking';
 import { checkLabels, getMainLabelAtPos, LabelInfo } from './labels';
 import { onCompletion, prepCompletions } from './autocompletion';
@@ -385,7 +385,7 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 	}
 	
 	getComments(textDocument);
-	getStrings(textDocument);
+	let strs = getStrings(textDocument);
 	getYamls(textDocument);
 
 	// The validator creates diagnostics for all uppercase words length 2 and more
@@ -397,6 +397,19 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 	let problems = 0;
 	let diagnostics: Diagnostic[] = [];
 	let errorSources: ErrorInstance[] = [];
+
+	for (const s of strs) {
+		let r: Range = {
+			start: textDocument.positionAt(s.start),
+			end: textDocument.positionAt(s.end)
+		}
+		let d: Diagnostic = {
+			range: r,
+			message: 'string'
+		}
+		diagnostics.push(d);
+	}
+	return diagnostics;
 	let e1: ErrorInstance = {
 		pattern: /(^(=|-){2,}([0-9A-Za-z _]+?)(-|=)([0-9A-Za-z _]+?)(=|-){2,})/gm,
 		severity: DiagnosticSeverity.Error,

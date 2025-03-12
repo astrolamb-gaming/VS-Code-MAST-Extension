@@ -184,55 +184,83 @@ export function getStrings(textDocument: TextDocument) {
 	let test: CRange[] = [];
 	let stringRanges: CRange[] = [];
 
+	// We're just going to handle strings within brackets first, then completely ignore them.
+	for (const f of fstrings) {
+		debug(f);
+		debug(text.substring(f.start,f.end))
+		let strs;
+		while (strs = strDouble.exec(text.substring(f.start,f.end))) {
+			debug(strs);
+			stringRanges.push({start:f.start + strs.index,end:f.start + strs.index + strs[0].length});
+		}
+		text = replaceRegexMatchWithUnderscore(text, f);
+	}
+
+// These are all good I think. Commented out the concats for testing
 	test = getMatchesForRegex(multiDouble,text);
-	stringRanges = stringRanges.concat(test);
+	//stringRanges = stringRanges.concat(test);
 	for (const t of test) {
 		text = replaceRegexMatchWithUnderscore(text, t);
 	}
 	test = getMatchesForRegex(caretDouble,text);
-	stringRanges = stringRanges.concat(test);
+	//stringRanges = stringRanges.concat(test);
 	for (const t of test) {
 		text = replaceRegexMatchWithUnderscore(text, t);
 	}
-	test = getMatchesForRegex(weighted,text);
-	stringRanges = stringRanges.concat(test);
-	for (const t of test) {
-		text = replaceRegexMatchWithUnderscore(text, t);
-	}
-	test = getMatchesForRegex(strDouble,text);
-	stringRanges = stringRanges.concat(test);
+
+// Now we have to check for regular strings, including ones within fstrings
+	// test = getMatchesForRegex(weighted,text);
+	// for (const t of test) {
+	// 	let line = text.substring(t.start,t.end);
+	// 	debug(line);
+	// 	let strs;
+	// 	let found = false;
+	// 	while (strs = strDouble.exec(line)) {
+	// 		stringRanges.push({start: strs.index,end: strs.index + strs[0].length});
+	// 		found = true;
+	// 		debug("Found");
+	// 	}
+	// 	if (!found) {
+	// 		text = replaceRegexMatchWithUnderscore(text, t);
+	// 		stringRanges.push(t);
+	// 	}
+	// }
+	// test = getMatchesForRegex(strDouble,text);
+	//stringRanges = stringRanges.concat(test);
 	// for (const t of test) {
 	// 	text = replaceRegexMatchWithUnderscore(text, t);
 	// }
 
 	text = textDocument.getText();
 	
-	for (const s of stringRanges) {
-		debug(s);
-		const str: string = text.substring(s.start,s.end);
-		debug(str);
-		fstrings = getMatchesForRegex(brackets,str);
-		// If it doesn't contain any brackets, we move on.
-		if (fstrings.length === 0) {
-			strings.push(s);
-			continue;
-		}
-		// Effectively an else statement:
-		let start = s.start;
-		for (const f of fstrings) {
-			const newRange: CRange = {
-				start: start,
-				end: f.start
-			}
-			strings.push(newRange);
-			start = f.end+1;
-		}
-		const finalRange: CRange = {
-			start: start,
-			end: s.end
-		}
-		strings.push(finalRange);
-	}
+	// Now we check for brackets within the strings
+	// And TODO: Check for strings within brackets?
+	// for (const s of stringRanges) {
+	// 	debug(s);
+	// 	const str: string = text.substring(s.start,s.end);
+	// 	debug(str);
+	// 	fstrings = getMatchesForRegex(brackets,str);
+	// 	// If it doesn't contain any brackets, we move on.
+	// 	if (fstrings.length === 0) {
+	// 		strings.push(s);
+	// 		continue;
+	// 	}
+	// 	// Effectively an else statement:
+	// 	let start = s.start;
+	// 	for (const f of fstrings) {
+	// 		const newRange: CRange = {
+	// 			start: start,
+	// 			end: f.start
+	// 		}
+	// 		strings.push(newRange);
+	// 		start = f.end+1;
+	// 	}
+	// 	const finalRange: CRange = {
+	// 		start: start,
+	// 		end: s.end
+	// 	}
+	// 	strings.push(finalRange);
+	// }
 	
 	//debug(strings);
 	// for (const r of strings) {
@@ -241,8 +269,12 @@ export function getStrings(textDocument: TextDocument) {
 	//debug("Strings found: " + strings.length);
 
 	// Update the global stringRanges variable
-	stringRanges = strings;
-	return strings;
+	//stringRanges = strings;
+
+
+	debug("STRINGS");
+	debug(stringRanges);
+	return stringRanges;
 }
 
 function replaceRegexMatchWithUnderscore(text: string, match: CRange) {
