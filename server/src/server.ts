@@ -384,7 +384,7 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 		maxNumberOfProblems = settings.maxNumberOfProblems;
 	}
 	
-	getComments(textDocument);
+	let comments = getComments(textDocument);
 	let strs = getStrings(textDocument);
 	getYamls(textDocument);
 
@@ -398,14 +398,14 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 	let diagnostics: Diagnostic[] = [];
 	let errorSources: ErrorInstance[] = [];
 
-	for (const s of strs) {
+	for (const s of comments) {
 		let r: Range = {
 			start: textDocument.positionAt(s.start),
 			end: textDocument.positionAt(s.end)
 		}
 		let d: Diagnostic = {
 			range: r,
-			message: 'string'
+			message: 'comment'
 		}
 		diagnostics.push(d);
 	}

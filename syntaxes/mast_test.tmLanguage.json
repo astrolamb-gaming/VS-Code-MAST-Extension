@@ -4901,7 +4901,7 @@
     },
     "qstring-double": {
       "name": "string.quoted.double.ts",
-      "begin": "\"",
+      "begin": "f?\"",
       "beginCaptures": {
         "0": {
           "name": "punctuation.definition.string.begin.ts"

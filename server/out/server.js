@@ -280,7 +280,7 @@ async function validateTextDocument(textDocument) {
     if (settings !== null) {
         maxNumberOfProblems = settings.maxNumberOfProblems;
     }
-    (0, comments_1.getComments)(textDocument);
+    let comments = (0, comments_1.getComments)(textDocument);
     let strs = (0, comments_1.getStrings)(textDocument);
     (0, comments_1.getYamls)(textDocument);
     // The validator creates diagnostics for all uppercase words length 2 and more
@@ -291,14 +291,14 @@ async function validateTextDocument(textDocument) {
     let problems = 0;
     let diagnostics = [];
     let errorSources = [];
-    for (const s of strs) {
+    for (const s of comments) {
         let r = {
             start: textDocument.positionAt(s.start),
             end: textDocument.positionAt(s.end)
         };
         let d = {
             range: r,
-            message: 'string'
+            message: 'comment'
         };
         diagnostics.push(d);
     }
