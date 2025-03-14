@@ -51,7 +51,7 @@ import { onSignatureHelp, prepSignatures } from './signatureHelp';
 import { ClassTypings, PyFile } from './data';
 import { loadRouteLabels } from './routeLabels';
 import { parse, RX } from './rx';
-import { getComments, getStrings, getYamls } from './comments';
+import { getComments, getSquareBrackets, getStrings, getYamls } from './comments';
 import fs = require("fs");
 
 import { getArtemisDirFromChild, getFileContents, getParentFolder, readAllFilesIn } from './fileFunctions';
@@ -383,7 +383,7 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 	if (settings !== null) {
 		maxNumberOfProblems = settings.maxNumberOfProblems;
 	}
-	
+	getSquareBrackets(textDocument);
 	let comments = getComments(textDocument);
 	let strs = getStrings(textDocument);
 	getYamls(textDocument);

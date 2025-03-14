@@ -2,6 +2,8 @@ import { debug } from 'console';
 import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 import * as fs from 'fs';
 import { integer } from 'vscode-languageserver';
+import { CreateContextOptions } from 'vm';
+import exp = require('constants');
 export interface CRange {
 	start: integer,
 	end: integer
@@ -17,6 +19,33 @@ export function isInComment(loc:integer):boolean {
 let commentRanges:CRange[] = [];
 let stringRanges: CRange[] = [];
 let yamlRanges: CRange[] = [];
+let squareBracketRanges: CRange[] = [];
+
+export function getSquareBrackets(textDocument: TextDocument) {
+	const pattern = /\[.*?\]/g;
+	const brackets: CRange[] = [];
+	let m: RegExpExecArray | null;
+	const text = textDocument.getText();
+	while (m = pattern.exec(text)) {
+		const r: CRange = {
+			start: m.index,
+			end: m.index + m[0].length + 1
+		}
+		brackets.push(r);
+	}
+	squareBracketRanges = brackets;
+	return squareBracketRanges;
+}
+
+export function isInSquareBrackets(loc:integer): boolean {
+	for (const r of squareBracketRanges) {
+		if (r.start < loc && r.end > loc) {
+			return true;
+		}
+	}
+	return false;
+}
+
 export function isInString(loc:integer) : boolean {
 	for (const r in stringRanges) {
 		if (stringRanges[r].start < loc && stringRanges[r].end > loc) {
@@ -72,34 +101,34 @@ export function getComments(textDocument: TextDocument) {
 	strRng = stringRanges;//getMatchesForRegex(pattern,text);
 	
 	//pattern = /\#.*?(\"|$)/gm;
-	pattern = /#(?![0-9a-fA-F]{3,}).*$/gm;
-	const color: RegExp = /#((([0-9a-fA-F]){6}(([0-9a-fA-F]){2})?)|([0-9a-fA-F]){3,4})(?!\w)/g;
+	pattern = /#+[^#\n\r\f]*/g;
+
+	// Not using the more complicated version because there could be an accidental error in the color code.
+	//const color: RegExp = /#((([0-9a-fA-F]){6}(([0-9a-fA-F]){2})?)|([0-9a-fA-F]){3,4})(?!\w)/g;
+	const color: RegExp = /[^#]#[0-9a-fA-F]{3,8}(?!\w)/g;
+
+	// We have to account for any # symbol that is used in a string, e.g. the 'invisble' operator
 	while (m = pattern.exec(text)) {
 		let comment = m[0];
 		if (comment.match(color) !== null) {
 			debug("Skipping: " + comment);
 			continue;
 		}
+
 		let inString = false;
 		// Now we iterate of strRange, which is all the strings in the file.
 		// We're checking to make sure that the start index of the presumed comment is not 
 		// within a string. If so, it's not a real comment.
 		// E.g. spawn_asteroid("whatever", "asteroid,#", "whatever") has a # inside of a set
 		// of double quotes, so it doesn't actually indicate a comment start.
-		for (const i in strRng) {
-			if (strRng[i].start < m.index && m.index < strRng[i].end) {
-				inString = true;
-				break;
-			}
-		}
-		if (!inString) {
+		if (!isInString(m.index) && !isInSquareBrackets(m.index)) {
 			const r: CRange = {
 				start: m.index,
 				end: m.index + m[0].length + 1
 			}
 			commentRanges.push(r);
 		} else {
-
+			// Do nothing, with new regex of #+...\#\n it will go to next # in line anyways, if it exists
 		}
 	}
 	return commentRanges;

@@ -280,6 +280,7 @@ async function validateTextDocument(textDocument) {
     if (settings !== null) {
         maxNumberOfProblems = settings.maxNumberOfProblems;
     }
+    (0, comments_1.getSquareBrackets)(textDocument);
     let comments = (0, comments_1.getComments)(textDocument);
     let strs = (0, comments_1.getStrings)(textDocument);
     (0, comments_1.getYamls)(textDocument);
