@@ -5247,7 +5247,8 @@
       "begin": "```[ \\t]*(yaml)?\\s*$",
       "end": "```",
       "patterns": [
-        {"include":"#key-value-pair"}
+        {"include":"#key-value-pair"},
+        {"include":"#comment"}
       ]
     },
     "regex": {
