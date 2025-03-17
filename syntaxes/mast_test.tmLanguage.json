@@ -157,12 +157,12 @@
           "name": "label.inline.await.mast"
         },
         {
-          "match": "(jump|->)(\\s*)(\\w+)",
+          "match": "(\\s*)(jump|->)(\\s*)(\\w*)",
           "captures": {
-            "1": {
+            "2": {
               "name": "label.jump.keyword.mast"
             },
-            "3": {
+            "4": {
               "name": "label.jump.to.mast"
             }
             
