@@ -398,20 +398,20 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 	let diagnostics: Diagnostic[] = [];
 	let errorSources: ErrorInstance[] = [];
 
-	for (const s of comments) {
-		let r: Range = {
-			start: textDocument.positionAt(s.start),
-			end: textDocument.positionAt(s.end)
-		}
-		let d: Diagnostic = {
-			range: r,
-			message: 'comment'
-		}
-		diagnostics.push(d);
-	}
-	return diagnostics;
+	// for (const s of comments) {
+	// 	let r: Range = {
+	// 		start: textDocument.positionAt(s.start),
+	// 		end: textDocument.positionAt(s.end)
+	// 	}
+	// 	let d: Diagnostic = {
+	// 		range: r,
+	// 		message: 'comment'
+	// 	}
+	// 	diagnostics.push(d);
+	// }
+	// return diagnostics;
 	let e1: ErrorInstance = {
-		pattern: /(^(=|-){2,}([0-9A-Za-z _]+?)(-|=)([0-9A-Za-z _]+?)(=|-){2,})/gm,
+		pattern: /(^(=|-){2,}[ \t]*([0-9A-Za-z _]+?)[ \t]*(-|=)[ \t]*([0-9A-Za-z _]+?)(=|-){2,})/gm,
 		severity: DiagnosticSeverity.Error,
 		message: "Label Definition: Cannot use '-' or '=' inside label name.",
 		source: "sbs",

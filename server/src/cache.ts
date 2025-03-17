@@ -356,7 +356,7 @@ export class StoryJson {
 	sbslib: string[] = [];
 	mastlib: string[] = [];
 	storyJsonErrors: StoryJsonError[] = [];
-	regex: RegExp = /\.v(\d+)\.(\d+)\.((\d+)\.)+(((mast|sbs)lib)|(zip))/;
+	regex: RegExp = /\.v((\d+)\.(\d+)\.(\d+))\.(\d+\.)*(((mast|sbs)lib)|(zip))/;
 	errorCheckIgnore = false;
 
 	constructor(uri: string) {
@@ -410,10 +410,10 @@ export class StoryJson {
 	getVersionPriority(version:string) : integer {
 		try {
 			const res = this.regex.exec(version);
-			if (res === null) return 0; // Should never occur
-			const major = res[1].padStart(4,"0");
-			const minor = res[2].padStart(4,"0");
-			const incremental = res[3].padStart(4,"0");
+			if (res === null) return 0; // Should never occur, but gotta be sure
+			const major = res[2].padStart(4,"0");
+			const minor = res[3].padStart(4,"0");
+			const incremental = res[4].padStart(4,"0");
 			const ret =  major + minor + incremental;
 			if (ret === "000300090039") return 0;
 			return Number.parseInt(ret);
@@ -422,27 +422,42 @@ export class StoryJson {
 		}
 	}
 
+	getVersionString(name:string): string {
+		const res = this.regex.exec(name);
+		if (res === null) return "";
+		return res[0];
+	}
+
+	compareVersions() {
+
+	}
+
 	/**
 	 * 
-	 * @param name Name of the module
+	 * @param name Name of the module, excluding the version number (call getModuleBaseName() first)
 	 * @returns String with the name of the most recent version. If the
 	 */
 	getLatestVersion(name:string) {
+		debug("\n\nGetLatestVersion");
 		let version = 0;
 		let latestFile = name;
+		// debug(name);
+		// name = this.getModuleBaseName(name);
 		debug(name);
-		name = this.getModuleBaseName(name);
 		for (const file of getGlobals().libModules) {
 			if (file.includes(name)) {
 				const v = this.getVersionPriority(file);
-				// debug(v);
-				// debug(version);
+				debug(v);
+				debug(version);
+				debug(v > version);
 				if (v > version) {
 					version = v;
 					latestFile = file;
+					debug("file updated");
 				}
 			}
 		}
+		debug(latestFile);
 		return latestFile;
 	}
 
@@ -483,7 +498,8 @@ export class StoryJson {
 		try {
 		let data = fs.readFileSync(this.uri,"utf-8");
 		for (const module of libs) {
-			const newest = this.getLatestVersion(module);
+			let name = this.getModuleBaseName(module);
+			const newest = this.getLatestVersion(name);
 			data = data.replace(module, path.basename(newest));
 		}
 		fs.writeFileSync(this.uri,data);

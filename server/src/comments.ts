@@ -1,8 +1,7 @@
 import { debug } from 'console';
-import { Range, TextDocument } from 'vscode-languageserver-textdocument';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 import * as fs from 'fs';
 import { integer } from 'vscode-languageserver';
-import { CreateContextOptions } from 'vm';
 import exp = require('constants');
 export interface CRange {
 	start: integer,
@@ -59,21 +58,6 @@ export function isInYaml(loc:integer): boolean {
 	for (const r in yamlRanges) {
 		if (yamlRanges[r].start < loc && yamlRanges[r].end > loc) {
 			return true;
-		}
-	}
-	return false;
-}
-
-function getCommentInLine(line:string) {
-	let pattern = /#(?![0-9a-fA-F]{3,}).*$/gm;
-	const strRng = stringRanges;
-	let m: RegExpExecArray | null;
-	let x = line.match(pattern);
-	while(m = pattern.exec(line)) {
-		for (const i in strRng) {
-			if (strRng[i].start < m.index && m.index < strRng[i].end) {
-				return true;
-			}
 		}
 	}
 	return false;
@@ -302,11 +286,8 @@ export function getStrings(textDocument: TextDocument) {
 	// Now we check for brackets within the strings
 	// And TODO: Check for strings within brackets? Did this at the beginning for simplicity
 	for (const s of stringRanges) {
-		debug(s);
 		const str: string = text.substring(s.start,s.end);
-		debug(str);
 
-		//fstrings = getMatchesForRegex(brackets,str);
 		// If it doesn't contain any brackets, we move on.
 		if (fstrings.length === 0) {
 			strings.push(s);
@@ -316,18 +297,12 @@ export function getStrings(textDocument: TextDocument) {
 		//debug(fstrings)
 		let start = s.start;
 		for (const f of fstrings) {
-			
 			// Check if the brackets are inside the string.
 			if (f.start > s.start && f.end < s.end) {
-				debug(f);
-				debug(text.substring(f.start,f.end))
-				debug(s);
-				debug(text.substring(s.start,s.end))
 				const newRange: CRange = {
 					start: start,
 					end: f.start
 				}
-				debug(newRange)
 				strings.push(newRange);
 				start = f.end;
 			}
@@ -351,8 +326,6 @@ export function getStrings(textDocument: TextDocument) {
 	//stringRanges = strings;
 
 	strings = strings.concat(fstringsOnly);
-	debug("STRINGS");
-	debug(stringRanges);
 	return strings;
 }
 

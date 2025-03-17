@@ -65,20 +65,6 @@ function isInYaml(loc) {
     }
     return false;
 }
-function getCommentInLine(line) {
-    let pattern = /#(?![0-9a-fA-F]{3,}).*$/gm;
-    const strRng = stringRanges;
-    let m;
-    let x = line.match(pattern);
-    while (m = pattern.exec(line)) {
-        for (const i in strRng) {
-            if (strRng[i].start < m.index && m.index < strRng[i].end) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
 /**
  * Should be called whenever the file is updated.
  * Really should be more efficient and add/remove as necessary, but I'm not taking the time to do that yet.
@@ -276,10 +262,7 @@ function getStrings(textDocument) {
     // Now we check for brackets within the strings
     // And TODO: Check for strings within brackets? Did this at the beginning for simplicity
     for (const s of stringRanges) {
-        (0, console_1.debug)(s);
         const str = text.substring(s.start, s.end);
-        (0, console_1.debug)(str);
-        //fstrings = getMatchesForRegex(brackets,str);
         // If it doesn't contain any brackets, we move on.
         if (fstrings.length === 0) {
             strings.push(s);
@@ -291,15 +274,10 @@ function getStrings(textDocument) {
         for (const f of fstrings) {
             // Check if the brackets are inside the string.
             if (f.start > s.start && f.end < s.end) {
-                (0, console_1.debug)(f);
-                (0, console_1.debug)(text.substring(f.start, f.end));
-                (0, console_1.debug)(s);
-                (0, console_1.debug)(text.substring(s.start, s.end));
                 const newRange = {
                     start: start,
                     end: f.start
                 };
-                (0, console_1.debug)(newRange);
                 strings.push(newRange);
                 start = f.end;
             }
@@ -318,8 +296,6 @@ function getStrings(textDocument) {
     // Update the global stringRanges variable
     //stringRanges = strings;
     strings = strings.concat(fstringsOnly);
-    (0, console_1.debug)("STRINGS");
-    (0, console_1.debug)(stringRanges);
     return strings;
 }
 function replaceRegexMatchWithUnderscore(text, match) {
