@@ -109,6 +109,7 @@ export class MissionCache {
 		this.resourceLabels = [];
 		this.mediaLabels = [];
 		this.mastFileInfo = [];
+		this.storyJson = new StoryJson(path.join(this.missionURI,"story.json"));
 		this.storyJson.readFile().then(()=>{this.modulesLoaded()});
 		loadSbs().then((p)=>{
 			debug("Loaded SBS, starting to parse.");
@@ -200,6 +201,7 @@ export class MissionCache {
 			if (file.endsWith("__init__.mast") || file.endsWith("__init__.py")) {
 				// Do nothing
 			} else if (file.endsWith(".py")) {
+				//debug("Checking: " + file)
 				this.routeLabels = this.routeLabels.concat(loadRouteLabels(data));
 				// this.mediaLabels = this.mediaLabels.concat(loadMediaLabels(data));
 				// this.resourceLabels = this.resourceLabels.concat(loadResourceLabels(data));
@@ -235,6 +237,7 @@ export class MissionCache {
 		for (const r of this.routeLabels) {
 			ci.push(r.completionItem);
 		}
+		debug(ci);
 		return ci;
 	}
 
@@ -376,7 +379,6 @@ export class StoryJson {
 		for (const m of files) {
 			const libDir = path.join(getGlobals().artemisDir,"data","missions","__lib__",m);
 			const libName = this.getModuleBaseName(m);
-			debug(libName);
 			if (getGlobals().libModules.includes(libDir)) {
 				// Module found. Check for updated versions
 				const latestFull = this.getLatestVersion(libName);
@@ -438,26 +440,17 @@ export class StoryJson {
 	 * @returns String with the name of the most recent version. If the
 	 */
 	getLatestVersion(name:string) {
-		debug("\n\nGetLatestVersion");
 		let version = 0;
 		let latestFile = name;
-		// debug(name);
-		// name = this.getModuleBaseName(name);
-		debug(name);
 		for (const file of getGlobals().libModules) {
 			if (file.includes(name)) {
 				const v = this.getVersionPriority(file);
-				debug(v);
-				debug(version);
-				debug(v > version);
 				if (v > version) {
 					version = v;
 					latestFile = file;
-					debug("file updated");
 				}
 			}
 		}
-		debug(latestFile);
 		return latestFile;
 	}
 
@@ -694,7 +687,7 @@ export function getCache(name:string, reloadCache:boolean = false): MissionCache
 	//debug(mf);
 	for (const cache of caches) {
 		if (cache.missionName === name || cache.missionURI === mf) {
-			cache.load();
+			if (reloadCache) cache.load();
 			return cache;
 		}
 	}
