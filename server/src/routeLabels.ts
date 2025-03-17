@@ -271,7 +271,7 @@ export function getRouteLabelVars(route:string) {
 export function loadRouteLabels(textData:string): IRouteLabel[] {
 
 	let routeLabels: IRouteLabel[] = [];
-	if (textData.includes("RouteDecoratorLabel")) {
+	if (textData.includes("RouteDecoratorLabel") && textData.includes("generate_label_begin_cmds")) {
 		debug(" THIS ONE ");
 	} else {
 		return routeLabels;

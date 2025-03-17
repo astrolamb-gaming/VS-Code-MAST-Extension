@@ -255,7 +255,7 @@ function getRouteLabelVars(route) {
  */
 function loadRouteLabels(textData) {
     let routeLabels = [];
-    if (textData.includes("RouteDecoratorLabel")) {
+    if (textData.includes("RouteDecoratorLabel") && textData.includes("generate_label_begin_cmds")) {
         (0, console_1.debug)(" THIS ONE ");
     }
     else {
