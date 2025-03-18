@@ -404,11 +404,12 @@ export class StoryJson {
 			const libName = this.getModuleBaseName(m);
 			if (getGlobals().libModules.includes(libDir)) {
 				// Module found. Check for updated versions
-				const latestFull = this.getLatestVersion(libName);
-				if (latestFull === "") {
+				let latest = this.getLatestVersion(libName);
+				if (latest === "") {
 					continue;
 				}
-				const latest = path.basename(latestFull);
+				latest = path.basename(latest);
+				// This is the latest version, move on to next module
 				if (latest === m) {
 					continue;
 				} else {
@@ -423,7 +424,6 @@ export class StoryJson {
 				errors = 0;
 				const lv = path.basename(this.getLatestVersion(libName));
 				debug("Module NOT found");
-				
 				break;
 			}
 		}
@@ -432,17 +432,31 @@ export class StoryJson {
 		}
 	}
 
-	getVersionPriority(version:string) : integer {
+	getVersionPriority(version:string) : number {
 		try {
 			const res = this.regex.exec(version);
 			if (res === null) return 0; // Should never occur, but gotta be sure
+			// Here we standardize the format of the number.
+			// Each version section could have various lengths, e.g. 1.12.40
+			// Therefore, to have a consistent standard even with large numbers, 
+			// we put each one into a string with a length of four, then add them
+			// together before we parse the number.
+			// Dev versions (using a fourth version number), are accounted for using decimal places.
 			const major = res[2].padStart(4,"0");
 			const minor = res[3].padStart(4,"0");
 			const incremental = res[4].padStart(4,"0");
-			const ret =  major + minor + incremental;
-			if (ret === "000300090039") return 0;
-			return Number.parseInt(ret);
+			let dev = res[5];
+			if (dev !== null && dev !== undefined) {
+				dev = dev.replace(".","").padStart(4,"0");
+			} else {
+				dev = "0";
+			}
+			const ret =  major + minor + incremental + "." + dev;
+			// Since version 1.0.0 has mastlibs designated 3.9.39, we compensate for that, assigning the file a value slightly above zero.
+			if (ret.includes("000300090039")) return 0.0001;
+			return Number.parseFloat(ret);
 		} catch (e) {
+			debug(e);
 			return 0;
 		}
 	}
@@ -463,12 +477,17 @@ export class StoryJson {
 	 * @returns String with the name of the most recent version. If the
 	 */
 	getLatestVersion(name:string) {
+		debug("Name: " + name);
 		let version = 0;
-		let latestFile = name;
+		debug(version);
+		let latestFile = "";
 		for (const file of getGlobals().libModules) {
 			if (file.includes(name)) {
+				debug(file);
 				const v = this.getVersionPriority(file);
+				debug(v)
 				if (v > version) {
+					debug(file);
 					version = v;
 					latestFile = file;
 				}
