@@ -81,9 +81,11 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// TODO: May be useful to have a list of used string words that can be added via autocomplete (i.e. roles)
 	// TODO: Faces: Add ability to get the desired image from tiles: https://stackoverflow.com/questions/11533606/javascript-splitting-a-tileset-image-to-be-stored-in-2d-image-array
 	if (iStr.endsWith("\"") || iStr.endsWith("'")) {
+		debug("Updating strings...")
 		getStrings(text);
 	}
 	const blobStr = iStr.substring(0,iStr.length-1);
+	debug(blobStr)
 	if (isInString(pos) && !isTextInBracket(iStr,pos)) {
 		// Here we check for blob info
 		if (blobStr.endsWith(".set(") || blobStr.endsWith(".get(")) {
@@ -114,6 +116,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	if(iStr.trim().startsWith("//")) {
 		// If this is a route label, but NOT anything after it, then we only return route labels
 		if (!iStr.trim().includes(" ")) {
+			debug("Getting regular route labels")
 			ci = cache.getRouteLabels();//getRouteLabelAutocompletions(iStr);
 			return ci;
 		} else {

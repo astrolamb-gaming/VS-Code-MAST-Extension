@@ -32,7 +32,7 @@ import { debug} from 'console';
 import { onHover } from './hover';
 import { onSignatureHelp } from './signatureHelp';
 import { ClassTypings } from './data';
-import { getComments, getSquareBrackets, getStrings, getYamls } from './comments';
+import { getComments, getSquareBrackets, getStrings, getYamls, isInComment, isInString } from './comments';
 import fs = require("fs");
 import { getCache, loadCache } from './cache';
 import {  getGlobalFunctions } from './python';
@@ -429,6 +429,12 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 	// compileMission(textDocument.uri, textDocument.getText(), getCache(textDocument.uri).storyJson.sbslib).then((errors)=>{
 	// 	debug(errors);
 	// });
+
+	diagnostics = diagnostics.filter((d)=>{
+		const start = textDocument.offsetAt(d.range.start);
+		const end = textDocument.offsetAt(d.range.end);
+		return isInString(start) || isInString(end) || isInComment(start) || isInComment(end);
+	})
 
 	return diagnostics;
 }

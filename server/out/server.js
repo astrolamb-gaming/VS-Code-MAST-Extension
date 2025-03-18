@@ -341,6 +341,11 @@ async function validateTextDocument(textDocument) {
     // compileMission(textDocument.uri, textDocument.getText(), getCache(textDocument.uri).storyJson.sbslib).then((errors)=>{
     // 	debug(errors);
     // });
+    diagnostics = diagnostics.filter((d) => {
+        const start = textDocument.offsetAt(d.range.start);
+        const end = textDocument.offsetAt(d.range.end);
+        return (0, comments_1.isInString)(start) || (0, comments_1.isInString)(end) || (0, comments_1.isInComment)(start) || (0, comments_1.isInComment)(end);
+    });
     return diagnostics;
 }
 exports.connection.onDidChangeWatchedFiles(_change => {
