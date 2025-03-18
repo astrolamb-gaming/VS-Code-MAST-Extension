@@ -9,6 +9,7 @@ exports.getInitFileInFolder = getInitFileInFolder;
 exports.readAllFilesIn = readAllFilesIn;
 exports.readZipArchive = readZipArchive;
 exports.getParentFolder = getParentFolder;
+exports.getInitContents = getInitContents;
 exports.getMissionFolder = getMissionFolder;
 exports.fixFileName = fixFileName;
 exports.getArtemisDirFromChild = getArtemisDirFromChild;
@@ -159,6 +160,20 @@ function getParentFolder(childUri) {
         }
     });
     return p;
+}
+function getInitContents(uri) {
+    let ret = [];
+    const parent = getParentFolder(fixFileName(uri));
+    const init = path.join(parent, "__init__.mast");
+    const text = fs.readFileSync(init, "utf-8").replace(/import[ \t]*/g, "");
+    let lines = text.split("\n");
+    for (const l of lines) {
+        const t = l.trim();
+        if (t !== "") {
+            ret.push(t);
+        }
+    }
+    return ret;
 }
 function getMissionFolder(uri) {
     // Check if it's the right format

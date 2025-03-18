@@ -31,11 +31,12 @@ function prepCompletions(files) {
 }
 let currentLine = 0;
 function onCompletion(_textDocumentPosition, text) {
+    let variables = (0, cache_1.getCache)(text.uri).getVariables(text.uri);
     if (currentLine != _textDocumentPosition.position.line) {
         currentLine = _textDocumentPosition.position.line;
         // Here we can do any logic that doesn't need to be done every character change
         (0, console_1.debug)("Updating variables list");
-        (0, tokens_1.getVariableNamesInDoc)(text);
+        variables = variables.concat((0, tokens_1.getVariableNamesInDoc)(text));
     }
     (0, tokens_1.updateTokensForLine)(currentLine);
     let ci = [];
@@ -69,6 +70,7 @@ function onCompletion(_textDocumentPosition, text) {
     }
     // TODO: Check and make absolutely sure that isTextInBracket is working properly
     // TODO: May be useful to have a list of used string words that can be added via autocomplete (i.e. roles)
+    // TODO: Faces: Add ability to get the desired image from tiles: https://stackoverflow.com/questions/11533606/javascript-splitting-a-tileset-image-to-be-stored-in-2d-image-array
     const blobStr = iStr.substring(0, iStr.length - 1);
     if ((0, comments_1.isInString)(pos) && !(0, comments_1.isTextInBracket)(iStr, pos)) {
         // Here we check for blob info
@@ -118,12 +120,14 @@ function onCompletion(_textDocumentPosition, text) {
         return ci;
     }
     // Handle label autocompletion
-    let jump = /(->|jump) *?$/;
+    let jump = /(->|jump)[ \t]*?/;
     if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (") || iStr.endsWith("objective_add(") || iStr.endsWith("brain_add(")) {
         let labelNames = cache.getLabels(text);
         (0, console_1.debug)(labelNames);
         // Iterate over parent label info objects
         for (const i in labelNames) {
+            if (labelNames[i].name.startsWith("//"))
+                continue;
             ci.push({ label: labelNames[i].name, kind: vscode_languageserver_1.CompletionItemKind.Event, labelDetails: { description: path.basename(labelNames[i].srcFile) } });
         }
         const lbl = (0, labels_1.getMainLabelAtPos)(startOfLine, labelNames);
@@ -222,8 +226,8 @@ function onCompletion(_textDocumentPosition, text) {
     }
     // Add variable names to autocomplete list
     // TODO: Add variables from other files in scope?
-    (0, console_1.debug)(tokens_1.variables);
-    ci = ci.concat(tokens_1.variables);
+    (0, console_1.debug)(variables);
+    ci = ci.concat(variables);
     //debug(ci.length);
     //ci = ci.concat(defaultFunctionCompletionItems);
     // TODO: Account for text that's already present?? I don't think that's necessary

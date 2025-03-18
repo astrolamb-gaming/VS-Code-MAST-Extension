@@ -7,6 +7,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { getParentFolder } from './fileFunctions';
 import exp = require('constants');
 import { getCache } from './cache';
+import { getVariableNamesInDoc } from './tokens';
 
 export class FileCache {
 	uri: string;
@@ -53,6 +54,7 @@ export class MastFile extends FileCache {
 	labelNames : LabelInfo[] = [];
 	// TODO: Add support for holding label information for all files listed in __init__.mast in a given folder.
 	// TODO: Add system for tracking variables in a mast file
+	variables: CompletionItem[] = [];
 	
 	constructor(uri: string, fileContents:string = "") {
 		//debug("building mast file");
@@ -85,7 +87,36 @@ export class MastFile extends FileCache {
 		this.labelNames = getLabelsInFile(text, this.uri);
 		//debug(this.labelNames);
 		// TODO: Parse variables, etc
+		this.variables = this.getVariableNames(text);
 	}
+
+	getVariableNames(text:string) {
+		debug("Getting variable names");
+		const vars: string[] = [];
+		const arr: CompletionItem[] = [];
+		const variableRX = /^\s*[a-zA-Z_]\w*\s*(?==[^=])/gm;
+		let m: RegExpExecArray | null;
+		while (m = variableRX.exec(text)) {
+			const v = m[0].trim();
+			//debug(m[0])
+			if (!vars.includes(v)) {
+				vars.push(v);
+			}
+		}
+	
+		for (const v of vars) {
+			const ci: CompletionItem = {
+				label: v,
+				kind: CompletionItemKind.Variable,
+				//TODO: Check type of variable?
+				labelDetails: {description: path.basename(this.uri)+": var"},
+				//detail: "From " + 
+			}
+			arr.push(ci);
+		}
+		const arrUniq = [...new Map(arr.map(v => [v.label, v])).values()]
+		return arrUniq;
+	} 
 
 }
 
@@ -176,6 +207,16 @@ export class PyFile extends FileCache {
 				this.defaultFunctionCompletionItems.push(f.completionItem);
 				//debug(f);
 			}
+		}
+		if (path.basename(this.uri) === "sbs.py") {
+			const c = new ClassObject("", "sbs.py");
+			c.name = "sbs";
+			c.methods = this.defaultFunctions;
+			c.methodCompletionItems = this.defaultFunctionCompletionItems;
+			for (const f of c.methods) {
+				c.methodSignatureInformation.push(f.signatureInformation);
+			}
+			this.classes.push(c);
 		}
 	}
 }

@@ -35,11 +35,12 @@ export function prepCompletions(files: PyFile[]) {
 let currentLine = 0;
 
 export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, text: TextDocument): CompletionItem[] {
+	let variables: CompletionItem[] = getCache(text.uri).getVariables(text.uri);
 	if (currentLine != _textDocumentPosition.position.line) {
 		currentLine = _textDocumentPosition.position.line;
 		// Here we can do any logic that doesn't need to be done every character change
 		debug("Updating variables list")
-		getVariableNamesInDoc(text);
+		variables = variables.concat(getVariableNamesInDoc(text));
 	}
 	updateTokensForLine(currentLine);
 	let ci : CompletionItem[] = [];
@@ -78,6 +79,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 
 	// TODO: Check and make absolutely sure that isTextInBracket is working properly
 	// TODO: May be useful to have a list of used string words that can be added via autocomplete (i.e. roles)
+	// TODO: Faces: Add ability to get the desired image from tiles: https://stackoverflow.com/questions/11533606/javascript-splitting-a-tileset-image-to-be-stored-in-2d-image-array
 	const blobStr = iStr.substring(0,iStr.length-1);
 	if (isInString(pos) && !isTextInBracket(iStr,pos)) {
 		// Here we check for blob info
@@ -131,12 +133,13 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	
 
 	// Handle label autocompletion
-	let jump: RegExp = /(->|jump) *?$/;
+	let jump: RegExp = /(->|jump)[ \t]*?/;
 	if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (") || iStr.endsWith("objective_add(") || iStr.endsWith("brain_add(")) {
 		let labelNames = cache.getLabels(text);
 		debug(labelNames);
 		// Iterate over parent label info objects
 		for (const i in labelNames) {
+			if (labelNames[i].name.startsWith("//")) continue;
 			ci.push({label: labelNames[i].name, kind: CompletionItemKind.Event, labelDetails: {description: path.basename(labelNames[i].srcFile)}});
 		}
 		const lbl = getMainLabelAtPos(startOfLine,labelNames);

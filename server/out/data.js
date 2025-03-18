@@ -38,12 +38,13 @@ class FileCache {
 }
 exports.FileCache = FileCache;
 class MastFile extends FileCache {
-    // TODO: Add support for holding label information for all files listed in __init__.mast in a given folder.
-    // TODO: Add system for tracking variables in a mast file
     constructor(uri, fileContents = "") {
         //debug("building mast file");
         super(uri);
         this.labelNames = [];
+        // TODO: Add support for holding label information for all files listed in __init__.mast in a given folder.
+        // TODO: Add system for tracking variables in a mast file
+        this.variables = [];
         if (path.extname(uri) === ".mast") {
             // If the contents are aleady read, we parse and move on. Don't need to read or parse again.
             if (fileContents !== "") {
@@ -73,6 +74,33 @@ class MastFile extends FileCache {
         this.labelNames = (0, labels_1.getLabelsInFile)(text, this.uri);
         //debug(this.labelNames);
         // TODO: Parse variables, etc
+        this.variables = this.getVariableNames(text);
+    }
+    getVariableNames(text) {
+        (0, console_1.debug)("Getting variable names");
+        const vars = [];
+        const arr = [];
+        const variableRX = /^\s*[a-zA-Z_]\w*\s*(?==[^=])/gm;
+        let m;
+        while (m = variableRX.exec(text)) {
+            const v = m[0].trim();
+            //debug(m[0])
+            if (!vars.includes(v)) {
+                vars.push(v);
+            }
+        }
+        for (const v of vars) {
+            const ci = {
+                label: v,
+                kind: vscode_languageserver_1.CompletionItemKind.Variable,
+                //TODO: Check type of variable?
+                labelDetails: { description: path.basename(this.uri) + ": var" },
+                //detail: "From " + 
+            };
+            arr.push(ci);
+        }
+        const arrUniq = [...new Map(arr.map(v => [v.label, v])).values()];
+        return arrUniq;
     }
 }
 exports.MastFile = MastFile;
@@ -162,6 +190,16 @@ class PyFile extends FileCache {
                 this.defaultFunctionCompletionItems.push(f.completionItem);
                 //debug(f);
             }
+        }
+        if (path.basename(this.uri) === "sbs.py") {
+            const c = new ClassObject("", "sbs.py");
+            c.name = "sbs";
+            c.methods = this.defaultFunctions;
+            c.methodCompletionItems = this.defaultFunctionCompletionItems;
+            for (const f of c.methods) {
+                c.methodSignatureInformation.push(f.signatureInformation);
+            }
+            this.classes.push(c);
         }
     }
 }
