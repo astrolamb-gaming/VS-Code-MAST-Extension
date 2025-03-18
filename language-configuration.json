@@ -238,18 +238,26 @@
       [
         "^^^",
         "^^^"
+      ],
+      [
+        "```",
+        "```"
+      ],
+      [
+        "~~",
+        "~~"
       ]
     ],
     "folding": {
       "offSide": true,
       "markers": {
-        "start": "(^\\s*#\\s*region\\b)|(^[=-]{2,})",
+        "start": "(^\\s*#\\s*region\\b)|([=-+]{2,})",
         "end": "^\\s*#\\s*endregion\\b"
       }
     },
     "onEnterRules": [
       {
-        "beforeText": "^\\s*(?:def|class|for|if|elif|else|while|try|with|finally|except|async).*?:\\s*$",
+        "beforeText": "^\\s*(?:def|class|for|if|elif|else|while|try|with|finally|except|async|([=-+/]{2,})).*?:\\s*$",
         "action": {
           "indent": "indent"
         }

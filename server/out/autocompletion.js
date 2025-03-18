@@ -71,6 +71,9 @@ function onCompletion(_textDocumentPosition, text) {
     // TODO: Check and make absolutely sure that isTextInBracket is working properly
     // TODO: May be useful to have a list of used string words that can be added via autocomplete (i.e. roles)
     // TODO: Faces: Add ability to get the desired image from tiles: https://stackoverflow.com/questions/11533606/javascript-splitting-a-tileset-image-to-be-stored-in-2d-image-array
+    if (iStr.endsWith("\"") || iStr.endsWith("'")) {
+        (0, comments_1.getStrings)(text);
+    }
     const blobStr = iStr.substring(0, iStr.length - 1);
     if ((0, comments_1.isInString)(pos) && !(0, comments_1.isTextInBracket)(iStr, pos)) {
         // Here we check for blob info
@@ -123,7 +126,7 @@ function onCompletion(_textDocumentPosition, text) {
     let jump = /(->|jump)[ \t]*?/;
     if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (") || iStr.endsWith("objective_add(") || iStr.endsWith("brain_add(")) {
         let labelNames = cache.getLabels(text);
-        (0, console_1.debug)(labelNames);
+        //debug(labelNames);
         // Iterate over parent label info objects
         for (const i in labelNames) {
             if (labelNames[i].name.startsWith("//"))

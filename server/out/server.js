@@ -211,8 +211,6 @@ exports.connection.languages.diagnostics.on(async (params) => {
     // 	}
     // })
     if (document !== undefined) {
-        (0, console_1.debug)("languages.diagnostics.on");
-        (0, console_1.debug)(document.uri);
         (0, tokens_1.getVariableNamesInDoc)(document);
         return {
             kind: node_1.DocumentDiagnosticReportKind.Full,

@@ -124,45 +124,6 @@ function activate(context) {
     // Start the client. This will also launch the server
     client.start();
 }
-async function showJsonNotif(storyJson) {
-    const useLatest = "Use latest";
-    const keep = "Keep current";
-    const download = "Download newest";
-    try {
-        debug(JSON.stringify(storyJson));
-    }
-    catch (e) { }
-    debug("153");
-    let selection = "";
-    let response = 1;
-    if (storyJson.errorType === 0) {
-        debug("Error message");
-        selection = await vscode.window.showErrorMessage("story.json contains references to files that do not exist", useLatest, keep, download);
-        debug(selection);
-    }
-    else if (storyJson.errorType === 1) {
-        debug("Warning message");
-        selection = await vscode.window.showWarningMessage("story.json can be updated with more recent file versions", useLatest, keep, download);
-        debug(selection);
-    }
-    if (selection === undefined) {
-        // Equivalent to "keep"
-        return;
-    }
-    if (selection === useLatest) {
-        // Update the story.json with latest version number
-        response = 0;
-    }
-    else if (selection === keep) {
-        // do nothing
-        // Response = 1 by default
-    }
-    else if (selection === download) {
-        // Download the latest version from github
-        response = 2;
-    }
-    client.sendNotification("custom/storyJsonResponse", response);
-}
 function deactivate() {
     if (!client) {
         return undefined;

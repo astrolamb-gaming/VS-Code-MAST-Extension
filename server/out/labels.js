@@ -151,7 +151,8 @@ function checkForDuplicateLabels(t, main, sub) {
 function checkLabels(textDocument) {
     const text = textDocument.getText();
     let diagnostics = [];
-    const calledLabel = /(^[ \t]*?(->|jump)[ \t]*?\w+)/gm;
+    //const calledLabel : RegExp = /(^[ \t]*?(->|jump)[ \t]*?\w+)/gm;
+    const calledLabel = /(?<=^[ \t]*(jump |->)[ \t]*)(\w+)/gm;
     let m;
     const mainLabels = (0, cache_1.getCache)(textDocument.uri).getLabels(textDocument); //getLabelsInFile(text,textDocument.uri);
     ///parseLabels(textDocument.getText(),textDocument.uri, true);
@@ -193,16 +194,15 @@ function checkLabels(textDocument) {
         }
         // If the label is not a main label, nor a sub-label of the main label,
         // then we need to see if it exists at all.
-        for (const i in mainLabels) {
-            if (str === mainLabels[i].name) {
+        for (const main of mainLabels) {
+            if (str === main.name) {
                 found = true;
                 break;
             }
             else {
-                for (const j in mainLabels[i].subLabels) {
-                    const sl = mainLabels[i].subLabels[j];
+                for (const sl of main.subLabels) {
                     if (str === sl) {
-                        if (m.index < mainLabels[i].start || m.index > mainLabels[i].end) {
+                        if (m.index < main.start || m.index > main.end) {
                             const d = {
                                 range: {
                                     start: textDocument.positionAt(m.index),
@@ -212,38 +212,40 @@ function checkLabels(textDocument) {
                                 message: "Sub-label cannot be called from outside of its parent label.",
                                 source: "mast",
                             };
-                            d.relatedInformation = (0, errorChecking_1.relatedMessage)(textDocument, d.range, "This sub-label is a child of the " + mainLabels[i].name + " main label.\nYou can only jump to a sub-label from within its parent label.");
+                            d.relatedInformation = (0, errorChecking_1.relatedMessage)(textDocument, d.range, "This sub-label is a child of the " + main.name + " main label.\nYou can only jump to a sub-label from within its parent label.");
                             diagnostics.push(d);
+                            (0, console_1.debug)(main.subLabels);
                         }
                         found = true;
+                        break;
                     }
                 }
             }
         }
         const labels = (0, cache_1.getCache)(textDocument.uri).getLabels(textDocument);
-        for (const lbl of labels) {
-            if (str === lbl.name) {
-                found = true;
-                break;
-            }
-            else {
-                for (const sl of lbl.subLabels) {
-                    if (str === sl) {
-                        const d = {
-                            range: {
-                                start: textDocument.positionAt(m.index),
-                                end: textDocument.positionAt(m.index + m[0].length)
-                            },
-                            severity: vscode_languageserver_1.DiagnosticSeverity.Error,
-                            message: "Sub-label cannot be called from outside of its parent label.",
-                            source: "mast",
-                        };
-                        d.relatedInformation = (0, errorChecking_1.relatedMessage)(textDocument, d.range, "This sub-label is a child of the " + lbl.name + " main label.\nYou can only jump to a sub-label from within its parent label.");
-                        diagnostics.push(d);
-                    }
-                }
-            }
-        }
+        // for (const lbl of labels) {
+        // 	if (str === lbl.name) {
+        // 		found = true;
+        // 		break;
+        // 	} else {
+        // 		for (const sl of lbl.subLabels) {
+        // 			if (str === sl) {
+        // 				const d: Diagnostic = {
+        // 					range: {
+        // 						start: textDocument.positionAt(m.index),
+        // 						end: textDocument.positionAt(m.index + m[0].length)
+        // 					},
+        // 					severity: DiagnosticSeverity.Error,
+        // 					message: "Sub-label cannot be called from outside of its parent label.",
+        // 					source: "mast",
+        // 				}
+        // 				d.relatedInformation = relatedMessage(textDocument,d.range, "This sub-label is a child of the " + lbl.name + " main label.\nYou can only jump to a sub-label from within its parent label.");
+        // 				diagnostics.push(d);
+        // 				debug("Second iteration")
+        // 			}
+        // 		}
+        // 	}
+        // }
         if (!found) {
             const d = {
                 range: {

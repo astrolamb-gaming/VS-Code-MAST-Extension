@@ -268,8 +268,6 @@ connection.languages.diagnostics.on(async (params) => {
 	// })
 	
 	if (document !== undefined) {
-		debug("languages.diagnostics.on");
-		debug(document.uri);
 		getVariableNamesInDoc(document);
 		return {
 			kind: DocumentDiagnosticReportKind.Full,

@@ -163,41 +163,7 @@ interface StoryJson {
 	currentVersion: string, 
 	newestVersion: string
 }
-async function showJsonNotif(storyJson: StoryJson) {
-	const useLatest: string = "Use latest";
-	const keep: string = "Keep current";
-	const download: string = "Download newest";
-	try {
-		debug(JSON.stringify(storyJson));
-	} catch (e) {}
-	debug("153");
-	let selection:string = "";
-	let response = 1;
-	if (storyJson.errorType === 0) {
-		debug("Error message")
-		selection = await vscode.window.showErrorMessage("story.json contains references to files that do not exist", useLatest, keep, download);
-		debug(selection);
-	} else if (storyJson.errorType === 1) {
-		debug("Warning message");
-		selection = await vscode.window.showWarningMessage("story.json can be updated with more recent file versions", useLatest, keep, download);
-		debug(selection);
-	}
-	if (selection === undefined) {
-		// Equivalent to "keep"
-		return;
-	}
-	if (selection === useLatest) {
-		// Update the story.json with latest version number
-		response = 0;
-	} else if (selection === keep) {
-		// do nothing
-		// Response = 1 by default
-	} else if (selection === download) {
-		// Download the latest version from github
-		response = 2;
-	}
-	client.sendNotification("custom/storyJsonResponse",response);
-}
+
 
 export function deactivate(): Thenable<void> | undefined {
 	if (!client) {

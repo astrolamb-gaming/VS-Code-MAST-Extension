@@ -6,7 +6,6 @@ exports.getVariableNamesInDoc = getVariableNamesInDoc;
 exports.getTokenInfo = getTokenInfo;
 exports.getTokenAt = getTokenAt;
 exports.updateTokensForLine = updateTokensForLine;
-const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
 const data_1 = require("./data");
 const comments_1 = require("./comments");
@@ -39,7 +38,6 @@ function getTokenTypeRegex(type) {
 }
 exports.variables = [];
 function getVariableNamesInDoc(textDocument) {
-    (0, console_1.debug)("Getting variable names");
     const vars = [];
     const arr = [];
     const variableRX = /^\s*[a-zA-Z_]\w*\s*(?==[^=])/gm;

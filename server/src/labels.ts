@@ -170,7 +170,8 @@ function checkForDuplicateLabels(t: TextDocument, main:LabelInfo[],sub:LabelInfo
 export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 	const text = textDocument.getText();
 	let diagnostics : Diagnostic[] = [];
-	const calledLabel : RegExp = /(^[ \t]*?(->|jump)[ \t]*?\w+)/gm;
+	//const calledLabel : RegExp = /(^[ \t]*?(->|jump)[ \t]*?\w+)/gm;
+	const calledLabel : RegExp = /(?<=^[ \t]*(jump |->)[ \t]*)(\w+)/gm;
 	let m: RegExpExecArray | null;
 	const mainLabels : LabelInfo[] = getCache(textDocument.uri).getLabels(textDocument);//getLabelsInFile(text,textDocument.uri);
 	///parseLabels(textDocument.getText(),textDocument.uri, true);
@@ -213,15 +214,14 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 
 		// If the label is not a main label, nor a sub-label of the main label,
 		// then we need to see if it exists at all.
-		for (const i in mainLabels) {
-			if (str === mainLabels[i].name) {
+		for (const main of mainLabels) {
+			if (str === main.name) {
 				found = true;
 				break;
 			} else {
-				for (const j in mainLabels[i].subLabels) {
-					const sl = mainLabels[i].subLabels[j];
+				for (const sl of main.subLabels) {
 					if (str === sl) {
-						if (m.index < mainLabels[i].start || m.index > mainLabels[i].end) {
+						if (m.index < main.start || m.index > main.end) {
 							const d: Diagnostic = {
 								range: {
 									start: textDocument.positionAt(m.index),
@@ -232,10 +232,12 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 								source: "mast",
 								
 							}
-							d.relatedInformation = relatedMessage(textDocument,d.range, "This sub-label is a child of the " + mainLabels[i].name + " main label.\nYou can only jump to a sub-label from within its parent label.");
+							d.relatedInformation = relatedMessage(textDocument,d.range, "This sub-label is a child of the " + main.name + " main label.\nYou can only jump to a sub-label from within its parent label.");
 							diagnostics.push(d);
+							debug(main.subLabels);
 						}
 						found = true;
+						break;
 					}
 				}
 			}
@@ -243,29 +245,30 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 
 		const labels: LabelInfo[] = getCache(textDocument.uri).getLabels(textDocument);
 
-		for (const lbl of labels) {
-			if (str === lbl.name) {
-				found = true;
-				break;
-			} else {
-				for (const sl of lbl.subLabels) {
-					if (str === sl) {
-						const d: Diagnostic = {
-							range: {
-								start: textDocument.positionAt(m.index),
-								end: textDocument.positionAt(m.index + m[0].length)
-							},
-							severity: DiagnosticSeverity.Error,
-							message: "Sub-label cannot be called from outside of its parent label.",
-							source: "mast",
+		// for (const lbl of labels) {
+		// 	if (str === lbl.name) {
+		// 		found = true;
+		// 		break;
+		// 	} else {
+		// 		for (const sl of lbl.subLabels) {
+		// 			if (str === sl) {
+		// 				const d: Diagnostic = {
+		// 					range: {
+		// 						start: textDocument.positionAt(m.index),
+		// 						end: textDocument.positionAt(m.index + m[0].length)
+		// 					},
+		// 					severity: DiagnosticSeverity.Error,
+		// 					message: "Sub-label cannot be called from outside of its parent label.",
+		// 					source: "mast",
 							
-						}
-						d.relatedInformation = relatedMessage(textDocument,d.range, "This sub-label is a child of the " + lbl.name + " main label.\nYou can only jump to a sub-label from within its parent label.");
-						diagnostics.push(d);
-					}
-				}
-			}
-		}
+		// 				}
+		// 				d.relatedInformation = relatedMessage(textDocument,d.range, "This sub-label is a child of the " + lbl.name + " main label.\nYou can only jump to a sub-label from within its parent label.");
+		// 				diagnostics.push(d);
+		// 				debug("Second iteration")
+		// 			}
+		// 		}
+		// 	}
+		// }
 
 		if (!found) {
 			const d: Diagnostic = {

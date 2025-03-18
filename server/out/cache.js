@@ -96,8 +96,6 @@ class MissionCache {
         loadSbs().then((p) => {
             (0, console_1.debug)("Loaded SBS, starting to parse.");
             if (p !== null) {
-                (0, console_1.debug)(p.classes);
-                (0, console_1.debug)(p.defaultFunctions);
                 this.missionPyModules.push(p);
                 this.missionClasses = this.missionClasses.concat(p.classes);
                 this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.defaultFunctionCompletionItems);
@@ -240,19 +238,13 @@ class MissionCache {
      */
     getVariables(file) {
         const parent = (0, fileFunctions_1.getParentFolder)(vscode_uri_1.URI.parse(file).fsPath);
-        (0, console_1.debug)(parent);
         const inits = (0, fileFunctions_1.getInitContents)(file);
-        (0, console_1.debug)(inits);
         let ci = [];
         for (const m of this.mastFileInfo) {
             if (m.parentFolder === parent) {
-                (0, console_1.debug)(path.basename(m.uri));
-                (0, console_1.debug)("Parent good: " + path.basename(m.uri));
                 // Check if the file is included in the init file
                 for (const i of inits) {
                     if (i === path.basename(m.uri)) {
-                        (0, console_1.debug)("INIT");
-                        (0, console_1.debug)("adding " + path.basename(m.uri));
                         ci = ci.concat(m.variables);
                     }
                 }
