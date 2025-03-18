@@ -1,8 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.labelNames = exports.hasDiagnosticRelatedInformationCapability = exports.connection = void 0;
-exports.getPyTypings = getPyTypings;
-exports.getClassTypings = getClassTypings;
 exports.updateLabelNames = updateLabelNames;
 exports.myDebug = myDebug;
 exports.notifyClient = notifyClient;
@@ -35,17 +33,8 @@ const documents = new node_1.TextDocuments(vscode_languageserver_textdocument_1.
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
 exports.hasDiagnosticRelatedInformationCapability = false;
-const completionStrings = [];
 let debugStrs = ""; //Debug: ${workspaceFolder}\n";
-let pyTypings = [];
-let workspacePyTypings = [];
-function getPyTypings() { return pyTypings; }
-let classTypings = [];
-let workspaceClassTypings = [];
-function getClassTypings() { return classTypings; }
 exports.labelNames = [];
-let typingsDone = false;
-let currentDocument;
 // let functionData : SignatureInformation[] = [];
 // export function appendFunctionData(si: SignatureInformation) {functionData.push(si);}
 // export function getFunctionData(): SignatureInformation[] { return functionData; }
@@ -249,7 +238,7 @@ exports.connection.languages.diagnostics.on(async (params) => {
  */
 documents.onDidChangeContent(change => {
     try {
-        (0, console_1.debug)("onDidChangeContent");
+        //debug("onDidChangeContent");
         validateTextDocument(change.document);
     }
     catch (e) {
@@ -270,9 +259,11 @@ exports.connection.onDidChangeTextDocument((params) => {
 });
 async function validateTextDocument(textDocument) {
     if (textDocument.languageId === "json") {
+        // TODO: Add autocompletion for story.json
         (0, console_1.debug)("THIS IS A JSON FILE");
         return [];
     }
+    (0, cache_1.getCache)(textDocument.uri).updateLabels(textDocument);
     //debug("Validating document");
     // In this simple example we get the settings for every validate run.
     let maxNumberOfProblems = 100;
@@ -286,7 +277,7 @@ async function validateTextDocument(textDocument) {
     (0, comments_1.getYamls)(textDocument);
     // The validator creates diagnostics for all uppercase words length 2 and more
     const text = textDocument.getText();
-    currentDocument = textDocument;
+    //currentDocument = textDocument;
     const pattern = /\b[A-Z]{2,}\b/g;
     let m;
     let problems = 0;

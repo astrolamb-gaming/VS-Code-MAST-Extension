@@ -197,11 +197,8 @@ function getStrings(textDocument) {
     const fstringsOnly = [];
     // We're just going to handle strings within brackets first, then completely ignore everything within brackets.
     for (const f of fstrings) {
-        (0, console_1.debug)(f);
-        (0, console_1.debug)(text.substring(f.start, f.end));
         let strs;
         while (strs = strDouble.exec(text.substring(f.start, f.end))) {
-            (0, console_1.debug)(strs);
             fstringsOnly.push({ start: f.start + strs.index, end: f.start + strs.index + strs[0].length });
         }
         text = replaceRegexMatchWithUnderscore(text, f);

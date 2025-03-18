@@ -77,8 +77,6 @@ class MissionCache {
         this.missionLibFolder = path.join(parent, "__lib__");
         this.missionName = path.basename(this.missionURI);
         this.storyJson = new StoryJson(path.join(this.missionURI, "story.json"));
-        let files = (0, fileFunctions_1.getFilesInDir)(this.missionURI);
-        //debug(files);
         this.load();
     }
     load() {
@@ -93,11 +91,13 @@ class MissionCache {
         this.resourceLabels = [];
         this.mediaLabels = [];
         this.mastFileInfo = [];
+        this.storyJson = new StoryJson(path.join(this.missionURI, "story.json"));
         this.storyJson.readFile().then(() => { this.modulesLoaded(); });
         loadSbs().then((p) => {
             (0, console_1.debug)("Loaded SBS, starting to parse.");
             if (p !== null) {
-                //debug(p.classes);
+                (0, console_1.debug)(p.classes);
+                (0, console_1.debug)(p.defaultFunctions);
                 this.missionPyModules.push(p);
                 this.missionClasses = this.missionClasses.concat(p.classes);
                 this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.defaultFunctionCompletionItems);
@@ -106,6 +106,8 @@ class MissionCache {
                 }
             }
         });
+        let files = (0, fileFunctions_1.getFilesInDir)(this.missionURI);
+        //debug(files);
         for (const file of files) {
             //debug(path.extname(file));
             if (path.extname(file) === ".mast") {
@@ -181,6 +183,7 @@ class MissionCache {
                 // Do nothing
             }
             else if (file.endsWith(".py")) {
+                //debug("Checking: " + file)
                 this.routeLabels = this.routeLabels.concat((0, routeLabels_1.loadRouteLabels)(data));
                 // this.mediaLabels = this.mediaLabels.concat(loadMediaLabels(data));
                 // this.resourceLabels = this.resourceLabels.concat(loadResourceLabels(data));
@@ -214,6 +217,7 @@ class MissionCache {
         for (const r of this.routeLabels) {
             ci.push(r.completionItem);
         }
+        (0, console_1.debug)(ci);
         return ci;
     }
     getMediaLabels() {
@@ -228,6 +232,33 @@ class MissionCache {
         for (const r of this.resourceLabels) {
             ci.push(r.completionItem);
         }
+        return ci;
+    }
+    /**
+     * TODO: This should only return variables that are in scope
+     * @returns
+     */
+    getVariables(file) {
+        const parent = (0, fileFunctions_1.getParentFolder)(vscode_uri_1.URI.parse(file).fsPath);
+        (0, console_1.debug)(parent);
+        const inits = (0, fileFunctions_1.getInitContents)(file);
+        (0, console_1.debug)(inits);
+        let ci = [];
+        for (const m of this.mastFileInfo) {
+            if (m.parentFolder === parent) {
+                (0, console_1.debug)(path.basename(m.uri));
+                (0, console_1.debug)("Parent good: " + path.basename(m.uri));
+                // Check if the file is included in the init file
+                for (const i of inits) {
+                    if (i === path.basename(m.uri)) {
+                        (0, console_1.debug)("INIT");
+                        (0, console_1.debug)("adding " + path.basename(m.uri));
+                        ci = ci.concat(m.variables);
+                    }
+                }
+            }
+        }
+        //const arrUniq = [...new Map(ci.map(v => [v.label, v])).values()]
         return ci;
     }
     /**
@@ -254,8 +285,9 @@ class MissionCache {
                 li = li.concat(f.labelNames);
             }
         }
-        (0, console_1.debug)(li);
+        //debug(li);
         // Remove duplicates (should just be a bunch of END entries)
+        // Could also include labels that exist in another file
         const arrUniq = [...new Map(li.map(v => [v.name, v])).values()];
         return arrUniq;
     }
@@ -334,7 +366,6 @@ class StoryJson {
         for (const m of files) {
             const libDir = path.join((0, globals_1.getGlobals)().artemisDir, "data", "missions", "__lib__", m);
             const libName = this.getModuleBaseName(m);
-            (0, console_1.debug)(libName);
             if ((0, globals_1.getGlobals)().libModules.includes(libDir)) {
                 // Module found. Check for updated versions
                 const latestFull = this.getLatestVersion(libName);
@@ -396,26 +427,17 @@ class StoryJson {
      * @returns String with the name of the most recent version. If the
      */
     getLatestVersion(name) {
-        (0, console_1.debug)("\n\nGetLatestVersion");
         let version = 0;
         let latestFile = name;
-        // debug(name);
-        // name = this.getModuleBaseName(name);
-        (0, console_1.debug)(name);
         for (const file of (0, globals_1.getGlobals)().libModules) {
             if (file.includes(name)) {
                 const v = this.getVersionPriority(file);
-                (0, console_1.debug)(v);
-                (0, console_1.debug)(version);
-                (0, console_1.debug)(v > version);
                 if (v > version) {
                     version = v;
                     latestFile = file;
-                    (0, console_1.debug)("file updated");
                 }
             }
         }
-        (0, console_1.debug)(latestFile);
         return latestFile;
     }
     /**
@@ -646,7 +668,8 @@ function getCache(name, reloadCache = false) {
     //debug(mf);
     for (const cache of caches) {
         if (cache.missionName === name || cache.missionURI === mf) {
-            cache.load();
+            if (reloadCache)
+                cache.load();
             return cache;
         }
     }

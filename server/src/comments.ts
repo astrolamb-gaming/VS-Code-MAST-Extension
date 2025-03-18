@@ -213,11 +213,8 @@ export function getStrings(textDocument: TextDocument) {
 
 	// We're just going to handle strings within brackets first, then completely ignore everything within brackets.
 	for (const f of fstrings) {
-		debug(f);
-		debug(text.substring(f.start,f.end))
 		let strs;
 		while (strs = strDouble.exec(text.substring(f.start,f.end))) {
-			debug(strs);
 			fstringsOnly.push({start:f.start + strs.index,end:f.start + strs.index + strs[0].length});
 		}
 		text = replaceRegexMatchWithUnderscore(text, f);

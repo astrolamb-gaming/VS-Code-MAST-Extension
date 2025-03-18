@@ -12,52 +12,31 @@ import {
 	InitializeParams,
 	DidChangeConfigurationNotification,
 	CompletionItem,
-	CompletionItemKind,
 	TextDocumentPositionParams,
 	TextDocumentSyncKind,
 	InitializeResult,
 	DocumentDiagnosticReportKind,
 	type DocumentDiagnosticReport,
-	integer,
-	TextDocumentEdit,
-	TextEdit,
-	Position,
-	CodeAction,
-	CodeActionKind,
-	Command,
-	CompletionItemTag,
 	SignatureHelp,
-	SignatureInformation,
 	SignatureHelpParams,
-	ServerRequestHandler,
-	ParameterInformation,
 	Hover,
-	WorkspaceFolder,
 	TextDocumentChangeEvent,
-	MessageActionItem,
-	ShowDocumentParams,
-	SemanticTokensParams,
-	SemanticTokens,
-	SemanticTokensBuilder
+
 } from 'vscode-languageserver/node';
 import { URI } from 'vscode-uri';
-import { Range, TextDocument } from 'vscode-languageserver-textdocument';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 import { findDiagnostic } from './errorChecking';
-import { checkLabels, getMainLabelAtPos, LabelInfo } from './labels';
-import { onCompletion, prepCompletions } from './autocompletion';
+import { checkLabels, LabelInfo } from './labels';
+import { onCompletion } from './autocompletion';
 import { debug} from 'console';
 import { onHover } from './hover';
-import { onSignatureHelp, prepSignatures } from './signatureHelp';
-import { ClassTypings, PyFile } from './data';
-import { loadRouteLabels } from './routeLabels';
-import { parse, RX } from './rx';
+import { onSignatureHelp } from './signatureHelp';
+import { ClassTypings } from './data';
 import { getComments, getSquareBrackets, getStrings, getYamls } from './comments';
 import fs = require("fs");
-
-import { getArtemisDirFromChild, getFileContents, getParentFolder, readAllFilesIn } from './fileFunctions';
-import { getCache, loadCache, StoryJson } from './cache';
-import { compileMission, getGlobalFunctions } from './python';
-import { getVariableNamesInDoc, updateTokensForLine } from './tokens';
+import { getCache, loadCache } from './cache';
+import {  getGlobalFunctions } from './python';
+import { getVariableNamesInDoc } from './tokens';
 import { getGlobals } from './globals';
 
 // Create a connection for the server, using Node's IPC as a transport.
@@ -70,19 +49,10 @@ const documents = new TextDocuments(TextDocument);
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
 export let hasDiagnosticRelatedInformationCapability = false;
-const completionStrings : string[] = [];
 
 let debugStrs : string = "";//Debug: ${workspaceFolder}\n";
 
-let pyTypings : CompletionItem[] = [];
-let workspacePyTypings : CompletionItem[] = [];
-export function getPyTypings(): CompletionItem[] { return pyTypings; }
-let classTypings : ClassTypings[] = [];
-let workspaceClassTypings : ClassTypings[] = [];
-export function getClassTypings(): ClassTypings[] { return classTypings; }
 export let labelNames : LabelInfo[] = [];
-let typingsDone: boolean = false;
-let currentDocument: TextDocument;
 
 // let functionData : SignatureInformation[] = [];
 // export function appendFunctionData(si: SignatureInformation) {functionData.push(si);}
@@ -325,7 +295,7 @@ connection.languages.diagnostics.on(async (params) => {
  */
 documents.onDidChangeContent(change => {
 	try {
-		debug("onDidChangeContent");
+		//debug("onDidChangeContent");
 		validateTextDocument(change.document);
 	} catch (e) {
 		debug(e);
@@ -373,9 +343,11 @@ export interface ErrorInstance {
 
 async function validateTextDocument(textDocument: TextDocument): Promise<Diagnostic[]> {
 	if (textDocument.languageId === "json") {
+		// TODO: Add autocompletion for story.json
 		debug("THIS IS A JSON FILE");
 		return [];
 	}
+	getCache(textDocument.uri).updateLabels(textDocument);
 	//debug("Validating document");
 	// In this simple example we get the settings for every validate run.
 	let maxNumberOfProblems = 100;
@@ -390,7 +362,7 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 
 	// The validator creates diagnostics for all uppercase words length 2 and more
 	const text = textDocument.getText();
-	currentDocument = textDocument;
+	//currentDocument = textDocument;
 	const pattern = /\b[A-Z]{2,}\b/g;
 	let m: RegExpExecArray | null;
 

@@ -153,7 +153,7 @@ function checkLabels(textDocument) {
     let diagnostics = [];
     const calledLabel = /(^[ \t]*?(->|jump)[ \t]*?\w+)/gm;
     let m;
-    const mainLabels = getLabelsInFile(text, textDocument.uri);
+    const mainLabels = (0, cache_1.getCache)(textDocument.uri).getLabels(textDocument); //getLabelsInFile(text,textDocument.uri);
     ///parseLabels(textDocument.getText(),textDocument.uri, true);
     // const subLabels : LabelInfo[] = parseLabels(textDocument.getText(), textDocument.uri, false);
     // // Add child labels to their parent
