@@ -1,9 +1,12 @@
 
+import math
 import sys
 import traceback
 import inspect
 import numbers
 
+print(inspect.signature(math.cos))
+print(inspect.signature(eval('math.cos')))
 
 sys.modules['script'] = sys.modules.get('__main__')
 sbs_utilsPath = sys.argv[1] # Very important
@@ -24,15 +27,17 @@ def compare():
 			if c in inspect.getmembers(m,inspect.isfunction):
 				print("Has the same")
 
+
 def getGlobals(globals):
 	count = 0
 	for k in globals:
 		try:
+			mod = globals[k]
 			# print(globals[k])
 			# print(test)
 			if callable(globals[k]):
 				callables.append(k)
-				print("Callable")
+				#print("Callable")
 				count += 1
 				continue
 				# try:
@@ -55,10 +60,31 @@ def getGlobals(globals):
 					# Might need to specifically exclude the functions in this file.
 					continue
 				print("Module " + k)
-				funcs = inspect.getmembers(globals[k],inspect.isfunction)
-				print(funcs)
+				print(globals[k])
+				funcs = inspect.getmembers(globals[k])
+				#funcs = inspect.getmembers(globals[k],inspect.isfunction)
+				for f in funcs:
+					try:
+						print(f[0])
+						print(str(f[1]).replace("\n"," ")),
+						
+						if "function" in str(f[1]):
+							print("TRUE")
+							print(k+"."+str(f[0]))
+							
+							print(inspect.signature(eval(k+"."+f[0])))
+							print(inspect.signature(f))
+							print("Worked")
+							continue
+
+						if is_number(str(f[1])):
+							print("Number!")
+							print(f"{f[0]} is a number!")
+							continue
+					except:
+						pass 
 				continue
-			if str(globals[k]).isnumeric():
+			if is_number(str(globals[k])):
 				print("Number")
 				continue
 			else:
@@ -83,6 +109,7 @@ loaded = False
 try:
 	from sbs_utils.mast.mast_sbs_procedural import * # type: ignore
 	#from sbs_utils.mast.mast import Mast # type: ignore
+	print(globals())
 	getGlobals(Mast.globals)
 	loaded = True
 except:
@@ -98,7 +125,9 @@ if not loaded:
 		from sbs_utils.mast_sbs import story_nodes
 		from sbs_utils.mast_sbs.mast_sbs_procedural import * # type: ignore
 		# # type: ignore
-		
+		# g = globals()
+		# for k in g:
+		# 	print(f"{k[0]}\n{k[1]}")
 		getGlobals(MastGlobals.globals)
 	except:
 		exc_type, exc_value, exc_tb = sys.exc_info()
@@ -110,3 +139,19 @@ compare()
 # 	exc_type, exc_value, exc_tb = sys.exc_info()
 # 	stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
 # 	print(stack_trace)
+
+class Function:
+	module = ""
+	name = ""
+	parameters = []
+	
+	def __init__(fname):
+		name = fname
+
+
+def is_number(value):
+    try:
+        float(value)
+        return True
+    except ValueError:
+        return False

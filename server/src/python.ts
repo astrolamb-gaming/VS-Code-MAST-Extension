@@ -41,6 +41,7 @@ export async function getGlobalFunctions(sbs_utils: string[]): Promise<string[]>
 		await PythonShell.run('mastGlobals.py', o).then((messages: any)=>{
 			for (let m of messages) {
 				//debug(m);
+				ret.push(m);
 			}
 			console.log('finished');
 		}).catch((e)=>{debug(e);});

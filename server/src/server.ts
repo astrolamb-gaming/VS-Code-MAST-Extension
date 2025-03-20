@@ -152,7 +152,10 @@ connection.onInitialize((params: InitializeParams) => {
 		debug("Cache loaded")
 		let cache = getCache(uri.fsPath);
 		debug("Getting globals");
-		getGlobalFunctions(cache.storyJson.sbslib);
+		let globalFuncs = getGlobalFunctions(cache.storyJson.sbslib).then((funcs)=>{
+			debug(funcs);
+		});
+		
 	} else {
 		debug("No Workspace folders");
 	}
