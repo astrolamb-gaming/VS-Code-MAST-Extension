@@ -477,17 +477,12 @@ export class StoryJson {
 	 * @returns String with the name of the most recent version. If the
 	 */
 	getLatestVersion(name:string) {
-		debug("Name: " + name);
 		let version = 0;
-		debug(version);
 		let latestFile = "";
 		for (const file of getGlobals().libModules) {
 			if (file.includes(name)) {
-				debug(file);
 				const v = this.getVersionPriority(file);
-				debug(v)
 				if (v > version) {
-					debug(file);
 					version = v;
 					latestFile = file;
 				}

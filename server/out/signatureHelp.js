@@ -47,9 +47,7 @@ function onSignatureHelp(_textDocPos, text) {
     sh.activeParameter = arr.length - 1;
     // Check for the current function name and get SignatureInformation for that function.
     let f = getCurrentMethodName(iStr);
-    (0, console_1.debug)("Signature name: " + f);
     let sigs = (0, cache_1.getCache)(text.uri).getMethodSignatures(f);
-    (0, console_1.debug)(sh.signatures.length);
     for (const sig of sigs) {
         if (sig.label === f) {
             sh.signatures.push(sig);

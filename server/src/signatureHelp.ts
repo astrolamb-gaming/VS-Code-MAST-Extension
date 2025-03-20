@@ -53,9 +53,7 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 	// Check for the current function name and get SignatureInformation for that function.
 
 	let f: string = getCurrentMethodName(iStr);
-	debug("Signature name: " + f);
 	let sigs = getCache(text.uri).getMethodSignatures(f);
-	debug(sh.signatures.length);
 	for (const sig of sigs) {
 		if (sig.label === f) {
 			sh.signatures.push(sig);

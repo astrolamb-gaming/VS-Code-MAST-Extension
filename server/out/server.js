@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.labelNames = exports.hasDiagnosticRelatedInformationCapability = exports.connection = void 0;
+exports.getDocumentSettings = getDocumentSettings;
 exports.updateLabelNames = updateLabelNames;
 exports.myDebug = myDebug;
 exports.notifyClient = notifyClient;
@@ -13,18 +14,16 @@ exports.sendToClient = sendToClient;
 const node_1 = require("vscode-languageserver/node");
 const vscode_uri_1 = require("vscode-uri");
 const vscode_languageserver_textdocument_1 = require("vscode-languageserver-textdocument");
-const errorChecking_1 = require("./errorChecking");
-const labels_1 = require("./labels");
 const autocompletion_1 = require("./autocompletion");
 const console_1 = require("console");
 const hover_1 = require("./hover");
 const signatureHelp_1 = require("./signatureHelp");
-const comments_1 = require("./comments");
 const fs = require("fs");
 const cache_1 = require("./cache");
 const python_1 = require("./python");
 const tokens_1 = require("./tokens");
 const globals_1 = require("./globals");
+const validate_1 = require("./validate");
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 exports.connection = (0, node_1.createConnection)(node_1.ProposedFeatures.all);
@@ -33,7 +32,6 @@ const documents = new node_1.TextDocuments(vscode_languageserver_textdocument_1.
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
 exports.hasDiagnosticRelatedInformationCapability = false;
-let debugStrs = ""; //Debug: ${workspaceFolder}\n";
 exports.labelNames = [];
 // let functionData : SignatureInformation[] = [];
 // export function appendFunctionData(si: SignatureInformation) {functionData.push(si);}
@@ -214,7 +212,7 @@ exports.connection.languages.diagnostics.on(async (params) => {
         (0, tokens_1.getVariableNamesInDoc)(document);
         return {
             kind: node_1.DocumentDiagnosticReportKind.Full,
-            items: await validateTextDocument(document)
+            items: await (0, validate_1.validateTextDocument)(document)
         };
     }
     else {
@@ -237,7 +235,7 @@ exports.connection.languages.diagnostics.on(async (params) => {
 documents.onDidChangeContent(change => {
     try {
         //debug("onDidChangeContent");
-        validateTextDocument(change.document);
+        (0, validate_1.validateTextDocument)(change.document);
     }
     catch (e) {
         (0, console_1.debug)(e);
@@ -255,99 +253,6 @@ exports.connection.onDidChangeTextDocument((params) => {
     // params.uri uniquely identifies the document.
     // params.contentChanges describe the content changes to the document.
 });
-async function validateTextDocument(textDocument) {
-    if (textDocument.languageId === "json") {
-        // TODO: Add autocompletion for story.json
-        (0, console_1.debug)("THIS IS A JSON FILE");
-        return [];
-    }
-    (0, cache_1.getCache)(textDocument.uri).updateLabels(textDocument);
-    //debug("Validating document");
-    // In this simple example we get the settings for every validate run.
-    let maxNumberOfProblems = 100;
-    const settings = await getDocumentSettings(textDocument.uri);
-    if (settings !== null) {
-        maxNumberOfProblems = settings.maxNumberOfProblems;
-    }
-    (0, comments_1.getSquareBrackets)(textDocument);
-    let comments = (0, comments_1.getComments)(textDocument);
-    let strs = (0, comments_1.getStrings)(textDocument);
-    (0, comments_1.getYamls)(textDocument);
-    // The validator creates diagnostics for all uppercase words length 2 and more
-    const text = textDocument.getText();
-    //currentDocument = textDocument;
-    const pattern = /\b[A-Z]{2,}\b/g;
-    let m;
-    let problems = 0;
-    let diagnostics = [];
-    let errorSources = [];
-    // for (const s of comments) {
-    // 	let r: Range = {
-    // 		start: textDocument.positionAt(s.start),
-    // 		end: textDocument.positionAt(s.end)
-    // 	}
-    // 	let d: Diagnostic = {
-    // 		range: r,
-    // 		message: 'comment'
-    // 	}
-    // 	diagnostics.push(d);
-    // }
-    // return diagnostics;
-    let e1 = {
-        pattern: /(^(=|-){2,}[ \t]*([0-9A-Za-z _]+?)[ \t]*(-|=)[ \t]*([0-9A-Za-z _]+?)(=|-){2,})/gm,
-        severity: node_1.DiagnosticSeverity.Error,
-        message: "Label Definition: Cannot use '-' or '=' inside label name.",
-        source: "sbs",
-        relatedMessage: "Only A-Z, a-z, 0-9, and _ are allowed to be used in a label name."
-    };
-    errorSources.push(e1);
-    e1 = {
-        pattern: /^[\w ][^+][^\"][\w\(\) ]+?\/\//g,
-        severity: node_1.DiagnosticSeverity.Error,
-        message: "Route labels can only be at the start of a line, unless used as label that runs when button is pressed.",
-        source: "sbs",
-        relatedMessage: "See https://artemis-sbs.github.io/sbs_utils/mast/routes/ for more details on routes."
-    };
-    e1 = {
-        pattern: /\b[A-Z]{2,}\b/g,
-        severity: node_1.DiagnosticSeverity.Information,
-        source: "mast",
-        message: "CAPS " + debugStrs,
-        relatedMessage: "Is all caps intentional?"
-    };
-    e1 = {
-        pattern: /\w+\.($|\n)/gs,
-        severity: node_1.DiagnosticSeverity.Error,
-        source: "mast",
-        message: "Property for object not specified.",
-        relatedMessage: ""
-    };
-    errorSources.push(e1);
-    for (let i = 0; i < errorSources.length; i++) {
-        let d1 = (0, errorChecking_1.findDiagnostic)(errorSources[i].pattern, textDocument, errorSources[i].severity, errorSources[i].message, errorSources[i].source, errorSources[i].relatedMessage, maxNumberOfProblems, problems);
-        diagnostics = diagnostics.concat(d1);
-    }
-    //let d1: Diagnostic[] = findDiagnostic(pattern, textDocument, DiagnosticSeverity.Error, "Message", "Source", "Testing", settings.maxNumberOfProblems, 0);
-    //diagnostics = diagnostics.concat(d1);
-    try {
-        let d1 = (0, labels_1.checkLabels)(textDocument);
-        diagnostics = diagnostics.concat(d1);
-    }
-    catch (e) {
-        (0, console_1.debug)(e);
-        (0, console_1.debug)("Couldn't get labels?");
-    }
-    const mastCompilerErrors = [];
-    // compileMission(textDocument.uri, textDocument.getText(), getCache(textDocument.uri).storyJson.sbslib).then((errors)=>{
-    // 	debug(errors);
-    // });
-    diagnostics = diagnostics.filter((d) => {
-        const start = textDocument.offsetAt(d.range.start);
-        const end = textDocument.offsetAt(d.range.end);
-        return (0, comments_1.isInString)(start) || (0, comments_1.isInString)(end) || (0, comments_1.isInComment)(start) || (0, comments_1.isInComment)(end);
-    });
-    return diagnostics;
-}
 exports.connection.onDidChangeWatchedFiles(_change => {
     // Monitored files have change in VSCode
     (0, console_1.debug)(_change.changes);

@@ -3,8 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.checkLastLine = checkLastLine;
 exports.findDiagnostic = findDiagnostic;
 exports.relatedMessage = relatedMessage;
+exports.checkFunctionSignatures = checkFunctionSignatures;
 const node_1 = require("vscode-languageserver/node");
 const server_1 = require("./server");
+const console_1 = require("console");
 /**
  * Checks if the file ends with an empty line.
  * @param textDocument
@@ -77,5 +79,42 @@ function relatedMessage(t, range, rm) {
         return dri;
     }
     return undefined;
+}
+/**
+ * TODO: get this check system working
+ * @param text String containing contents of document
+ */
+function checkFunctionSignatures(textDocument) {
+    const text = textDocument.getText();
+    (0, console_1.debug)("Starting function signature checking");
+    const diagnostics = [];
+    const functionRegex = /(\w+)\(.*(\n|$)/gm;
+    const singleFunc = /(\w+)\(/g;
+    let m;
+    // Iterate over all lines that contain at least one function
+    while (m = functionRegex.exec(text)) {
+        const functions = [];
+        const line = m[0];
+        const functionName = line.match(singleFunc);
+        let end = line.lastIndexOf(")");
+        if (functionName !== null) {
+            // debug(functionName);
+            for (const fname of functionName) {
+                const fi = {
+                    name: fname,
+                    start: m.index + line.indexOf(fname),
+                    end: line.lastIndexOf(")")
+                };
+                functions.push(fi);
+                (0, console_1.debug)(fname);
+            }
+        }
+        end = line.lastIndexOf(")");
+        let func = line.substring(0, end);
+        (0, console_1.debug)(func);
+        //debug(m);
+        (0, console_1.debug)(line);
+    }
+    return diagnostics;
 }
 //# sourceMappingURL=errorChecking.js.map

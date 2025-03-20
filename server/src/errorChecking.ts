@@ -82,3 +82,52 @@ export function relatedMessage(t: TextDocument, range: Range, rm: string): Diagn
 	}
 	return undefined;
 }
+
+interface FunctionInstance {
+	name: string,
+	start: integer,
+	end: integer
+}
+
+/**
+ * TODO: get this check system working
+ * @param text String containing contents of document
+ */
+export function checkFunctionSignatures(textDocument: TextDocument) : Diagnostic[] {
+	const text = textDocument.getText();
+	debug("Starting function signature checking")
+	const diagnostics : Diagnostic[] = [];
+
+	const functionRegex: RegExp = /(\w+)\(.*(\n|$)/gm;
+	const singleFunc: RegExp = /(\w+)\(/g;
+	let m: RegExpExecArray | null;
+	// Iterate over all lines that contain at least one function
+	while (m = functionRegex.exec(text)) {
+		const functions: FunctionInstance[] = [];
+		const line = m[0];
+		const functionName = line.match(singleFunc);
+		let end = line.lastIndexOf(")");
+		if (functionName !== null) {
+			// debug(functionName);
+			for (const fname of functionName) {
+				const fi: FunctionInstance = {
+					name: fname,
+					start: m.index + line.indexOf(fname),
+					end: line.lastIndexOf(")")
+				}
+				functions.push(fi);
+				
+				debug(fname);
+			}
+		}
+		
+		end = line.lastIndexOf(")");
+		let func = line.substring(0,end);
+		debug(func);
+		//debug(m);
+		debug(line);
+		
+	}
+
+	return diagnostics;
+}

@@ -435,17 +435,12 @@ class StoryJson {
      * @returns String with the name of the most recent version. If the
      */
     getLatestVersion(name) {
-        (0, console_1.debug)("Name: " + name);
         let version = 0;
-        (0, console_1.debug)(version);
         let latestFile = "";
         for (const file of (0, globals_1.getGlobals)().libModules) {
             if (file.includes(name)) {
-                (0, console_1.debug)(file);
                 const v = this.getVersionPriority(file);
-                (0, console_1.debug)(v);
                 if (v > version) {
-                    (0, console_1.debug)(file);
                     version = v;
                     latestFile = file;
                 }
