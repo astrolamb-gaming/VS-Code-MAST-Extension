@@ -24,8 +24,8 @@ async function validateTextDocument(textDocument) {
         maxNumberOfProblems = settings.maxNumberOfProblems;
     }
     (0, comments_1.getSquareBrackets)(textDocument);
-    let comments = (0, comments_1.getComments)(textDocument);
     let strs = (0, comments_1.getStrings)(textDocument);
+    let comments = (0, comments_1.getComments)(textDocument);
     (0, comments_1.getYamls)(textDocument);
     // The validator creates diagnostics for all uppercase words length 2 and more
     const text = textDocument.getText();
@@ -35,18 +35,18 @@ async function validateTextDocument(textDocument) {
     let problems = 0;
     let diagnostics = [];
     let errorSources = [];
-    // for (const s of comments) {
-    // 	let r: Range = {
-    // 		start: textDocument.positionAt(s.start),
-    // 		end: textDocument.positionAt(s.end)
-    // 	}
-    // 	let d: Diagnostic = {
-    // 		range: r,
-    // 		message: 'comment'
-    // 	}
-    // 	diagnostics.push(d);
-    // }
-    // return diagnostics;
+    for (const s of comments) {
+        let r = {
+            start: textDocument.positionAt(s.start),
+            end: textDocument.positionAt(s.end)
+        };
+        let d = {
+            range: r,
+            message: 'start: ' + s.start + ", end: " + s.end
+        };
+        diagnostics.push(d);
+    }
+    return diagnostics;
     let e1 = {
         pattern: /(^(=|-){2,}[ \t]*([0-9A-Za-z _]+?)[ \t]*(-|=)[ \t]*([0-9A-Za-z _]+?)(=|-){2,})/gm,
         severity: vscode_languageserver_1.DiagnosticSeverity.Error,

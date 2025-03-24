@@ -9,7 +9,7 @@ export interface CRange {
 }
 export function isInComment(loc:integer):boolean {
 	for (const r in commentRanges) {
-		if (commentRanges[r].start < loc && commentRanges[r].end > loc) {
+		if (commentRanges[r].start <= loc && commentRanges[r].end >= loc) {
 			return true;
 		}
 	}
@@ -38,7 +38,7 @@ export function getSquareBrackets(textDocument: TextDocument) {
 
 export function isInSquareBrackets(loc:integer): boolean {
 	for (const r of squareBracketRanges) {
-		if (r.start < loc && r.end > loc) {
+		if (r.start <= loc && r.end >= loc) {
 			return true;
 		}
 	}
@@ -47,7 +47,8 @@ export function isInSquareBrackets(loc:integer): boolean {
 
 export function isInString(loc:integer) : boolean {
 	for (const r in stringRanges) {
-		if (stringRanges[r].start < loc && stringRanges[r].end > loc) {
+		debug(stringRanges[r].start + " <= " + loc + " <= " + stringRanges[r].end)
+		if (stringRanges[r].start <= loc && stringRanges[r].end >= loc) {
 			return true;
 		}
 	}
@@ -56,7 +57,7 @@ export function isInString(loc:integer) : boolean {
 
 export function isInYaml(loc:integer): boolean {
 	for (const r in yamlRanges) {
-		if (yamlRanges[r].start < loc && yamlRanges[r].end > loc) {
+		if (yamlRanges[r].start <= loc && yamlRanges[r].end >= loc) {
 			return true;
 		}
 	}
@@ -71,17 +72,27 @@ export function isInYaml(loc:integer): boolean {
  * @param textDocument 
  */
 export function getComments(textDocument: TextDocument) {
+	let text = textDocument.getText();
 	getStrings(textDocument);
 	commentRanges = [];
-	const text = textDocument.getText();
+	let comment = /^[ \t]*(#.*)($|\n)/gm;
+	let comments = getMatchesForRegex(comment,text);
+	commentRanges = commentRanges.concat(comments);
+	for (const f of comments){
+		text = replaceRegexMatchWithUnderscore(text,f);
+	}
+	
 	let pattern = /\/\*.*?\*\//gs
 	// Gets all the block comments
-	commentRanges = commentRanges.concat(getMatchesForRegex(pattern,text));
-	
+	let blocks = getMatchesForRegex(pattern,text);
+	commentRanges = commentRanges.concat(blocks);
+	for (const f of blocks) {
+		text = replaceRegexMatchWithUnderscore(text,f);
+	}
+
 	let m: RegExpExecArray | null;
 
 	let strRng:CRange[] = [];
-	pattern = /\".*?\"/g;
 	strRng = stringRanges;//getMatchesForRegex(pattern,text);
 	
 	//pattern = /\#.*?(\"|$)/gm;
@@ -89,17 +100,25 @@ export function getComments(textDocument: TextDocument) {
 
 	// Not using the more complicated version because there could be an accidental error in the color code.
 	//const color: RegExp = /#((([0-9a-fA-F]){6}(([0-9a-fA-F]){2})?)|([0-9a-fA-F]){3,4})(?!\w)/g;
-	const color: RegExp = /[^#]#[0-9a-fA-F]{3,8}(?!\w)/g;
+	const color: RegExp = /([^#]|^)#[0-9a-fA-F]{3,8}(?!\w)/gm;
 
 	// We have to account for any # symbol that is used in a string, e.g. the 'invisble' operator
 	while (m = pattern.exec(text)) {
 		let comment = m[0];
-		if (comment.match(color) !== null) {
-			debug("Skipping: " + comment);
-			continue;
+		if (comment === '#,asteroid","Asteroid_9","behav_asteroid")') {
+			debug("index: " + m.index);
 		}
+		if (comment.match(color) !== null) {
+			//debug("Skipping: " + comment);
+			continue;
+		} //else { debug("Not skipping " + comment)}
 
 		let inString = false;
+		if (isInString(m.index)) {
+			debug("In string: " + comment)
+		} else {
+			debug("Not in string: " + comment)
+		}
 		// Now we iterate of strRange, which is all the strings in the file.
 		// We're checking to make sure that the start index of the presumed comment is not 
 		// within a string. If so, it's not a real comment.
@@ -195,7 +214,6 @@ export function isTextInBracket(text:string, pos: integer) {
 export function getStrings(textDocument: TextDocument) {
 	let text = textDocument.getText();
 	let strings: CRange[] = [];
-	//let pattern: RegExp = //gm;
 	// TODO: Get all sets of {} to see if we're in an f-string and need to exclude sections of the string
 	let strDouble = /(f?\".*?\")|('.*?')/gm;
 	// let strDoubleStartOnly = /(^\\s*?(\")[^\"]*?(\\n|$))/gm;
@@ -203,11 +221,17 @@ export function getStrings(textDocument: TextDocument) {
 	let multiDouble = /([\"\']{3,}.*?[\"\']{3,})/gs;
 	let weighted = /(\%\d*|\")([^\n\r\f]*)/gs;
 
+	let comment = /^\s*#.*($|\n)/gm;
+	let comments = getMatchesForRegex(comment,text);
+	for (const f of comments){
+		text = replaceRegexMatchWithUnderscore(text,f);
+	}
+
 
 	let brackets = /{.*?}/gm;
 	let fstrings = getMatchesForRegex(brackets,text);// f-strings
 	let test: CRange[] = [];
-	let stringRanges: CRange[] = [];
+	let localStringRanges: CRange[] = [];
 
 	const fstringsOnly: CRange[] = [];
 
@@ -222,18 +246,18 @@ export function getStrings(textDocument: TextDocument) {
 
 // These are all good I think. Commented out the concats for testing
 	test = getMatchesForRegex(multiDouble,text);
-	stringRanges = stringRanges.concat(test);
+	localStringRanges = localStringRanges.concat(test);
 	for (const t of test) {
 		text = replaceRegexMatchWithUnderscore(text, t);
 	}
 	test = getMatchesForRegex(caretDouble,text);
-	stringRanges = stringRanges.concat(test);
+	localStringRanges = localStringRanges.concat(test);
 	for (const t of test) {
 		text = replaceRegexMatchWithUnderscore(text, t);
 	}
 	
 	test = getMatchesForRegex(strDouble,text);
-	stringRanges = stringRanges.concat(test);
+	localStringRanges = localStringRanges.concat(test);
 	for (const t of test) {
 		text = replaceRegexMatchWithUnderscore(text, t);
 	}
@@ -241,48 +265,23 @@ export function getStrings(textDocument: TextDocument) {
 	test = getMatchesForRegex(weighted,text);
 	for (const t of test) {
 		let found = false;
-		for (const s of stringRanges) {
+		for (const s of localStringRanges) {
 			if (s.start > t.start && t.end > s.end) {
 				found = true;
 				break;
 			}
 		}
 		if (!found) {
-			stringRanges.push(t);
+			localStringRanges.push(t);
 		}
 		//text = replaceRegexMatchWithUnderscore(text, t);
 	}
-	
-	
-
-// Now we have to check for regular strings, including ones within fstrings
-	// test = getMatchesForRegex(weighted,text);
-	// for (const t of test) {
-	// 	let line = text.substring(t.start,t.end);
-	// 	debug(line);
-	// 	let strs;
-	// 	let found = false;
-	// 	while (strs = strDouble.exec(line)) {
-	// 		stringRanges.push({start: strs.index,end: strs.index + strs[0].length});
-	// 		found = true;
-	// 		debug("Found");
-	// 	}
-	// 	if (!found) {
-	// 		text = replaceRegexMatchWithUnderscore(text, t);
-	// 		stringRanges.push(t);
-	// 	}
-	// }
-	// test = getMatchesForRegex(strDouble,text);
-	//stringRanges = stringRanges.concat(test);
-	// for (const t of test) {
-	// 	text = replaceRegexMatchWithUnderscore(text, t);
-	// }
 
 	text = textDocument.getText();
 	
 	// Now we check for brackets within the strings
 	// And TODO: Check for strings within brackets? Did this at the beginning for simplicity
-	for (const s of stringRanges) {
+	for (const s of localStringRanges) {
 		const str: string = text.substring(s.start,s.end);
 
 		// If it doesn't contain any brackets, we move on.
@@ -312,17 +311,10 @@ export function getStrings(textDocument: TextDocument) {
 		}
 		strings.push(finalRange);
 	}
-	
-	//debug(strings);
-	// for (const r of strings) {
-	// 	debug(text.substring(r.start,r.end));
-	// }
-	//debug("Strings found: " + strings.length);
 
 	// Update the global stringRanges variable
-	//stringRanges = strings;
-
 	strings = strings.concat(fstringsOnly);
+	stringRanges = strings;
 	return strings;
 }
 

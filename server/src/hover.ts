@@ -7,7 +7,7 @@ import { getCache } from './cache';
 import { IClassObject } from './data';
 
 export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : Hover {
-	return {contents:""}
+	//return {contents:""}
 	const docPos = text.offsetAt(_pos.position);
 
 	// Get Hover Range
