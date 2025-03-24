@@ -1,10 +1,10 @@
 # mast README
 
-This extension is being designed to facilitate developing mission scripts using the [MAST language](https://artemis-sbs.github.io/sbs_utils/mast/).
+An extension for developing missions for [Artemis Cosmos](https://www.artemisspaceshipbridge.com/#/).
+It is intended to facilitate developing mission scripts using the [MAST language](https://artemis-sbs.github.io/sbs_utils/mast/).
 
 ## Features
 
-Currently a bare-bones extension for developing missions for [Artemis Cosmos](https://www.artemisspaceshipbridge.com/#/).
 Includes:
 * Basic formatting and coloring, based on Python
 * Error checking
@@ -29,8 +29,8 @@ See [GitHub](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues) 
 
 ## Planned Features
 
-* ~~Implement autocompletion for class functions~~
 * Additional error checking
+* Check that functions contain the correct number of arguments
 * Variable type checking in functions
 * Autocompletion based on modules (e.g. Legendary Missions)
 
