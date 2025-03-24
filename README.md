@@ -1,6 +1,6 @@
 # mast README
 
-This extension is being designed to facilitate developing missions using the [MAST language](https://artemis-sbs.github.io/sbs_utils/mast/).
+This extension is being designed to facilitate developing mission scripts using the [MAST language](https://artemis-sbs.github.io/sbs_utils/mast/).
 
 ## Features
 
@@ -11,6 +11,8 @@ Includes:
 	* Checks if labels are defined, and defined properly
 	* Checks for proper route label usage
 * Autocompletion for functions within the sbs and sbs_utils packages
+* Autocompletion for variables etc in current file
+* Autocompletion based on files in scope
 * Function signature information (i.e. notes on argument types)
 
 ## Requirements
@@ -18,17 +20,8 @@ Includes:
 Dependencies should be packaged with the extension. If you encounter an issue with a dependency, or it is not included, please let me know ASAP.
 Included dependencies:
 * adm-zip
+* python-shell
 * vscode-uri
-
-## Extension Settings
-
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
-This extension contributes the following settings:
-
-* `myExtension.enable`: Enable/disable this extension.
 
 ## Known Issues
 
@@ -39,13 +32,21 @@ See [GitHub](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues) 
 * ~~Implement autocompletion for class functions~~
 * Additional error checking
 * Variable type checking in functions
-* Autocompletion for variables etc in current file
-* Autocompletion based on files in the same folder
 * Autocompletion based on modules (e.g. Legendary Missions)
 
 ## Release Notes
 
 See the [Changelog](https://marketplace.visualstudio.com/items/astrolamb.mast/changelog)
+
+## Extension Settings
+
+Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+
+For example:
+
+This extension contributes the following settings:
+
+* `myExtension.enable`: Enable/disable this extension.
 
 ## Working with Markdown
 
