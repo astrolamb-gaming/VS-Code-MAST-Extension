@@ -12,7 +12,6 @@ exports.getMatchesForRegex = getMatchesForRegex;
 exports.getBrackets = getBrackets;
 exports.isTextInBracket = isTextInBracket;
 exports.getStrings = getStrings;
-const console_1 = require("console");
 const fs = require("fs");
 function isInComment(loc) {
     for (const r in commentRanges) {
@@ -51,7 +50,6 @@ function isInSquareBrackets(loc) {
 }
 function isInString(loc) {
     for (const r in stringRanges) {
-        (0, console_1.debug)(stringRanges[r].start + " <= " + loc + " <= " + stringRanges[r].end);
         if (stringRanges[r].start <= loc && stringRanges[r].end >= loc) {
             return true;
         }
@@ -101,20 +99,11 @@ function getComments(textDocument) {
     // We have to account for any # symbol that is used in a string, e.g. the 'invisble' operator
     while (m = pattern.exec(text)) {
         let comment = m[0];
-        if (comment === '#,asteroid","Asteroid_9","behav_asteroid")') {
-            (0, console_1.debug)("index: " + m.index);
-        }
         if (comment.match(color) !== null) {
             //debug("Skipping: " + comment);
             continue;
         } //else { debug("Not skipping " + comment)}
         let inString = false;
-        if (isInString(m.index)) {
-            (0, console_1.debug)("In string: " + comment);
-        }
-        else {
-            (0, console_1.debug)("Not in string: " + comment);
-        }
         // Now we iterate of strRange, which is all the strings in the file.
         // We're checking to make sure that the start index of the presumed comment is not 
         // within a string. If so, it's not a real comment.

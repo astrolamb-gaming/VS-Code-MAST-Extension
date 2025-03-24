@@ -47,7 +47,6 @@ export function isInSquareBrackets(loc:integer): boolean {
 
 export function isInString(loc:integer) : boolean {
 	for (const r in stringRanges) {
-		debug(stringRanges[r].start + " <= " + loc + " <= " + stringRanges[r].end)
 		if (stringRanges[r].start <= loc && stringRanges[r].end >= loc) {
 			return true;
 		}
@@ -105,20 +104,13 @@ export function getComments(textDocument: TextDocument) {
 	// We have to account for any # symbol that is used in a string, e.g. the 'invisble' operator
 	while (m = pattern.exec(text)) {
 		let comment = m[0];
-		if (comment === '#,asteroid","Asteroid_9","behav_asteroid")') {
-			debug("index: " + m.index);
-		}
 		if (comment.match(color) !== null) {
 			//debug("Skipping: " + comment);
 			continue;
 		} //else { debug("Not skipping " + comment)}
 
 		let inString = false;
-		if (isInString(m.index)) {
-			debug("In string: " + comment)
-		} else {
-			debug("Not in string: " + comment)
-		}
+
 		// Now we iterate of strRange, which is all the strings in the file.
 		// We're checking to make sure that the start index of the presumed comment is not 
 		// within a string. If so, it's not a real comment.

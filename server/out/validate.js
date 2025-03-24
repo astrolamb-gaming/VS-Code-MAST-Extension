@@ -35,18 +35,18 @@ async function validateTextDocument(textDocument) {
     let problems = 0;
     let diagnostics = [];
     let errorSources = [];
-    for (const s of comments) {
-        let r = {
-            start: textDocument.positionAt(s.start),
-            end: textDocument.positionAt(s.end)
-        };
-        let d = {
-            range: r,
-            message: 'start: ' + s.start + ", end: " + s.end
-        };
-        diagnostics.push(d);
-    }
-    return diagnostics;
+    // for (const s of comments) {
+    // 	let r: Range = {
+    // 		start: textDocument.positionAt(s.start),
+    // 		end: textDocument.positionAt(s.end)
+    // 	}
+    // 	let d: Diagnostic = {
+    // 		range: r,
+    // 		message: 'start: ' + s.start + ", end: " + s.end
+    // 	}
+    // 	diagnostics.push(d);
+    // }
+    // return diagnostics;
     let e1 = {
         pattern: /(^(=|-){2,}[ \t]*([0-9A-Za-z _]+?)[ \t]*(-|=)[ \t]*([0-9A-Za-z _]+?)(=|-){2,})/gm,
         severity: vscode_languageserver_1.DiagnosticSeverity.Error,

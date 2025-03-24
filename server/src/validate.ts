@@ -37,18 +37,18 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	let diagnostics: Diagnostic[] = [];
 	let errorSources: ErrorInstance[] = [];
 
-	for (const s of comments) {
-		let r: Range = {
-			start: textDocument.positionAt(s.start),
-			end: textDocument.positionAt(s.end)
-		}
-		let d: Diagnostic = {
-			range: r,
-			message: 'start: ' + s.start + ", end: " + s.end
-		}
-		diagnostics.push(d);
-	}
-	return diagnostics;
+	// for (const s of comments) {
+	// 	let r: Range = {
+	// 		start: textDocument.positionAt(s.start),
+	// 		end: textDocument.positionAt(s.end)
+	// 	}
+	// 	let d: Diagnostic = {
+	// 		range: r,
+	// 		message: 'start: ' + s.start + ", end: " + s.end
+	// 	}
+	// 	diagnostics.push(d);
+	// }
+	// return diagnostics;
 	let e1: ErrorInstance = {
 		pattern: /(^(=|-){2,}[ \t]*([0-9A-Za-z _]+?)[ \t]*(-|=)[ \t]*([0-9A-Za-z _]+?)(=|-){2,})/gm,
 		severity: DiagnosticSeverity.Error,
