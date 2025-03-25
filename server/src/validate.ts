@@ -1,7 +1,7 @@
 import { debug } from 'console';
 import { TextDocument, Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
 import { getCache } from './cache';
-import { getSquareBrackets, getComments, getStrings, getYamls, isInString, isInComment } from './comments';
+import { getSquareBrackets, getComments, getStrings, getYamls, isInString, isInComment, getMatchesForRegex } from './comments';
 import { findDiagnostic } from './errorChecking';
 import { checkLabels } from './labels';
 import { ErrorInstance, getDocumentSettings } from './server';
@@ -101,6 +101,54 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	// const functionSigs = checkFunctionSignatures(textDocument);
 	// debug(functionSigs);
 	// diagnostics = diagnostics.concat(functionSigs);
+
+	debug("Checking fstrings");
+
+	let fstring = /\".*\{.*\}.*\"/g;
+	let interior = /{.*\".*\".*}/g;
+	while (m = fstring.exec(text)) {
+		debug(m[0])
+		let ints = getMatchesForRegex(interior,m[0]);
+		for (const i of ints) {
+			let str = text.substring(m.index + i.start,m.index + i.end);
+			debug(str);
+			let start = str.indexOf("\"");
+			let end = str.indexOf("\"",start+1)+1;
+			let r: Range = {
+				start: textDocument.positionAt(m.index + i.start + start),
+				end: textDocument.positionAt(m.index + i.start + end)
+			}
+			let d: Diagnostic = {
+				range: r,
+				message: "Cannot use double quotes inside of an f-string that is encompassed by double quotes",
+				severity: DiagnosticSeverity.Error,
+				source: "mast extension"
+			}
+			diagnostics.push(d);
+		}
+	}
+	fstring = /\'.*?\{.*?\}.*?\'/g;
+	interior = /\{.*?\'.*?\'.*?\}/g;
+	while (m = fstring.exec(text)) {
+		// let ints = m[0].match(interior);
+		let ints = getMatchesForRegex(interior,m[0]);
+		for (const i of ints) {
+			let str = text.substring(m.index + i.start,m.index + i.end);
+			debug(str);
+			let start = str.indexOf("\'");
+			let end = str.indexOf("\'",start+1)+1;
+			let r: Range = {
+				start: textDocument.positionAt(m.index + i.start + start),
+				end: textDocument.positionAt(m.index + i.start + end)
+			}
+			let d: Diagnostic = {
+				range: r,
+				message: "Cannot use single quotes inside of an f-string that is encompassed by single quotes"
+			}
+			diagnostics.push(d);
+		}
+	}
+
 
 	diagnostics = diagnostics.filter((d)=>{
 		const start = textDocument.offsetAt(d.range.start);

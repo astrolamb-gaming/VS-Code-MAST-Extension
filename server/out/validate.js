@@ -98,6 +98,51 @@ async function validateTextDocument(textDocument) {
     // const functionSigs = checkFunctionSignatures(textDocument);
     // debug(functionSigs);
     // diagnostics = diagnostics.concat(functionSigs);
+    (0, console_1.debug)("Checking fstrings");
+    let fstring = /\".*\{.*\}.*\"/g;
+    let interior = /{.*\".*\".*}/g;
+    while (m = fstring.exec(text)) {
+        (0, console_1.debug)(m[0]);
+        let ints = (0, comments_1.getMatchesForRegex)(interior, m[0]);
+        for (const i of ints) {
+            let str = text.substring(m.index + i.start, m.index + i.end);
+            (0, console_1.debug)(str);
+            let start = str.indexOf("\"");
+            let end = str.indexOf("\"", start + 1) + 1;
+            let r = {
+                start: textDocument.positionAt(m.index + i.start + start),
+                end: textDocument.positionAt(m.index + i.start + end)
+            };
+            let d = {
+                range: r,
+                message: "Cannot use double quotes inside of an f-string that is encompassed by double quotes",
+                severity: vscode_languageserver_1.DiagnosticSeverity.Error,
+                source: "mast extension"
+            };
+            diagnostics.push(d);
+        }
+    }
+    fstring = /\'.*?\{.*?\}.*?\'/g;
+    interior = /\{.*?\'.*?\'.*?\}/g;
+    while (m = fstring.exec(text)) {
+        // let ints = m[0].match(interior);
+        let ints = (0, comments_1.getMatchesForRegex)(interior, m[0]);
+        for (const i of ints) {
+            let str = text.substring(m.index + i.start, m.index + i.end);
+            (0, console_1.debug)(str);
+            let start = str.indexOf("\'");
+            let end = str.indexOf("\'", start + 1) + 1;
+            let r = {
+                start: textDocument.positionAt(m.index + i.start + start),
+                end: textDocument.positionAt(m.index + i.start + end)
+            };
+            let d = {
+                range: r,
+                message: "Cannot use single quotes inside of an f-string that is encompassed by single quotes"
+            };
+            diagnostics.push(d);
+        }
+    }
     diagnostics = diagnostics.filter((d) => {
         const start = textDocument.offsetAt(d.range.start);
         const end = textDocument.offsetAt(d.range.end);

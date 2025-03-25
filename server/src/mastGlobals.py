@@ -19,6 +19,57 @@ print(sbs_utilsPath)
 callables = []
 modules = []
 
+class FunctionObj:
+	module = ""
+	name = ""
+	parameters = ""
+	docString = ""
+	
+	def __init__(self, fname):
+		self.name = fname
+	def setModule(self, mod):
+		self.module = mod
+	def addParameters(self, params):
+		# self.parameters.append(params)
+		self.parameters = params
+	def setDocString(self,doc):
+		self.docString = doc
+	def toString(self):
+		return "{'name': " + f"'{self.name}'" + ", 'module': " + f"'{self.module}'" + ", 'parameters': " + f"\"{self.paramsToString()}\"" + ", 'docs': " + f"\"{self.docString}\"" + "}"
+	def paramsToString(self):
+		return self.parameters
+		ret = "["
+		for p in self.parameters:
+			if p == "[":
+				ret = ret + f"{p}"
+			else:
+				ret = ret + f",{p}"
+		ret = ret + "]"
+		return ret
+class Constant:
+	name = ""
+	module = ""
+	value = ""
+	docs = ""
+	def __init__(self, cname):
+		self.name = cname
+	def setModule(self, mod):
+		self.module = mod
+	def setValue(self, val):
+		self.value = val
+	def setDoc(self, doc):
+		self.docs = doc
+	def toString(self):
+		return "{'name': " + f"'{self.name}'" + ", 'module': " + f"'{self.module}'" + ", 'value'" + f"'{self.value}'" + "}"
+	
+def is_number(value):
+    try:
+        float(value)
+        return True
+    except ValueError:
+        return False
+	
+
 def compare():
 	global callables
 	global modules
@@ -36,10 +87,23 @@ def getGlobals(globals):
 			# print(globals[k])
 			# print(test)
 			if callable(globals[k]):
+				#print(inspect.getfile(eval(k)))
 				callables.append(k)
-				#print("Callable")
+				print("Callable: " + k)
+				
+				func = FunctionObj(k)
+				func.setModule("")
+				try:
+					# print(globals[k].__code__)
+					sigs = str(inspect.signature(globals[k]))
+					print(sigs)
+					func.addParameters(sigs)
+				except ValueError as e: 
+					print(e)
+				
+				print(func.toString())
 				count += 1
-				continue
+				
 				# try:
 				# 	print("Callable")
 				# 	print(k)
@@ -51,8 +115,14 @@ def getGlobals(globals):
 				# 	stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
 				# 	print(stack_trace)
 				# 	continue
-
-			if ("module" in str(globals[k])):
+			if ("class" in str(globals[k])):
+				c = inspect.getmembers(globals[k])
+				print("Class: " + k)
+				print(c)
+				for f in c:
+					print(f[0])
+					print(f[1])
+			elif ("module" in str(globals[k])):
 				modules.append(globals[k])
 				if str(globals[k]) == "script":
 					# Don't do anything, this is THIS script, we don't want this stuff contaminating the results
@@ -65,26 +135,38 @@ def getGlobals(globals):
 				#funcs = inspect.getmembers(globals[k],inspect.isfunction)
 				for f in funcs:
 					try:
-						print(f[0])
-						print(str(f[1]).replace("\n"," ")),
+						# print(f[0])
+						# print(str(f[1]).replace("\n"," ")),
 						
 						if "function" in str(f[1]):
-							print("TRUE")
-							print(k+"."+str(f[0]))
+							# print("TRUE")
+							# print(k+"."+str(f[0]))
 							
-							print(inspect.signature(eval(k+"."+f[0])))
-							print(inspect.signature(f))
-							print("Worked")
+							# print(inspect.signature(eval(k+"."+f[0])))
+							# print(inspect.signature(f))
+							# print("Worked")
+							func = FunctionObj(f[0])
+							func.setModule(k)
+							func.addParameters(inspect.signature(eval(k+"."+f[0])))
+							doc = inspect.getdoc(eval(k+"."+f[0])).replace("\n","\\n")
+							func.setDocString(doc)
+							#print(func.toString())
 							continue
 
 						if is_number(str(f[1])):
-							print("Number!")
-							print(f"{f[0]} is a number!")
+							# print("Number!")
+							# print(f"{f[0]} is a number!")
+							c = Constant(f[0])
+							c.setModule(k)
+							c.setValue(f[1])
+							doc = f[1]#inspect.getdoc(eval(k + "." + f[0])).replace("\n","\\n")
+							c.setDoc(doc)
+							# print(c.toString())
 							continue
 					except:
 						pass 
 				continue
-			if is_number(str(globals[k])):
+			elif is_number(str(globals[k])):
 				print("Number")
 				continue
 			else:
@@ -107,6 +189,7 @@ sys.path.append(sbs_utilsPath)
 print(sbs_utilsPath)
 loaded = False
 try:
+	# Only purpose of this try statement is if the user is using an older version of sbs_utils.
 	from sbs_utils.mast.mast_sbs_procedural import * # type: ignore
 	#from sbs_utils.mast.mast import Mast # type: ignore
 	print(globals())
@@ -140,18 +223,5 @@ compare()
 # 	stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
 # 	print(stack_trace)
 
-class Function:
-	module = ""
-	name = ""
-	parameters = []
-	
-	def __init__(fname):
-		name = fname
 
 
-def is_number(value):
-    try:
-        float(value)
-        return True
-    except ValueError:
-        return False
