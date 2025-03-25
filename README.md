@@ -10,6 +10,7 @@ Includes:
 * Error checking
 	* Checks if labels are defined, and defined properly
 	* Checks for proper route label usage
+	* Proper f-string usage
 * Autocompletion for functions within the sbs and sbs_utils packages
 * Autocompletion for variables etc in current file
 * Autocompletion based on files in scope

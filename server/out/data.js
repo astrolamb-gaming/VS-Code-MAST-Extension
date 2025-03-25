@@ -191,15 +191,19 @@ class PyFile extends FileCache {
                 //debug(f);
             }
         }
-        if (path.basename(this.uri) === "sbs.py") {
-            const c = new ClassObject("", "sbs.py");
-            c.name = "sbs";
-            c.methods = this.defaultFunctions;
-            c.methodCompletionItems = this.defaultFunctionCompletionItems;
-            for (const f of c.methods) {
-                c.methodSignatureInformation.push(f.signatureInformation);
+        let oddballs = ["sbs.py", "scatter.py", "faces.py"];
+        for (const o of oddballs) {
+            if (path.basename(this.uri) === o) {
+                const c = new ClassObject("", o);
+                c.name = o.replace(".py", "");
+                c.completionItem = c.buildCompletionItem();
+                c.methods = this.defaultFunctions;
+                c.methodCompletionItems = this.defaultFunctionCompletionItems;
+                for (const f of c.methods) {
+                    c.methodSignatureInformation.push(f.signatureInformation);
+                }
+                this.classes.push(c);
             }
-            this.classes.push(c);
         }
     }
 }
@@ -214,9 +218,9 @@ class ClassObject {
         let comment = /((\"){3,3}(.*?)(\"){3,3})|(\.\.\.)/m;
         // TODO: Could pull the class parent and interfaces (if any). Would this be useful?
         this.name = getRegExMatch(raw, className).replace("class ", "").replace(/(\(.*?\))?:/, "");
-        if (this.name === "" && sourceFile.endsWith("sbs.py")) {
-            this.name = "sbs";
-        }
+        // if (this.name === "" && sourceFile.endsWith("sbs.py")) {
+        // 	this.name = "sbs";
+        // }
         this.parent = getRegExMatch(raw, parentClass).replace(/.*\(/, "").replace(/\):?/, "");
         this.sourceFile = sourceFile;
         // Should just get the first set of comments, which would be the ones for the class itself

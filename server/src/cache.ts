@@ -208,8 +208,13 @@ export class MissionCache {
 				this.missionPyModules.push(p);
 				if (file.includes("sbs_utils") && !file.includes("procedural")) {
 					// Don't wanat anything not procedural included???
-					return;
+					if (file.includes("scatter") || file.includes("faces")) {
+						//don't return
+					} else {
+						return;
+					}
 				}
+				
 				this.missionClasses = this.missionClasses.concat(p.classes);
 				//debug(this.missionClasses);
 				this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.defaultFunctionCompletionItems);
@@ -338,9 +343,9 @@ export class MissionCache {
 		if (_class === "") {
 			//debug(ci.length);
 			ci = ci.concat(this.missionDefaultCompletions);
-			// for (const c of this.missionClasses) {
-			// 	ci.push(c.completionItem);
-			// }
+			for (const c of this.missionClasses) {
+				ci.push(c.completionItem);
+			}
 			// TODO: Add variables in scope
 			return ci;
 		}

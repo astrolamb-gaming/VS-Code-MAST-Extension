@@ -107,11 +107,9 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	let fstring = /\".*\{.*\}.*\"/g;
 	let interior = /{.*\".*\".*}/g;
 	while (m = fstring.exec(text)) {
-		debug(m[0])
 		let ints = getMatchesForRegex(interior,m[0]);
 		for (const i of ints) {
 			let str = text.substring(m.index + i.start,m.index + i.end);
-			debug(str);
 			let start = str.indexOf("\"");
 			let end = str.indexOf("\"",start+1)+1;
 			let r: Range = {
@@ -130,11 +128,9 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	fstring = /\'.*?\{.*?\}.*?\'/g;
 	interior = /\{.*?\'.*?\'.*?\}/g;
 	while (m = fstring.exec(text)) {
-		// let ints = m[0].match(interior);
 		let ints = getMatchesForRegex(interior,m[0]);
 		for (const i of ints) {
 			let str = text.substring(m.index + i.start,m.index + i.end);
-			debug(str);
 			let start = str.indexOf("\'");
 			let end = str.indexOf("\'",start+1)+1;
 			let r: Range = {
@@ -143,7 +139,9 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 			}
 			let d: Diagnostic = {
 				range: r,
-				message: "Cannot use single quotes inside of an f-string that is encompassed by single quotes"
+				message: "Cannot use single quotes inside of an f-string that is encompassed by single quotes",
+				severity: DiagnosticSeverity.Error,
+				source: "mast extension"
 			}
 			diagnostics.push(d);
 		}
