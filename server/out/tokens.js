@@ -38,7 +38,7 @@ function getTokenTypeRegex(type) {
 }
 exports.variables = [];
 function getVariableNamesInDoc(textDocument) {
-    const vars = [];
+    let vars = [];
     const arr = [];
     const variableRX = /^\s*[a-zA-Z_]\w*\s*(?==[^=])/gm;
     const text = textDocument.getText();
@@ -50,6 +50,7 @@ function getVariableNamesInDoc(textDocument) {
             vars.push(v);
         }
     }
+    vars = [...new Set(vars)];
     for (const v of vars) {
         const ci = {
             label: v,

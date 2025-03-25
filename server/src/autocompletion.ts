@@ -40,7 +40,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		currentLine = _textDocumentPosition.position.line;
 		// Here we can do any logic that doesn't need to be done every character change
 		debug("Updating variables list")
-		variables = variables.concat(getVariableNamesInDoc(text));
+		variables = getVariableNamesInDoc(text);
 	}
 	updateTokensForLine(currentLine);
 	let ci : CompletionItem[] = [];

@@ -36,7 +36,7 @@ function onCompletion(_textDocumentPosition, text) {
         currentLine = _textDocumentPosition.position.line;
         // Here we can do any logic that doesn't need to be done every character change
         (0, console_1.debug)("Updating variables list");
-        variables = variables.concat((0, tokens_1.getVariableNamesInDoc)(text));
+        variables = (0, tokens_1.getVariableNamesInDoc)(text);
     }
     (0, tokens_1.updateTokensForLine)(currentLine);
     let ci = [];

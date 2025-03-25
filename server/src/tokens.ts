@@ -43,7 +43,7 @@ function getTokenTypeRegex(type: TokenType) {
 
 export let variables: CompletionItem[] = [];
 export function getVariableNamesInDoc(textDocument: TextDocument) {
-	const vars: string[] = [];
+	let vars: string[] = [];
 	const arr: CompletionItem[] = [];
 	const variableRX = /^\s*[a-zA-Z_]\w*\s*(?==[^=])/gm;
 	const text = textDocument.getText();
@@ -55,7 +55,7 @@ export function getVariableNamesInDoc(textDocument: TextDocument) {
 			vars.push(v);
 		}
 	}
-
+	vars = [...new Set(vars)];
 	for (const v of vars) {
 		const ci: CompletionItem = {
 			label: v,
