@@ -60,7 +60,7 @@ class Constant:
 	def setDoc(self, doc):
 		self.docs = doc
 	def toString(self):
-		return "{'name': " + f"'{self.name}'" + ", 'module': " + f"'{self.module}'" + ", 'value'" + f"'{self.value}'" + "}"
+		return "{'name': " + f"'{self.name}'" + ", 'module': " + f"'{self.module}'" + ", 'value': " + f"'{self.value}'" + "}"
 	
 def is_number(value):
     try:
@@ -82,24 +82,40 @@ def compare():
 def getGlobals(globals):
 	count = 0
 	for k in globals:
+		if k.startswith("__"):
+			continue
 		try:
 			mod = globals[k]
 			# print(globals[k])
 			# print(test)
 			if callable(globals[k]):
+				
 				#print(inspect.getfile(eval(k)))
 				callables.append(k)
 				print("Callable: " + k)
 				
 				func = FunctionObj(k)
-				func.setModule("")
+				
+				try:
+					doc = inspect.getdoc(eval(k)).replace("\n","\\n")
+					func.setDocString(doc)
+				except AttributeError as e:
+					# print(e)
+					pass
+				except NameError as e:
+					pass
+
 				try:
 					# print(globals[k].__code__)
+					# help(globals[k]) #doens't work
+					#print(inspect.getargs(eval(k)))
 					sigs = str(inspect.signature(globals[k]))
-					print(sigs)
-					func.addParameters(sigs)
+					func.addParameters(inspect.signature(eval(k)))
+					# func.addParameters(sigs)
+					
 				except ValueError as e: 
-					print(e)
+					# print(e)
+					pass
 				
 				print(func.toString())
 				count += 1
@@ -115,13 +131,13 @@ def getGlobals(globals):
 				# 	stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
 				# 	print(stack_trace)
 				# 	continue
-			if ("class" in str(globals[k])):
-				c = inspect.getmembers(globals[k])
-				print("Class: " + k)
-				print(c)
-				for f in c:
-					print(f[0])
-					print(f[1])
+			# if ("class" in str(globals[k])):
+			# 	c = inspect.getmembers(globals[k])
+			# 	print("Class: " + k)
+			# 	print(c)
+			# 	for f in c:
+			# 		print(f[0])
+			# 		print(f[1])
 			elif ("module" in str(globals[k])):
 				modules.append(globals[k])
 				if str(globals[k]) == "script":
@@ -167,12 +183,27 @@ def getGlobals(globals):
 						pass 
 				continue
 			elif is_number(str(globals[k])):
+				s = Constant(k)
+				s.setValue(globals[k])
+				s.setDoc(globals[k])
 				print("Number")
+				print(s.toString())
 				continue
+			elif k == "sim":
+				s = Constant(k)
+				s.setValue = ""
+				s.setDoc("The game simulation object")
+				s.module = ""
+				print(s.toString())
 			else:
 				print("OTHERS")
 				print(k)
 				print(globals[k])
+				c = Constant(k)
+				print(type(globals[k]))
+				c.setValue(globals[k])
+				c.setDoc(globals[k])
+				print(c.toString())
 
 			#m = test.__module__
 			#print(f"{k} from {m}")

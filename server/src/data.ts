@@ -590,9 +590,9 @@ export interface LabelDescInfo {
  * @param pos 
  * @returns 
  */
-export function getLabelDescription(text:string, pos:integer) {
-	const td: TextDocument = TextDocument.create("temp","mast",0,text);
+export function getLabelDescription(td: TextDocument, pos:integer) {
 	const labelLoc = td.positionAt(pos);
+	const text = td.getText();
 	let check = labelLoc.line + 1;
 	let labelDesc: string = "";
 	let multiLineComment: boolean = false;

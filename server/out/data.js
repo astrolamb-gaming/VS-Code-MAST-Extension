@@ -472,9 +472,9 @@ function parseFunctions(raw, source) {
  * @param pos
  * @returns
  */
-function getLabelDescription(text, pos) {
-    const td = vscode_languageserver_textdocument_1.TextDocument.create("temp", "mast", 0, text);
+function getLabelDescription(td, pos) {
     const labelLoc = td.positionAt(pos);
+    const text = td.getText();
     let check = labelLoc.line + 1;
     let labelDesc = "";
     let multiLineComment = false;

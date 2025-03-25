@@ -11,10 +11,17 @@ Includes:
 	* Checks if labels are defined, and defined properly
 	* Checks for proper route label usage
 	* Proper f-string usage
-* Autocompletion for functions within the sbs and sbs_utils packages
-* Autocompletion for variables etc in current file
-* Autocompletion based on files in scope
+* Autocompletion for applicable functions within the sbs and sbs_utils packages
+	* sbs package
+	* scatter package
+	* faces package
+	* sbs_utils/procedural
+* Autocompletion for variables etc in current file and files in scope
+* Autocompletion for labels in current file and files in scope
 * Function signature information (i.e. notes on argument types)
+* Checks for module versions
+	* Can update all to latest version, or manually update
+* Checks or root artemis directory existence - most functionality requires the opened folder to be in the artemis mission directory
 
 ## Requirements
 
@@ -26,7 +33,8 @@ Included dependencies:
 
 ## Known Issues
 
-See [GitHub](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues) for issues.
+* Many known global modules, functions, and variables (e.g. math, random, len, sim, etc - see [mast_globals.py](https://github.com/artemis-sbs/sbs_utils/blob/master/sbs_utils/mast/mast_globals.py) for full list of globals) are not implemented in autocomplete yet - this is WIP.
+* See [GitHub](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues) for other issues.
 
 ## Planned Features
 
@@ -38,6 +46,10 @@ See [GitHub](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues) 
 ## Release Notes
 
 See the [Changelog](https://marketplace.visualstudio.com/items/astrolamb.mast/changelog)
+
+## Contributions
+
+Contributions are more than welcome! I am by no means an expert when it comes to language servers, VS Code extensions, or even programming in general - I'm just able to muddle through and figure things out as I go. I will not claim that this extension is optimized in any way, I'm just trying to make it functional. Help would be great!
 
 ## Extension Settings
 
