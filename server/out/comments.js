@@ -12,6 +12,7 @@ exports.getMatchesForRegex = getMatchesForRegex;
 exports.getBrackets = getBrackets;
 exports.isTextInBracket = isTextInBracket;
 exports.getStrings = getStrings;
+exports.replaceRegexMatchWithUnderscore = replaceRegexMatchWithUnderscore;
 const fs = require("fs");
 function isInComment(loc) {
     for (const r in commentRanges) {

@@ -7,6 +7,7 @@ exports.checkFunctionSignatures = checkFunctionSignatures;
 const node_1 = require("vscode-languageserver/node");
 const server_1 = require("./server");
 const console_1 = require("console");
+const comments_1 = require("./comments");
 /**
  * Checks if the file ends with an empty line.
  * @param textDocument
@@ -35,7 +36,11 @@ function checkLastLine(textDocument) {
     return undefined;
 }
 function findDiagnostic(pattern, textDocument, severity, message, source, relatedInfo, maxProblems, problems) {
-    const text = textDocument.getText();
+    let text = textDocument.getText();
+    const commentsStrings = (0, comments_1.getComments)(textDocument).concat((0, comments_1.getStrings)(textDocument));
+    for (const c of commentsStrings) {
+        text = (0, comments_1.replaceRegexMatchWithUnderscore)(text, c);
+    }
     let m;
     const diagnostics = [];
     while ((m = pattern.exec(text)) && problems < maxProblems) {

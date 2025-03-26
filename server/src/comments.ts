@@ -310,7 +310,7 @@ export function getStrings(textDocument: TextDocument) {
 	return strings;
 }
 
-function replaceRegexMatchWithUnderscore(text: string, match: CRange) {
+export function replaceRegexMatchWithUnderscore(text: string, match: CRange) {
 	text = text.replace(text.substring(match.start,match.end),"".padEnd(match.end - match.start,"_"));
 	return text;
 }

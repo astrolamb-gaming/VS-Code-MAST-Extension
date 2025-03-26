@@ -1,14 +1,16 @@
 import { debug } from 'console';
-import { TextDocument, Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
+import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
 import { getCache } from './cache';
 import { getSquareBrackets, getComments, getStrings, getYamls, isInString, isInComment, getMatchesForRegex } from './comments';
 import { findDiagnostic } from './errorChecking';
 import { checkLabels } from './labels';
 import { ErrorInstance, getDocumentSettings } from './server';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 
 let debugStrs : string = "";//Debug: ${workspaceFolder}\n";
 
 export async function validateTextDocument(textDocument: TextDocument): Promise<Diagnostic[]> {
+	debug(textDocument.languageId + " file");
 	if (textDocument.languageId === "json") {
 		// TODO: Add autocompletion for story.json
 		debug("THIS IS A JSON FILE");
@@ -29,6 +31,7 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 
 	// The validator creates diagnostics for all uppercase words length 2 and more
 	const text = textDocument.getText();
+	
 	//currentDocument = textDocument;
 	const pattern = /\b[A-Z]{2,}\b/g;
 	let m: RegExpExecArray | null;
@@ -112,6 +115,7 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 			let str = text.substring(m.index + i.start,m.index + i.end);
 			let start = str.indexOf("\"");
 			let end = str.indexOf("\"",start+1)+1;
+			if (end === 0) { end = start+1 }
 			let r: Range = {
 				start: textDocument.positionAt(m.index + i.start + start),
 				end: textDocument.positionAt(m.index + i.start + end)
@@ -133,6 +137,7 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 			let str = text.substring(m.index + i.start,m.index + i.end);
 			let start = str.indexOf("\'");
 			let end = str.indexOf("\'",start+1)+1;
+			if (end === 0) { end = start+1 }
 			let r: Range = {
 				start: textDocument.positionAt(m.index + i.start + start),
 				end: textDocument.positionAt(m.index + i.start + end)

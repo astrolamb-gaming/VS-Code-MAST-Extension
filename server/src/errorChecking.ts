@@ -2,6 +2,7 @@ import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 import { Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, integer } from 'vscode-languageserver/node';
 import {hasDiagnosticRelatedInformationCapability} from './server';
 import { debug } from 'console';
+import { getComments, getStrings, replaceRegexMatchWithUnderscore } from './comments';
 
 /**
  * Checks if the file ends with an empty line.
@@ -32,7 +33,12 @@ export function checkLastLine(textDocument: TextDocument): Diagnostic | undefine
 }
 
 export function findDiagnostic(pattern: RegExp, textDocument: TextDocument, severity: DiagnosticSeverity, message: string, source: string, relatedInfo: string, maxProblems: integer, problems: integer): Diagnostic[] {
-	const text = textDocument.getText();
+	let text = textDocument.getText();
+	const commentsStrings = getComments(textDocument).concat(getStrings(textDocument));
+	for (const c of commentsStrings) {
+		text = replaceRegexMatchWithUnderscore(text,c)
+	}
+	
 	
 	let m: RegExpExecArray | null;
 	const diagnostics: Diagnostic[] = [];

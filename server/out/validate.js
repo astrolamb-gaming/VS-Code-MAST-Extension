@@ -10,6 +10,7 @@ const labels_1 = require("./labels");
 const server_1 = require("./server");
 let debugStrs = ""; //Debug: ${workspaceFolder}\n";
 async function validateTextDocument(textDocument) {
+    (0, console_1.debug)(textDocument.languageId + " file");
     if (textDocument.languageId === "json") {
         // TODO: Add autocompletion for story.json
         (0, console_1.debug)("THIS IS A JSON FILE");
@@ -107,6 +108,9 @@ async function validateTextDocument(textDocument) {
             let str = text.substring(m.index + i.start, m.index + i.end);
             let start = str.indexOf("\"");
             let end = str.indexOf("\"", start + 1) + 1;
+            if (end === 0) {
+                end = start + 1;
+            }
             let r = {
                 start: textDocument.positionAt(m.index + i.start + start),
                 end: textDocument.positionAt(m.index + i.start + end)
@@ -128,6 +132,9 @@ async function validateTextDocument(textDocument) {
             let str = text.substring(m.index + i.start, m.index + i.end);
             let start = str.indexOf("\'");
             let end = str.indexOf("\'", start + 1) + 1;
+            if (end === 0) {
+                end = start + 1;
+            }
             let r = {
                 start: textDocument.positionAt(m.index + i.start + start),
                 end: textDocument.positionAt(m.index + i.start + end)
