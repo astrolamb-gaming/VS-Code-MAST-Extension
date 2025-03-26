@@ -9,6 +9,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * Show token information on hover
 * Determine variable types based on function return values, etc.
 
+### 0.5.1
+
+* Hotfix for error message showing up in strings and comments
+
 ### 0.5.0
 
 * Add variable names to autocomplete
