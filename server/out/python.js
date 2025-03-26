@@ -42,7 +42,7 @@ async function getGlobalFunctions(sbs_utils) {
         await python_shell_1.PythonShell.run('mastGlobals.py', o).then((messages) => {
             for (let m of messages) {
                 //debug(m);
-                //ret.push(m);
+                ret.push(m);
             }
             console.log('finished');
         }).catch((e) => { (0, console_1.debug)(e); });

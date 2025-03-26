@@ -151,6 +151,8 @@ def getGlobals(globals):
 				#funcs = inspect.getmembers(globals[k],inspect.isfunction)
 				for f in funcs:
 					try:
+						if k == "itertools":
+							print(f)
 						# print(f[0])
 						# print(str(f[1]).replace("\n"," ")),
 						
@@ -168,6 +170,16 @@ def getGlobals(globals):
 							func.setDocString(doc)
 							#print(func.toString())
 							continue
+						if "class" in str(f[1]):
+							func = FunctionObj(f[0])
+							func.setModule(k)
+							try:
+								func.addParameters(inspect.signature(eval(f[0]+".__init__")))
+								doc = inspect.getdoc(eval(f[0]+".__init__")).replace("\n","\\n")
+								func.setDocString(doc)
+							except:
+								pass
+							print(func.toString())
 
 						if is_number(str(f[1])):
 							# print("Number!")
