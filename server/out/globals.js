@@ -9,6 +9,7 @@ const vscode_languageserver_1 = require("vscode-languageserver");
 const server_1 = require("./server");
 class Globals {
     constructor() {
+        this.widget_stylestrings = [];
         this.artemisDir = "";
         const thisDir = path.resolve("../");
         const adir = (0, fileFunctions_1.getArtemisDirFromChild)(thisDir);
@@ -20,6 +21,7 @@ class Globals {
             this.music = [];
             this.blob_items = [];
             this.data_set_entries = [];
+            this.widget_stylestrings = [];
             this.libModules = [];
             this.libModuleCompletionItems = [];
             (0, console_1.debug)("Artemis directory not found. Global information not loaded.");
@@ -58,7 +60,29 @@ class Globals {
         if (dataFolder !== null) {
             const files = (0, fileFunctions_1.getFilesInDir)(dataFolder, false);
             for (const file of files) {
-                //debug(file);
+                (0, console_1.debug)(file);
+                // Here we get all stylestrings by parsing the documentation file.
+                if (file.endsWith("widget_stylestring_documentation.txt")) {
+                    (0, fileFunctions_1.readFile)(file).then((text) => {
+                        const lines = text.split("\n");
+                        let lineNum = 0;
+                        for (const line of lines) {
+                            if (lineNum > 2) {
+                                const functionName = line.substring(0, 23).trim();
+                                const stylestringName = line.substring(23, 42).trim();
+                                const docs = line.substring(42).trim();
+                                this.widget_stylestrings.push({
+                                    function: functionName,
+                                    name: stylestringName,
+                                    docs: docs
+                                });
+                            }
+                            lineNum += 1;
+                        }
+                        (0, console_1.debug)(this.widget_stylestrings);
+                    });
+                }
+                // Now we get all the object_data options, used by blob.set() and blob.get()
                 if (file.endsWith("object_data_documentation.txt")) {
                     (0, console_1.debug)("Reading file");
                     (0, fileFunctions_1.readFile)(file).then((text) => {
@@ -100,7 +124,6 @@ class Globals {
                         //debug(this.blob_items);
                         //console.log(this.blob_items)
                     });
-                    break;
                 }
             }
         }

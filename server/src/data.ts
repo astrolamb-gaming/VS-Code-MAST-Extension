@@ -8,6 +8,7 @@ import { getParentFolder } from './fileFunctions';
 import exp = require('constants');
 import { getCache } from './cache';
 import { getVariableNamesInDoc } from './tokens';
+import { getGlobals } from './globals';
 
 export class FileCache {
 	uri: string;
@@ -508,6 +509,16 @@ export class Function implements IFunction {
 				label: this.parameters[i].name,
 				documentation: this.parameters[i].name + "\nType: " + this.parameters[i].type
 			}
+			if (pi.label === "style") {
+				pi.documentation = pi.documentation + "\n\nStyle information:";
+				for (const s of getGlobals().widget_stylestrings) {
+					if (s.function === this.name) {
+						let doc = s.name + ":\n"
+						doc = doc + "    " + s.docs;
+						pi.documentation = pi.documentation + "\n" + doc;
+					}
+				}
+			}
 			params.push(pi);
 		}
 		si.parameters = params;
@@ -525,7 +536,7 @@ export class Parameter implements IParameter {
 		this.name = "";
 		this.documentation = (docs === undefined) ? "" : docs;
 		const pDef: string[] = raw.split(":");
-		this.name = pDef[0];
+		this.name = pDef[0].trim();
 		if (pDef.length === 1) {
 			this.type = "any?";
 		} else {

@@ -77,14 +77,21 @@ function onCompletion(_textDocumentPosition, text) {
     }
     const blobStr = iStr.substring(0, iStr.length - 1);
     (0, console_1.debug)(blobStr);
-    if ((0, comments_1.isInString)(pos) && !(0, comments_1.isTextInBracket)(iStr, pos)) {
-        // Here we check for blob info
-        if (blobStr.endsWith(".set(") || blobStr.endsWith(".get(")) {
-            (0, console_1.debug)("Is BLobe");
-            return (0, globals_1.getGlobals)().blob_items;
+    if ((0, comments_1.isInString)(pos)) {
+        if (!(0, comments_1.isTextInBracket)(iStr, pos)) {
+            // Here we check for blob info
+            if (blobStr.endsWith(".set(") || blobStr.endsWith(".get(")) {
+                (0, console_1.debug)("Is BLobe");
+                return (0, globals_1.getGlobals)().blob_items;
+            }
+            // Here we check for if this is a stylestring 
+            // for (const s of getGlobals().widget_stylestrings) {
+            // 	if (iStr.includes(s.function)) {
+            // 	}
+            // }
+            (0, console_1.debug)("Is in string");
+            return ci;
         }
-        (0, console_1.debug)("Is in string");
-        return ci;
     }
     // If we're defining a label, we don't want autocomplete.
     // TODO: ++ labels should have specific names

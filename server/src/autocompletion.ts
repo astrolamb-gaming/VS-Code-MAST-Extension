@@ -86,14 +86,24 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	}
 	const blobStr = iStr.substring(0,iStr.length-1);
 	debug(blobStr)
-	if (isInString(pos) && !isTextInBracket(iStr,pos)) {
-		// Here we check for blob info
-		if (blobStr.endsWith(".set(") || blobStr.endsWith(".get(")) {
-			debug("Is BLobe");
-			return getGlobals().blob_items
+	if (isInString(pos)) {
+		if (!isTextInBracket(iStr,pos)) {
+			// Here we check for blob info
+			if (blobStr.endsWith(".set(") || blobStr.endsWith(".get(")) {
+				debug("Is BLobe");
+				return getGlobals().blob_items
+			}
+
+			// Here we check for if this is a stylestring 
+			// for (const s of getGlobals().widget_stylestrings) {
+			// 	if (iStr.includes(s.function)) {
+
+			// 	}
+			// }
+
+			debug("Is in string");
+			return ci;
 		}
-		debug("Is in string");
-		return ci;
 	}
 
 	

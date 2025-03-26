@@ -12,6 +12,7 @@ const labels_1 = require("./labels");
 const vscode_languageserver_textdocument_1 = require("vscode-languageserver-textdocument");
 const fileFunctions_1 = require("./fileFunctions");
 const cache_1 = require("./cache");
+const globals_1 = require("./globals");
 class FileCache {
     constructor(uri) {
         this.variableNames = [];
@@ -407,6 +408,16 @@ class Function {
                 label: this.parameters[i].name,
                 documentation: this.parameters[i].name + "\nType: " + this.parameters[i].type
             };
+            if (pi.label === "style") {
+                pi.documentation = pi.documentation + "\n\nStyle information:";
+                for (const s of (0, globals_1.getGlobals)().widget_stylestrings) {
+                    if (s.function === this.name) {
+                        let doc = s.name + ":\n";
+                        doc = doc + "    " + s.docs;
+                        pi.documentation = pi.documentation + "\n" + doc;
+                    }
+                }
+            }
             params.push(pi);
         }
         si.parameters = params;
@@ -420,7 +431,7 @@ class Parameter {
         this.name = "";
         this.documentation = (docs === undefined) ? "" : docs;
         const pDef = raw.split(":");
-        this.name = pDef[0];
+        this.name = pDef[0].trim();
         if (pDef.length === 1) {
             this.type = "any?";
         }

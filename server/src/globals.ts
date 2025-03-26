@@ -9,11 +9,17 @@ interface DataSetItem {
 	type: string,
 	docs: string
 }
+interface WidgetStyleString {
+	function: string,
+	name: string,
+	docs: string
+}
 
 export class Globals {
 	skyboxes: CompletionItem[];
 	music: CompletionItem[];
 	data_set_entries: DataSetItem[];
+	widget_stylestrings: WidgetStyleString[] = [];
 	blob_items: CompletionItem[];
 	libModules: string[];
 	libModuleCompletionItems: CompletionItem[];
@@ -29,6 +35,7 @@ export class Globals {
 			this.music = [];
 			this.blob_items = [];
 			this.data_set_entries = [];
+			this.widget_stylestrings = [];
 			this.libModules = [];
 			this.libModuleCompletionItems = [];
 			debug("Artemis directory not found. Global information not loaded.");
@@ -69,7 +76,31 @@ export class Globals {
 		if (dataFolder !== null) {
 			const files = getFilesInDir(dataFolder, false);
 			for (const file of files) {
-				//debug(file);
+				debug(file);
+
+				// Here we get all stylestrings by parsing the documentation file.
+				if (file.endsWith("widget_stylestring_documentation.txt")) {
+					readFile(file).then((text)=>{
+						const lines = text.split("\n");
+						let lineNum = 0;
+						for (const line of lines) {
+							if (lineNum > 2) {
+								const functionName = line.substring(0,23).trim();
+								const stylestringName = line.substring(23,42).trim();
+								const docs = line.substring(42).trim();
+
+								this.widget_stylestrings.push({
+									function: functionName,
+									name: stylestringName,
+									docs: docs
+								});
+							}
+							lineNum += 1;
+						}
+						debug(this.widget_stylestrings)
+					});
+				}
+				// Now we get all the object_data options, used by blob.set() and blob.get()
 				if (file.endsWith("object_data_documentation.txt")) {
 					debug("Reading file");
 					readFile(file).then((text)=>{
@@ -111,7 +142,6 @@ export class Globals {
 						//debug(this.blob_items);
 						//console.log(this.blob_items)
 					});
-					break;
 				}
 			}
 		}
