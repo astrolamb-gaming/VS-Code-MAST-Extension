@@ -12,6 +12,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ### 0.5.1
 
 * Hotfix for error message showing up in strings and comments
+* Add style string information to method signatures for applicable functions based on widget_stylestring_documentation.txt
 
 ### 0.5.0
 

@@ -34,6 +34,7 @@ Included dependencies:
 ## Known Issues
 
 * Many known global modules, functions, and variables (e.g. math, random, len, sim, etc - see [mast_globals.py](https://github.com/artemis-sbs/sbs_utils/blob/master/sbs_utils/mast/mast_globals.py) for full list of globals) are not implemented in autocomplete yet - this is WIP.
+* When opening a file inside of a mission folder that does not include a story.json file, the language server will sometimes crash - not a big deal, but will fix.
 * See [GitHub](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues) for other issues.
 
 ## Planned Features
