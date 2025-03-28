@@ -5,6 +5,7 @@ exports.getAllTokens = getAllTokens;
 exports.getVariableNamesInDoc = getVariableNamesInDoc;
 exports.getTokenInfo = getTokenInfo;
 exports.getTokenAt = getTokenAt;
+exports.getVariableTypeFromFunction = getVariableTypeFromFunction;
 exports.updateTokensForLine = updateTokensForLine;
 const vscode_languageserver_1 = require("vscode-languageserver");
 const data_1 = require("./data");
@@ -72,6 +73,13 @@ function getTokenAt(pos) {
         if (t.range.start < pos && t.range.end > pos) {
             return t;
         }
+    }
+}
+function getVariableTypeFromFunction(textDocument) {
+    const text = textDocument.getText();
+    const varFunc = /(\w+)[ \t]*=[ \t]*((\w+)\.)?(\w+)\(/g;
+    let m;
+    while (m = varFunc.exec(text)) {
     }
 }
 function updateTokensForLine(line) {

@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.prepSignatures = prepSignatures;
 exports.onSignatureHelp = onSignatureHelp;
+exports.getCurrentMethodName = getCurrentMethodName;
 const console_1 = require("console");
 const cache_1 = require("./cache");
 let functionSigs = [];

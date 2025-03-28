@@ -11,6 +11,7 @@ import path = require('path');
 import { fixFileName } from './fileFunctions';
 import { getVariableNamesInDoc, updateTokensForLine, variables } from './tokens';
 import { getGlobals } from './globals';
+import { getCurrentMethodName } from './signatureHelp';
 
 let classes: IClassObject[] = [];
 let defaultFunctionCompletionItems: CompletionItem[] = [];
@@ -95,11 +96,40 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			}
 
 			// Here we check for if this is a stylestring 
-			// for (const s of getGlobals().widget_stylestrings) {
-			// 	if (iStr.includes(s.function)) {
+			
+			const func = getCurrentMethodName(iStr);
+			debug(func)
+			for (const s of getGlobals().widget_stylestrings) {
+				if (func === s.function) {
+					//Get the current parameter
+					const fstart = iStr.lastIndexOf(func);
+					const wholeFunc = iStr.substring(fstart,iStr.length);
+					const arr = wholeFunc.split(",");
+					let sigs = getCache(text.uri).getMethodSignatures(func);
+					for (const sig of sigs) {
+						if (sig.label === func) {
+							if (sig.parameters !== undefined) {
+								for (const i in sig.parameters) {
+									if (sig.parameters[i].label === "style") {
+										const c = {
+											label: s.name,
+											//labelDetails: {detail: s.docs},
+											documentation: s.docs,
+											kind: CompletionItemKind.Text,
+											insertText: s.name + ": "
+										}
+										if (c.label === "color") {
+											c.insertText = c.insertText + "#"
+										}
+										ci.push(c)
+									}
+								}
+							}
+						}
+					}
+				}
+			}
 
-			// 	}
-			// }
 
 			debug("Is in string");
 			return ci;

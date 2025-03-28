@@ -221,6 +221,8 @@ export class PyFile extends FileCache {
 					c.methodSignatureInformation.push(f.signatureInformation);
 				}
 				this.classes.push(c);
+				this.defaultFunctionCompletionItems = [];
+				this.defaultFunctions = [];
 			}
 		}
 	}

@@ -12,6 +12,7 @@ const path = require("path");
 const fileFunctions_1 = require("./fileFunctions");
 const tokens_1 = require("./tokens");
 const globals_1 = require("./globals");
+const signatureHelp_1 = require("./signatureHelp");
 let classes = [];
 let defaultFunctionCompletionItems = [];
 /**
@@ -85,10 +86,38 @@ function onCompletion(_textDocumentPosition, text) {
                 return (0, globals_1.getGlobals)().blob_items;
             }
             // Here we check for if this is a stylestring 
-            // for (const s of getGlobals().widget_stylestrings) {
-            // 	if (iStr.includes(s.function)) {
-            // 	}
-            // }
+            const func = (0, signatureHelp_1.getCurrentMethodName)(iStr);
+            (0, console_1.debug)(func);
+            for (const s of (0, globals_1.getGlobals)().widget_stylestrings) {
+                if (func === s.function) {
+                    //Get the current parameter
+                    const fstart = iStr.lastIndexOf(func);
+                    const wholeFunc = iStr.substring(fstart, iStr.length);
+                    const arr = wholeFunc.split(",");
+                    let sigs = (0, cache_1.getCache)(text.uri).getMethodSignatures(func);
+                    for (const sig of sigs) {
+                        if (sig.label === func) {
+                            if (sig.parameters !== undefined) {
+                                for (const i in sig.parameters) {
+                                    if (sig.parameters[i].label === "style") {
+                                        const c = {
+                                            label: s.name,
+                                            //labelDetails: {detail: s.docs},
+                                            documentation: s.docs,
+                                            kind: vscode_languageserver_1.CompletionItemKind.Text,
+                                            insertText: s.name + ": "
+                                        };
+                                        if (c.label === "color") {
+                                            c.insertText = c.insertText + "#";
+                                        }
+                                        ci.push(c);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             (0, console_1.debug)("Is in string");
             return ci;
         }

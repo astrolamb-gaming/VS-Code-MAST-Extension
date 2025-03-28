@@ -89,7 +89,7 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 	// debug(JSON.stringify(sh));
 }
 
-function getCurrentMethodName(iStr: string): string {
+export function getCurrentMethodName(iStr: string): string {
 	const last = iStr.lastIndexOf("(");
 	const priorCheck = iStr.substring(0,last-1);
 	let prior = priorCheck.lastIndexOf("(");

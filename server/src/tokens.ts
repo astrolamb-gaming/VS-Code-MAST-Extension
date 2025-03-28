@@ -80,6 +80,16 @@ export function getTokenAt(pos: integer) {
 		}
 	}
 }
+
+export function getVariableTypeFromFunction(textDocument: TextDocument) {
+	const text = textDocument.getText();
+	const varFunc = /(\w+)[ \t]*=[ \t]*((\w+)\.)?(\w+)\(/g;
+	let m: RegExpExecArray | null;
+	while (m = varFunc.exec(text)) {
+		
+	}
+}
+
 export function updateTokensForLine(line: integer) {
 	
 }
