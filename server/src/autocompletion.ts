@@ -162,6 +162,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		} else {
 			const route = iStr.trim().substring(0,iStr.trim().indexOf(" "));
 			const rlvs = getRouteLabelVars(route);
+			debug(rlvs)
 			for (const s of rlvs) {
 				const c: CompletionItem = {
 					label: s,
@@ -191,18 +192,19 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		const lbl = getMainLabelAtPos(startOfLine,labelNames);
 		if (lbl === undefined) {
 			return ci;
-		}
-		// Check for the parent label at this point (to get sublabels within the same parent)
-		if (lbl.srcFile === fixFileName(text.uri)) {
-			debug("same file name!");
-			let subs = lbl.subLabels;
-			debug(lbl.name);
-			debug(subs);
-			for (const i in subs) {
-				ci.push({label: subs[i], kind: CompletionItemKind.Event, labelDetails: {description: "Sub-label of: " + lbl.name}});
+		} else {
+			// Check for the parent label at this point (to get sublabels within the same parent)
+			if (lbl.srcFile === fixFileName(text.uri)) {
+				debug("same file name!");
+				let subs = lbl.subLabels;
+				debug(lbl.name);
+				debug(subs);
+				for (const i in subs) {
+					ci.push({label: subs[i], kind: CompletionItemKind.Event, labelDetails: {description: "Sub-label of: " + lbl.name}});
+				}
 			}
+			return ci;
 		}
-		return ci;
 	}
 	
 
@@ -284,14 +286,16 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	debug("Main label at pos: ");
 	debug(lbl)
 	if (lbl.type === "route") {
-		const vars = getRouteLabelVars(lbl.name);
-		for (const s of vars) {
-			const c: CompletionItem = {
-				label: s,
-				kind: CompletionItemKind.EnumMember,
-				labelDetails: {description: "Route-specific Variable"}
+		if (!iStr.trim().startsWith("//")) {
+			const vars = getRouteLabelVars(lbl.name);
+			for (const s of vars) {
+				const c: CompletionItem = {
+					label: s,
+					kind: CompletionItemKind.EnumMember,
+					labelDetails: {description: "Route-specific Variable"}
+				}
+				ci.push(c);
 			}
-			ci.push(c);
 		}
 	}
 

@@ -115,9 +115,14 @@ exports.connection.onInitialize((params) => {
         (0, console_1.debug)("Cache loaded");
         let cache = (0, cache_1.getCache)(uri.fsPath);
         (0, console_1.debug)("Getting globals");
-        let globalFuncs = (0, python_1.getGlobalFunctions)(cache.storyJson.sbslib).then((funcs) => {
-            (0, console_1.debug)(funcs);
-        });
+        try {
+            let globalFuncs = (0, python_1.getGlobalFunctions)(cache.storyJson.sbslib).then((funcs) => {
+                (0, console_1.debug)(funcs);
+            });
+        }
+        catch (e) {
+            (0, console_1.debug)(e);
+        }
     }
     else {
         (0, console_1.debug)("No Workspace folders");

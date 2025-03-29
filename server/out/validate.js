@@ -148,6 +148,10 @@ async function validateTextDocument(textDocument) {
             diagnostics.push(d);
         }
     }
+    const d = (0, errorChecking_1.checkLastLine)(textDocument);
+    if (d !== undefined) {
+        diagnostics.push(d);
+    }
     diagnostics = diagnostics.filter((d) => {
         const start = textDocument.offsetAt(d.range.start);
         const end = textDocument.offsetAt(d.range.end);

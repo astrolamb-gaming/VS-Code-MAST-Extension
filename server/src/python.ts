@@ -26,18 +26,19 @@ export async function getGlobalFunctions(sbs_utils: string[]): Promise<string[]>
 	if (scriptPath === "") {
 		scriptPath = __dirname.replace("out","src");
 	}
-	let sbsPath = path.join(scriptPath, "sbs.zip");
-	let libFolder = path.join(getGlobals().artemisDir,"data","missions");
-	//const sbsLibPath = "D:\\Cosmos Dev\\Cosmos-1-0-1\\data\\missions\\sbs_utils"//
-	const sbsLibPath = path.join(libFolder,"__lib__",sbs_utils[0]);
-	const o: Options = {
-		pythonPath: path.join(pyPath,"python.exe"),
-		scriptPath: scriptPath,
-		args: [sbsLibPath,sbsPath]
-	}
-	regularOptions = o;
-	debug("Starting python shell")
+	
 	try {
+		let sbsPath = path.join(scriptPath, "sbs.zip");
+		let libFolder = path.join(getGlobals().artemisDir,"data","missions");
+		//const sbsLibPath = "D:\\Cosmos Dev\\Cosmos-1-0-1\\data\\missions\\sbs_utils"//
+		const sbsLibPath = path.join(libFolder,"__lib__",sbs_utils[0]);
+		const o: Options = {
+			pythonPath: path.join(pyPath,"python.exe"),
+			scriptPath: scriptPath,
+			args: [sbsLibPath,sbsPath]
+		}
+		regularOptions = o;
+		debug("Starting python shell")
 		await PythonShell.run('mastGlobals.py', o).then((messages: any)=>{
 			for (let m of messages) {
 				//debug(m);

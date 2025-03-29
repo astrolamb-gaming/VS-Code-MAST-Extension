@@ -2,7 +2,7 @@ import { debug } from 'console';
 import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
 import { getCache } from './cache';
 import { getSquareBrackets, getComments, getStrings, getYamls, isInString, isInComment, getMatchesForRegex } from './comments';
-import { findDiagnostic } from './errorChecking';
+import { checkLastLine, findDiagnostic } from './errorChecking';
 import { checkLabels } from './labels';
 import { ErrorInstance, getDocumentSettings } from './server';
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -152,6 +152,10 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		}
 	}
 
+	const d = checkLastLine(textDocument);
+	if (d !== undefined) {
+		diagnostics.push(d);
+	}
 
 	diagnostics = diagnostics.filter((d)=>{
 		const start = textDocument.offsetAt(d.range.start);

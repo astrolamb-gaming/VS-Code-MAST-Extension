@@ -134,7 +134,7 @@ class MissionCache {
     }
     async modulesLoaded() {
         const uri = this.missionURI;
-        //debug(uri);
+        (0, console_1.debug)(uri);
         if (uri.includes("sbs_utils")) {
             (0, console_1.debug)("sbs nope");
         }

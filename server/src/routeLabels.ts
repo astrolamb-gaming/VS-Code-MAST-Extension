@@ -226,8 +226,14 @@ export function getRouteLabelVars(route:string) {
 			const caps = con.toUpperCase();
 			const 
 			vars = [
+				caps,
 				caps+"_ID",
-				caps
+				caps+"_ORIGIN_ID",
+				caps+"_ORIGIN",
+				caps+"_PARENT_ID",
+				caps+"_PARENT",
+				caps+"_SELECTED_ID",
+				caps+"_SELECTED"
 			];
 			if (con!=="dock") {
 				vars.push(caps+"_POINT");

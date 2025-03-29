@@ -146,6 +146,7 @@ function onCompletion(_textDocumentPosition, text) {
         else {
             const route = iStr.trim().substring(0, iStr.trim().indexOf(" "));
             const rlvs = (0, routeLabels_1.getRouteLabelVars)(route);
+            (0, console_1.debug)(rlvs);
             for (const s of rlvs) {
                 const c = {
                     label: s,
@@ -176,17 +177,19 @@ function onCompletion(_textDocumentPosition, text) {
         if (lbl === undefined) {
             return ci;
         }
-        // Check for the parent label at this point (to get sublabels within the same parent)
-        if (lbl.srcFile === (0, fileFunctions_1.fixFileName)(text.uri)) {
-            (0, console_1.debug)("same file name!");
-            let subs = lbl.subLabels;
-            (0, console_1.debug)(lbl.name);
-            (0, console_1.debug)(subs);
-            for (const i in subs) {
-                ci.push({ label: subs[i], kind: vscode_languageserver_1.CompletionItemKind.Event, labelDetails: { description: "Sub-label of: " + lbl.name } });
+        else {
+            // Check for the parent label at this point (to get sublabels within the same parent)
+            if (lbl.srcFile === (0, fileFunctions_1.fixFileName)(text.uri)) {
+                (0, console_1.debug)("same file name!");
+                let subs = lbl.subLabels;
+                (0, console_1.debug)(lbl.name);
+                (0, console_1.debug)(subs);
+                for (const i in subs) {
+                    ci.push({ label: subs[i], kind: vscode_languageserver_1.CompletionItemKind.Event, labelDetails: { description: "Sub-label of: " + lbl.name } });
+                }
             }
+            return ci;
         }
-        return ci;
     }
     // if (iStr.endsWith("(")) {
     // 	// const func: RegExp = /[\w. ]+?\(/g
@@ -256,14 +259,16 @@ function onCompletion(_textDocumentPosition, text) {
     (0, console_1.debug)("Main label at pos: ");
     (0, console_1.debug)(lbl);
     if (lbl.type === "route") {
-        const vars = (0, routeLabels_1.getRouteLabelVars)(lbl.name);
-        for (const s of vars) {
-            const c = {
-                label: s,
-                kind: vscode_languageserver_1.CompletionItemKind.EnumMember,
-                labelDetails: { description: "Route-specific Variable" }
-            };
-            ci.push(c);
+        if (!iStr.trim().startsWith("//")) {
+            const vars = (0, routeLabels_1.getRouteLabelVars)(lbl.name);
+            for (const s of vars) {
+                const c = {
+                    label: s,
+                    kind: vscode_languageserver_1.CompletionItemKind.EnumMember,
+                    labelDetails: { description: "Route-specific Variable" }
+                };
+                ci.push(c);
+            }
         }
     }
     // Add variable names to autocomplete list

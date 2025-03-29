@@ -153,7 +153,7 @@ export class MissionCache {
 
 	async modulesLoaded() {
 		const uri = this.missionURI;
-		//debug(uri);
+		debug(uri);
 		if (uri.includes("sbs_utils")) {
 			debug("sbs nope");
 		}
