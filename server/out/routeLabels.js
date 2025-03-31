@@ -1,13 +1,17 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.IRouteLabelType = void 0;
 exports.getSkyboxCompletionItems = getSkyboxCompletionItems;
 exports.loadResourceLabels = loadResourceLabels;
 exports.loadMediaLabels = loadMediaLabels;
 exports.getRouteLabelVars = getRouteLabelVars;
 exports.loadRouteLabels = loadRouteLabels;
 exports.getRouteLabelAutocompletions = getRouteLabelAutocompletions;
+exports.checkEnableRoutes = checkEnableRoutes;
 const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
+const labels_1 = require("./labels");
+const cache_1 = require("./cache");
 //const routeLabels: IRouteLabel[] = [];
 //const mediaLabels: IRouteLabel[] = [];
 const resourceLabels = [];
@@ -48,7 +52,8 @@ function loadResourceLabels() {
         const ri = {
             route: resLabels[i],
             labels: resLabels[i].split("/"),
-            completionItem: ci
+            completionItem: ci,
+            type: IRouteLabelType.NOT_ENABLED
         };
         resourceLabels.push(ri);
     }
@@ -78,7 +83,8 @@ function loadMediaLabels(textData = "") {
             const ri = {
                 route: label,
                 labels: label.split("/"),
-                completionItem: ci
+                completionItem: ci,
+                type: IRouteLabelType.NOT_ENABLED
             };
             //debug(label);
             mediaLabels.push(ri);
@@ -97,7 +103,8 @@ function loadMediaLabels(textData = "") {
         let ri = {
             route: label,
             labels: label.split("/"),
-            completionItem: ci
+            completionItem: ci,
+            type: IRouteLabelType.NOT_ENABLED
         };
         mediaLabels.push(ri);
         return mediaLabels;
@@ -133,7 +140,8 @@ function loadMediaLabels(textData = "") {
                 const ri = {
                     route: label,
                     labels: label.split("/"),
-                    completionItem: ci
+                    completionItem: ci,
+                    type: IRouteLabelType.NOT_ENABLED
                 };
                 (0, console_1.debug)(label);
                 mediaLabels.push(ri);
@@ -153,7 +161,8 @@ function loadMediaLabels(textData = "") {
         let ri = {
             route: label,
             labels: label.split("/"),
-            completionItem: ci
+            completionItem: ci,
+            type: IRouteLabelType.NOT_ENABLED
         };
         mediaLabels.push(ri);
         label = "media";
@@ -170,7 +179,8 @@ function loadMediaLabels(textData = "") {
         ri = {
             route: label,
             labels: label.split("/"),
-            completionItem: ci
+            completionItem: ci,
+            type: IRouteLabelType.NOT_ENABLED
         };
         mediaLabels.push(ri);
     }
@@ -332,6 +342,10 @@ function loadRouteLabels(textData) {
                 else if (label.startsWith("damage")) {
                     docs = "This label runs whenever an object takes damage.";
                 }
+                let type = IRouteLabelType.NOT_ENABLED;
+                if (label.includes("science") || label.includes("comms")) {
+                    type = IRouteLabelType.CAN_ENABLE;
+                }
                 const ci = {
                     label: label,
                     kind: vscode_languageserver_1.CompletionItemKind.Event,
@@ -341,7 +355,8 @@ function loadRouteLabels(textData) {
                 const ri = {
                     route: label,
                     labels: arr,
-                    completionItem: ci
+                    completionItem: ci,
+                    type: type
                 };
                 //debug(ri);
                 routeLabels.push(ri);
@@ -358,8 +373,10 @@ function loadRouteLabels(textData) {
                 let arr = routes.split(",");
                 supportedRoutes.push(arr);
                 const label = arr.join("/").replace("*b", "");
+                let type = IRouteLabelType.NOT_ENABLED;
                 let docs = "";
                 if (label.startsWith("enable")) {
+                    type = IRouteLabelType.ENABLE;
                     let l = arr[1];
                     if (label.includes("grid/comms")) {
                         l = "grid comms";
@@ -376,7 +393,8 @@ function loadRouteLabels(textData) {
                 const ri = {
                     route: label,
                     labels: arr,
-                    completionItem: ci
+                    completionItem: ci,
+                    type: type
                 };
                 routeLabels.push(ri);
             }
@@ -389,6 +407,12 @@ function loadRouteLabels(textData) {
     //throw new Error("Route Labels");
     return routeLabels;
 }
+var IRouteLabelType;
+(function (IRouteLabelType) {
+    IRouteLabelType[IRouteLabelType["ENABLE"] = 0] = "ENABLE";
+    IRouteLabelType[IRouteLabelType["CAN_ENABLE"] = 1] = "CAN_ENABLE";
+    IRouteLabelType[IRouteLabelType["NOT_ENABLED"] = 2] = "NOT_ENABLED";
+})(IRouteLabelType || (exports.IRouteLabelType = IRouteLabelType = {}));
 function getRouteLabelAutocompletions(currentText) {
     const ci = [];
     // for (const i in supportedRoutes) {
@@ -413,5 +437,54 @@ function getRouteLabelAutocompletions(currentText) {
         }
     }
     return ci;
+}
+function checkEnableRoutes(textDocument) {
+    const diagnostics = [];
+    const labels = (0, labels_1.getLabelsInFile)(textDocument.getText(), textDocument.uri);
+    const needsEnable = [];
+    const isEnabled = [];
+    (0, console_1.debug)("Checking");
+    (0, console_1.debug)(resourceLabels);
+    for (const l of (0, cache_1.getCache)(textDocument.uri).routeLabels) {
+        if (l.type === IRouteLabelType.ENABLE) {
+            (0, console_1.debug)(l.route + " needs enabled");
+            needsEnable.push(l.route.replace("enable", "").replace(/\//g, ""));
+            isEnabled.push(false);
+            (0, console_1.debug)("Needs enabled: " + l.route);
+        }
+    }
+    for (const l of labels) {
+        if (l.type === "route") {
+            for (const ne in needsEnable) {
+                if (l.name.includes(needsEnable[ne])) {
+                    if (l.name.includes("enable")) {
+                        isEnabled[ne] = true;
+                    }
+                }
+            }
+        }
+    }
+    for (const l of labels) {
+        if (l.type === "route") {
+            for (const ne in needsEnable) {
+                if (l.name.includes(needsEnable[ne]) && !l.name.includes("enable")) {
+                    (0, console_1.debug)(l);
+                    if (!isEnabled[ne]) {
+                        const s = textDocument.positionAt(l.start);
+                        const e = textDocument.positionAt(l.start + l.length);
+                        // TODO: Add QuickFix for this error - should be one of the easier ones to implement...
+                        const d = {
+                            range: { start: s, end: e },
+                            message: 'Must use "//enable/' + l.name.replace(/\//g, "") + "\" before using this route.",
+                            severity: vscode_languageserver_1.DiagnosticSeverity.Warning
+                        };
+                        (0, console_1.debug)(d);
+                        diagnostics.push(d);
+                    }
+                }
+            }
+        }
+    }
+    return diagnostics;
 }
 //# sourceMappingURL=routeLabels.js.map

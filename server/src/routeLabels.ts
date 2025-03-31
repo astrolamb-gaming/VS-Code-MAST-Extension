@@ -2,9 +2,12 @@ import { debug } from 'console';
 import { myDebug } from './server';
 import * as path from 'path';
 import * as fs from 'fs';
-import { CompletionItem, CompletionItemKind, CompletionItemLabelDetails } from 'vscode-languageserver';
+import { CompletionItem, CompletionItemKind, CompletionItemLabelDetails, Diagnostic, DiagnosticSeverity, Position } from 'vscode-languageserver';
 import { findSubfolderByName, getFilesInDir, getFolders } from './fileFunctions';
 import { Runnable } from 'mocha';
+import { Range, TextDocument } from 'vscode-languageserver-textdocument';
+import { getLabelsInFile } from './labels';
+import { getCache } from './cache';
 
 //const routeLabels: IRouteLabel[] = [];
 //const mediaLabels: IRouteLabel[] = [];
@@ -48,7 +51,8 @@ export function loadResourceLabels() {
 		const ri: IRouteLabel = {
 			route: resLabels[i],
 			labels: resLabels[i].split("/"),
-			completionItem: ci
+			completionItem: ci,
+			type: IRouteLabelType.NOT_ENABLED
 		}
 		resourceLabels.push(ri);
 	}
@@ -79,7 +83,8 @@ export function loadMediaLabels(textData: string = ""): IRouteLabel[] {
 			const ri: IRouteLabel = {
 				route: label,
 				labels: label.split("/"),
-				completionItem: ci
+				completionItem: ci,
+				type: IRouteLabelType.NOT_ENABLED
 			}
 			//debug(label);
 			mediaLabels.push(ri);
@@ -98,7 +103,8 @@ export function loadMediaLabels(textData: string = ""): IRouteLabel[] {
 		let ri: IRouteLabel = {
 			route: label,
 			labels: label.split("/"),
-			completionItem: ci
+			completionItem: ci,
+			type: IRouteLabelType.NOT_ENABLED
 		}
 		mediaLabels.push(ri);
 		return mediaLabels;
@@ -134,7 +140,8 @@ export function loadMediaLabels(textData: string = ""): IRouteLabel[] {
 				const ri: IRouteLabel = {
 					route: label,
 					labels: label.split("/"),
-					completionItem: ci
+					completionItem: ci,
+					type: IRouteLabelType.NOT_ENABLED
 				}
 				debug(label);
 				mediaLabels.push(ri);
@@ -155,7 +162,8 @@ export function loadMediaLabels(textData: string = ""): IRouteLabel[] {
 		let ri: IRouteLabel = {
 			route: label,
 			labels: label.split("/"),
-			completionItem: ci
+			completionItem: ci,
+			type: IRouteLabelType.NOT_ENABLED
 		}
 		mediaLabels.push(ri);
 		label = "media";
@@ -172,7 +180,8 @@ export function loadMediaLabels(textData: string = ""): IRouteLabel[] {
 		ri = {
 			route: label,
 			labels: label.split("/"),
-			completionItem: ci
+			completionItem: ci,
+			type: IRouteLabelType.NOT_ENABLED
 		}
 		mediaLabels.push(ri);
 
@@ -335,6 +344,10 @@ export function loadRouteLabels(textData:string): IRouteLabel[] {
 					docs = "This label runs whenever an object takes damage.";
 				}
 				
+				let type = IRouteLabelType.NOT_ENABLED;
+				if (label.includes("science") || label.includes("comms")) {
+					type = IRouteLabelType.CAN_ENABLE;
+				}
 
 				const ci = {
 					label: label,
@@ -345,7 +358,8 @@ export function loadRouteLabels(textData:string): IRouteLabel[] {
 				const ri: IRouteLabel = {
 					route: label,
 					labels: arr,
-					completionItem: ci
+					completionItem: ci,
+					type: type
 				}
 				//debug(ri);
 				routeLabels.push(ri);
@@ -362,10 +376,11 @@ export function loadRouteLabels(textData:string): IRouteLabel[] {
 				let arr = routes.split(",");
 				supportedRoutes.push(arr);
 				const label = arr.join("/").replace("*b","");
-
+				let type = IRouteLabelType.NOT_ENABLED;
 				let docs: string = "";
 
 				if (label.startsWith("enable")) {
+					type = IRouteLabelType.ENABLE;
 					let l = arr[1];
 					if (label.includes("grid/comms")) { l = "grid comms"; }
 					l = label.replace(/\//g,"");
@@ -381,7 +396,8 @@ export function loadRouteLabels(textData:string): IRouteLabel[] {
 				const ri: IRouteLabel = {
 					route: label,
 					labels: arr,
-					completionItem: ci
+					completionItem: ci,
+					type: type
 				}
 				routeLabels.push(ri);
 			}
@@ -397,7 +413,14 @@ export function loadRouteLabels(textData:string): IRouteLabel[] {
 export interface IRouteLabel {
 	route: string,
 	labels: string[],
-	completionItem: CompletionItem
+	completionItem: CompletionItem,
+	type: IRouteLabelType
+}
+
+export enum IRouteLabelType {
+	ENABLE,
+	CAN_ENABLE,
+	NOT_ENABLED
 }
 
 export function getRouteLabelAutocompletions(currentText: string): CompletionItem[] {
@@ -427,5 +450,54 @@ export function getRouteLabelAutocompletions(currentText: string): CompletionIte
 	return ci;
 }
 
-
+export function checkEnableRoutes(textDocument:TextDocument) : Diagnostic[] {
+	const diagnostics: Diagnostic[] = [];
+	const labels = getLabelsInFile(textDocument.getText(),textDocument.uri);
+	const needsEnable: string[] =[];
+	const isEnabled: boolean[] = [];
+	debug("Checking");
+	debug(resourceLabels)
+	for (const l of getCache(textDocument.uri).routeLabels) {
+		if (l.type === IRouteLabelType.ENABLE) {
+			debug(l.route + " needs enabled");
+			needsEnable.push(l.route.replace("enable","").replace(/\//g,""));
+			isEnabled.push(false);
+			debug("Needs enabled: " + l.route)
+		}
+		
+	}
+	for (const l of labels) {
+		if (l.type === "route") {
+			for (const ne in needsEnable) {
+				if (l.name.includes(needsEnable[ne])) {
+					if (l.name.includes("enable")) {
+						isEnabled[ne] = true;
+					}
+				}
+			}
+		}
+	}
+	for (const l of labels) {
+		if (l.type === "route") {
+			for (const ne in needsEnable) {
+				if (l.name.includes(needsEnable[ne]) && !l.name.includes("enable")) {
+					debug(l)
+					if (!isEnabled[ne]) {
+						const s = textDocument.positionAt(l.start);
+						const e = textDocument.positionAt(l.start + l.length);
+						// TODO: Add QuickFix for this error - should be one of the easier ones to implement...
+						const d:Diagnostic = {
+							range: {start: s, end: e},
+							message: 'Must use "//enable/' + l.name.replace(/\//g,"") + "\" before using this route.",
+							severity: DiagnosticSeverity.Warning
+						}
+						debug(d);
+						diagnostics.push(d);
+					}
+				}
+			}
+		}
+	}
+	return diagnostics;
+}
 

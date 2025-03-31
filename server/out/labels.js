@@ -22,16 +22,16 @@ function parseLabels(text, src, type = "main") {
     // if (src.startsWith("file")) {
     // 	src = URI.parse(src).fsPath;
     // }
-    const routeLabel = /^(\s*)(\/{2,})(\w+)(\/\w+)*/gm;
-    const mainLabel = /^(\s*)(={2,}\s*[ \t]*)(\w+)([ \t]*(={2,})?)/gm;
-    const combined = /^(\s*)(((\/{2,})(\w+)(\/\w+)*)|((={2,}\s*[ \t]*)(\w+)([ \t]*(={2,})?)))/gm;
+    const routeLabel = /^([ \t]*)(\/{2,})(\w+)(\/\w+)*/gm;
+    const mainLabel = /^([ \t]*)(={2,}[ \t]*[ \t]*)(\w+)([ \t]*(={2,})?)/gm;
+    const combined = /^([ \t]*)(((\/{2,})(\w+)(\/\w+)*)|((={2,}[ \t]*)(\w+)([ \t]*(={2,})?)))/gm;
     let definedLabel;
     if (type === "main") {
         definedLabel = combined;
         //definedLabel = /^(\s*)(={2,}\s*[ \t]*)(\w+)([ \t]*(={2,})?)/gm
     }
     else if (type === "inline") {
-        definedLabel = /^(\s*)((-|\+){2,}\s*[ \t]*)(\w+)([ \t]*((-|\+){2,})?)/gm;
+        definedLabel = /^([ \t]*)((-|\+){2,}[ \t]*)(\w+)([ \t]*((-|\+){2,})?)/gm;
     }
     else {
         (0, console_1.debug)("Label type not valid!");

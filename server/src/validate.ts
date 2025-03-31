@@ -6,11 +6,11 @@ import { checkLastLine, findDiagnostic } from './errorChecking';
 import { checkLabels } from './labels';
 import { ErrorInstance, getDocumentSettings } from './server';
 import { TextDocument } from 'vscode-languageserver-textdocument';
+import { checkEnableRoutes } from './routeLabels';
 
 let debugStrs : string = "";//Debug: ${workspaceFolder}\n";
 
 export async function validateTextDocument(textDocument: TextDocument): Promise<Diagnostic[]> {
-	debug(textDocument.languageId + " file");
 	if (textDocument.languageId === "json") {
 		// TODO: Add autocompletion for story.json
 		debug("THIS IS A JSON FILE");
@@ -105,8 +105,7 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	// debug(functionSigs);
 	// diagnostics = diagnostics.concat(functionSigs);
 
-	debug("Checking fstrings");
-
+	
 	let fstring = /\".*\{.*\}.*\"/g;
 	let interior = /{.*\".*\".*}/g;
 	while (m = fstring.exec(text)) {
@@ -162,6 +161,11 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		const end = textDocument.offsetAt(d.range.end);
 		return isInString(start) || isInString(end) || isInComment(start) || isInComment(end);
 	})
+	
+	debug("Checking enabled routes")
+	const r = checkEnableRoutes(textDocument);
+	debug(r)
+	diagnostics = diagnostics.concat(r);
 
 	return diagnostics;
 }

@@ -8,9 +8,9 @@ const comments_1 = require("./comments");
 const errorChecking_1 = require("./errorChecking");
 const labels_1 = require("./labels");
 const server_1 = require("./server");
+const routeLabels_1 = require("./routeLabels");
 let debugStrs = ""; //Debug: ${workspaceFolder}\n";
 async function validateTextDocument(textDocument) {
-    (0, console_1.debug)(textDocument.languageId + " file");
     if (textDocument.languageId === "json") {
         // TODO: Add autocompletion for story.json
         (0, console_1.debug)("THIS IS A JSON FILE");
@@ -99,7 +99,6 @@ async function validateTextDocument(textDocument) {
     // const functionSigs = checkFunctionSignatures(textDocument);
     // debug(functionSigs);
     // diagnostics = diagnostics.concat(functionSigs);
-    (0, console_1.debug)("Checking fstrings");
     let fstring = /\".*\{.*\}.*\"/g;
     let interior = /{.*\".*\".*}/g;
     while (m = fstring.exec(text)) {
@@ -157,6 +156,10 @@ async function validateTextDocument(textDocument) {
         const end = textDocument.offsetAt(d.range.end);
         return (0, comments_1.isInString)(start) || (0, comments_1.isInString)(end) || (0, comments_1.isInComment)(start) || (0, comments_1.isInComment)(end);
     });
+    (0, console_1.debug)("Checking enabled routes");
+    const r = (0, routeLabels_1.checkEnableRoutes)(textDocument);
+    (0, console_1.debug)(r);
+    diagnostics = diagnostics.concat(r);
     return diagnostics;
 }
 //# sourceMappingURL=validate.js.map

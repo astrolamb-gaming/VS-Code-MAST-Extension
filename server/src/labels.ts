@@ -32,16 +32,16 @@ export function parseLabels(text: string, src: string, type: string = "main"): L
 	// if (src.startsWith("file")) {
 	// 	src = URI.parse(src).fsPath;
 	// }
-	const routeLabel: RegExp = /^(\s*)(\/{2,})(\w+)(\/\w+)*/gm;
-	const mainLabel: RegExp = /^(\s*)(={2,}\s*[ \t]*)(\w+)([ \t]*(={2,})?)/gm;
-	const combined: RegExp = /^(\s*)(((\/{2,})(\w+)(\/\w+)*)|((={2,}\s*[ \t]*)(\w+)([ \t]*(={2,})?)))/gm;
+	const routeLabel: RegExp = /^([ \t]*)(\/{2,})(\w+)(\/\w+)*/gm;
+	const mainLabel: RegExp = /^([ \t]*)(={2,}[ \t]*[ \t]*)(\w+)([ \t]*(={2,})?)/gm;
+	const combined: RegExp = /^([ \t]*)(((\/{2,})(\w+)(\/\w+)*)|((={2,}[ \t]*)(\w+)([ \t]*(={2,})?)))/gm;
 
 	let definedLabel : RegExp;
 	if (type === "main") {
 		definedLabel = combined;
 		//definedLabel = /^(\s*)(={2,}\s*[ \t]*)(\w+)([ \t]*(={2,})?)/gm
 	} else if (type === "inline") {
-		definedLabel = /^(\s*)((-|\+){2,}\s*[ \t]*)(\w+)([ \t]*((-|\+){2,})?)/gm
+		definedLabel = /^([ \t]*)((-|\+){2,}[ \t]*)(\w+)([ \t]*((-|\+){2,})?)/gm
 	} else {
 		debug("Label type not valid!");
 		return [];
