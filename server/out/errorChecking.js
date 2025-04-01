@@ -20,13 +20,17 @@ function checkLastLine(textDocument) {
         line: textDocument.lineCount - 1,
         character: 0
     });
-    const lastLine = text.substring(lastLinePos);
+    const arr = text.split("\n");
+    //const lastLine = text.substring(lastLinePos);
+    const lastLine = arr[arr.length - 1];
+    (0, console_1.debug)("Last line: " + lastLine);
     if (lastLine !== "") {
+        (0, console_1.debug)("Last line is NOT blank. Building diagnostic.");
         const diagnostic = {
             severity: node_1.DiagnosticSeverity.Error,
             range: {
-                start: textDocument.positionAt(lastLinePos),
-                end: textDocument.positionAt(lastLinePos + lastLine.length)
+                start: textDocument.positionAt(text.length - lastLine.length),
+                end: textDocument.positionAt(text.length)
             },
             message: "MAST Compiler Error: File must end with an empty line.",
             source: "MAST Compiler " + __filename

@@ -151,16 +151,18 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		}
 	}
 
-	const d = checkLastLine(textDocument);
-	if (d !== undefined) {
-		diagnostics.push(d);
-	}
-
+	
+	// For applicable diagnostics, check if they, or parts of them, are inside of a string or comment.
 	diagnostics = diagnostics.filter((d)=>{
 		const start = textDocument.offsetAt(d.range.start);
 		const end = textDocument.offsetAt(d.range.end);
 		return isInString(start) || isInString(end) || isInComment(start) || isInComment(end);
 	})
+
+	const d = checkLastLine(textDocument);
+	if (d !== undefined) {
+		diagnostics.push(d);
+	}
 	
 	debug("Checking enabled routes")
 	const r = checkEnableRoutes(textDocument);

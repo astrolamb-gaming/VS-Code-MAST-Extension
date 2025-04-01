@@ -16,13 +16,17 @@ export function checkLastLine(textDocument: TextDocument): Diagnostic | undefine
 		line: textDocument.lineCount - 1,
 		character: 0
 	});
-	const lastLine = text.substring(lastLinePos);
+	const arr: string[] = text.split("\n");
+	//const lastLine = text.substring(lastLinePos);
+	const lastLine = arr[arr.length-1];
+	debug("Last line: " + lastLine);
 	if (lastLine !== "") {
+		debug("Last line is NOT blank. Building diagnostic.");
 		const diagnostic: Diagnostic = {
 			severity: DiagnosticSeverity.Error,
 			range: {
-				start: textDocument.positionAt(lastLinePos),
-				end: textDocument.positionAt(lastLinePos + lastLine.length)
+				start: textDocument.positionAt(text.length - lastLine.length),
+				end: textDocument.positionAt(text.length)
 			},
 			message: "MAST Compiler Error: File must end with an empty line.",
 			source: "MAST Compiler "+ __filename
