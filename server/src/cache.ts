@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { CompletionItem, integer, SignatureInformation } from 'vscode-languageserver';
 import { IClassObject, MastFile, PyFile, Function } from './data';
-import { getLabelsInFile, LabelInfo } from './labels';
+import { parseLabelsInFile, LabelInfo } from './labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
 import { prepCompletions } from './autocompletion';
@@ -313,7 +313,7 @@ export class MissionCache {
 		// Remove duplicates (should just be a bunch of END entries)
 		// Could also include labels that exist in another file
 		const arrUniq = [...new Map(li.map(v => [v.name, v])).values()]
-		return arrUniq;
+		return li;
 	}
 
 	/**
@@ -327,7 +327,7 @@ export class MissionCache {
 		}
 		for (const file of this.mastFileInfo) {
 			if (file.uri === fileUri) {
-				file.labelNames = getLabelsInFile(textDocument.getText(), textDocument.uri);
+				file.labelNames = parseLabelsInFile(textDocument.getText(), textDocument.uri);
 			}
 		}
 	}

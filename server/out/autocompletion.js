@@ -185,7 +185,7 @@ function onCompletion(_textDocumentPosition, text) {
                 (0, console_1.debug)(lbl.name);
                 (0, console_1.debug)(subs);
                 for (const i in subs) {
-                    ci.push({ label: subs[i], kind: vscode_languageserver_1.CompletionItemKind.Event, labelDetails: { description: "Sub-label of: " + lbl.name } });
+                    ci.push({ label: subs[i].name, kind: vscode_languageserver_1.CompletionItemKind.Event, labelDetails: { description: "Sub-label of: " + lbl.name } });
                 }
             }
             return ci;

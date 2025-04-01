@@ -1,12 +1,7 @@
 import { debug } from 'console';
-import { myDebug } from './server';
-import * as path from 'path';
-import * as fs from 'fs';
 import { CompletionItem, CompletionItemKind, CompletionItemLabelDetails, Diagnostic, DiagnosticSeverity, Position } from 'vscode-languageserver';
-import { findSubfolderByName, getFilesInDir, getFolders } from './fileFunctions';
-import { Runnable } from 'mocha';
 import { Range, TextDocument } from 'vscode-languageserver-textdocument';
-import { getLabelsInFile } from './labels';
+import { parseLabelsInFile } from './labels';
 import { getCache } from './cache';
 
 //const routeLabels: IRouteLabel[] = [];
@@ -452,15 +447,14 @@ export function getRouteLabelAutocompletions(currentText: string): CompletionIte
 
 export function checkEnableRoutes(textDocument:TextDocument) : Diagnostic[] {
 	const diagnostics: Diagnostic[] = [];
-	const labels = getLabelsInFile(textDocument.getText(),textDocument.uri);
+	const labels = parseLabelsInFile(textDocument.getText(),textDocument.uri);
 	const needsEnable: string[] =[];
 	const isEnabled: boolean[] = [];
 	debug("Checking");
 	debug(resourceLabels)
 	for (const l of getCache(textDocument.uri).routeLabels) {
 		if (l.type === IRouteLabelType.ENABLE) {
-			debug(l.route + " needs enabled");
-			needsEnable.push(l.route.replace("enable","").replace(/\//g,""));
+			needsEnable.push(l.route.replace("enable","").replace("grid/comms","grid").replace(/\//g,""));
 			isEnabled.push(false);
 			debug("Needs enabled: " + l.route)
 		}
@@ -468,6 +462,8 @@ export function checkEnableRoutes(textDocument:TextDocument) : Diagnostic[] {
 	}
 	for (const l of labels) {
 		if (l.type === "route") {
+			debug(l)
+			debug("Is route")
 			for (const ne in needsEnable) {
 				if (l.name.includes(needsEnable[ne])) {
 					if (l.name.includes("enable")) {

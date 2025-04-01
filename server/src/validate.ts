@@ -90,8 +90,9 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	//diagnostics = diagnostics.concat(d1);
 
 	try {
-		let d1 = checkLabels(textDocument);
-		diagnostics = diagnostics.concat(d1);
+		// TODO: Re-include this
+		// let d1 = checkLabels(textDocument);
+		// diagnostics = diagnostics.concat(d1);
 	} catch (e) {
 		debug(e);
 		debug("Couldn't get labels?");
@@ -150,6 +151,8 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 			diagnostics.push(d);
 		}
 	}
+
+	//checkForDuplicateLabelsInFile(textDocument);
 
 	
 	// For applicable diagnostics, check if they, or parts of them, are inside of a string or comment.

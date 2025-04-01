@@ -286,7 +286,7 @@ class MissionCache {
         // Remove duplicates (should just be a bunch of END entries)
         // Could also include labels that exist in another file
         const arrUniq = [...new Map(li.map(v => [v.name, v])).values()];
-        return arrUniq;
+        return li;
     }
     /**
      * Call when the contents of a file changes
@@ -299,7 +299,7 @@ class MissionCache {
         }
         for (const file of this.mastFileInfo) {
             if (file.uri === fileUri) {
-                file.labelNames = (0, labels_1.getLabelsInFile)(textDocument.getText(), textDocument.uri);
+                file.labelNames = (0, labels_1.parseLabelsInFile)(textDocument.getText(), textDocument.uri);
             }
         }
     }

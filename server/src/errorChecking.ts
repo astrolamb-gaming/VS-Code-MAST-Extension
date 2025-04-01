@@ -19,9 +19,7 @@ export function checkLastLine(textDocument: TextDocument): Diagnostic | undefine
 	const arr: string[] = text.split("\n");
 	//const lastLine = text.substring(lastLinePos);
 	const lastLine = arr[arr.length-1];
-	debug("Last line: " + lastLine);
 	if (lastLine !== "") {
-		debug("Last line is NOT blank. Building diagnostic.");
 		const diagnostic: Diagnostic = {
 			severity: DiagnosticSeverity.Error,
 			range: {

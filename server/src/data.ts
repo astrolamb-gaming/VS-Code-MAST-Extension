@@ -2,7 +2,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { debug } from 'console';
 import { CompletionItem, CompletionItemKind, CompletionItemLabelDetails, InlineValueRequest, integer, MarkupContent, ParameterInformation, SignatureInformation } from 'vscode-languageserver';
-import { parseLabels, LabelInfo, getLabelsInFile } from './labels';
+import { parseLabels, LabelInfo, parseLabelsInFile } from './labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { getParentFolder } from './fileFunctions';
 import exp = require('constants');
@@ -85,7 +85,7 @@ export class MastFile extends FileCache {
 
 	parse(text: string) {
 		const textDocument: TextDocument = TextDocument.create(this.uri, "mast", 1, text);
-		this.labelNames = getLabelsInFile(text, this.uri);
+		this.labelNames = parseLabelsInFile(text, this.uri);
 		//debug(this.labelNames);
 		// TODO: Parse variables, etc
 		this.variables = this.getVariableNames(text);

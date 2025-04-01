@@ -200,7 +200,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				debug(lbl.name);
 				debug(subs);
 				for (const i in subs) {
-					ci.push({label: subs[i], kind: CompletionItemKind.Event, labelDetails: {description: "Sub-label of: " + lbl.name}});
+					ci.push({label: subs[i].name, kind: CompletionItemKind.Event, labelDetails: {description: "Sub-label of: " + lbl.name}});
 				}
 			}
 			return ci;

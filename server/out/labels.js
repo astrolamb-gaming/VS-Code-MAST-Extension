@@ -1,7 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.LabelType = void 0;
 exports.parseLabels = parseLabels;
-exports.getLabelsInFile = getLabelsInFile;
+exports.parseLabelsInFile = parseLabelsInFile;
+exports.checkForDuplicateLabelsInList = checkForDuplicateLabelsInList;
 exports.checkLabels = checkLabels;
 exports.getMainLabelAtPos = getMainLabelAtPos;
 const vscode_languageserver_1 = require("vscode-languageserver");
@@ -10,6 +12,12 @@ const errorChecking_1 = require("./errorChecking");
 const server_1 = require("./server");
 const console_1 = require("console");
 const cache_1 = require("./cache");
+var LabelType;
+(function (LabelType) {
+    LabelType[LabelType["LABEL"] = 0] = "LABEL";
+    LabelType[LabelType["INLINE"] = 1] = "INLINE";
+    LabelType[LabelType["ROUTE"] = 2] = "ROUTE";
+})(LabelType || (exports.LabelType = LabelType = {}));
 /**
  * Get valid labels, but only main or sublabels, not both.
  * @param textDocument
@@ -43,14 +51,6 @@ function parseLabels(text, src, type = "main") {
     //debug("Iterating over defined labels");
     while (m = definedLabel.exec(text)) {
         const str = m[0].replace(/(=|-|\+)/g, "").trim();
-        if (text.match(routeLabel)) {
-            type = "route";
-        }
-        if (type === "main") {
-            const lbl = m[3];
-            //debug(m[0]);
-            //debug("Main label: " + lbl);
-        }
         const li = {
             type: type,
             name: str,
@@ -61,7 +61,11 @@ function parseLabels(text, src, type = "main") {
             subLabels: [],
             srcFile: src
         };
-        //debug(str);
+        if (m[0].trim().startsWith("//")) {
+            (0, console_1.debug)(m[0] + " is a route");
+            li.type = "route";
+        }
+        (0, console_1.debug)(li);
         labels.push(li);
     }
     // Here we have to iterate over the labels again to properly get the end position.
@@ -107,7 +111,7 @@ function getMetadata(text) {
     text = text.substring(text.indexOf("\n"));
     return text;
 }
-function getLabelsInFile(text, src) {
+function parseLabelsInFile(text, src) {
     let mainLabels = parseLabels(text, src, "main");
     //debug(mainLabels);
     const subLabels = parseLabels(text, src, "inline");
@@ -120,34 +124,75 @@ function getLabelsInFile(text, src) {
         for (const j in subLabels) {
             const sl = subLabels[j];
             if (sl.start > ml.start && sl.start < ml.end) {
-                ml.subLabels.push(sl.name);
+                ml.subLabels.push(sl);
             }
         }
     }
+    (0, console_1.debug)("Parsed labels:");
+    (0, console_1.debug)(mainLabels);
     //mainLabels = mainLabels.concat(routeLabels);
     return mainLabels;
 }
-function checkForDuplicateLabels(t, main, sub) {
+function checkForDuplicateLabelsInList(textDocument, labels = [], subLabels = false) {
     let diagnostics = [];
-    for (const i in main) {
-        for (const j in sub) {
-            if (main[i].subLabels.includes(sub[j].name)) {
+    if (labels.length === 0) {
+        labels = (0, cache_1.getCache)(textDocument.uri).getLabels(textDocument);
+    }
+    (0, console_1.debug)("Checking Labels");
+    //const labels = getCache(textDocument.uri).getLabels(textDocument);
+    (0, console_1.debug)(labels);
+    for (const i in labels) {
+        // First we iterate over all labels prior to this one
+        for (const j in labels) {
+            // debug(labels[j])
+            if (j === i) {
+                break;
+            }
+            if (labels[i].name === labels[j].name) {
+                (0, console_1.debug)("Getting rid of " + labels[i].name);
                 const d = {
                     range: {
-                        start: t.positionAt((main[i].start > sub[j].start) ? main[i].start : sub[j].start),
-                        end: t.positionAt((main[i].start > sub[j].start) ? main[i].start + main[i].length : sub[j].start + sub[j].length)
+                        start: textDocument.positionAt(labels[i].start),
+                        end: textDocument.positionAt(labels[i].start + labels[i].length)
                     },
                     severity: vscode_languageserver_1.DiagnosticSeverity.Error,
                     message: "Label names can only be used once.",
                     source: "mast",
                 };
-                d.relatedInformation = (0, errorChecking_1.relatedMessage)(t, d.range, "This label name is used elsewhere in this file.");
+                d.relatedInformation = (0, errorChecking_1.relatedMessage)(textDocument, d.range, "This label name is used elsewhere in this file.");
                 diagnostics.push(d);
             }
+        }
+        // Now we need to do the same thing for sub labels
+        if (!subLabels) {
+            const subs = labels[i].subLabels;
+            diagnostics = diagnostics.concat(checkForDuplicateLabelsInList(textDocument, subs, true));
         }
     }
     return diagnostics;
 }
+// function checkForDuplicateLabelsOld(t: TextDocument, main:LabelInfo[],sub:LabelInfo[]): Diagnostic[] {
+// 	let diagnostics: Diagnostic[] = [];
+// 	const labels = getCache(t.uri).getLabels(t);
+// 	for (const i in main) {
+// 		for (const j in sub) {
+// 			if (main[i].subLabels.includes(sub[j].name)) {
+// 				const d: Diagnostic = {
+// 					range: {
+// 						start: t.positionAt((main[i].start > sub[j].start) ? main[i].start : sub[j].start),
+// 						end: t.positionAt((main[i].start > sub[j].start) ? main[i].start + main[i].length : sub[j].start+ sub[j].length)
+// 					},
+// 					severity: DiagnosticSeverity.Error,
+// 					message: "Label names can only be used once.",
+// 					source: "mast",
+// 				}
+// 				d.relatedInformation = relatedMessage(t,d.range, "This label name is used elsewhere in this file.");
+// 				diagnostics.push(d);
+// 			}
+// 		}
+// 	}
+// 	return diagnostics;
+// }
 function checkLabels(textDocument) {
     const text = textDocument.getText();
     let diagnostics = [];
@@ -184,7 +229,7 @@ function checkLabels(textDocument) {
         }
         else {
             for (const sub of ml.subLabels) {
-                if (str === sub) {
+                if (str === sub.name) {
                     found = true;
                     break;
                 }
@@ -201,7 +246,7 @@ function checkLabels(textDocument) {
             }
             else {
                 for (const sl of main.subLabels) {
-                    if (str === sl) {
+                    if (str === sl.name) {
                         if (m.index < main.start || m.index > main.end) {
                             const d = {
                                 range: {
@@ -261,6 +306,7 @@ function checkLabels(textDocument) {
             diagnostics.push(d);
         }
     }
+    diagnostics = diagnostics.concat(checkForDuplicateLabelsInList(textDocument, mainLabels));
     diagnostics = diagnostics.concat(findBadLabels(textDocument));
     return diagnostics;
 }

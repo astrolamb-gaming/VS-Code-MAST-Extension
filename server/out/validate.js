@@ -6,7 +6,6 @@ const vscode_languageserver_1 = require("vscode-languageserver");
 const cache_1 = require("./cache");
 const comments_1 = require("./comments");
 const errorChecking_1 = require("./errorChecking");
-const labels_1 = require("./labels");
 const server_1 = require("./server");
 const routeLabels_1 = require("./routeLabels");
 let debugStrs = ""; //Debug: ${workspaceFolder}\n";
@@ -85,8 +84,9 @@ async function validateTextDocument(textDocument) {
     //let d1: Diagnostic[] = findDiagnostic(pattern, textDocument, DiagnosticSeverity.Error, "Message", "Source", "Testing", settings.maxNumberOfProblems, 0);
     //diagnostics = diagnostics.concat(d1);
     try {
-        let d1 = (0, labels_1.checkLabels)(textDocument);
-        diagnostics = diagnostics.concat(d1);
+        // TODO: Re-include this
+        // let d1 = checkLabels(textDocument);
+        // diagnostics = diagnostics.concat(d1);
     }
     catch (e) {
         (0, console_1.debug)(e);
@@ -147,6 +147,7 @@ async function validateTextDocument(textDocument) {
             diagnostics.push(d);
         }
     }
+    //checkForDuplicateLabelsInFile(textDocument);
     // For applicable diagnostics, check if they, or parts of them, are inside of a string or comment.
     diagnostics = diagnostics.filter((d) => {
         const start = textDocument.offsetAt(d.range.start);
