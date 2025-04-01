@@ -73,9 +73,6 @@ class MastFile extends FileCache {
     parse(text) {
         const textDocument = vscode_languageserver_textdocument_1.TextDocument.create(this.uri, "mast", 1, text);
         this.labelNames = (0, labels_1.parseLabelsInFile)(text, this.uri);
-        (0, console_1.debug)(this.uri);
-        (0, console_1.debug)("Parsing labels: ");
-        (0, console_1.debug)(this.labelNames);
         // TODO: Parse variables, etc
         this.variables = this.getVariableNames(text);
     }

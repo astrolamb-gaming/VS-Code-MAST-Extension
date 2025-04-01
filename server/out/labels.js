@@ -126,8 +126,8 @@ function parseLabelsInFile(text, src) {
             }
         }
     }
-    (0, console_1.debug)("Parsed labels:");
-    (0, console_1.debug)(mainLabels);
+    // debug("Parsed labels:")
+    // debug(mainLabels)
     //mainLabels = mainLabels.concat(routeLabels);
     return mainLabels;
 }
@@ -148,6 +148,7 @@ function checkForDuplicateLabelsInList(textDocument, labels = [], subLabels = fa
             }
             if (labels[i].name === labels[j].name) {
                 (0, console_1.debug)("Getting rid of " + labels[i].name);
+                (0, console_1.debug)("i = " + i + "\nj = " + j);
                 const d = {
                     range: {
                         start: textDocument.positionAt(labels[i].start),

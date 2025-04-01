@@ -11,6 +11,7 @@ import { checkEnableRoutes } from './routeLabels';
 let debugStrs : string = "";//Debug: ${workspaceFolder}\n";
 
 export async function validateTextDocument(textDocument: TextDocument): Promise<Diagnostic[]> {
+
 	if (textDocument.languageId === "json") {
 		// TODO: Add autocompletion for story.json
 		debug("THIS IS A JSON FILE");
@@ -171,6 +172,5 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	const r = checkEnableRoutes(textDocument);
 	debug(r)
 	diagnostics = diagnostics.concat(r);
-
 	return diagnostics;
 }

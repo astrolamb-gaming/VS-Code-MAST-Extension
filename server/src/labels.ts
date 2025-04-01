@@ -138,8 +138,8 @@ export function parseLabelsInFile(text: string, src: string): LabelInfo[] {
 			}
 		}
 	}
-	debug("Parsed labels:")
-	debug(mainLabels)
+	// debug("Parsed labels:")
+	// debug(mainLabels)
 	//mainLabels = mainLabels.concat(routeLabels);
 	return mainLabels;
 }
@@ -162,6 +162,7 @@ export function checkForDuplicateLabelsInList(textDocument:TextDocument, labels:
 			}
 			if (labels[i].name === labels[j].name) {
 				debug("Getting rid of " + labels[i].name)
+				debug("i = " + i + "\nj = " + j);
 				const d: Diagnostic = {
 					range: {
 						start: textDocument.positionAt(labels[i].start),
