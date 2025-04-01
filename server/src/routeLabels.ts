@@ -450,20 +450,15 @@ export function checkEnableRoutes(textDocument:TextDocument) : Diagnostic[] {
 	const labels = parseLabelsInFile(textDocument.getText(),textDocument.uri);
 	const needsEnable: string[] =[];
 	const isEnabled: boolean[] = [];
-	debug("Checking");
-	debug(resourceLabels)
 	for (const l of getCache(textDocument.uri).routeLabels) {
 		if (l.type === IRouteLabelType.ENABLE) {
 			needsEnable.push(l.route.replace("enable","").replace("grid/comms","grid").replace(/\//g,""));
 			isEnabled.push(false);
-			debug("Needs enabled: " + l.route)
 		}
 		
 	}
 	for (const l of labels) {
 		if (l.type === "route") {
-			debug(l)
-			debug("Is route")
 			for (const ne in needsEnable) {
 				if (l.name.includes(needsEnable[ne])) {
 					if (l.name.includes("enable")) {
@@ -477,7 +472,6 @@ export function checkEnableRoutes(textDocument:TextDocument) : Diagnostic[] {
 		if (l.type === "route") {
 			for (const ne in needsEnable) {
 				if (l.name.includes(needsEnable[ne]) && !l.name.includes("enable")) {
-					debug(l)
 					if (!isEnabled[ne]) {
 						const s = textDocument.positionAt(l.start);
 						const e = textDocument.positionAt(l.start + l.length);
@@ -487,7 +481,6 @@ export function checkEnableRoutes(textDocument:TextDocument) : Diagnostic[] {
 							message: 'Must use "//enable/' + l.name.replace(/\//g,"") + "\" before using this route.",
 							severity: DiagnosticSeverity.Warning
 						}
-						debug(d);
 						diagnostics.push(d);
 					}
 				}

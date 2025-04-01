@@ -297,16 +297,18 @@ export class MissionCache {
 		let li: LabelInfo[] = [];
 		//debug(this.mastFileInfo);
 		for (const f of this.mastFileInfo) {
+			
 			if (f.uri === fileUri) {
 				li = li.concat(f.labelNames);
-			}
-			// Check if the mast files are in scope
-			// TODO: Check init.mast for if any files should not be included
-			//debug(fileUri);
-			if (f.parentFolder === getParentFolder(fileUri)) {
-				//debug("adding labels for: ");
-				//debug(f);
-				li = li.concat(f.labelNames);
+			} else {
+				// Check if the mast files are in scope
+				// TODO: Check init.mast for if any files should not be included
+				//debug(fileUri);
+				if (f.parentFolder === getParentFolder(fileUri)) {
+					//debug("adding labels for: ");
+					//debug(f);
+					li = li.concat(f.labelNames);
+				}
 			}
 		}
 		//debug(li);

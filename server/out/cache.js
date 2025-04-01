@@ -273,13 +273,15 @@ class MissionCache {
             if (f.uri === fileUri) {
                 li = li.concat(f.labelNames);
             }
-            // Check if the mast files are in scope
-            // TODO: Check init.mast for if any files should not be included
-            //debug(fileUri);
-            if (f.parentFolder === (0, fileFunctions_1.getParentFolder)(fileUri)) {
-                //debug("adding labels for: ");
-                //debug(f);
-                li = li.concat(f.labelNames);
+            else {
+                // Check if the mast files are in scope
+                // TODO: Check init.mast for if any files should not be included
+                //debug(fileUri);
+                if (f.parentFolder === (0, fileFunctions_1.getParentFolder)(fileUri)) {
+                    //debug("adding labels for: ");
+                    //debug(f);
+                    li = li.concat(f.labelNames);
+                }
             }
         }
         //debug(li);

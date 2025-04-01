@@ -443,19 +443,14 @@ function checkEnableRoutes(textDocument) {
     const labels = (0, labels_1.parseLabelsInFile)(textDocument.getText(), textDocument.uri);
     const needsEnable = [];
     const isEnabled = [];
-    (0, console_1.debug)("Checking");
-    (0, console_1.debug)(resourceLabels);
     for (const l of (0, cache_1.getCache)(textDocument.uri).routeLabels) {
         if (l.type === IRouteLabelType.ENABLE) {
             needsEnable.push(l.route.replace("enable", "").replace("grid/comms", "grid").replace(/\//g, ""));
             isEnabled.push(false);
-            (0, console_1.debug)("Needs enabled: " + l.route);
         }
     }
     for (const l of labels) {
         if (l.type === "route") {
-            (0, console_1.debug)(l);
-            (0, console_1.debug)("Is route");
             for (const ne in needsEnable) {
                 if (l.name.includes(needsEnable[ne])) {
                     if (l.name.includes("enable")) {
@@ -469,7 +464,6 @@ function checkEnableRoutes(textDocument) {
         if (l.type === "route") {
             for (const ne in needsEnable) {
                 if (l.name.includes(needsEnable[ne]) && !l.name.includes("enable")) {
-                    (0, console_1.debug)(l);
                     if (!isEnabled[ne]) {
                         const s = textDocument.positionAt(l.start);
                         const e = textDocument.positionAt(l.start + l.length);
@@ -479,7 +473,6 @@ function checkEnableRoutes(textDocument) {
                             message: 'Must use "//enable/' + l.name.replace(/\//g, "") + "\" before using this route.",
                             severity: vscode_languageserver_1.DiagnosticSeverity.Warning
                         };
-                        (0, console_1.debug)(d);
                         diagnostics.push(d);
                     }
                 }

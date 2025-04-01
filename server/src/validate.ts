@@ -90,9 +90,9 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	//diagnostics = diagnostics.concat(d1);
 
 	try {
-		// TODO: Re-include this
-		// let d1 = checkLabels(textDocument);
-		// diagnostics = diagnostics.concat(d1);
+		let d1 = checkLabels(textDocument);
+		debug(d1);
+		diagnostics = diagnostics.concat(d1);
 	} catch (e) {
 		debug(e);
 		debug("Couldn't get labels?");

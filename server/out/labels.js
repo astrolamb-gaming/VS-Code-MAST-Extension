@@ -62,10 +62,8 @@ function parseLabels(text, src, type = "main") {
             srcFile: src
         };
         if (m[0].trim().startsWith("//")) {
-            (0, console_1.debug)(m[0] + " is a route");
             li.type = "route";
         }
-        (0, console_1.debug)(li);
         labels.push(li);
     }
     // Here we have to iterate over the labels again to properly get the end position.
@@ -160,6 +158,7 @@ function checkForDuplicateLabelsInList(textDocument, labels = [], subLabels = fa
                     source: "mast",
                 };
                 d.relatedInformation = (0, errorChecking_1.relatedMessage)(textDocument, d.range, "This label name is used elsewhere in this file.");
+                (0, console_1.debug)(d);
                 diagnostics.push(d);
             }
         }
@@ -169,6 +168,7 @@ function checkForDuplicateLabelsInList(textDocument, labels = [], subLabels = fa
             diagnostics = diagnostics.concat(checkForDuplicateLabelsInList(textDocument, subs, true));
         }
     }
+    (0, console_1.debug)(diagnostics);
     return diagnostics;
 }
 // function checkForDuplicateLabelsOld(t: TextDocument, main:LabelInfo[],sub:LabelInfo[]): Diagnostic[] {
@@ -268,29 +268,30 @@ function checkLabels(textDocument) {
             }
         }
         const labels = (0, cache_1.getCache)(textDocument.uri).getLabels(textDocument);
-        // for (const lbl of labels) {
-        // 	if (str === lbl.name) {
-        // 		found = true;
-        // 		break;
-        // 	} else {
-        // 		for (const sl of lbl.subLabels) {
-        // 			if (str === sl) {
-        // 				const d: Diagnostic = {
-        // 					range: {
-        // 						start: textDocument.positionAt(m.index),
-        // 						end: textDocument.positionAt(m.index + m[0].length)
-        // 					},
-        // 					severity: DiagnosticSeverity.Error,
-        // 					message: "Sub-label cannot be called from outside of its parent label.",
-        // 					source: "mast",
-        // 				}
-        // 				d.relatedInformation = relatedMessage(textDocument,d.range, "This sub-label is a child of the " + lbl.name + " main label.\nYou can only jump to a sub-label from within its parent label.");
-        // 				diagnostics.push(d);
-        // 				debug("Second iteration")
-        // 			}
-        // 		}
-        // 	}
-        // }
+        for (const lbl of labels) {
+            if (str === lbl.name) {
+                found = true;
+                break;
+            }
+            else {
+                for (const sl of lbl.subLabels) {
+                    if (str === sl.name) {
+                        const d = {
+                            range: {
+                                start: textDocument.positionAt(sl.start),
+                                end: textDocument.positionAt(sl.start + sl.length)
+                            },
+                            severity: vscode_languageserver_1.DiagnosticSeverity.Error,
+                            message: "Sub-label cannot be called from outside of its parent label.",
+                            source: "mast",
+                        };
+                        d.relatedInformation = (0, errorChecking_1.relatedMessage)(textDocument, d.range, "This sub-label is a child of the " + lbl.name + " main label.\nYou can only jump to a sub-label from within its parent label.");
+                        diagnostics.push(d);
+                        (0, console_1.debug)("Second iteration");
+                    }
+                }
+            }
+        }
         if (!found) {
             const d = {
                 range: {
@@ -306,8 +307,11 @@ function checkLabels(textDocument) {
             diagnostics.push(d);
         }
     }
+    (0, console_1.debug)(diagnostics);
     diagnostics = diagnostics.concat(checkForDuplicateLabelsInList(textDocument, mainLabels));
+    (0, console_1.debug)(diagnostics);
     diagnostics = diagnostics.concat(findBadLabels(textDocument));
+    (0, console_1.debug)(diagnostics);
     return diagnostics;
 }
 /**
