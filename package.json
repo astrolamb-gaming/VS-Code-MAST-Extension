@@ -175,6 +175,18 @@
 						"settings": {
 							"foreground": "#36a1a5"
 						}
+					},
+					{
+						"scope": "warn.keyword.codetag.notation.mast",
+						"settings": {
+							"foreground": "#ffff00"
+						}
+					},
+					{
+						"scope": "error.keyword.codetag.notation.mast",
+						"settings": {
+							"foreground": "#FF0000"
+						}
 					}
 				]
 			}

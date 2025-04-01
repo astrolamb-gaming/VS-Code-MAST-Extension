@@ -5226,7 +5226,7 @@
     },
     "key-value-pair":{
       "name":"meta.injection.yaml.key-value-pair",
-      "match":"(?m)^[ \\t]*(\\w+:)(.*$)",
+      "match":"(?m)^[ \\t]*([\\w ]+:)(.*$)",
       "captures":{
         "0":{"name":"meta.injection.yaml.key"},
         "1":{"name":"meta.injection.yaml.value"}
@@ -5460,10 +5460,16 @@
       ]
     },
     "codetags": {
-        "match": "(?:\\b(NOTE|XXX|HACK|FIXME|BUG|TODO)\\b)",
+        "match": "(?:\\b(NOTE|XXX|HACK|FIXME|BUG|TODO|INFO)|(WARNING|WARN)|(ERROR|ERR)\\b)",
         "captures": {
           "1": {
             "name": "keyword.codetag.notation.mast"
+          },
+          "2": {
+            "name": "warn.keyword.codetag.notation.mast"
+          },
+          "3": {
+            "name": "error.keyword.codetag.notation.mast"
           }
         }
     },
