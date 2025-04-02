@@ -25,17 +25,13 @@ import {
 } from 'vscode-languageserver/node';
 import { URI } from 'vscode-uri';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { checkFunctionSignatures, findDiagnostic } from './errorChecking';
-import { checkLabels, LabelInfo } from './labels';
+import { LabelInfo } from './labels';
 import { onCompletion } from './autocompletion';
 import { debug} from 'console';
 import { onHover } from './hover';
 import { onSignatureHelp } from './signatureHelp';
-import { ClassTypings } from './data';
-import { getComments, getSquareBrackets, getStrings, getYamls, isInComment, isInString } from './comments';
 import fs = require("fs");
 import { getCache, loadCache } from './cache';
-import {  getGlobalFunctions } from './python';
 import { getVariableNamesInDoc } from './tokens';
 import { getGlobals } from './globals';
 import { validateTextDocument } from './validate';
@@ -152,13 +148,16 @@ connection.onInitialize((params: InitializeParams) => {
 		debug("Cache loaded")
 		let cache = getCache(uri.fsPath);
 		debug("Getting globals");
-		try {
-			let globalFuncs = getGlobalFunctions(cache.storyJson.sbslib).then((funcs)=>{
-				debug(funcs);
-			});
-		} catch (e) {
-			debug(e)
-		}
+
+// Uncommment this to enable python stuff
+
+		// try {
+		// 	let globalFuncs = getGlobalFunctions(cache.storyJson.sbslib).then((funcs)=>{
+		// 		debug(funcs);
+		// 	});
+		// } catch (e) {
+		// 	debug(e)
+		// }
 		
 	} else {
 		debug("No Workspace folders");
@@ -296,15 +295,15 @@ connection.languages.diagnostics.on(async (params) => {
  * {@link TextDocument TextDocument}
  * {@link TextDocumentChangeEvent TextDocumentChangeEvent}
  */
-documents.onDidChangeContent(change => {
-	try {
-		//debug("onDidChangeContent");
-		validateTextDocument(change.document);
-	} catch (e) {
-		debug(e);
-		console.error(e);
-	}
-});
+// documents.onDidChangeContent(change => {
+// 	try {
+// 		//debug("onDidChangeContent");
+// 		validateTextDocument(change.document);
+// 	} catch (e) {
+// 		debug(e);
+// 		console.error(e);
+// 	}
+// });
 
 
 connection.onDidChangeTextDocument((params) => {
@@ -376,6 +375,9 @@ connection.onCompletion(
 		if (_textDocumentPosition.textDocument.uri.endsWith("json")) {
 			debug("THIS IS A JSON FILE");
 			return getGlobals().libModuleCompletionItems;
+		}
+		if (_textDocumentPosition.textDocument.uri.endsWith("__init__.mast")) {
+			debug("Can't get completions from __init__.mast file");
 		}
 		const text = documents.get(_textDocumentPosition.textDocument.uri);
 		if (text === undefined) {

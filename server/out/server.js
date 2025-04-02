@@ -20,7 +20,6 @@ const hover_1 = require("./hover");
 const signatureHelp_1 = require("./signatureHelp");
 const fs = require("fs");
 const cache_1 = require("./cache");
-const python_1 = require("./python");
 const tokens_1 = require("./tokens");
 const globals_1 = require("./globals");
 const validate_1 = require("./validate");
@@ -115,14 +114,14 @@ exports.connection.onInitialize((params) => {
         (0, console_1.debug)("Cache loaded");
         let cache = (0, cache_1.getCache)(uri.fsPath);
         (0, console_1.debug)("Getting globals");
-        try {
-            let globalFuncs = (0, python_1.getGlobalFunctions)(cache.storyJson.sbslib).then((funcs) => {
-                (0, console_1.debug)(funcs);
-            });
-        }
-        catch (e) {
-            (0, console_1.debug)(e);
-        }
+        // Uncommment this to enable python stuff
+        // try {
+        // 	let globalFuncs = getGlobalFunctions(cache.storyJson.sbslib).then((funcs)=>{
+        // 		debug(funcs);
+        // 	});
+        // } catch (e) {
+        // 	debug(e)
+        // }
     }
     else {
         (0, console_1.debug)("No Workspace folders");
@@ -239,16 +238,15 @@ exports.connection.languages.diagnostics.on(async (params) => {
  * {@link TextDocument TextDocument}
  * {@link TextDocumentChangeEvent TextDocumentChangeEvent}
  */
-documents.onDidChangeContent(change => {
-    try {
-        //debug("onDidChangeContent");
-        (0, validate_1.validateTextDocument)(change.document);
-    }
-    catch (e) {
-        (0, console_1.debug)(e);
-        console.error(e);
-    }
-});
+// documents.onDidChangeContent(change => {
+// 	try {
+// 		//debug("onDidChangeContent");
+// 		validateTextDocument(change.document);
+// 	} catch (e) {
+// 		debug(e);
+// 		console.error(e);
+// 	}
+// });
 exports.connection.onDidChangeTextDocument((params) => {
     (0, console_1.debug)("OnDidChangetextDocument");
     let changes = params.contentChanges;
@@ -285,6 +283,9 @@ exports.connection.onCompletion((_textDocumentPosition) => {
     if (_textDocumentPosition.textDocument.uri.endsWith("json")) {
         (0, console_1.debug)("THIS IS A JSON FILE");
         return (0, globals_1.getGlobals)().libModuleCompletionItems;
+    }
+    if (_textDocumentPosition.textDocument.uri.endsWith("__init__.mast")) {
+        (0, console_1.debug)("Can't get completions from __init__.mast file");
     }
     const text = documents.get(_textDocumentPosition.textDocument.uri);
     if (text === undefined) {

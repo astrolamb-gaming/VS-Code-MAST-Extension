@@ -180,9 +180,6 @@ export function checkForDuplicateLabelsInList(textDocument:TextDocument, labels:
 			diagnostics = diagnostics.concat(checkForDuplicateLabelsInList(textDocument,subs,true));
 		}
 	}
-	if (!subLabels) {
-		debug(diagnostics);
-	}
 	return diagnostics;
 }
 

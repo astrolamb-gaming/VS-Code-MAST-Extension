@@ -164,9 +164,6 @@ function checkForDuplicateLabelsInList(textDocument, labels = [], subLabels = fa
             diagnostics = diagnostics.concat(checkForDuplicateLabelsInList(textDocument, subs, true));
         }
     }
-    if (!subLabels) {
-        (0, console_1.debug)(diagnostics);
-    }
     return diagnostics;
 }
 // function checkForDuplicateLabelsOld(t: TextDocument, main:LabelInfo[],sub:LabelInfo[]): Diagnostic[] {
