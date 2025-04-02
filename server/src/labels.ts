@@ -146,13 +146,11 @@ export function parseLabelsInFile(text: string, src: string): LabelInfo[] {
 
 export function checkForDuplicateLabelsInList(textDocument:TextDocument, labels: LabelInfo[]=[], subLabels: boolean=false) : Diagnostic[] {
 	let diagnostics: Diagnostic[] = [];
-
-	if (labels.length === 0) {
+	
+	if (labels.length === 0 && !subLabels) {
 		labels = getCache(textDocument.uri).getLabels(textDocument);
 	}
-	debug("Checking Labels")
-	//const labels = getCache(textDocument.uri).getLabels(textDocument);
-	debug(labels);
+
 	for (const i in labels) {
 		// First we iterate over all labels prior to this one
 		for (const j in labels) {
@@ -161,8 +159,6 @@ export function checkForDuplicateLabelsInList(textDocument:TextDocument, labels:
 				break;
 			}
 			if (labels[i].name === labels[j].name) {
-				debug("Getting rid of " + labels[i].name)
-				debug("i = " + i + "\nj = " + j);
 				const d: Diagnostic = {
 					range: {
 						start: textDocument.positionAt(labels[i].start),
@@ -173,8 +169,8 @@ export function checkForDuplicateLabelsInList(textDocument:TextDocument, labels:
 					source: "mast",
 					
 				}
-				d.relatedInformation = relatedMessage(textDocument,d.range, "This label name is used elsewhere in this file.");
-				debug(d)
+				const message = (subLabels) ? "This inline label name is already used inside this parent label." : "This label name is used elsewhere in this file.";
+				d.relatedInformation = relatedMessage(textDocument,d.range, message);
 				diagnostics.push(d);
 			}
 		}
@@ -184,7 +180,9 @@ export function checkForDuplicateLabelsInList(textDocument:TextDocument, labels:
 			diagnostics = diagnostics.concat(checkForDuplicateLabelsInList(textDocument,subs,true));
 		}
 	}
-	debug(diagnostics)
+	if (!subLabels) {
+		debug(diagnostics);
+	}
 	return diagnostics;
 }
 
@@ -330,11 +328,8 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 			diagnostics.push(d);
 		}
 	}
-	debug(diagnostics)
 	diagnostics = diagnostics.concat(checkForDuplicateLabelsInList(textDocument,mainLabels));
-	debug(diagnostics)
 	diagnostics = diagnostics.concat(findBadLabels(textDocument));
-	debug(diagnostics)
 	return diagnostics;
 }
 

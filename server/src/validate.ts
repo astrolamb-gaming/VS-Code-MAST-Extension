@@ -92,7 +92,6 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 
 	try {
 		let d1 = checkLabels(textDocument);
-		debug(d1);
 		diagnostics = diagnostics.concat(d1);
 	} catch (e) {
 		debug(e);
@@ -160,7 +159,9 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	diagnostics = diagnostics.filter((d)=>{
 		const start = textDocument.offsetAt(d.range.start);
 		const end = textDocument.offsetAt(d.range.end);
-		return isInString(start) || isInString(end) || isInComment(start) || isInComment(end);
+		const inStr = !isInString(start) || !isInString(end)
+		const inCom = !isInComment(start) || !isInComment(end);
+		return inStr || inCom;
 	})
 
 	const d = checkLastLine(textDocument);
@@ -170,7 +171,6 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	
 	debug("Checking enabled routes")
 	const r = checkEnableRoutes(textDocument);
-	debug(r)
 	diagnostics = diagnostics.concat(r);
 	return diagnostics;
 }

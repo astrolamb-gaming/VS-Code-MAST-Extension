@@ -86,7 +86,6 @@ async function validateTextDocument(textDocument) {
     //diagnostics = diagnostics.concat(d1);
     try {
         let d1 = (0, labels_1.checkLabels)(textDocument);
-        (0, console_1.debug)(d1);
         diagnostics = diagnostics.concat(d1);
     }
     catch (e) {
@@ -153,7 +152,9 @@ async function validateTextDocument(textDocument) {
     diagnostics = diagnostics.filter((d) => {
         const start = textDocument.offsetAt(d.range.start);
         const end = textDocument.offsetAt(d.range.end);
-        return (0, comments_1.isInString)(start) || (0, comments_1.isInString)(end) || (0, comments_1.isInComment)(start) || (0, comments_1.isInComment)(end);
+        const inStr = !(0, comments_1.isInString)(start) || !(0, comments_1.isInString)(end);
+        const inCom = !(0, comments_1.isInComment)(start) || !(0, comments_1.isInComment)(end);
+        return inStr || inCom;
     });
     const d = (0, errorChecking_1.checkLastLine)(textDocument);
     if (d !== undefined) {
@@ -161,7 +162,6 @@ async function validateTextDocument(textDocument) {
     }
     (0, console_1.debug)("Checking enabled routes");
     const r = (0, routeLabels_1.checkEnableRoutes)(textDocument);
-    (0, console_1.debug)(r);
     diagnostics = diagnostics.concat(r);
     return diagnostics;
 }

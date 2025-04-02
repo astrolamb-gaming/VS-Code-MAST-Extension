@@ -133,12 +133,9 @@ function parseLabelsInFile(text, src) {
 }
 function checkForDuplicateLabelsInList(textDocument, labels = [], subLabels = false) {
     let diagnostics = [];
-    if (labels.length === 0) {
+    if (labels.length === 0 && !subLabels) {
         labels = (0, cache_1.getCache)(textDocument.uri).getLabels(textDocument);
     }
-    (0, console_1.debug)("Checking Labels");
-    //const labels = getCache(textDocument.uri).getLabels(textDocument);
-    (0, console_1.debug)(labels);
     for (const i in labels) {
         // First we iterate over all labels prior to this one
         for (const j in labels) {
@@ -147,8 +144,6 @@ function checkForDuplicateLabelsInList(textDocument, labels = [], subLabels = fa
                 break;
             }
             if (labels[i].name === labels[j].name) {
-                (0, console_1.debug)("Getting rid of " + labels[i].name);
-                (0, console_1.debug)("i = " + i + "\nj = " + j);
                 const d = {
                     range: {
                         start: textDocument.positionAt(labels[i].start),
@@ -158,8 +153,8 @@ function checkForDuplicateLabelsInList(textDocument, labels = [], subLabels = fa
                     message: "Label names can only be used once.",
                     source: "mast",
                 };
-                d.relatedInformation = (0, errorChecking_1.relatedMessage)(textDocument, d.range, "This label name is used elsewhere in this file.");
-                (0, console_1.debug)(d);
+                const message = (subLabels) ? "This inline label name is already used inside this parent label." : "This label name is used elsewhere in this file.";
+                d.relatedInformation = (0, errorChecking_1.relatedMessage)(textDocument, d.range, message);
                 diagnostics.push(d);
             }
         }
@@ -169,7 +164,9 @@ function checkForDuplicateLabelsInList(textDocument, labels = [], subLabels = fa
             diagnostics = diagnostics.concat(checkForDuplicateLabelsInList(textDocument, subs, true));
         }
     }
-    (0, console_1.debug)(diagnostics);
+    if (!subLabels) {
+        (0, console_1.debug)(diagnostics);
+    }
     return diagnostics;
 }
 // function checkForDuplicateLabelsOld(t: TextDocument, main:LabelInfo[],sub:LabelInfo[]): Diagnostic[] {
@@ -308,11 +305,8 @@ function checkLabels(textDocument) {
             diagnostics.push(d);
         }
     }
-    (0, console_1.debug)(diagnostics);
     diagnostics = diagnostics.concat(checkForDuplicateLabelsInList(textDocument, mainLabels));
-    (0, console_1.debug)(diagnostics);
     diagnostics = diagnostics.concat(findBadLabels(textDocument));
-    (0, console_1.debug)(diagnostics);
     return diagnostics;
 }
 /**
