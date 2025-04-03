@@ -12,6 +12,8 @@ const errorChecking_1 = require("./errorChecking");
 const server_1 = require("./server");
 const console_1 = require("console");
 const cache_1 = require("./cache");
+const vscode_uri_1 = require("vscode-uri");
+const path = require("path");
 var LabelType;
 (function (LabelType) {
     LabelType[LabelType["LABEL"] = 0] = "LABEL";
@@ -138,10 +140,19 @@ function checkForDuplicateLabelsInList(textDocument, labels = [], subLabels = fa
     }
     for (const i in labels) {
         // First we iterate over all labels prior to this one
+        // If the label isn't from this file, we don't need to include it in the errors for this file.
+        if (labels[i].srcFile !== textDocument.uri) {
+            continue;
+        }
+        // Exclude main and END
+        if (labels[i].name === "main" || labels[i].name === "END") {
+            continue;
+        }
         for (const j in labels) {
             // debug(labels[j])
             if (j === i) {
-                break;
+                //break;
+                continue;
             }
             if (labels[i].name === labels[j].name) {
                 const d = {
@@ -153,7 +164,13 @@ function checkForDuplicateLabelsInList(textDocument, labels = [], subLabels = fa
                     message: "Label names can only be used once.",
                     source: "mast",
                 };
-                const message = (subLabels) ? "This inline label name is already used inside this parent label." : "This label name is used elsewhere in this file.";
+                let message = (subLabels) ? "The inline label \"" + labels[i].name + "\" is already used inside this parent label." : "The label \"" + labels[i].name + "\" is used elsewhere in this file.";
+                if (!subLabels) {
+                    if (labels[j].srcFile !== textDocument.uri) {
+                        const f = path.basename(vscode_uri_1.URI.parse(labels[j].srcFile).fsPath);
+                        message = "The label \"" + labels[j].name + "\" is already used in " + f;
+                    }
+                }
                 d.relatedInformation = (0, errorChecking_1.relatedMessage)(textDocument, d.range, message);
                 diagnostics.push(d);
             }
