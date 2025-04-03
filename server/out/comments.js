@@ -128,6 +128,7 @@ function getYamls(textDocument) {
     let yamls = [];
     let yaml = /```[ \t]*.*?[ \t]*?```/gms;
     yamls = getMatchesForRegex(yaml, text);
+    yamlRanges = yamls;
     //debug(strings);
     //stringRanges = yamls;
     //debug("Strings found: " + strings.length);

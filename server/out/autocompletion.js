@@ -75,8 +75,10 @@ function onCompletion(_textDocumentPosition, text) {
         (0, console_1.debug)("Is in Comment");
         return ci;
     }
+    (0, comments_1.getYamls)(text);
     if ((0, comments_1.isInYaml)(pos)) {
         (0, console_1.debug)("Is in Yaml");
+        ci = ci.concat(cache.getCompletions());
         return ci;
     }
     // TODO: Check and make absolutely sure that isTextInBracket is working properly

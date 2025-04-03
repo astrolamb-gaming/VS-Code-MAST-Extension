@@ -5,7 +5,7 @@ import { labelNames, updateLabelNames } from './server';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { ClassObject, ClassTypings, getVariablesInFile, IClassObject, PyFile } from './data';
 import { getRouteLabelAutocompletions, getRouteLabelVars, getSkyboxCompletionItems } from './routeLabels';
-import { getStrings, isInComment, isInString, isInYaml, isTextInBracket } from './comments';
+import { getStrings, getYamls, isInComment, isInString, isInYaml, isTextInBracket } from './comments';
 import { getCache } from './cache';
 import path = require('path');
 import { fixFileName } from './fileFunctions';
@@ -80,9 +80,10 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		debug("Is in Comment")
 		return ci;
 	}
-
+	getYamls(text);
 	if (isInYaml(pos)) {
 		debug("Is in Yaml")
+		ci = ci.concat(cache.getCompletions());
 		return ci;
 	}
 

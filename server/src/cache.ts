@@ -196,9 +196,8 @@ export class MissionCache {
 			}
 			fs.writeFile(path.join(folder,"__init__.mast"), contents, ()=>{
 				// Reload cache?
+				console.log('File created successfully!');
 			});
-			console.log('File created successfully!');
-			
 		} catch (err) {
 			console.error('Error writing file:', err);
 		}
