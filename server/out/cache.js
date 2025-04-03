@@ -47,6 +47,7 @@ class MissionCache {
         this.missionName = "";
         this.missionURI = "";
         this.missionLibFolder = "";
+        this.ingoreInitFileMissing = false;
         // The Modules are the default sbslib and mastlib files.
         // They apply to ALL files in the mission folder.
         this.missionPyModules = [];
@@ -130,6 +131,53 @@ class MissionCache {
                     this.pyFileInfo.push(p);
                 }
             }
+        }
+        //this.checkForInitFolder(this.missionURI);
+    }
+    async checkForInitFolder(folder) {
+        // if (this.ingoreInitFileMissing) return;
+        if ((0, fileFunctions_1.getInitFileInFolder)(folder) === undefined) {
+            (0, console_1.debug)("No __init__.mast file for this folder.");
+            (0, console_1.debug)(folder);
+            let ret = await server_1.connection.window.showErrorMessage("No '__init__.mast' file found in this folder.", { title: "Create With Files" }, { title: "Create Empty" }, { title: "Ignore" });
+            if (ret === undefined)
+                return true;
+            if (ret.title === "Create With Files") {
+                // Create a new __init__.mast file
+                // Then add all files in folder
+                this.createInitFile(folder, true);
+            }
+            else if (ret.title === "Create Empty") {
+                // Create a new __init__.mast file
+                this.createInitFile(folder, false);
+            }
+            else if (ret.title === "Ignore") {
+                return true;
+            }
+        }
+        return false;
+    }
+    async createInitFile(folder, withFiles) {
+        try {
+            let contents = "";
+            if (withFiles) {
+                let files = (0, fileFunctions_1.getFilesInDir)(folder, false);
+                for (const f of files) {
+                    if (f.endsWith("__init__.mast"))
+                        continue;
+                    if (!f.endsWith(".mast") && !f.endsWith(".py"))
+                        continue;
+                    const baseDir = path.basename(f);
+                    contents = contents + "import " + baseDir + "\n";
+                }
+            }
+            fs.writeFile(path.join(folder, "__init__.mast"), contents, () => {
+                // Reload cache?
+            });
+            console.log('File created successfully!');
+        }
+        catch (err) {
+            console.error('Error writing file:', err);
         }
     }
     async modulesLoaded() {

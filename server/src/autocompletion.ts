@@ -36,13 +36,23 @@ export function prepCompletions(files: PyFile[]) {
 let currentLine = 0;
 
 export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, text: TextDocument): CompletionItem[] {
-	let variables: CompletionItem[] = getCache(text.uri).getVariables(text.uri);
+	debug("Staring onCompletion");
+	const cache = getCache(text.uri);
+	debug("Cache loaded.");
+	let variables: CompletionItem[] = [];
+	try {
+		variables = cache.getVariables(text.uri);
+	} catch(e) {
+		debug(e);
+	}
+	debug("Variables parsed.");
 	if (currentLine != _textDocumentPosition.position.line) {
 		currentLine = _textDocumentPosition.position.line;
 		// Here we can do any logic that doesn't need to be done every character change
 		debug("Updating variables list")
 		variables = getVariableNamesInDoc(text);
 	}
+	debug("updating tokens...")
 	updateTokensForLine(currentLine);
 	let ci : CompletionItem[] = [];
 	const t = text?.getText();
@@ -56,8 +66,6 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	}
 	// getVariablesInFile(text);
 	// return ci;
-
-	const cache = getCache(text.uri);
 
 	// Calculate the position in the text's string value using the Position value.
 	const pos : integer = text.offsetAt(_textDocumentPosition.position);

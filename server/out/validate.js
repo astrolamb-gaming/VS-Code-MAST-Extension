@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.validateTextDocument = validateTextDocument;
 const console_1 = require("console");
+const path = require("path");
 const vscode_languageserver_1 = require("vscode-languageserver");
 const cache_1 = require("./cache");
 const comments_1 = require("./comments");
@@ -9,14 +10,25 @@ const errorChecking_1 = require("./errorChecking");
 const labels_1 = require("./labels");
 const server_1 = require("./server");
 const routeLabels_1 = require("./routeLabels");
+const vscode_uri_1 = require("vscode-uri");
 let debugStrs = ""; //Debug: ${workspaceFolder}\n";
+let exclude = [];
 async function validateTextDocument(textDocument) {
     if (textDocument.languageId === "json") {
         // TODO: Add autocompletion for story.json
         (0, console_1.debug)("THIS IS A JSON FILE");
         return [];
     }
-    (0, cache_1.getCache)(textDocument.uri).updateLabels(textDocument);
+    const cache = (0, cache_1.getCache)(textDocument.uri);
+    const folder = path.dirname(vscode_uri_1.URI.parse(textDocument.uri).fsPath);
+    if (!exclude.includes(folder)) {
+        cache.checkForInitFolder(folder).then((res) => {
+            if (res) {
+                exclude.push(folder);
+            }
+        });
+    }
+    cache.updateLabels(textDocument);
     //debug("Validating document");
     // In this simple example we get the settings for every validate run.
     let maxNumberOfProblems = 100;

@@ -9,10 +9,11 @@ import { prepCompletions } from './autocompletion';
 import { prepSignatures } from './signatureHelp';
 import { parse, RX } from './rx';
 import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } from './routeLabels';
-import { getFilesInDir, getInitContents, getMissionFolder, getParentFolder, readFile, readZipArchive } from './fileFunctions';
+import { getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readZipArchive } from './fileFunctions';
 import { connection, notifyClient, sendToClient } from './server';
 import { URI } from 'vscode-uri';
 import { getGlobals } from './globals';
+import { send } from 'process';
 
 
 export function loadCache(dir: string) {
@@ -55,6 +56,7 @@ export class MissionCache {
 	missionURI: string = "";
 	storyJson: StoryJson;
 	missionLibFolder: string = "";
+	ingoreInitFileMissing = false;
 	// The Modules are the default sbslib and mastlib files.
 	// They apply to ALL files in the mission folder.
 	missionPyModules: PyFile[] = [];
@@ -135,6 +137,7 @@ export class MissionCache {
 					this.mastFileInfo.push(m);
 				}
 				
+
 				
 			}
 			if (path.extname(file) === ".py") {
@@ -148,7 +151,57 @@ export class MissionCache {
 				}
 			}
 		}
+		//this.checkForInitFolder(this.missionURI);
 
+	}
+
+	async checkForInitFolder(folder:string) : Promise<boolean> {
+		// if (this.ingoreInitFileMissing) return;
+		if (getInitFileInFolder(folder) === undefined) {
+			debug("No __init__.mast file for this folder.");
+			debug(folder);
+			let ret = await connection.window.showErrorMessage(
+				"No '__init__.mast' file found in this folder.",
+				{title: "Create With Files"},
+				{title: "Create Empty"},
+				{title: "Ignore"},
+				//{title: hide} // TODO: Add this later!!!!!!
+			);
+			if (ret === undefined) return true;
+			if (ret.title === "Create With Files") {
+				// Create a new __init__.mast file
+				// Then add all files in folder
+				this.createInitFile(folder, true);
+			} else if (ret.title === "Create Empty") {
+				// Create a new __init__.mast file
+				this.createInitFile(folder, false);
+			} else if (ret.title === "Ignore") {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private async createInitFile(folder: string, withFiles:boolean) {
+		try {
+			let contents: string = "";
+			if (withFiles) {
+				let files = getFilesInDir(folder,false);
+				for (const f of files) {
+					if (f.endsWith("__init__.mast")) continue;
+					if (!f.endsWith(".mast") && !f.endsWith(".py")) continue;
+					const baseDir = path.basename(f);
+					contents = contents + "import " + baseDir + "\n";
+				}
+			}
+			fs.writeFile(path.join(folder,"__init__.mast"), contents, ()=>{
+				// Reload cache?
+			});
+			console.log('File created successfully!');
+			
+		} catch (err) {
+			console.error('Error writing file:', err);
+		}
 	}
 
 	async modulesLoaded() {
@@ -728,6 +781,7 @@ export function getCache(name:string, reloadCache:boolean = false): MissionCache
 	}
 	//debug("Trying to get cache with name: " + name);
 	const mf = getMissionFolder(name);
+
 	//debug(mf);
 	for (const cache of caches) {
 		if (cache.missionName === name || cache.missionURI === mf) {

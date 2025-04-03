@@ -32,13 +32,24 @@ function prepCompletions(files) {
 }
 let currentLine = 0;
 function onCompletion(_textDocumentPosition, text) {
-    let variables = (0, cache_1.getCache)(text.uri).getVariables(text.uri);
+    (0, console_1.debug)("Staring onCompletion");
+    const cache = (0, cache_1.getCache)(text.uri);
+    (0, console_1.debug)("Cache loaded.");
+    let variables = [];
+    try {
+        variables = cache.getVariables(text.uri);
+    }
+    catch (e) {
+        (0, console_1.debug)(e);
+    }
+    (0, console_1.debug)("Variables parsed.");
     if (currentLine != _textDocumentPosition.position.line) {
         currentLine = _textDocumentPosition.position.line;
         // Here we can do any logic that doesn't need to be done every character change
         (0, console_1.debug)("Updating variables list");
         variables = (0, tokens_1.getVariableNamesInDoc)(text);
     }
+    (0, console_1.debug)("updating tokens...");
     (0, tokens_1.updateTokensForLine)(currentLine);
     let ci = [];
     const t = text?.getText();
@@ -52,7 +63,6 @@ function onCompletion(_textDocumentPosition, text) {
     }
     // getVariablesInFile(text);
     // return ci;
-    const cache = (0, cache_1.getCache)(text.uri);
     // Calculate the position in the text's string value using the Position value.
     const pos = text.offsetAt(_textDocumentPosition.position);
     const startOfLine = pos - _textDocumentPosition.position.character;

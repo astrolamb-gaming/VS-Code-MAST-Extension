@@ -1,4 +1,5 @@
 import { debug } from 'console';
+import * as path from 'path';
 import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
 import { getCache } from './cache';
 import { getSquareBrackets, getComments, getStrings, getYamls, isInString, isInComment, getMatchesForRegex } from './comments';
@@ -7,8 +8,11 @@ import { checkLabels } from './labels';
 import { ErrorInstance, getDocumentSettings } from './server';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { checkEnableRoutes } from './routeLabels';
+import { URI } from 'vscode-uri';
 
 let debugStrs : string = "";//Debug: ${workspaceFolder}\n";
+
+let exclude: string[] = [];
 
 export async function validateTextDocument(textDocument: TextDocument): Promise<Diagnostic[]> {
 
@@ -17,7 +21,17 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		debug("THIS IS A JSON FILE");
 		return [];
 	}
-	getCache(textDocument.uri).updateLabels(textDocument);
+	const cache = getCache(textDocument.uri);
+	const folder = path.dirname(URI.parse(textDocument.uri).fsPath);
+	if (!exclude.includes(folder)) {
+		cache.checkForInitFolder(folder).then((res)=>{
+			if (res) {
+				exclude.push(folder);
+			}
+		});
+	}
+
+	cache.updateLabels(textDocument);
 	//debug("Validating document");
 	// In this simple example we get the settings for every validate run.
 	let maxNumberOfProblems = 100;
