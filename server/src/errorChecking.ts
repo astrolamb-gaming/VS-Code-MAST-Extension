@@ -2,7 +2,7 @@ import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 import { Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, integer } from 'vscode-languageserver/node';
 import {hasDiagnosticRelatedInformationCapability} from './server';
 import { debug } from 'console';
-import { getComments, getStrings, replaceRegexMatchWithUnderscore } from './comments';
+import { getComments, getStrings, isInComment, isInString, isInYaml, replaceRegexMatchWithUnderscore } from './comments';
 
 /**
  * Checks if the file ends with an empty line.
@@ -113,7 +113,10 @@ export function checkFunctionSignatures(textDocument: TextDocument) : Diagnostic
 	while (m = functionRegex.exec(text)) {
 		const functions: FunctionInstance[] = [];
 		const line = m[0];
+		if (isInComment(m.index)) continue;
+		if (isInString(m.index) && !isInYaml(m.index)) continue;
 		const functionName = line.match(singleFunc);
+		debug(functionName)
 		let end = line.lastIndexOf(")");
 		if (functionName !== null) {
 			// debug(functionName);
@@ -125,12 +128,12 @@ export function checkFunctionSignatures(textDocument: TextDocument) : Diagnostic
 				}
 				functions.push(fi);
 				
-				debug(fname);
+				debug("Name: " + fname);
 			}
 		}
 		
 		end = line.lastIndexOf(")");
-		let func = line.substring(0,end);
+		let func = line.substring(0,end+1);
 		debug(func);
 		//debug(m);
 		debug(line);

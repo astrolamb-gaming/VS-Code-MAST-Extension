@@ -60,7 +60,7 @@ class Globals {
         if (dataFolder !== null) {
             const files = (0, fileFunctions_1.getFilesInDir)(dataFolder, false);
             for (const file of files) {
-                (0, console_1.debug)(file);
+                // debug(file);
                 // Here we get all stylestrings by parsing the documentation file.
                 if (file.endsWith("widget_stylestring_documentation.txt")) {
                     (0, fileFunctions_1.readFile)(file).then((text) => {

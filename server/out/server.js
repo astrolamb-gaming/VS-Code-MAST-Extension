@@ -268,8 +268,7 @@ exports.connection.onDidChangeWatchedFiles(_change => {
  */
 exports.connection.onSignatureHelp((_textDocPos) => {
     //debug(functionData.length);
-    if (_textDocPos.textDocument.uri.endsWith("json")) {
-        (0, console_1.debug)("THIS IS A JSON FILE");
+    if (!_textDocPos.textDocument.uri.endsWith("mast")) {
         return;
     }
     const text = documents.get(_textDocPos.textDocument.uri);

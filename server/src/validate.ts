@@ -3,7 +3,7 @@ import * as path from 'path';
 import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
 import { getCache } from './cache';
 import { getSquareBrackets, getComments, getStrings, getYamls, isInString, isInComment, getMatchesForRegex } from './comments';
-import { checkLastLine, findDiagnostic } from './errorChecking';
+import { checkFunctionSignatures, checkLastLine, findDiagnostic } from './errorChecking';
 import { checkLabels } from './labels';
 import { ErrorInstance, getDocumentSettings } from './server';
 import { TextDocument } from 'vscode-languageserver-textdocument';

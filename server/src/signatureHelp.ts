@@ -53,6 +53,7 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 	// Check for the current function name and get SignatureInformation for that function.
 
 	let f: string = getCurrentMethodName(iStr);
+	debug(f);
 	let sigs = getCache(text.uri).getMethodSignatures(f);
 	for (const sig of sigs) {
 		if (sig.label === f) {
@@ -102,5 +103,5 @@ export function getCurrentMethodName(iStr: string): string {
 	if (prior === -1) {
 		prior = 0;
 	}
-	return iStr.substring(prior,last).replace(/\.|\(| /g,"");
+	return iStr.substring(prior,last).replace(/\.|\(| |\"|\'/g,"");
 }

@@ -116,9 +116,9 @@ function getHoveredSymbol(str, pos) {
 function isFunction(line, token) {
     const start = line.indexOf(token);
     const end = start + token.length;
-    (0, console_1.debug)(line.substring(end).trim());
+    // debug(line.substring(end).trim());
     if (line.substring(end).trim().startsWith("(")) {
-        (0, console_1.debug)("TRUE");
+        // debug("TRUE")
         return true;
     }
     return false;
@@ -127,7 +127,7 @@ function isClassMethod(line, token) {
     const start = line.indexOf(token);
     const end = start + token.length;
     if (isFunction(line, token)) {
-        (0, console_1.debug)(line.substring(0, start));
+        // debug(line.substring(0,start));
         if (line.substring(0, start).trim().endsWith(".")) {
             return true;
         }

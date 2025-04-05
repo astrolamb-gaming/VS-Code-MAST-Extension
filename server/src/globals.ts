@@ -76,7 +76,7 @@ export class Globals {
 		if (dataFolder !== null) {
 			const files = getFilesInDir(dataFolder, false);
 			for (const file of files) {
-				debug(file);
+				// debug(file);
 
 				// Here we get all stylestrings by parsing the documentation file.
 				if (file.endsWith("widget_stylestring_documentation.txt")) {

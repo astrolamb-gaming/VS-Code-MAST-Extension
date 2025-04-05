@@ -48,6 +48,7 @@ function onSignatureHelp(_textDocPos, text) {
     sh.activeParameter = arr.length - 1;
     // Check for the current function name and get SignatureInformation for that function.
     let f = getCurrentMethodName(iStr);
+    (0, console_1.debug)(f);
     let sigs = (0, cache_1.getCache)(text.uri).getMethodSignatures(f);
     for (const sig of sigs) {
         if (sig.label === f) {
@@ -92,6 +93,6 @@ function getCurrentMethodName(iStr) {
     if (prior === -1) {
         prior = 0;
     }
-    return iStr.substring(prior, last).replace(/\.|\(| /g, "");
+    return iStr.substring(prior, last).replace(/\.|\(| |\"|\'/g, "");
 }
 //# sourceMappingURL=signatureHelp.js.map

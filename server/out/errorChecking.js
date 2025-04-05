@@ -102,7 +102,12 @@ function checkFunctionSignatures(textDocument) {
     while (m = functionRegex.exec(text)) {
         const functions = [];
         const line = m[0];
+        if ((0, comments_1.isInComment)(m.index))
+            continue;
+        if ((0, comments_1.isInString)(m.index) && !(0, comments_1.isInYaml)(m.index))
+            continue;
         const functionName = line.match(singleFunc);
+        (0, console_1.debug)(functionName);
         let end = line.lastIndexOf(")");
         if (functionName !== null) {
             // debug(functionName);
@@ -113,11 +118,11 @@ function checkFunctionSignatures(textDocument) {
                     end: line.lastIndexOf(")")
                 };
                 functions.push(fi);
-                (0, console_1.debug)(fname);
+                (0, console_1.debug)("Name: " + fname);
             }
         }
         end = line.lastIndexOf(")");
-        let func = line.substring(0, end);
+        let func = line.substring(0, end + 1);
         (0, console_1.debug)(func);
         //debug(m);
         (0, console_1.debug)(line);
