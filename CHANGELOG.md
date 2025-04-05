@@ -9,6 +9,20 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * Show token information on hover
 * Determine variable types based on function return values, etc.
 
+### 0.6.0
+
+* Fix for crash that could occur if opening a folder without an `__init__.mast` file or if opening a workspace
+* Fix sbs, scatter, and faces functions showing up without the applicable global name prepended
+* Fixes for autocompletion and error checking of route labels and route label variables
+* Add check for use of routes that require them to be enabled first
+* Add WARN, WARNING, ERR, and ERROR as codetags
+* Fix error for checking if last line is empty (it should be empty)
+* Fix for labels being misidentified as routes in some cases
+* Add check for `__init__.mast` file. If it's not there, it will prompt the user to create one
+* Fixes for metadata ranges
+* Removed hover functionality (which is still incomplete) for non-mast files
+* Added capability for autocompletion and signatures in metadata value strings
+
 ### 0.5.1
 
 * Hotfix for error message showing up in strings and comments
