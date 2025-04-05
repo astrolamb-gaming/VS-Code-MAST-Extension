@@ -14,6 +14,10 @@ const comments_1 = require("./comments");
  * @returns
  */
 function checkLastLine(textDocument) {
+    if (textDocument.languageId !== "mast")
+        return undefined;
+    if (textDocument.uri.endsWith("__init__.mast"))
+        return undefined;
     const text = textDocument.getText();
     textDocument.lineCount;
     const lastLinePos = textDocument.offsetAt({

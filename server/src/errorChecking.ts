@@ -10,6 +10,8 @@ import { getComments, getStrings, isInComment, isInString, isInYaml, replaceRege
  * @returns 
  */
 export function checkLastLine(textDocument: TextDocument): Diagnostic | undefined {
+	if (textDocument.languageId !== "mast") return undefined;
+	if (textDocument.uri.endsWith("__init__.mast")) return undefined;
 	const text = textDocument.getText();
 	textDocument.lineCount
 	const lastLinePos = textDocument.offsetAt({
