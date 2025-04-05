@@ -145,7 +145,7 @@ function checkForDuplicateLabelsInList(textDocument, labels = [], subLabels = fa
             continue;
         }
         // Exclude main and END
-        if (labels[i].name === "main" || labels[i].name === "END") {
+        if (labels[i].name === "main" || labels[i].name === "END" || labels[i].type === "route") {
             continue;
         }
         for (const j in labels) {
