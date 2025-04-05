@@ -6,7 +6,10 @@ import { isInComment, isInString } from './comments';
 import { getCache } from './cache';
 import { IClassObject } from './data';
 
-export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : Hover {
+export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : Hover | undefined {
+	if (text.languageId !== "mast") {
+		return undefined;
+	}
 	//return {contents:""}
 	const docPos = text.offsetAt(_pos.position);
 

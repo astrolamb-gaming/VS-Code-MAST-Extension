@@ -6,6 +6,9 @@ const vscode_languageserver_1 = require("vscode-languageserver");
 const comments_1 = require("./comments");
 const cache_1 = require("./cache");
 function onHover(_pos, text) {
+    if (text.languageId !== "mast") {
+        return undefined;
+    }
     //return {contents:""}
     const docPos = text.offsetAt(_pos.position);
     // Get Hover Range

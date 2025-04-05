@@ -307,6 +307,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			}
 		}
 	}
+	
 
 	// Add variable names to autocomplete list
 	// TODO: Add variables from other files in scope?
