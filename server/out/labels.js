@@ -266,7 +266,7 @@ function checkLabels(textDocument) {
                                     end: textDocument.positionAt(m.index + m[0].length)
                                 },
                                 severity: vscode_languageserver_1.DiagnosticSeverity.Error,
-                                message: "Sub-label cannot be called from outside of its parent label.",
+                                message: "Sub-label \"" + sl.name + "\" cannot be called from outside of its parent label.",
                                 source: "mast",
                             };
                             d.relatedInformation = (0, errorChecking_1.relatedMessage)(textDocument, d.range, "This sub-label is a child of the " + main.name + " main label.\nYou can only jump to a sub-label from within its parent label.");
@@ -294,7 +294,7 @@ function checkLabels(textDocument) {
                                 end: textDocument.positionAt(sl.start + sl.length)
                             },
                             severity: vscode_languageserver_1.DiagnosticSeverity.Error,
-                            message: "Sub-label cannot be called from outside of its parent label.",
+                            message: "Sub-label \"" + sl.name + "\" cannot be called from outside of its parent label.",
                             source: "mast",
                         };
                         d.relatedInformation = (0, errorChecking_1.relatedMessage)(textDocument, d.range, "This sub-label is a child of the " + lbl.name + " main label.\nYou can only jump to a sub-label from within its parent label.");
@@ -304,6 +304,7 @@ function checkLabels(textDocument) {
                 }
             }
         }
+        // Label not found in file
         if (!found) {
             const d = {
                 range: {

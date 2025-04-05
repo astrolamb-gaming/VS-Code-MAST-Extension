@@ -285,7 +285,7 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 									end: textDocument.positionAt(m.index + m[0].length)
 								},
 								severity: DiagnosticSeverity.Error,
-								message: "Sub-label cannot be called from outside of its parent label.",
+								message: "Sub-label \"" + sl.name + "\" cannot be called from outside of its parent label.",
 								source: "mast",
 								
 							}
@@ -315,7 +315,7 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 								end: textDocument.positionAt(sl.start + sl.length)
 							},
 							severity: DiagnosticSeverity.Error,
-							message: "Sub-label cannot be called from outside of its parent label.",
+							message: "Sub-label \"" + sl.name + "\" cannot be called from outside of its parent label.",
 							source: "mast",
 							
 						}
@@ -327,6 +327,7 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 			}
 		}
 
+		// Label not found in file
 		if (!found) {
 			const d: Diagnostic = {
 				range: {
