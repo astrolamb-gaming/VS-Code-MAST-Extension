@@ -210,7 +210,15 @@ function getRouteLabelVars(route) {
             "DAMAGE_SOURCE_ID",
             "DAMAGE_TARGET_ID"
         ];
-        retVars = retVars.concat(vars);
+        if (route.includes("destroy")) {
+            retVars.push("DESTROYED_ID");
+        }
+        else if (route.includes("internal")) {
+            retVars.push("DAMAGE_ORIGIN_ID");
+        }
+        else {
+            retVars = retVars.concat(vars);
+        }
     }
     const consoles = [
         "comms",
