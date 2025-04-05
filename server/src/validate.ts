@@ -9,6 +9,7 @@ import { ErrorInstance, getDocumentSettings } from './server';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { checkEnableRoutes } from './routeLabels';
 import { URI } from 'vscode-uri';
+import { fixFileName } from './fileFunctions';
 
 let debugStrs : string = "";//Debug: ${workspaceFolder}\n";
 
@@ -186,5 +187,30 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	debug("Checking enabled routes")
 	const r = checkEnableRoutes(textDocument);
 	diagnostics = diagnostics.concat(r);
+	// return debugLabelValidation(textDocument);
 	return diagnostics;
+}
+
+function debugLabelValidation(doc:TextDocument) : Diagnostic[]{
+	const lbls = getCache(doc.uri).getLabels(doc);
+	let diagnostics: Diagnostic[] = [];
+	for (const l of lbls) {
+		if (fixFileName(l.srcFile) !== fixFileName(doc.uri)) continue;
+		for (const s of l.subLabels) {
+			debug(s)
+			let r: Range = {
+				start: doc.positionAt(s.start),
+				end: doc.positionAt(s.start + s.length)
+			}
+			let d: Diagnostic = {
+				range: r,
+				message: "This is a sublabel: " + s.name,
+				severity: DiagnosticSeverity.Error,
+				source: "mast extension"
+			}
+			diagnostics.push(d);
+		}
+	}
+	return diagnostics;
+
 }

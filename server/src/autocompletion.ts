@@ -197,8 +197,6 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		for (const i in labelNames) {
 			if (labelNames[i].name === "main") continue;
 			if (labelNames[i].name.startsWith("//")) continue;
-			debug(fixFileName(text.uri));
-			debug(labelNames[i].srcFile);
 			if (fixFileName(labelNames[i].srcFile) !== fixFileName(text.uri) && labelNames[i].name === "END") continue;
 			ci.push({label: labelNames[i].name, kind: CompletionItemKind.Event, labelDetails: {description: path.basename(labelNames[i].srcFile)}});
 		}

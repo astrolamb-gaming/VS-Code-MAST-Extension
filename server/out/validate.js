@@ -11,6 +11,7 @@ const labels_1 = require("./labels");
 const server_1 = require("./server");
 const routeLabels_1 = require("./routeLabels");
 const vscode_uri_1 = require("vscode-uri");
+const fileFunctions_1 = require("./fileFunctions");
 let debugStrs = ""; //Debug: ${workspaceFolder}\n";
 let exclude = [];
 async function validateTextDocument(textDocument) {
@@ -175,6 +176,30 @@ async function validateTextDocument(textDocument) {
     (0, console_1.debug)("Checking enabled routes");
     const r = (0, routeLabels_1.checkEnableRoutes)(textDocument);
     diagnostics = diagnostics.concat(r);
+    // return debugLabelValidation(textDocument);
+    return diagnostics;
+}
+function debugLabelValidation(doc) {
+    const lbls = (0, cache_1.getCache)(doc.uri).getLabels(doc);
+    let diagnostics = [];
+    for (const l of lbls) {
+        if ((0, fileFunctions_1.fixFileName)(l.srcFile) !== (0, fileFunctions_1.fixFileName)(doc.uri))
+            continue;
+        for (const s of l.subLabels) {
+            (0, console_1.debug)(s);
+            let r = {
+                start: doc.positionAt(s.start),
+                end: doc.positionAt(s.start + s.length)
+            };
+            let d = {
+                range: r,
+                message: "This is a sublabel: " + s.name,
+                severity: vscode_languageserver_1.DiagnosticSeverity.Error,
+                source: "mast extension"
+            };
+            diagnostics.push(d);
+        }
+    }
     return diagnostics;
 }
 //# sourceMappingURL=validate.js.map

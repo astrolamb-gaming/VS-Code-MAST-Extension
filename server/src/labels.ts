@@ -300,32 +300,32 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 			}
 		}
 
-		const labels: LabelInfo[] = getCache(textDocument.uri).getLabels(textDocument);
+		// const labels: LabelInfo[] = getCache(textDocument.uri).getLabels(textDocument);
 
-		for (const lbl of labels) {
-			if (str === lbl.name) {
-				found = true;
-				break;
-			} else {
-				for (const sl of lbl.subLabels) {
-					if (str === sl.name) {
-						const d: Diagnostic = {
-							range: {
-								start: textDocument.positionAt(sl.start),
-								end: textDocument.positionAt(sl.start + sl.length)
-							},
-							severity: DiagnosticSeverity.Error,
-							message: "Sub-label \"" + sl.name + "\" cannot be called from outside of its parent label.",
-							source: "mast",
+		// for (const lbl of labels) {
+		// 	if (str === lbl.name) {
+		// 		found = true;
+		// 		break;
+		// 	} else {
+		// 		for (const sl of lbl.subLabels) {
+		// 			if (str === sl.name) {
+		// 				const d: Diagnostic = {
+		// 					range: {
+		// 						start: textDocument.positionAt(sl.start),
+		// 						end: textDocument.positionAt(sl.start + sl.length)
+		// 					},
+		// 					severity: DiagnosticSeverity.Error,
+		// 					message: "Sub-label \"" + sl.name + "\" cannot be called from outside of its parent label.",
+		// 					source: "mast",
 							
-						}
-						d.relatedInformation = relatedMessage(textDocument,d.range, "This sub-label is a child of the " + lbl.name + " main label.\nYou can only jump to a sub-label from within its parent label.");
-						diagnostics.push(d);
-						debug("Second iteration")
-					}
-				}
-			}
-		}
+		// 				}
+		// 				d.relatedInformation = relatedMessage(textDocument,d.range, "This sub-label is a child of the " + lbl.name + " main label.\nYou can only jump to a sub-label from within its parent label.");
+		// 				diagnostics.push(d);
+		// 				debug("Second iteration")
+		// 			}
+		// 		}
+		// 	}
+		// }
 
 		// Label not found in file
 		if (!found) {

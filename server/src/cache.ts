@@ -9,7 +9,7 @@ import { prepCompletions } from './autocompletion';
 import { prepSignatures } from './signatureHelp';
 import { parse, RX } from './rx';
 import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } from './routeLabels';
-import { getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readZipArchive } from './fileFunctions';
+import { fixFileName, getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readZipArchive } from './fileFunctions';
 import { connection, notifyClient, sendToClient } from './server';
 import { URI } from 'vscode-uri';
 import { getGlobals } from './globals';
@@ -342,10 +342,7 @@ export class MissionCache {
 	 * @returns List of {@link LabelInfo LabelInfo} applicable to the current scope
 	 */
 	getLabels(textDocument: TextDocument): LabelInfo[] {
-		let fileUri: string = textDocument.uri;
-		if (fileUri.startsWith("file")) {
-			fileUri = URI.parse(fileUri).fsPath;
-		}
+		let fileUri: string = fixFileName(textDocument.uri);
 		let li: LabelInfo[] = [];
 		//debug(this.mastFileInfo);
 		for (const f of this.mastFileInfo) {
@@ -375,10 +372,7 @@ export class MissionCache {
 	 * @param textDocument 
 	 */
 	updateLabels(textDocument: TextDocument) {
-		let fileUri: string = textDocument.uri;
-		if (fileUri.startsWith("file")) {
-			fileUri = URI.parse(fileUri).fsPath;
-		}
+		let fileUri: string = fixFileName(textDocument.uri);
 		for (const file of this.mastFileInfo) {
 			if (file.uri === fileUri) {
 				file.labelNames = parseLabelsInFile(textDocument.getText(), textDocument.uri);

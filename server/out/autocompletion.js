@@ -185,8 +185,6 @@ function onCompletion(_textDocumentPosition, text) {
                 continue;
             if (labelNames[i].name.startsWith("//"))
                 continue;
-            (0, console_1.debug)((0, fileFunctions_1.fixFileName)(text.uri));
-            (0, console_1.debug)(labelNames[i].srcFile);
             if ((0, fileFunctions_1.fixFileName)(labelNames[i].srcFile) !== (0, fileFunctions_1.fixFileName)(text.uri) && labelNames[i].name === "END")
                 continue;
             ci.push({ label: labelNames[i].name, kind: vscode_languageserver_1.CompletionItemKind.Event, labelDetails: { description: path.basename(labelNames[i].srcFile) } });

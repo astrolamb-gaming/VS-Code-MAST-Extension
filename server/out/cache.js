@@ -311,10 +311,7 @@ class MissionCache {
      * @returns List of {@link LabelInfo LabelInfo} applicable to the current scope
      */
     getLabels(textDocument) {
-        let fileUri = textDocument.uri;
-        if (fileUri.startsWith("file")) {
-            fileUri = vscode_uri_1.URI.parse(fileUri).fsPath;
-        }
+        let fileUri = (0, fileFunctions_1.fixFileName)(textDocument.uri);
         let li = [];
         //debug(this.mastFileInfo);
         for (const f of this.mastFileInfo) {
@@ -343,10 +340,7 @@ class MissionCache {
      * @param textDocument
      */
     updateLabels(textDocument) {
-        let fileUri = textDocument.uri;
-        if (fileUri.startsWith("file")) {
-            fileUri = vscode_uri_1.URI.parse(fileUri).fsPath;
-        }
+        let fileUri = (0, fileFunctions_1.fixFileName)(textDocument.uri);
         for (const file of this.mastFileInfo) {
             if (file.uri === fileUri) {
                 file.labelNames = (0, labels_1.parseLabelsInFile)(textDocument.getText(), textDocument.uri);
