@@ -263,7 +263,7 @@ function onCompletion(_textDocumentPosition, text) {
         "yield"
     ];
     // Add keywords to completions
-    for (const key in keywords) {
+    for (const key of keywords) {
         let i = {
             label: key,
             kind: vscode_languageserver_1.CompletionItemKind.Keyword

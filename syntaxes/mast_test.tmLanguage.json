@@ -246,7 +246,7 @@
           }
         },
         {
-          "match": "on[ \t]+(change[ \t]+)?",
+          "match": "on[ \t]+(change[ \t]*)?",
           "name": "keyword.control.flow.change.mast"
         }
       ]

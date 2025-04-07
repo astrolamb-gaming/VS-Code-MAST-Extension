@@ -284,7 +284,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		"yield"
 	]
 	// Add keywords to completions
-	for (const key in keywords) {
+	for (const key of keywords) {
 		let i: CompletionItem = {
 			label: key,
 			kind: CompletionItemKind.Keyword
