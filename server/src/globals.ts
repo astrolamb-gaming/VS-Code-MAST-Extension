@@ -3,7 +3,6 @@ import { findSubfolderByName, getArtemisDirFromChild, getFilesInDir, getFolders,
 import path = require('path');
 import { CompletionItem, CompletionItemLabelDetails, CompletionItemKind } from 'vscode-languageserver';
 import { connection } from './server';
-import { getRolesFromShipData } from './roles';
 import { ShipData } from './shipData';
 
 interface DataSetItem {

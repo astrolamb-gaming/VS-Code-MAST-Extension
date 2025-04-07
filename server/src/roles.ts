@@ -48,24 +48,3 @@ export function getRolesAsCompletionItem(roles: string[]) {
 	}
 	return ci;
 }
-
-export async function getRolesFromShipData(artemisDir: string): Promise<CompletionItem[]> {
-	let ci: CompletionItem[] = [];
-
-	const dataFolder = path.join(artemisDir,"data");
-	if (dataFolder !== null) {
-		const files = getFilesInDir(dataFolder, false);
-		for (const file of files) {
-			// debug(file);
-
-			// Here we get all stylestrings by parsing the documentation file.
-			if (file.endsWith("shipData.json")) {
-				const contents = await getFileContents(file);
-				const json = JSON.parse(contents);
-				debug(json["#ship-list"]);
-			}
-		}
-	}
-
-	return ci;
-}

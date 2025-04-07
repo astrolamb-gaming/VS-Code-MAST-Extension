@@ -2,11 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getRolesForFile = getRolesForFile;
 exports.getRolesAsCompletionItem = getRolesAsCompletionItem;
-exports.getRolesFromShipData = getRolesFromShipData;
 const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
-const path = require("path");
-const fileFunctions_1 = require("./fileFunctions");
 function getRolesForFile(text) {
     let roles = [];
     const regExpArr = [
@@ -45,23 +42,6 @@ function getRolesAsCompletionItem(roles) {
             labelDetails: { description: "Role" }
         };
         ci.push(c);
-    }
-    return ci;
-}
-async function getRolesFromShipData(artemisDir) {
-    let ci = [];
-    const dataFolder = path.join(artemisDir, "data");
-    if (dataFolder !== null) {
-        const files = (0, fileFunctions_1.getFilesInDir)(dataFolder, false);
-        for (const file of files) {
-            // debug(file);
-            // Here we get all stylestrings by parsing the documentation file.
-            if (file.endsWith("shipData.json")) {
-                const contents = await (0, fileFunctions_1.getFileContents)(file);
-                const json = JSON.parse(contents);
-                (0, console_1.debug)(json["#ship-list"]);
-            }
-        }
     }
     return ci;
 }
