@@ -1,5 +1,5 @@
 import { debug } from 'console';
-import { CompletionItem, CompletionItemKind, integer, MarkupContent, TextDocumentPositionParams } from 'vscode-languageserver';
+import { CompletionItem, CompletionItemKind, CompletionItemTag, integer, MarkupContent, TextDocumentPositionParams } from 'vscode-languageserver';
 import { checkLabels, getMainLabelAtPos } from './labels';
 import { labelNames, updateLabelNames } from './server';
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -12,6 +12,7 @@ import { fixFileName } from './fileFunctions';
 import { getVariableNamesInDoc, updateTokensForLine, variables } from './tokens';
 import { getGlobals } from './globals';
 import { getCurrentMethodName } from './signatureHelp';
+import { getRolesAsCompletionItem, getRolesForFile } from './roles';
 
 let classes: IClassObject[] = [];
 let defaultFunctionCompletionItems: CompletionItem[] = [];
@@ -94,6 +95,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		debug("Updating strings...")
 		getStrings(text);
 	}
+	// This is to get rid of " or ' at end so we don't have to check for both
 	const blobStr = iStr.substring(0,iStr.length-1);
 	debug(blobStr)
 	if (isInString(pos)) {
@@ -102,6 +104,15 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			if (blobStr.endsWith(".set(") || blobStr.endsWith(".get(")) {
 				debug("Is BLobe");
 				return getGlobals().blob_items
+			}
+
+			// Here we check for roles
+			if (blobStr.endsWith("role(") || blobStr.endsWith("roles(")) {
+				debug("Getting roles")
+				const roles = getRolesForFile(t);
+				ci = getRolesAsCompletionItem(roles);
+				ci = ci.concat(getGlobals().shipData.roles);
+				return ci;
 			}
 
 			// Here we check for if this is a stylestring 
@@ -144,6 +155,52 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			return ci;
 		}
 	}
+
+
+	/**
+ * 		□ All
+		□ Scan
+		□ Client
+		□ Ship
+		□ Dialog
+		□ Dialog_main
+		□ Dialog_consoles_all
+		□ Dialog_consoles
+			Dialog_ships
+	 */
+	if (iStr.endsWith("<")) {
+		const comms = [
+			"all",
+			"scan",
+			"client",
+			"ship",
+			"dialog",
+			"dialog_main",
+			"dialog_consoles_all",
+			"dialog_consoles",
+			"dialog_ships"
+		]
+		ci = [];
+		for (const i of comms) {
+			const c: CompletionItem = {
+				label: i,
+				insertText: i + ">",
+				kind: CompletionItemKind.Field,
+				labelDetails: {description: "Comms Target"}
+			}
+			ci.push(c);
+		}
+		const c: CompletionItem = {
+			label: "<<",
+			kind: CompletionItemKind.Field,
+			insertText: "<",
+			labelDetails: {description: "Comms Target"}
+		}
+		ci.push(c);
+		return ci;
+	}
+
+	
 
 	
 

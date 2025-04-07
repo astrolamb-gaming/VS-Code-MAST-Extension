@@ -3,6 +3,8 @@ import { findSubfolderByName, getArtemisDirFromChild, getFilesInDir, getFolders,
 import path = require('path');
 import { CompletionItem, CompletionItemLabelDetails, CompletionItemKind } from 'vscode-languageserver';
 import { connection } from './server';
+import { getRolesFromShipData } from './roles';
+import { ShipData } from './shipData';
 
 interface DataSetItem {
 	name: string,
@@ -23,6 +25,7 @@ export class Globals {
 	blob_items: CompletionItem[];
 	libModules: string[];
 	libModuleCompletionItems: CompletionItem[];
+	shipData: ShipData;
 	artemisDir: string = "";
 	constructor() {
 		const thisDir = path.resolve("../");
@@ -38,6 +41,7 @@ export class Globals {
 			this.widget_stylestrings = [];
 			this.libModules = [];
 			this.libModuleCompletionItems = [];
+			this.shipData = new ShipData("");
 			debug("Artemis directory not found. Global information not loaded.");
 			artemisDirNotFoundError();
 		} else {
@@ -51,6 +55,7 @@ export class Globals {
 			this.data_set_entries = this.loadObjectDataDocumentation();
 			this.libModules = this.loadLibs();
 			this.libModuleCompletionItems = [];
+			this.shipData = new ShipData(adir);
 			for (const lib of this.libModules) {
 				const ci: CompletionItem = {
 					label: path.basename(lib),

@@ -7,6 +7,7 @@ const fileFunctions_1 = require("./fileFunctions");
 const path = require("path");
 const vscode_languageserver_1 = require("vscode-languageserver");
 const server_1 = require("./server");
+const shipData_1 = require("./shipData");
 class Globals {
     constructor() {
         this.widget_stylestrings = [];
@@ -24,6 +25,7 @@ class Globals {
             this.widget_stylestrings = [];
             this.libModules = [];
             this.libModuleCompletionItems = [];
+            this.shipData = new shipData_1.ShipData("");
             (0, console_1.debug)("Artemis directory not found. Global information not loaded.");
             artemisDirNotFoundError();
         }
@@ -38,6 +40,7 @@ class Globals {
             this.data_set_entries = this.loadObjectDataDocumentation();
             this.libModules = this.loadLibs();
             this.libModuleCompletionItems = [];
+            this.shipData = new shipData_1.ShipData(adir);
             for (const lib of this.libModules) {
                 const ci = {
                     label: path.basename(lib),

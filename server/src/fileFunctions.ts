@@ -60,17 +60,25 @@ export function getFolders(dir: string) : string[] {
 }
 
 /**
- * Get the contents of a file
+ * Get the contents of a file from the web
+ * Use readFile() to get the contents of a local file
  * @param dir The uri of a file
  * @returns A promise containing the text contents of the file specified
  */
 export async function getFileContents(dir: string): Promise<string> {
-	const uri = dir.replace("file:///c%3A","C:");
+	const uri = fixFileName(dir);
 	const entries = await fetch(uri);
 	return entries.text();
 }
 
+/**
+ * Use to read a local file.
+ * Use getFileContents() to get the contents of a file from the web.
+ * @param dir 
+ * @returns 
+ */
 export async function readFile(dir: string): Promise<string> {
+	dir = fixFileName(dir);
 	//let ret: string = "";
 	
 	// const d = fs.readFileSync(dir, "utf-8").then( (err,data)=>{
@@ -96,7 +104,7 @@ export function getFilesInDir(dir: string, includeChildren: boolean = true): str
 	try {
 		// Not sure why workspace.uri returns this weird initial designator, but we can fix it just fine.
 		// Probably because we're using fetch()
-		let uri = dir.replace("file:///","").replace("%3A",":")
+		let uri = fixFileName(dir);
 		const files =  fs.readdirSync(uri, { withFileTypes: true });
 		for (const f in files) {
 			if (files[f].isDirectory()) {

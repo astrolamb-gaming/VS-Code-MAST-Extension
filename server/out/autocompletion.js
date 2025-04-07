@@ -13,6 +13,7 @@ const fileFunctions_1 = require("./fileFunctions");
 const tokens_1 = require("./tokens");
 const globals_1 = require("./globals");
 const signatureHelp_1 = require("./signatureHelp");
+const roles_1 = require("./roles");
 let classes = [];
 let defaultFunctionCompletionItems = [];
 /**
@@ -88,6 +89,7 @@ function onCompletion(_textDocumentPosition, text) {
         (0, console_1.debug)("Updating strings...");
         (0, comments_1.getStrings)(text);
     }
+    // This is to get rid of " or ' at end so we don't have to check for both
     const blobStr = iStr.substring(0, iStr.length - 1);
     (0, console_1.debug)(blobStr);
     if ((0, comments_1.isInString)(pos)) {
@@ -96,6 +98,14 @@ function onCompletion(_textDocumentPosition, text) {
             if (blobStr.endsWith(".set(") || blobStr.endsWith(".get(")) {
                 (0, console_1.debug)("Is BLobe");
                 return (0, globals_1.getGlobals)().blob_items;
+            }
+            // Here we check for roles
+            if (blobStr.endsWith("role(") || blobStr.endsWith("roles(")) {
+                (0, console_1.debug)("Getting roles");
+                const roles = (0, roles_1.getRolesForFile)(t);
+                ci = (0, roles_1.getRolesAsCompletionItem)(roles);
+                ci = ci.concat((0, globals_1.getGlobals)().shipData.roles);
+                return ci;
             }
             // Here we check for if this is a stylestring 
             const func = (0, signatureHelp_1.getCurrentMethodName)(iStr);
@@ -133,6 +143,48 @@ function onCompletion(_textDocumentPosition, text) {
             (0, console_1.debug)("Is in string");
             return ci;
         }
+    }
+    /**
+ * 		□ All
+        □ Scan
+        □ Client
+        □ Ship
+        □ Dialog
+        □ Dialog_main
+        □ Dialog_consoles_all
+        □ Dialog_consoles
+            Dialog_ships
+     */
+    if (iStr.endsWith("<")) {
+        const comms = [
+            "all",
+            "scan",
+            "client",
+            "ship",
+            "dialog",
+            "dialog_main",
+            "dialog_consoles_all",
+            "dialog_consoles",
+            "dialog_ships"
+        ];
+        ci = [];
+        for (const i of comms) {
+            const c = {
+                label: i,
+                insertText: i + ">",
+                kind: vscode_languageserver_1.CompletionItemKind.Field,
+                labelDetails: { description: "Comms Target" }
+            };
+            ci.push(c);
+        }
+        const c = {
+            label: "<<",
+            kind: vscode_languageserver_1.CompletionItemKind.Field,
+            insertText: "<",
+            labelDetails: { description: "Comms Target" }
+        };
+        ci.push(c);
+        return ci;
     }
     // If we're defining a label, we don't want autocomplete.
     // TODO: ++ labels should have specific names
