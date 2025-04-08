@@ -1,13 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.variables = exports.TokenType = void 0;
+exports.TokenType = void 0;
 exports.getAllTokens = getAllTokens;
-exports.getVariableNamesInDoc = getVariableNamesInDoc;
 exports.getTokenInfo = getTokenInfo;
 exports.getTokenAt = getTokenAt;
 exports.getVariableTypeFromFunction = getVariableTypeFromFunction;
 exports.updateTokensForLine = updateTokensForLine;
-const vscode_languageserver_1 = require("vscode-languageserver");
 const data_1 = require("./data");
 const comments_1 = require("./comments");
 function getAllTokens(textDocument) {
@@ -36,33 +34,6 @@ function getTokenTypeRegex(type) {
         default:
             return /test/;
     }
-}
-exports.variables = [];
-function getVariableNamesInDoc(textDocument) {
-    let vars = [];
-    const arr = [];
-    const variableRX = /^\s*[a-zA-Z_]\w*\s*(?==[^=])/gm;
-    const text = textDocument.getText();
-    let m;
-    while (m = variableRX.exec(text)) {
-        const v = m[0].trim();
-        //debug(m[0])
-        if (!vars.includes(v)) {
-            vars.push(v);
-        }
-    }
-    vars = [...new Set(vars)];
-    for (const v of vars) {
-        const ci = {
-            label: v,
-            kind: vscode_languageserver_1.CompletionItemKind.Variable,
-            //TODO: Check type of variable?
-            labelDetails: { description: "var" }
-        };
-        arr.push(ci);
-    }
-    exports.variables = arr;
-    return arr;
 }
 let tokens = [];
 function getTokenInfo() {

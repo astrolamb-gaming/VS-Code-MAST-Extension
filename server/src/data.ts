@@ -7,7 +7,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { getParentFolder } from './fileFunctions';
 import exp = require('constants');
 import { getCache } from './cache';
-import { getVariableNamesInDoc } from './tokens';
+import { getVariableNamesInDoc } from './variables';
 import { getGlobals } from './globals';
 import { getRolesAsCompletionItem, getRolesForFile } from './roles';
 

@@ -9,10 +9,11 @@ import { getStrings, getYamls, isInComment, isInString, isInYaml, isTextInBracke
 import { getCache } from './cache';
 import path = require('path');
 import { fixFileName, getFilesInDir, getParentFolder } from './fileFunctions';
-import { getVariableNamesInDoc, updateTokensForLine, variables } from './tokens';
+import { updateTokensForLine } from './tokens';
 import { getGlobals } from './globals';
 import { getCurrentMethodName } from './signatureHelp';
 import { getRolesAsCompletionItem, getRolesForFile } from './roles';
+import { getVariableNamesInDoc, getVariablesAsCompletionItem } from './variables';
 
 let classes: IClassObject[] = [];
 let defaultFunctionCompletionItems: CompletionItem[] = [];
@@ -87,7 +88,8 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		currentLine = _textDocumentPosition.position.line;
 		// Here we can do any logic that doesn't need to be done every character change
 		debug("Updating variables list")
-		variables = getVariableNamesInDoc(text);
+		const varNames = getVariableNamesInDoc(text);
+		variables = getVariablesAsCompletionItem(varNames);
 	}
 	debug("updating tokens...")
 	updateTokensForLine(currentLine);

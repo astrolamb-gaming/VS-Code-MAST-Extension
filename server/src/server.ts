@@ -32,7 +32,7 @@ import { onHover } from './hover';
 import { onSignatureHelp } from './signatureHelp';
 import fs = require("fs");
 import { getCache, loadCache } from './cache';
-import { getVariableNamesInDoc } from './tokens';
+import { getVariableNamesInDoc } from './variables';
 import { getGlobals } from './globals';
 import { validateTextDocument } from './validate';
 

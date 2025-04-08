@@ -14,6 +14,7 @@ const tokens_1 = require("./tokens");
 const globals_1 = require("./globals");
 const signatureHelp_1 = require("./signatureHelp");
 const roles_1 = require("./roles");
+const variables_1 = require("./variables");
 let classes = [];
 let defaultFunctionCompletionItems = [];
 /**
@@ -85,7 +86,8 @@ function onCompletion(_textDocumentPosition, text) {
         currentLine = _textDocumentPosition.position.line;
         // Here we can do any logic that doesn't need to be done every character change
         (0, console_1.debug)("Updating variables list");
-        variables = (0, tokens_1.getVariableNamesInDoc)(text);
+        const varNames = (0, variables_1.getVariableNamesInDoc)(text);
+        variables = (0, variables_1.getVariablesAsCompletionItem)(varNames);
     }
     (0, console_1.debug)("updating tokens...");
     (0, tokens_1.updateTokensForLine)(currentLine);
