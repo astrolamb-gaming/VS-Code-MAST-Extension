@@ -6,7 +6,7 @@ import { getRolesAsCompletionItem } from './roles';
 
 
 export class ShipData {
-	roles: CompletionItem[] = [];
+	roles: string[] = [];
 	data: any[] = [];
 	fileExists = false;
 	validJSON = true;
@@ -43,7 +43,7 @@ export class ShipData {
 			this.fileExists = false;
 		}
 	}
-	parseRolesJSON(): CompletionItem[] {
+	parseRolesJSON(): string[] {
 		let roles: string[] = [];
 		for (const ship of this.data) {
 			let newRoles = ship["roles"];
@@ -62,9 +62,9 @@ export class ShipData {
 			}
 		}
 		roles = [...new Set(roles)];
-		return getRolesAsCompletionItem(roles);
+		return roles;
 	}
-	parseRolesText(contents: string): CompletionItem[] {
+	parseRolesText(contents: string): string[] {
 		let roles: string[] = [];
 		const lines = contents.split("\n");
 		for (const line of lines) {
@@ -80,6 +80,6 @@ export class ShipData {
 			}
 		}
 		roles = [...new Set(roles)];
-		return getRolesAsCompletionItem(roles);
+		return roles
 	}
 }

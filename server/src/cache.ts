@@ -14,6 +14,8 @@ import { connection, notifyClient, sendToClient } from './server';
 import { URI } from 'vscode-uri';
 import { getGlobals } from './globals';
 import { send } from 'process';
+import { getRolesAsCompletionItem } from './roles';
+import { deprecate } from 'util';
 
 
 export function loadCache(dir: string) {
@@ -203,6 +205,14 @@ export class MissionCache {
 		}
 	}
 
+	private async addToInitFile(folder:string, newFile:string) {
+		try {
+			fs.writeFile(path.join(folder,"__init__.mast"), "\n" + newFile, {flag: "a+"}, ()=>{});
+		} catch (e) {
+			debug(e);
+		}
+	}
+
 	async modulesLoaded() {
 		const uri = this.missionURI;
 		debug(uri);
@@ -288,6 +298,16 @@ export class MissionCache {
 		//debug(this.missionClasses);
 	}
 
+	updateFileInfo(doc: TextDocument) {
+		if (doc.languageId === "mast") {
+			for (const f of this.mastFileInfo) {
+				if (fixFileName(f.uri) === fixFileName(doc.uri)) {
+					f.parse(doc.getText());
+				}
+			}
+		}
+	}
+
 	getRouteLabels(): CompletionItem[] {
 		let ci: CompletionItem[] = [];
 		for (const r of this.routeLabels) {
@@ -369,6 +389,7 @@ export class MissionCache {
 
 	/**
 	 * Call when the contents of a file changes
+	 * Depracated. Call updateFileInfo() instead
 	 * @param textDocument 
 	 */
 	updateLabels(textDocument: TextDocument) {
@@ -415,6 +436,25 @@ export class MissionCache {
 		// });
 		// TODO: Add functions from py files in local directory
 		return si;
+	}
+
+	/**
+	 * 
+	 * @param folder The folder the current file is in.
+	 * @returns 
+	 */
+	getRoles(folder: string): string[] {
+		folder = fixFileName(folder);
+		let roles: string[] = [];
+		const ini = getInitContents(folder);
+		debug(ini);
+		for (const m of this.mastFileInfo) {
+			debug(folder);
+			if (ini.includes(path.basename(m.uri))) {
+				roles = roles.concat(m.roles);
+			}
+		}
+		return roles;
 	}
 
 }

@@ -35,7 +35,41 @@ let currentLine = 0;
 function onCompletion(_textDocumentPosition, text) {
     (0, console_1.debug)("Staring onCompletion");
     const cache = (0, cache_1.getCache)(text.uri);
+    let ci = [];
     (0, console_1.debug)("Cache loaded.");
+    const t = text?.getText();
+    if (text === undefined) {
+        (0, console_1.debug)("Document ref is undefined");
+        return ci;
+    }
+    if (t === undefined) {
+        (0, console_1.debug)("Document text is undefined");
+        return ci;
+    }
+    // Calculate the position in the text's string value using the Position value.
+    const pos = text.offsetAt(_textDocumentPosition.position);
+    const startOfLine = pos - _textDocumentPosition.position.character;
+    const iStr = t.substring(startOfLine, pos);
+    if ((0, fileFunctions_1.fixFileName)(text.uri).endsWith("__init__.mast")) {
+        if (iStr.trim() === "") {
+            return [{ label: "import", kind: vscode_languageserver_1.CompletionItemKind.Keyword }];
+        }
+        else if (iStr.trim().startsWith("import")) {
+            const files = (0, fileFunctions_1.getFilesInDir)(path.dirname((0, fileFunctions_1.fixFileName)(text.uri)));
+            for (const f of files) {
+                if (!f.endsWith("__init__.mast")) {
+                    if (!t.includes(path.basename(f))) {
+                        const c = {
+                            label: path.basename(f),
+                            kind: vscode_languageserver_1.CompletionItemKind.File
+                        };
+                        ci.push(c);
+                    }
+                }
+            }
+        }
+        return ci;
+    }
     let variables = [];
     try {
         variables = cache.getVariables(text.uri);
@@ -52,22 +86,8 @@ function onCompletion(_textDocumentPosition, text) {
     }
     (0, console_1.debug)("updating tokens...");
     (0, tokens_1.updateTokensForLine)(currentLine);
-    let ci = [];
-    const t = text?.getText();
-    if (text === undefined) {
-        (0, console_1.debug)("Document ref is undefined");
-        return ci;
-    }
-    if (t === undefined) {
-        (0, console_1.debug)("Document text is undefined");
-        return ci;
-    }
     // getVariablesInFile(text);
     // return ci;
-    // Calculate the position in the text's string value using the Position value.
-    const pos = text.offsetAt(_textDocumentPosition.position);
-    const startOfLine = pos - _textDocumentPosition.position.character;
-    const iStr = t.substring(startOfLine, pos);
     //debug("" + startOfLine as string);
     //
     (0, console_1.debug)(iStr);
@@ -102,9 +122,10 @@ function onCompletion(_textDocumentPosition, text) {
             // Here we check for roles
             if (blobStr.endsWith("role(") || blobStr.endsWith("roles(")) {
                 (0, console_1.debug)("Getting roles");
-                const roles = (0, roles_1.getRolesForFile)(t);
+                let roles = (0, roles_1.getRolesForFile)(t);
+                roles = roles.concat(cache.getRoles(text.uri));
+                roles = roles.concat((0, globals_1.getGlobals)().shipData.roles);
                 ci = (0, roles_1.getRolesAsCompletionItem)(roles);
-                ci = ci.concat((0, globals_1.getGlobals)().shipData.roles);
                 return ci;
             }
             // Here we check for if this is a stylestring 

@@ -37,6 +37,7 @@ function getRolesForRegEx(re: RegExp, text: string) : string[] {
 }
 
 export function getRolesAsCompletionItem(roles: string[]) {
+	roles = [...new Set(roles)];
 	const ci: CompletionItem[] = [];
 	for (const r of roles) {
 		const c: CompletionItem = {

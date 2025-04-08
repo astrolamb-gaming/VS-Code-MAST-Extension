@@ -167,7 +167,7 @@ function getMatchesForRegex(pattern, text) {
     return matches;
 }
 function log(str) {
-    fs.writeFileSync('outputLog.txt', str, { flag: "a+" });
+    fs.writeFileSync('MAST_VSCode_OutputLog.txt', str, { flag: "a+" });
 }
 /**
  * This function may be completely unnecessary

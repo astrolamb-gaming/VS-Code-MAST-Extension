@@ -34,6 +34,7 @@ function getRolesForRegEx(re, text) {
     return roles;
 }
 function getRolesAsCompletionItem(roles) {
+    roles = [...new Set(roles)];
     const ci = [];
     for (const r of roles) {
         const c = {

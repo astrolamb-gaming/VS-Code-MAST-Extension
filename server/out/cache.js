@@ -180,6 +180,14 @@ class MissionCache {
             console.error('Error writing file:', err);
         }
     }
+    async addToInitFile(folder, newFile) {
+        try {
+            fs.writeFile(path.join(folder, "__init__.mast"), "\n" + newFile, { flag: "a+" }, () => { });
+        }
+        catch (e) {
+            (0, console_1.debug)(e);
+        }
+    }
     async modulesLoaded() {
         const uri = this.missionURI;
         (0, console_1.debug)(uri);
@@ -263,6 +271,15 @@ class MissionCache {
         //debug(this.missionDefaultCompletions);
         //debug(this.missionClasses);
     }
+    updateFileInfo(doc) {
+        if (doc.languageId === "mast") {
+            for (const f of this.mastFileInfo) {
+                if ((0, fileFunctions_1.fixFileName)(f.uri) === (0, fileFunctions_1.fixFileName)(doc.uri)) {
+                    f.parse(doc.getText());
+                }
+            }
+        }
+    }
     getRouteLabels() {
         let ci = [];
         for (const r of this.routeLabels) {
@@ -337,6 +354,7 @@ class MissionCache {
     }
     /**
      * Call when the contents of a file changes
+     * Depracated. Call updateFileInfo() instead
      * @param textDocument
      */
     updateLabels(textDocument) {
@@ -381,6 +399,24 @@ class MissionCache {
         // });
         // TODO: Add functions from py files in local directory
         return si;
+    }
+    /**
+     *
+     * @param folder The folder the current file is in.
+     * @returns
+     */
+    getRoles(folder) {
+        folder = (0, fileFunctions_1.fixFileName)(folder);
+        let roles = [];
+        const ini = (0, fileFunctions_1.getInitContents)(folder);
+        (0, console_1.debug)(ini);
+        for (const m of this.mastFileInfo) {
+            (0, console_1.debug)(folder);
+            if (ini.includes(path.basename(m.uri))) {
+                roles = roles.concat(m.roles);
+            }
+        }
+        return roles;
     }
 }
 exports.MissionCache = MissionCache;

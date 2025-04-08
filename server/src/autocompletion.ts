@@ -8,7 +8,7 @@ import { getRouteLabelAutocompletions, getRouteLabelVars, getSkyboxCompletionIte
 import { getStrings, getYamls, isInComment, isInString, isInYaml, isTextInBracket } from './comments';
 import { getCache } from './cache';
 import path = require('path');
-import { fixFileName } from './fileFunctions';
+import { fixFileName, getFilesInDir, getParentFolder } from './fileFunctions';
 import { getVariableNamesInDoc, updateTokensForLine, variables } from './tokens';
 import { getGlobals } from './globals';
 import { getCurrentMethodName } from './signatureHelp';
@@ -39,7 +39,41 @@ let currentLine = 0;
 export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, text: TextDocument): CompletionItem[] {
 	debug("Staring onCompletion");
 	const cache = getCache(text.uri);
+	let ci : CompletionItem[] = [];
 	debug("Cache loaded.");
+	const t = text?.getText();
+	if (text === undefined) {
+		debug("Document ref is undefined");
+		return ci;
+	}
+	if (t === undefined) {
+		debug("Document text is undefined");
+		return ci;
+	}
+	// Calculate the position in the text's string value using the Position value.
+	const pos : integer = text.offsetAt(_textDocumentPosition.position);
+	const startOfLine : integer = pos - _textDocumentPosition.position.character;
+	const iStr : string = t.substring(startOfLine,pos);
+
+	if (fixFileName(text.uri).endsWith("__init__.mast")) {
+		if (iStr.trim() === "") {
+			return [{label: "import", kind: CompletionItemKind.Keyword}]
+		} else if (iStr.trim().startsWith("import")) {
+			const files = getFilesInDir(path.dirname(fixFileName(text.uri)));
+			for (const f of files) {
+				if (!f.endsWith("__init__.mast")) {
+					if (!t.includes(path.basename(f))) {
+						const c: CompletionItem = {
+							label: path.basename(f),
+							kind: CompletionItemKind.File
+						}
+						ci.push(c);
+					}
+				}
+			}
+		}
+		return ci;
+	}
 	let variables: CompletionItem[] = [];
 	try {
 		variables = cache.getVariables(text.uri);
@@ -55,23 +89,12 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	}
 	debug("updating tokens...")
 	updateTokensForLine(currentLine);
-	let ci : CompletionItem[] = [];
-	const t = text?.getText();
-	if (text === undefined) {
-		debug("Document ref is undefined");
-		return ci;
-	}
-	if (t === undefined) {
-		debug("Document text is undefined");
-		return ci;
-	}
+	
+	
 	// getVariablesInFile(text);
 	// return ci;
 
-	// Calculate the position in the text's string value using the Position value.
-	const pos : integer = text.offsetAt(_textDocumentPosition.position);
-	const startOfLine : integer = pos - _textDocumentPosition.position.character;
-	const iStr : string = t.substring(startOfLine,pos);
+	
 	//debug("" + startOfLine as string);
 	//
 	debug(iStr);
@@ -109,9 +132,10 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			// Here we check for roles
 			if (blobStr.endsWith("role(") || blobStr.endsWith("roles(")) {
 				debug("Getting roles")
-				const roles = getRolesForFile(t);
+				let roles = getRolesForFile(t);
+				roles = roles.concat(cache.getRoles(text.uri));
+				roles = roles.concat(getGlobals().shipData.roles);
 				ci = getRolesAsCompletionItem(roles);
-				ci = ci.concat(getGlobals().shipData.roles);
 				return ci;
 			}
 

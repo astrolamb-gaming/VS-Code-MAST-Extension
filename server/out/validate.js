@@ -29,7 +29,7 @@ async function validateTextDocument(textDocument) {
             }
         });
     }
-    cache.updateLabels(textDocument);
+    cache.updateFileInfo(textDocument);
     //debug("Validating document");
     // In this simple example we get the settings for every validate run.
     let maxNumberOfProblems = 100;

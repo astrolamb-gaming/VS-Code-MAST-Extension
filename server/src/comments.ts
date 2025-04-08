@@ -177,7 +177,7 @@ export function getMatchesForRegex(pattern: RegExp, text: string) {
 }
 
 function log(str:any) {
-	fs.writeFileSync('outputLog.txt', str, {flag: "a+"})
+	fs.writeFileSync('MAST_VSCode_OutputLog.txt', str, {flag: "a+"})
 }
 
 /**

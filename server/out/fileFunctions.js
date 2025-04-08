@@ -143,9 +143,10 @@ async function readZipArchive(filepath) {
     return map;
 }
 function getParentFolder(childUri) {
-    if (childUri.startsWith("file")) {
-        childUri = vscode_uri_1.URI.parse(childUri).fsPath;
-    }
+    childUri = fixFileName(childUri);
+    // if (childUri.startsWith("file")) {
+    // 	childUri = URI.parse(childUri).fsPath;
+    // }
     let p = path.dirname(childUri);
     //debug(p);
     if (p === ".") {

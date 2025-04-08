@@ -4,7 +4,6 @@ exports.ShipData = void 0;
 const console_1 = require("console");
 const path = require("path");
 const fileFunctions_1 = require("./fileFunctions");
-const roles_1 = require("./roles");
 class ShipData {
     constructor(artemisDir) {
         this.roles = [];
@@ -62,7 +61,7 @@ class ShipData {
             }
         }
         roles = [...new Set(roles)];
-        return (0, roles_1.getRolesAsCompletionItem)(roles);
+        return roles;
     }
     parseRolesText(contents) {
         let roles = [];
@@ -80,7 +79,7 @@ class ShipData {
             }
         }
         roles = [...new Set(roles)];
-        return (0, roles_1.getRolesAsCompletionItem)(roles);
+        return roles;
     }
 }
 exports.ShipData = ShipData;

@@ -171,9 +171,10 @@ export async function readZipArchive(filepath: string) {
 }
 
 export function getParentFolder(childUri:string) {
-	if (childUri.startsWith("file")) {
-		childUri = URI.parse(childUri).fsPath;
-	}
+	childUri = fixFileName(childUri);
+	// if (childUri.startsWith("file")) {
+	// 	childUri = URI.parse(childUri).fsPath;
+	// }
 	let p = path.dirname(childUri);
 	//debug(p);
 	if (p === ".") {

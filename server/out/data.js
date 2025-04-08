@@ -13,6 +13,7 @@ const vscode_languageserver_textdocument_1 = require("vscode-languageserver-text
 const fileFunctions_1 = require("./fileFunctions");
 const cache_1 = require("./cache");
 const globals_1 = require("./globals");
+const roles_1 = require("./roles");
 class FileCache {
     constructor(uri) {
         this.variableNames = [];
@@ -46,6 +47,7 @@ class MastFile extends FileCache {
         // TODO: Add support for holding label information for all files listed in __init__.mast in a given folder.
         // TODO: Add system for tracking variables in a mast file
         this.variables = [];
+        this.roles = [];
         if (path.extname(uri) === ".mast") {
             // If the contents are aleady read, we parse and move on. Don't need to read or parse again.
             if (fileContents !== "") {
@@ -75,6 +77,7 @@ class MastFile extends FileCache {
         this.labelNames = (0, labels_1.parseLabelsInFile)(text, this.uri);
         // TODO: Parse variables, etc
         this.variables = this.getVariableNames(text);
+        this.roles = (0, roles_1.getRolesForFile)(text);
     }
     getVariableNames(text) {
         (0, console_1.debug)("Getting variable names");

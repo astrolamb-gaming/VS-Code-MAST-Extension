@@ -9,6 +9,7 @@ import exp = require('constants');
 import { getCache } from './cache';
 import { getVariableNamesInDoc } from './tokens';
 import { getGlobals } from './globals';
+import { getRolesAsCompletionItem, getRolesForFile } from './roles';
 
 export class FileCache {
 	uri: string;
@@ -56,6 +57,7 @@ export class MastFile extends FileCache {
 	// TODO: Add support for holding label information for all files listed in __init__.mast in a given folder.
 	// TODO: Add system for tracking variables in a mast file
 	variables: CompletionItem[] = [];
+	roles: string[] = [];
 	
 	constructor(uri: string, fileContents:string = "") {
 		//debug("building mast file");
@@ -88,6 +90,7 @@ export class MastFile extends FileCache {
 		this.labelNames = parseLabelsInFile(text, this.uri);
 		// TODO: Parse variables, etc
 		this.variables = this.getVariableNames(text);
+		this.roles = getRolesForFile(text);
 	}
 
 	getVariableNames(text:string) {
