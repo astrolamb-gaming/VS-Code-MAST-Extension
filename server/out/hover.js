@@ -15,6 +15,7 @@ function onHover(_pos, text) {
     const pos = text.offsetAt(_pos.position);
     const startOfLine = pos - _pos.position.character;
     const after = text.getText().substring(startOfLine);
+    const cache = (0, cache_1.getCache)(text.uri);
     // const range: Range = {
     // 	start: t.positionAt(m.index),
     // 	end: t.positionAt(m.index + m[0].length)
@@ -34,19 +35,63 @@ function onHover(_pos, text) {
     let hoverText = symbol;
     if (isClassMethod(hoveredLine, symbol)) {
         const c = getClassOfMethod(hoveredLine, symbol);
-        const classObj = (0, cache_1.getCache)(text.uri).missionClasses.find((value) => { value.name === c; });
-        const func = classObj?.methods.find((value) => { value.name === symbol; });
-        hoverText = "";
+        const classObj = cache.missionClasses; //.find((value)=>{value.name===c});
+        for (const co of classObj) {
+            let found = false;
+            if (co.name === c) {
+                (0, console_1.debug)("FOUND");
+                (0, console_1.debug)(c);
+                for (const m of co.methods) {
+                    if (m.name === symbol) {
+                        hoverText = m.completionItem.detail; // + "\n\n" + m.completionItem.documentation;
+                        (0, console_1.debug)(m.documentation.toString());
+                        let mc = {
+                            kind: "markdown",
+                            value: "```javascript\n" + hoverText + "\n```\n```text\n\n" + m.documentation.toString() + "\n```\n"
+                        };
+                        //mc.value = m.documentation.toString();
+                        hoverText = mc;
+                        if (hoverText === undefined) {
+                            hoverText = "";
+                        }
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            if (found) {
+                break;
+            }
+        }
+        //const func = classObj?.methods.find((value)=>{value.name===symbol});
+        //hoverText = ""
     }
     else if (isFunction(hoveredLine, symbol)) {
-        hoverText += "\nFunction";
+        // hoverText += "\nFunction"
+        for (const m of cache.missionDefaultFunctions) {
+            if (m.name === symbol) {
+                hoverText = m.completionItem.detail; // + "\n\n" + m.completionItem.documentation;
+                (0, console_1.debug)(m.documentation.toString());
+                let mc = {
+                    kind: "markdown",
+                    value: "```javascript\n" + hoverText + "\n```\n```text\n\n" + m.documentation.toString() + "\n```\n"
+                };
+                // mc.value = m.documentation.toString();
+                hoverText = mc;
+                if (hoverText === undefined) {
+                    hoverText = "";
+                }
+                break;
+            }
+        }
     }
     // let str: MarkupContent = {
     // 	kind: 'plaintext', // 'markdown' or 'plaintext'
     // 	value: ''
     // }
+    //hoverText = mc;
     const hover = {
-        contents: symbol //str
+        contents: hoverText //str
     };
     return hover;
 }
@@ -142,7 +187,7 @@ function getClassOfMethod(line, token) {
     let m;
     while (m = className.exec(line)) {
         const c = m[0];
-        (0, console_1.debug)(c);
+        //debug(c);
         return c;
     }
 }

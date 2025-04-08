@@ -153,7 +153,6 @@ export function checkForDuplicateLabelsInList(textDocument:TextDocument, labels:
 	if (labels.length === 0 && !subLabels) {
 		labels = getCache(textDocument.uri).getLabels(textDocument);
 	}
-	debug(labels);
 	for (const i in labels) {
 		// First we iterate over all labels prior to this one
 		// If the label isn't from this file, we don't need to include it in the errors for this file.
@@ -162,7 +161,7 @@ export function checkForDuplicateLabelsInList(textDocument:TextDocument, labels:
 		}
 		// Exclude main and END
 		if (labels[i].name === "main" || labels[i].name === "END" || labels[i].type === "route") {
-			debug("Is route: " + labels[i])
+			// debug("Is route: " + labels[i].name)
 			continue;
 		}
 		for (const j in labels) {
@@ -202,7 +201,6 @@ export function checkForDuplicateLabelsInList(textDocument:TextDocument, labels:
 			diagnostics = diagnostics.concat(checkForDuplicateLabelsInList(textDocument,subs,true));
 		}
 	}
-	debug(diagnostics);
 	return diagnostics;
 }
 
@@ -350,7 +348,6 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 		}
 	}
 	const dups = checkForDuplicateLabelsInList(textDocument,mainLabels);
-	debug(dups);
 	diagnostics = diagnostics.concat(dups);
 	//debug(diagnostics);
 	diagnostics = diagnostics.concat(findBadLabels(textDocument));

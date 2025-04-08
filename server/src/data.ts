@@ -490,7 +490,13 @@ export class Function implements IFunction {
 
 	buildSignatureInformation(): SignatureInformation {
 		let ci_details: string = "(" + this.functionType + ") " + ((this.className === "") ? "" : this.className + ".") + this.name + "(" + this.rawParams + "): " + (this.functionType === "constructor") ? this.className : this.name;
+		debug(ci_details)
 		const params:ParameterInformation[] = [];
+		// const markup: MarkupContent = {
+		// 	kind: "markdown",
+		// 	value: "```javascript\n" + ci_details + "\n```\n" + this.documentation
+		// }
+		// debug(markup)
 		const si: SignatureInformation = {
 			label: this.name,
 			documentation: ci_details + "\n" + this.documentation,

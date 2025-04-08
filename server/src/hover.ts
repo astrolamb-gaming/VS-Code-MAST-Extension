@@ -18,7 +18,7 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 	const startOfLine : integer = pos - _pos.position.character;
 	const after: string = text.getText().substring(startOfLine);
 	
-
+	const cache = getCache(text.uri);
 	
 	// const range: Range = {
 	// 	start: t.positionAt(m.index),
@@ -36,23 +36,68 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 	const symbol = getHoveredSymbol(hoveredLine, _pos.position.character);
 	debug(symbol);
 	//hover.contents = symbol;
-	let hoverText = symbol;
+	
+	let hoverText: string|MarkupContent|undefined = symbol;
 	if (isClassMethod(hoveredLine, symbol)) {
 		const c = getClassOfMethod(hoveredLine,symbol);
-		const classObj = getCache(text.uri).missionClasses.find((value)=>{value.name===c});
-		const func = classObj?.methods.find((value)=>{value.name===symbol});
+		const classObj = cache.missionClasses//.find((value)=>{value.name===c});
+		for (const co of classObj) {
+			let found = false;
+			if (co.name === c) {
+				debug("FOUND")
+				debug(c);
+				for (const m of co.methods) {
+					if(m.name === symbol) {
+						hoverText = m.completionItem.detail;// + "\n\n" + m.completionItem.documentation;
+						debug(m.documentation.toString());
+						let mc: MarkupContent = {
+							kind: "markdown",
+							value: "```javascript\n" + hoverText + "\n```\n```text\n\n" + m.documentation.toString() + "\n```\n"
+						}
+						//mc.value = m.documentation.toString();
+						hoverText = mc;
+						if (hoverText === undefined) {
+							hoverText = ""
+						}
+						found = true;
+						break;
+					}
+				}
+			}
+			if (found) {
+				break;
+			}
+		}
+		//const func = classObj?.methods.find((value)=>{value.name===symbol});
 		
-		hoverText = ""
+		//hoverText = ""
 	} else if (isFunction(hoveredLine,symbol)) {
-		hoverText += "\nFunction"
+		// hoverText += "\nFunction"
+		for (const m of cache.missionDefaultFunctions) {
+			if(m.name === symbol) {
+				hoverText = m.completionItem.detail;// + "\n\n" + m.completionItem.documentation;
+				debug(m.documentation.toString())
+				let mc: MarkupContent = {
+					kind: "markdown",
+					value: "```javascript\n" + hoverText + "\n```\n```text\n\n" + m.documentation.toString() + "\n```\n"
+				}
+				// mc.value = m.documentation.toString();
+				hoverText = mc;
+				if (hoverText === undefined) {
+					hoverText = ""
+				}
+				break;
+			}
+		}
 	}
 
 	// let str: MarkupContent = {
 	// 	kind: 'plaintext', // 'markdown' or 'plaintext'
 	// 	value: ''
 	// }
+	//hoverText = mc;
 	const hover: Hover = {
-		contents: symbol//str
+		contents: hoverText//str
 	}
 
 	return hover;
@@ -155,7 +200,7 @@ function getClassOfMethod(line:string,token:string) {
 	let m: RegExpExecArray | null;
 	while(m = className.exec(line)) {
 		const c = m[0];
-		debug(c);
+		//debug(c);
 		return c;
 	}
 
