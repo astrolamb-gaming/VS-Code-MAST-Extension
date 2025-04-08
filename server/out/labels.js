@@ -14,6 +14,7 @@ const console_1 = require("console");
 const cache_1 = require("./cache");
 const vscode_uri_1 = require("vscode-uri");
 const path = require("path");
+const fileFunctions_1 = require("./fileFunctions");
 var LabelType;
 (function (LabelType) {
     LabelType[LabelType["LABEL"] = 0] = "LABEL";
@@ -138,23 +139,25 @@ function checkForDuplicateLabelsInList(textDocument, labels = [], subLabels = fa
     if (labels.length === 0 && !subLabels) {
         labels = (0, cache_1.getCache)(textDocument.uri).getLabels(textDocument);
     }
+    (0, console_1.debug)(labels);
     for (const i in labels) {
         // First we iterate over all labels prior to this one
         // If the label isn't from this file, we don't need to include it in the errors for this file.
-        if (labels[i].srcFile !== textDocument.uri) {
+        if ((0, fileFunctions_1.fixFileName)(labels[i].srcFile) !== (0, fileFunctions_1.fixFileName)(textDocument.uri)) {
             continue;
         }
         // Exclude main and END
         if (labels[i].name === "main" || labels[i].name === "END" || labels[i].type === "route") {
+            (0, console_1.debug)("Is route: " + labels[i]);
             continue;
         }
         for (const j in labels) {
-            // debug(labels[j])
             if (j === i) {
                 //break;
                 continue;
             }
             if (labels[i].name === labels[j].name) {
+                (0, console_1.debug)(labels[i].name + " is used more than once");
                 const d = {
                     range: {
                         start: textDocument.positionAt(labels[i].start),
@@ -164,12 +167,16 @@ function checkForDuplicateLabelsInList(textDocument, labels = [], subLabels = fa
                     message: "Label names can only be used once.",
                     source: "mast",
                 };
-                let message = (subLabels) ? "The inline label \"" + labels[i].name + "\" is already used inside this parent label." : "The label \"" + labels[i].name + "\" is used elsewhere in this file.";
+                let message = (subLabels) ? "The inline label \"" + labels[i].name + "\" is used elsewhere inside this parent label." : "The label \"" + labels[i].name + "\" is used elsewhere in this file.";
                 if (!subLabels) {
+                    let f;
                     if (labels[j].srcFile !== textDocument.uri) {
-                        const f = path.basename(vscode_uri_1.URI.parse(labels[j].srcFile).fsPath);
-                        message = "The label \"" + labels[j].name + "\" is already used in " + f;
+                        f = path.basename(vscode_uri_1.URI.parse(labels[j].srcFile).fsPath);
                     }
+                    else {
+                        f = "this file.";
+                    }
+                    message = "The label \"" + labels[j].name + "\" is used else where in " + f;
                 }
                 d.relatedInformation = (0, errorChecking_1.relatedMessage)(textDocument, d.range, message);
                 diagnostics.push(d);
@@ -181,6 +188,7 @@ function checkForDuplicateLabelsInList(textDocument, labels = [], subLabels = fa
             diagnostics = diagnostics.concat(checkForDuplicateLabelsInList(textDocument, subs, true));
         }
     }
+    (0, console_1.debug)(diagnostics);
     return diagnostics;
 }
 // function checkForDuplicateLabelsOld(t: TextDocument, main:LabelInfo[],sub:LabelInfo[]): Diagnostic[] {
@@ -319,7 +327,10 @@ function checkLabels(textDocument) {
             diagnostics.push(d);
         }
     }
-    diagnostics = diagnostics.concat(checkForDuplicateLabelsInList(textDocument, mainLabels));
+    const dups = checkForDuplicateLabelsInList(textDocument, mainLabels);
+    (0, console_1.debug)(dups);
+    diagnostics = diagnostics.concat(dups);
+    //debug(diagnostics);
     diagnostics = diagnostics.concat(findBadLabels(textDocument));
     return diagnostics;
 }

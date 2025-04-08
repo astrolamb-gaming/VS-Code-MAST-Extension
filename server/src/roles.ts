@@ -22,7 +22,6 @@ export function getRolesForFile(text: string): string[] {
 	}
 	// Remove duplicates
 	roles = [...new Set(roles)];
-	debug(roles);
 	return roles;
 }
 
@@ -30,7 +29,6 @@ function getRolesForRegEx(re: RegExp, text: string) : string[] {
 	let roles: string[] = [];
 	let m: RegExpExecArray | null;
 	while (m = re.exec(text)) {
-		debug(m[1]);
 		const list = m[1].split(",");
 		for (const i of list) {
 			if (i !== "") {

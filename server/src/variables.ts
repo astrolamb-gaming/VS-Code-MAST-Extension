@@ -16,7 +16,6 @@ export function getVariableNamesInDoc(textDocument: TextDocument) {
 		}
 	}
 	vars = [...new Set(vars)];
-
 	return vars;
 }
 export function getVariablesAsCompletionItem(vars: string[]) {

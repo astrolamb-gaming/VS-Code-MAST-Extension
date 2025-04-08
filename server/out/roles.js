@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getRolesForFile = getRolesForFile;
 exports.getRolesAsCompletionItem = getRolesAsCompletionItem;
-const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
 function getRolesForFile(text) {
     let roles = [];
@@ -21,14 +20,12 @@ function getRolesForFile(text) {
     }
     // Remove duplicates
     roles = [...new Set(roles)];
-    (0, console_1.debug)(roles);
     return roles;
 }
 function getRolesForRegEx(re, text) {
     let roles = [];
     let m;
     while (m = re.exec(text)) {
-        (0, console_1.debug)(m[1]);
         const list = m[1].split(",");
         for (const i of list) {
             if (i !== "") {

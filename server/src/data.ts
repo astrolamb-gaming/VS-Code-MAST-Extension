@@ -56,7 +56,7 @@ export class MastFile extends FileCache {
 	labelNames : LabelInfo[] = [];
 	// TODO: Add support for holding label information for all files listed in __init__.mast in a given folder.
 	// TODO: Add system for tracking variables in a mast file
-	variables: CompletionItem[] = [];
+	variables: string[] = [];
 	roles: string[] = [];
 	
 	constructor(uri: string, fileContents:string = "") {
@@ -89,25 +89,14 @@ export class MastFile extends FileCache {
 		const textDocument: TextDocument = TextDocument.create(this.uri, "mast", 1, text);
 		this.labelNames = parseLabelsInFile(text, this.uri);
 		// TODO: Parse variables, etc
-		this.variables = this.getVariableNames(text);
+		this.variables = getVariableNamesInDoc(textDocument);
 		this.roles = getRolesForFile(text);
 	}
 
-	getVariableNames(text:string) {
+	getVariableNames() {
+		let arr: CompletionItem[] = [];
 		debug("Getting variable names");
-		const vars: string[] = [];
-		const arr: CompletionItem[] = [];
-		const variableRX = /^\s*[a-zA-Z_]\w*\s*(?==[^=])/gm;
-		let m: RegExpExecArray | null;
-		while (m = variableRX.exec(text)) {
-			const v = m[0].trim();
-			//debug(m[0])
-			if (!vars.includes(v)) {
-				vars.push(v);
-			}
-		}
-	
-		for (const v of vars) {
+		for (const v of this.variables) {
 			const ci: CompletionItem = {
 				label: v,
 				kind: CompletionItemKind.Variable,

@@ -184,7 +184,6 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		diagnostics.push(d);
 	}
 	
-	debug("Checking enabled routes")
 	const r = checkEnableRoutes(textDocument);
 	diagnostics = diagnostics.concat(r);
 	// return debugLabelValidation(textDocument);

@@ -315,7 +315,7 @@ class MissionCache {
                 // Check if the file is included in the init file
                 for (const i of inits) {
                     if (i === path.basename(m.uri)) {
-                        ci = ci.concat(m.variables);
+                        ci = ci.concat(m.getVariableNames());
                     }
                 }
             }

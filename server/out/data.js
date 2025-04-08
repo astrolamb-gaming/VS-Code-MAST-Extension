@@ -12,6 +12,7 @@ const labels_1 = require("./labels");
 const vscode_languageserver_textdocument_1 = require("vscode-languageserver-textdocument");
 const fileFunctions_1 = require("./fileFunctions");
 const cache_1 = require("./cache");
+const variables_1 = require("./variables");
 const globals_1 = require("./globals");
 const roles_1 = require("./roles");
 class FileCache {
@@ -76,23 +77,13 @@ class MastFile extends FileCache {
         const textDocument = vscode_languageserver_textdocument_1.TextDocument.create(this.uri, "mast", 1, text);
         this.labelNames = (0, labels_1.parseLabelsInFile)(text, this.uri);
         // TODO: Parse variables, etc
-        this.variables = this.getVariableNames(text);
+        this.variables = (0, variables_1.getVariableNamesInDoc)(textDocument);
         this.roles = (0, roles_1.getRolesForFile)(text);
     }
-    getVariableNames(text) {
+    getVariableNames() {
+        let arr = [];
         (0, console_1.debug)("Getting variable names");
-        const vars = [];
-        const arr = [];
-        const variableRX = /^\s*[a-zA-Z_]\w*\s*(?==[^=])/gm;
-        let m;
-        while (m = variableRX.exec(text)) {
-            const v = m[0].trim();
-            //debug(m[0])
-            if (!vars.includes(v)) {
-                vars.push(v);
-            }
-        }
-        for (const v of vars) {
+        for (const v of this.variables) {
             const ci = {
                 label: v,
                 kind: vscode_languageserver_1.CompletionItemKind.Variable,

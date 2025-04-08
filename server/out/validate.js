@@ -173,7 +173,6 @@ async function validateTextDocument(textDocument) {
     if (d !== undefined) {
         diagnostics.push(d);
     }
-    (0, console_1.debug)("Checking enabled routes");
     const r = (0, routeLabels_1.checkEnableRoutes)(textDocument);
     diagnostics = diagnostics.concat(r);
     // return debugLabelValidation(textDocument);
