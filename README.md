@@ -22,6 +22,7 @@ Includes:
 * Checks for module versions
 	* Can update all to latest version, or manually update
 * In mission folders, checks for `__init__.mast` in the folder you're working in. If it doesn't exist, will promt with an option to auto-generate the file, with all .mast and .py files included automatically.
+* Autocompletion of filenames for `__init__.mast`
 * Checks or root artemis directory existence - most functionality requires the opened folder to be in the artemis mission directory
 
 ## Requirements

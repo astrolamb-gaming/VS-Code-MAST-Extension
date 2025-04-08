@@ -29,7 +29,12 @@ function getRolesForRegEx(re, text) {
     let m;
     while (m = re.exec(text)) {
         (0, console_1.debug)(m[1]);
-        roles.push(m[1]);
+        const list = m[1].split(",");
+        for (const i of list) {
+            if (i !== "") {
+                roles.push(i);
+            }
+        }
     }
     return roles;
 }

@@ -31,7 +31,12 @@ function getRolesForRegEx(re: RegExp, text: string) : string[] {
 	let m: RegExpExecArray | null;
 	while (m = re.exec(text)) {
 		debug(m[1]);
-		roles.push(m[1]);
+		const list = m[1].split(",");
+		for (const i of list) {
+			if (i !== "") {
+				roles.push(i);
+			}
+		}
 	}
 	return roles;
 }

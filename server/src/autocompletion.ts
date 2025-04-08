@@ -73,6 +73,8 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			}
 		}
 		return ci;
+	} else {
+		debug("NOT an init file");
 	}
 	let variables: CompletionItem[] = [];
 	try {

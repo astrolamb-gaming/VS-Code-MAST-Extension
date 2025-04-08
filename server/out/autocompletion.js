@@ -70,6 +70,9 @@ function onCompletion(_textDocumentPosition, text) {
         }
         return ci;
     }
+    else {
+        (0, console_1.debug)("NOT an init file");
+    }
     let variables = [];
     try {
         variables = cache.getVariables(text.uri);

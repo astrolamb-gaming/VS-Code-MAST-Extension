@@ -9,6 +9,14 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * Show token information on hover
 * Determine variable types based on function return values, etc.
 
+### 0.7.0
+
+* Fix keyword autocompletion
+* Fix on change formatting
+* Add autocompletion for roles within scope
+* Get roles based on shipData.json, accounting for possible invalid json
+* Add autocompletion to `__init__.mast`, giving all files not already listed in the file.
+
 ### 0.6.0
 
 * Fix for crash that could occur if opening a folder without an `__init__.mast` file or if opening a workspace
