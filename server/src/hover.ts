@@ -1,10 +1,8 @@
 import { debug } from 'console';
-import { myDebug } from './server';
 import { Hover, integer, MarkedString, MarkupContent, Position, TextDocumentPositionParams } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { isInComment, isInString } from './comments';
 import { getCache } from './cache';
-import { IClassObject } from './data';
 import { getGlobals } from './globals';
 
 export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : Hover | undefined {
@@ -37,9 +35,7 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 		const func = before.lastIndexOf("(");
 		if (func > 0) {
 			const end = before.substring(0,func);
-			debug(end);
 			if (end.endsWith("get") || end.endsWith("set")) {
-				debug("IS blob")
 				for (const b of getGlobals().data_set_entries) {
 					if (symbol === b.name) {
 						const hover: Hover = {
@@ -50,8 +46,6 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 				}
 			}
 		}
-
-
 		return {contents: "string"};
 	}
 	

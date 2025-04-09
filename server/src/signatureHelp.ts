@@ -1,4 +1,3 @@
-import { myDebug } from './server';
 import { SignatureHelpParams, SignatureHelp, integer, SignatureInformation, ParameterInformation } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { PyFile } from './data';

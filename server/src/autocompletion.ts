@@ -1,14 +1,13 @@
 import { debug } from 'console';
 import { CompletionItem, CompletionItemKind, CompletionItemTag, integer, MarkupContent, TextDocumentPositionParams } from 'vscode-languageserver';
-import { checkLabels, getMainLabelAtPos } from './labels';
-import { labelNames, updateLabelNames } from './server';
+import { getMainLabelAtPos } from './labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { ClassObject, ClassTypings, getVariablesInFile, IClassObject, PyFile } from './data';
-import { getRouteLabelAutocompletions, getRouteLabelVars, getSkyboxCompletionItems } from './routeLabels';
+import { IClassObject, PyFile } from './data';
+import { getRouteLabelVars } from './routeLabels';
 import { getStrings, getYamls, isInComment, isInString, isInYaml, isTextInBracket } from './comments';
 import { getCache } from './cache';
 import path = require('path');
-import { fixFileName, getFilesInDir, getParentFolder } from './fileFunctions';
+import { fixFileName, getFilesInDir } from './fileFunctions';
 import { updateTokensForLine } from './tokens';
 import { getGlobals } from './globals';
 import { getCurrentMethodName } from './signatureHelp';

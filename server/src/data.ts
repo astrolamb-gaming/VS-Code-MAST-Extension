@@ -2,14 +2,14 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { debug } from 'console';
 import { CompletionItem, CompletionItemKind, CompletionItemLabelDetails, InlineValueRequest, integer, MarkupContent, ParameterInformation, SignatureInformation } from 'vscode-languageserver';
-import { parseLabels, LabelInfo, parseLabelsInFile } from './labels';
+import { LabelInfo, parseLabelsInFile } from './labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { getParentFolder } from './fileFunctions';
 import exp = require('constants');
 import { getCache } from './cache';
 import { getVariableNamesInDoc } from './variables';
 import { getGlobals } from './globals';
-import { getRolesAsCompletionItem, getRolesForFile } from './roles';
+import { getRolesForFile } from './roles';
 
 export class FileCache {
 	uri: string;

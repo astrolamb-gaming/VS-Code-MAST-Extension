@@ -33,9 +33,7 @@ function onHover(_pos, text) {
         const func = before.lastIndexOf("(");
         if (func > 0) {
             const end = before.substring(0, func);
-            (0, console_1.debug)(end);
             if (end.endsWith("get") || end.endsWith("set")) {
-                (0, console_1.debug)("IS blob");
                 for (const b of (0, globals_1.getGlobals)().data_set_entries) {
                     if (symbol === b.name) {
                         const hover = {

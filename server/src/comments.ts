@@ -1,4 +1,3 @@
-import { debug } from 'console';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import * as fs from 'fs';
 import { integer } from 'vscode-languageserver';
