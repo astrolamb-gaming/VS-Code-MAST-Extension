@@ -5,6 +5,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { isInComment, isInString } from './comments';
 import { getCache } from './cache';
 import { IClassObject } from './data';
+import { getGlobals } from './globals';
 
 export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : Hover | undefined {
 	if (text.languageId !== "mast") {
@@ -17,6 +18,7 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 	const pos : integer = text.offsetAt(_pos.position);
 	const startOfLine : integer = pos - _pos.position.character;
 	const after: string = text.getText().substring(startOfLine);
+	const before: string = text.getText().substring(startOfLine,pos);
 	
 	const cache = getCache(text.uri);
 	
@@ -26,14 +28,33 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 	// }
 	//debug("Getting line");
 	let hoveredLine = getCurrentLineFromTextDocument(_pos, text);
+	const symbol = getHoveredSymbol(hoveredLine, _pos.position.character);
 	// If it's a comment, we'll just ignore it.
 	if (isInComment(pos)) {
 		return {contents: "comment"};
 	}
 	if (isInString(pos)) {
+		const func = before.lastIndexOf("(");
+		if (func > 0) {
+			const end = before.substring(0,func);
+			debug(end);
+			if (end.endsWith("get") || end.endsWith("set")) {
+				debug("IS blob")
+				for (const b of getGlobals().data_set_entries) {
+					if (symbol === b.name) {
+						const hover: Hover = {
+							contents: b.docs
+						}
+						return hover;
+					}
+				}
+			}
+		}
+
+
 		return {contents: "string"};
 	}
-	const symbol = getHoveredSymbol(hoveredLine, _pos.position.character);
+	
 	debug(symbol);
 	//hover.contents = symbol;
 	

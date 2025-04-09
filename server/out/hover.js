@@ -5,6 +5,7 @@ const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
 const comments_1 = require("./comments");
 const cache_1 = require("./cache");
+const globals_1 = require("./globals");
 function onHover(_pos, text) {
     if (text.languageId !== "mast") {
         return undefined;
@@ -15,6 +16,7 @@ function onHover(_pos, text) {
     const pos = text.offsetAt(_pos.position);
     const startOfLine = pos - _pos.position.character;
     const after = text.getText().substring(startOfLine);
+    const before = text.getText().substring(startOfLine, pos);
     const cache = (0, cache_1.getCache)(text.uri);
     // const range: Range = {
     // 	start: t.positionAt(m.index),
@@ -22,14 +24,30 @@ function onHover(_pos, text) {
     // }
     //debug("Getting line");
     let hoveredLine = getCurrentLineFromTextDocument(_pos, text);
+    const symbol = getHoveredSymbol(hoveredLine, _pos.position.character);
     // If it's a comment, we'll just ignore it.
     if ((0, comments_1.isInComment)(pos)) {
         return { contents: "comment" };
     }
     if ((0, comments_1.isInString)(pos)) {
+        const func = before.lastIndexOf("(");
+        if (func > 0) {
+            const end = before.substring(0, func);
+            (0, console_1.debug)(end);
+            if (end.endsWith("get") || end.endsWith("set")) {
+                (0, console_1.debug)("IS blob");
+                for (const b of (0, globals_1.getGlobals)().data_set_entries) {
+                    if (symbol === b.name) {
+                        const hover = {
+                            contents: b.docs
+                        };
+                        return hover;
+                    }
+                }
+            }
+        }
         return { contents: "string" };
     }
-    const symbol = getHoveredSymbol(hoveredLine, _pos.position.character);
     (0, console_1.debug)(symbol);
     //hover.contents = symbol;
     let hoverText = symbol;

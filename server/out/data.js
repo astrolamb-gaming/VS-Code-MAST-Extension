@@ -391,13 +391,13 @@ class Function {
     }
     buildSignatureInformation() {
         let ci_details = "(" + this.functionType + ") " + ((this.className === "") ? "" : this.className + ".") + this.name + "(" + this.rawParams + "): " + (this.functionType === "constructor") ? this.className : this.name;
-        (0, console_1.debug)(ci_details);
+        //debug(ci_details)
         const params = [];
         // const markup: MarkupContent = {
         // 	kind: "markdown",
-        // 	value: "```javascript\n" + ci_details + "\n```\n" + this.documentation
+        // 	value: "```javascript\n" + ci_details + "\n```\n```text\n" + this.documentation + "\n```\n"
         // }
-        // debug(markup)
+        //debug(markup)
         const si = {
             label: this.name,
             documentation: ci_details + "\n" + this.documentation,
