@@ -34,6 +34,7 @@ import { getCache, loadCache } from './cache';
 import { getVariableNamesInDoc } from './variables';
 import { getGlobals } from './globals';
 import { validateTextDocument } from './validate';
+import path = require('path');
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -165,6 +166,16 @@ connection.onInitialize((params: InitializeParams) => {
 });
 
 connection.onInitialized(() => {
+
+	debug("Initialized");
+	fs.opendir("./",(err, dir)=>{
+		debug(err)
+		let res: fs.Dirent | null;
+		while(res = dir.readSync()) {
+			debug(res);
+		}
+	});
+	debug()
 	
 	if (hasConfigurationCapability) {
 		// Register for all configuration changes.

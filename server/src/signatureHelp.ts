@@ -53,11 +53,19 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 
 	let f: string = getCurrentMethodName(iStr);
 	debug(f);
-	let sigs = getCache(text.uri).getMethodSignatures(f);
-	for (const sig of sigs) {
-		if (sig.label === f) {
-			sh.signatures.push(sig);
-		}
+	// let sigs = getCache(text.uri).getMethodSignatures(f);
+	// debug(sigs);
+	// for (const sig of sigs) {
+	// 	if (sig.label === f) {
+	// 		debug(sig);
+	// 		sh.signatures.push(sig);
+	// 	}
+	// }
+
+	let sig = getCache(text.uri).getSignatureOfMethod(f);
+	debug(sig);
+	if (sig !== undefined) {
+		sh.signatures.push(sig);
 	}
 	// for (const i in functionSigs) {
 	// 	if (functionSigs[i].label === f) {

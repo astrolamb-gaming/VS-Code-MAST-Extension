@@ -30,6 +30,7 @@ Includes:
 Dependencies should be packaged with the extension. If you encounter an issue with a dependency, or it is not included, please let me know ASAP.
 Included dependencies:
 * adm-zip
+* hjson
 * python-shell
 * vscode-uri
 

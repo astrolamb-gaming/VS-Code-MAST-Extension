@@ -229,7 +229,7 @@ class ClassObject {
                 this.constructorFunction = this.methods[i];
             }
             this.methodCompletionItems.push(this.methods[i].completionItem);
-            this.methodSignatureInformation.push(this.methods[i].buildSignatureInformation());
+            this.methodSignatureInformation.push(this.methods[i].signatureInformation); //.buildSignatureInformation());
         }
         this.completionItem = this.buildCompletionItem();
         return this;
@@ -329,6 +329,7 @@ class Function {
         this.parameters = this.buildParams(params);
         this.completionItem = this.buildCompletionItem(cik);
         this.signatureInformation = this.buildSignatureInformation();
+        //debug(this);
         return this;
     }
     /**

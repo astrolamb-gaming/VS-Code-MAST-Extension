@@ -180,6 +180,7 @@ class MissionCache {
             console.error('Error writing file:', err);
         }
     }
+    // TODO: When a file is opened, check if it is in __init__.mast. If not, prompt the user to add it.
     async addToInitFile(folder, newFile) {
         try {
             fs.writeFile(path.join(folder, "__init__.mast"), "\n" + newFile, { flag: "a+" }, () => { });
@@ -399,6 +400,26 @@ class MissionCache {
         // });
         // TODO: Add functions from py files in local directory
         return si;
+    }
+    /**
+     * Gets a single method signature for the specified function.
+     * @param name Name of the method or function
+     * @returns Associated {@link SignatureInformation}
+     */
+    getSignatureOfMethod(name) {
+        for (const s of this.missionDefaultSignatures) {
+            if (s.label === name) {
+                return s;
+            }
+        }
+        for (const c of this.missionClasses) {
+            for (const m of c.methodSignatureInformation) {
+                if (m.label === name) {
+                    return m;
+                }
+            }
+        }
+        return undefined;
     }
     /**
      *

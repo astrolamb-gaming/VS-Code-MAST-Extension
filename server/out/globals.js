@@ -12,6 +12,7 @@ class Globals {
     constructor() {
         this.widget_stylestrings = [];
         this.artemisDir = "";
+        this.artFiles = [];
         const thisDir = path.resolve("../");
         const adir = (0, fileFunctions_1.getArtemisDirFromChild)(thisDir);
         (0, console_1.debug)("Artemis Directory: ");
@@ -48,6 +49,7 @@ class Globals {
                 };
                 this.libModuleCompletionItems.push(ci);
             }
+            this.artFiles = this.findArtFiles();
         }
     }
     loadLibs() {
@@ -131,6 +133,44 @@ class Globals {
             }
         }
         return ds;
+    }
+    findArtFiles() {
+        let ret = [];
+        const files = (0, fileFunctions_1.getFilesInDir)(path.join(this.artemisDir, "data", "graphics"));
+        // let relPath = path.join(path.relative("./",getGlobals().artemisDir),"data","graphics","ships");
+        // if (relPath !== "") {
+        // 	// fs.opendir(relPath,(err,dir)=>{
+        // 	// 	let res: fs.Dirent | null;
+        // 	// 	while (res = dir.readSync()) {
+        // 	// 		debug(res);
+        // 	// 	}
+        // 	// })
+        // }
+        for (const file of files) {
+            if (file.endsWith(".png")) {
+                const fileBase = file.replace(".png", "");
+                const docs = {
+                    kind: "markdown",
+                    value: ""
+                };
+                let val = "";
+                // let relFile = path.join(relPath,path.basename(file)).replace(/\\/g,"/");
+                // This works, but can't scale the images
+                val = val + "![" + path.basename(file) + "](file:///" + file.replace(/\\/g, "/") + ")";
+                // Doesn't work
+                // val = "<img src='file:///" + file.replace(/\\/g,"/") + "' width=256 height=256>"
+                docs.value = val;
+                (0, console_1.debug)(val);
+                const c = {
+                    label: path.basename(file).replace(".png", ""),
+                    kind: vscode_languageserver_1.CompletionItemKind.File,
+                    documentation: docs,
+                    insertText: path.basename(file)
+                };
+                ret.push(c);
+            }
+        }
+        return ret;
     }
     findSkyboxes() {
         const skyboxes = [];

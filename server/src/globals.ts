@@ -1,7 +1,7 @@
 import { debug } from 'console';
 import { findSubfolderByName, getArtemisDirFromChild, getFilesInDir, getFolders, readFile } from './fileFunctions';
 import path = require('path');
-import { CompletionItem, CompletionItemLabelDetails, CompletionItemKind } from 'vscode-languageserver';
+import { CompletionItem, CompletionItemLabelDetails, CompletionItemKind, SignatureInformation, MarkupContent } from 'vscode-languageserver';
 import { connection } from './server';
 import { ShipData } from './shipData';
 
@@ -26,6 +26,7 @@ export class Globals {
 	libModuleCompletionItems: CompletionItem[];
 	shipData: ShipData;
 	artemisDir: string = "";
+	artFiles: CompletionItem[] = [];
 	constructor() {
 		const thisDir = path.resolve("../");
 		const adir = getArtemisDirFromChild(thisDir);
@@ -62,6 +63,7 @@ export class Globals {
 				}
 				this.libModuleCompletionItems.push(ci);
 			}
+			this.artFiles = this.findArtFiles();
 		}
 		
 	}
@@ -150,6 +152,49 @@ export class Globals {
 			}
 		}
 		return ds;
+	}
+
+	private findArtFiles(): CompletionItem[] {
+		let ret: CompletionItem[] = [];
+		const files = getFilesInDir(path.join(this.artemisDir,"data","graphics"));
+		// let relPath = path.join(path.relative("./",getGlobals().artemisDir),"data","graphics","ships");
+		// if (relPath !== "") {
+		// 	// fs.opendir(relPath,(err,dir)=>{
+		// 	// 	let res: fs.Dirent | null;
+		// 	// 	while (res = dir.readSync()) {
+		// 	// 		debug(res);
+		// 	// 	}
+		// 	// })
+		// }
+		for (const file of files) {
+			if (file.endsWith(".png")) {
+				const fileBase = file.replace(".png","");
+				const docs: MarkupContent = {
+					kind: "markdown",
+					value: ""
+				}
+				let val = "";
+				// let relFile = path.join(relPath,path.basename(file)).replace(/\\/g,"/");
+
+				// This works, but can't scale the images
+				val = val + "![" + path.basename(file) + "](file:///" + file.replace(/\\/g,"/") + ")"
+
+				// Doesn't work
+				// val = "<img src='file:///" + file.replace(/\\/g,"/") + "' width=256 height=256>"
+
+				docs.value = val;
+				debug(val);
+				const c: CompletionItem = {
+					label: path.basename(file).replace(".png",""),
+					kind: CompletionItemKind.File,
+					documentation: docs,
+					insertText: path.basename(file)
+				}
+				ret.push(c);
+			}
+		}
+
+		return ret;
 	}
 
 	private findSkyboxes(): CompletionItem[] {

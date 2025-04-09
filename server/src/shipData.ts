@@ -3,6 +3,8 @@ import path = require('path');
 import { getFilesInDir, getFileContents, readFile } from './fileFunctions';
 import { CompletionItem, CompletionItemKind } from 'vscode-languageserver';
 import { getRolesAsCompletionItem } from './roles';
+import { connection, sendToClient } from './server';
+import Hjson = require('hjson');
 
 
 export class ShipData {
@@ -10,31 +12,39 @@ export class ShipData {
 	data: any[] = [];
 	fileExists = false;
 	validJSON = true;
+	filePath: string = "";
+	artemisDir: string;
 	constructor(artemisDir: string) {
-		
+		this.artemisDir = artemisDir;
 		try {
-			this.load(artemisDir);
+			this.load();
 		} catch(e) {
 			debug(e);
 		}
 	}
 
-	load(artemisDir: string) {
-		const file = path.join(artemisDir,"data","shipData.json");
+	load() {
+		const file = path.join(this.artemisDir,"data","shipData.json");
+		this.filePath = file;
 		if (file !== null) {
 			readFile(file).then((contents)=>{
-				contents = contents.replace(/\/\/.*?(\n|$)/gm,"");
+				// contents = contents.replace(/\/\/.*?(\n|$)/gm,"");
 				try {
-					this.data = JSON.parse(contents)["#ship-list"];
+					this.data = Hjson.parse(contents)["#ship-list"];
+					
 					this.validJSON = true;
+					// this.parseShips();
 					this.roles = this.parseRolesJSON();
 				} catch (e) {
+					const err = e as Error;
 					this.validJSON = false;
 					debug("shipData.json NOT parsed properly");
-					debug(e);
+					debug(err);
+					this.shipDataJsonError(err);
 					this.roles = this.parseRolesText(contents);
 				}
 				debug(this.data);
+				debug(typeof this.data[0]);
 				this.fileExists = true;
 				
 			});
@@ -43,6 +53,55 @@ export class ShipData {
 			this.fileExists = false;
 		}
 	}
+
+	async shipDataJsonError(err: Error) {
+		let ret = await connection.window.showErrorMessage(
+			"shipData.json contains an error:\n" + err.name + ": " + err.message,
+			{title: "Open file to fix"},
+			{title: "Ignore"},
+			//{title: hide} // TODO: Add this later!!!!!!
+		);
+		if (ret === undefined) return;
+		if (ret.title === "Open file to fix") {
+			sendToClient("showFile",this.filePath);
+		} else if (ret.title === "Ignore") {}
+	}
+
+	parseShips(): Ship[] {
+		const ships: Ship[] = [];
+		for (const d of this.data) {
+			const ship: Ship = {
+				key: "",
+				name: "",
+				side: "",
+				artFileRoot: "",
+				roles: []
+			}
+			let key = d["key"];
+			if (key) ship.key = key;
+			let name = d["name"];
+			if (name) ship.name = name;
+			let side = d["side"];
+			if (side) ship.side = side;
+			let art = d["artfileroot"];
+			if (art) ship.artFileRoot = art;
+			let roles = d["roles"];
+			if (roles) {
+				const roleList = [];
+				const list = roles.split(",");
+				for (const l of list) {
+					roleList.push(l.trim());
+				}
+				ship.roles = roleList;
+			}
+			if (ship.key !== "") {
+				ships.push(ship);
+			}
+		}
+		debug(ships);
+		return ships;
+	}
+
 	parseRolesJSON(): string[] {
 		let roles: string[] = [];
 		for (const ship of this.data) {
@@ -81,4 +140,12 @@ export class ShipData {
 		roles = [...new Set(roles)];
 		return roles
 	}
+}
+
+export interface Ship {
+	key: string,
+	name: string,
+	side: string,
+	artFileRoot: string,
+	roles: string[]
 }

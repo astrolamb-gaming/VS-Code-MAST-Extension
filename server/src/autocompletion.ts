@@ -1,5 +1,5 @@
 import { debug } from 'console';
-import { CompletionItem, CompletionItemKind, CompletionItemTag, integer, MarkupContent, TextDocumentPositionParams } from 'vscode-languageserver';
+import { CompletionItem, CompletionItemKind, CompletionItemTag, integer, MarkupContent, SignatureInformation, TextDocumentPositionParams } from 'vscode-languageserver';
 import { getMainLabelAtPos } from './labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { IClassObject, PyFile } from './data';
@@ -7,6 +7,7 @@ import { getRouteLabelVars } from './routeLabels';
 import { getStrings, getYamls, isInComment, isInString, isInYaml, isTextInBracket } from './comments';
 import { getCache } from './cache';
 import path = require('path');
+import fs = require("fs");
 import { fixFileName, getFilesInDir } from './fileFunctions';
 import { updateTokensForLine } from './tokens';
 import { getGlobals } from './globals';
@@ -38,6 +39,7 @@ let currentLine = 0;
 
 export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, text: TextDocument): CompletionItem[] {
 	debug("Staring onCompletion");
+	return getGlobals().artFiles;
 	const cache = getCache(text.uri);
 	let ci : CompletionItem[] = [];
 	debug("Cache loaded.");
@@ -142,41 +144,40 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				return ci;
 			}
 
-			// Here we check for if this is a stylestring 
+			// Here we check for stylestrings, art_ids, etc.
 			
 			const func = getCurrentMethodName(iStr);
-			debug(func)
-			for (const s of getGlobals().widget_stylestrings) {
-				if (func === s.function) {
-					//Get the current parameter
-					const fstart = iStr.lastIndexOf(func);
-					const wholeFunc = iStr.substring(fstart,iStr.length);
-					const arr = wholeFunc.split(",");
-					let sigs = getCache(text.uri).getMethodSignatures(func);
-					for (const sig of sigs) {
-						if (sig.label === func) {
-							if (sig.parameters !== undefined) {
-								for (const i in sig.parameters) {
-									if (sig.parameters[i].label === "style") {
-										const c = {
-											label: s.name,
-											//labelDetails: {detail: s.docs},
-											documentation: s.docs,
-											kind: CompletionItemKind.Text,
-											insertText: s.name + ": "
-										}
-										if (c.label === "color") {
-											c.insertText = c.insertText + "#"
-										}
-										ci.push(c)
+			const sig: SignatureInformation|undefined = getCache(text.uri).getSignatureOfMethod(func);
+			const fstart = iStr.lastIndexOf(func);
+			const wholeFunc = iStr.substring(fstart,iStr.length);
+			const arr = wholeFunc.split(",");
+			if (sig !== undefined) {
+				if (sig.parameters !== undefined) {
+					for (const i in sig.parameters) {
+						if (i !== ""+(arr.length-1)) continue;
+						if (sig.parameters[i].label === "style") {
+							for (const s of getGlobals().widget_stylestrings) {
+								if (func === s.function) {
+									const c = {
+										label: s.name,
+										//labelDetails: {detail: s.docs},
+										documentation: s.docs,
+										kind: CompletionItemKind.Text,
+										insertText: s.name + ": "
 									}
+									if (c.label === "color") {
+										c.insertText = c.insertText + "#"
+									}
+									ci.push(c)
 								}
 							}
+						} else if (sig.parameters[i].label === "art_id") {
+							// Get all possible art files
+							return getGlobals().artFiles;
 						}
 					}
 				}
 			}
-
 
 			debug("Is in string");
 			return ci;

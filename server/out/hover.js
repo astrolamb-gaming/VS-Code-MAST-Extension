@@ -6,6 +6,7 @@ const vscode_languageserver_1 = require("vscode-languageserver");
 const comments_1 = require("./comments");
 const cache_1 = require("./cache");
 const globals_1 = require("./globals");
+const tokens_1 = require("./tokens");
 function onHover(_pos, text) {
     if (text.languageId !== "mast") {
         return undefined;
@@ -49,8 +50,8 @@ function onHover(_pos, text) {
     (0, console_1.debug)(symbol);
     //hover.contents = symbol;
     let hoverText = symbol;
-    if (isClassMethod(hoveredLine, symbol)) {
-        const c = getClassOfMethod(hoveredLine, symbol);
+    if ((0, tokens_1.isClassMethod)(hoveredLine, symbol)) {
+        const c = (0, tokens_1.getClassOfMethod)(hoveredLine, symbol);
         const classObj = cache.missionClasses; //.find((value)=>{value.name===c});
         for (const co of classObj) {
             let found = false;
@@ -82,7 +83,7 @@ function onHover(_pos, text) {
         //const func = classObj?.methods.find((value)=>{value.name===symbol});
         //hoverText = ""
     }
-    else if (isFunction(hoveredLine, symbol)) {
+    else if ((0, tokens_1.isFunction)(hoveredLine, symbol)) {
         // hoverText += "\nFunction"
         for (const m of cache.missionDefaultFunctions) {
             if (m.name === symbol) {
@@ -173,39 +174,6 @@ function getHoveredSymbol(str, pos) {
         }
     }
     return res;
-}
-function isFunction(line, token) {
-    const start = line.indexOf(token);
-    const end = start + token.length;
-    // debug(line.substring(end).trim());
-    if (line.substring(end).trim().startsWith("(")) {
-        // debug("TRUE")
-        return true;
-    }
-    return false;
-}
-function isClassMethod(line, token) {
-    const start = line.indexOf(token);
-    const end = start + token.length;
-    if (isFunction(line, token)) {
-        // debug(line.substring(0,start));
-        if (line.substring(0, start).trim().endsWith(".")) {
-            return true;
-        }
-    }
-    return false;
-}
-function getClassOfMethod(line, token) {
-    const start = line.indexOf(token);
-    const end = start + token.length;
-    line = line.substring(0, start - 1);
-    const className = /[a-zA-Z_]\w*$/m;
-    let m;
-    while (m = className.exec(line)) {
-        const c = m[0];
-        //debug(c);
-        return c;
-    }
 }
 /**
  * a shared variable is shared by all tasks. i.e. global.

@@ -35,6 +35,7 @@ function prepCompletions(files) {
 let currentLine = 0;
 function onCompletion(_textDocumentPosition, text) {
     (0, console_1.debug)("Staring onCompletion");
+    return (0, globals_1.getGlobals)().artFiles;
     const cache = (0, cache_1.getCache)(text.uri);
     let ci = [];
     (0, console_1.debug)("Cache loaded.");
@@ -133,35 +134,37 @@ function onCompletion(_textDocumentPosition, text) {
                 ci = (0, roles_1.getRolesAsCompletionItem)(roles);
                 return ci;
             }
-            // Here we check for if this is a stylestring 
+            // Here we check for stylestrings, art_ids, etc.
             const func = (0, signatureHelp_1.getCurrentMethodName)(iStr);
-            (0, console_1.debug)(func);
-            for (const s of (0, globals_1.getGlobals)().widget_stylestrings) {
-                if (func === s.function) {
-                    //Get the current parameter
-                    const fstart = iStr.lastIndexOf(func);
-                    const wholeFunc = iStr.substring(fstart, iStr.length);
-                    const arr = wholeFunc.split(",");
-                    let sigs = (0, cache_1.getCache)(text.uri).getMethodSignatures(func);
-                    for (const sig of sigs) {
-                        if (sig.label === func) {
-                            if (sig.parameters !== undefined) {
-                                for (const i in sig.parameters) {
-                                    if (sig.parameters[i].label === "style") {
-                                        const c = {
-                                            label: s.name,
-                                            //labelDetails: {detail: s.docs},
-                                            documentation: s.docs,
-                                            kind: vscode_languageserver_1.CompletionItemKind.Text,
-                                            insertText: s.name + ": "
-                                        };
-                                        if (c.label === "color") {
-                                            c.insertText = c.insertText + "#";
-                                        }
-                                        ci.push(c);
+            const sig = (0, cache_1.getCache)(text.uri).getSignatureOfMethod(func);
+            const fstart = iStr.lastIndexOf(func);
+            const wholeFunc = iStr.substring(fstart, iStr.length);
+            const arr = wholeFunc.split(",");
+            if (sig !== undefined) {
+                if (sig.parameters !== undefined) {
+                    for (const i in sig.parameters) {
+                        if (i !== "" + (arr.length - 1))
+                            continue;
+                        if (sig.parameters[i].label === "style") {
+                            for (const s of (0, globals_1.getGlobals)().widget_stylestrings) {
+                                if (func === s.function) {
+                                    const c = {
+                                        label: s.name,
+                                        //labelDetails: {detail: s.docs},
+                                        documentation: s.docs,
+                                        kind: vscode_languageserver_1.CompletionItemKind.Text,
+                                        insertText: s.name + ": "
+                                    };
+                                    if (c.label === "color") {
+                                        c.insertText = c.insertText + "#";
                                     }
+                                    ci.push(c);
                                 }
                             }
+                        }
+                        else if (sig.parameters[i].label === "art_id") {
+                            // Get all possible art files
+                            return (0, globals_1.getGlobals)().artFiles;
                         }
                     }
                 }

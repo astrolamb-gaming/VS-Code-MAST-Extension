@@ -1,9 +1,10 @@
 import { debug } from 'console';
-import { Hover, integer, MarkedString, MarkupContent, Position, TextDocumentPositionParams } from 'vscode-languageserver';
+import { Hover, integer, MarkupContent, Position, TextDocumentPositionParams } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { isInComment, isInString } from './comments';
 import { getCache } from './cache';
 import { getGlobals } from './globals';
+import { getClassOfMethod, isClassMethod, isFunction } from './tokens';
 
 export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : Hover | undefined {
 	if (text.languageId !== "mast") {
@@ -185,41 +186,7 @@ function getHoveredSymbol(str: string, pos: integer): string {
 	return res;
 }
 
-function isFunction(line:string,token:string) {
-	const start = line.indexOf(token);
-	const end = start + token.length;
-	// debug(line.substring(end).trim());
-	if (line.substring(end).trim().startsWith("(")) {
-		// debug("TRUE")
-		return true;
-	}
-	return false;
-}
 
-function isClassMethod(line:string,token:string) {
-	const start = line.indexOf(token);
-	const end = start + token.length;
-	if (isFunction(line,token)) {
-		// debug(line.substring(0,start));
-		if (line.substring(0,start).trim().endsWith(".")) {
-			return true;
-		}
-	}
-	return false;
-}
-function getClassOfMethod(line:string,token:string) {
-	const start = line.indexOf(token);
-	const end = start + token.length;
-	line = line.substring(0,start-1);
-	const className = /[a-zA-Z_]\w*$/m;
-	let m: RegExpExecArray | null;
-	while(m = className.exec(line)) {
-		const c = m[0];
-		//debug(c);
-		return c;
-	}
-
-}
 
 /**
  * a shared variable is shared by all tasks. i.e. global.

@@ -49,11 +49,18 @@ function onSignatureHelp(_textDocPos, text) {
     // Check for the current function name and get SignatureInformation for that function.
     let f = getCurrentMethodName(iStr);
     (0, console_1.debug)(f);
-    let sigs = (0, cache_1.getCache)(text.uri).getMethodSignatures(f);
-    for (const sig of sigs) {
-        if (sig.label === f) {
-            sh.signatures.push(sig);
-        }
+    // let sigs = getCache(text.uri).getMethodSignatures(f);
+    // debug(sigs);
+    // for (const sig of sigs) {
+    // 	if (sig.label === f) {
+    // 		debug(sig);
+    // 		sh.signatures.push(sig);
+    // 	}
+    // }
+    let sig = (0, cache_1.getCache)(text.uri).getSignatureOfMethod(f);
+    (0, console_1.debug)(sig);
+    if (sig !== undefined) {
+        sh.signatures.push(sig);
     }
     // for (const i in functionSigs) {
     // 	if (functionSigs[i].label === f) {

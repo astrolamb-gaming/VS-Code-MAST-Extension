@@ -113,3 +113,40 @@ function tokenizeDoc(doc: TextDocument) {
 
 
 }
+
+
+export function isFunction(line:string,token:string) {
+	const start = line.indexOf(token);
+	const end = start + token.length;
+	// debug(line.substring(end).trim());
+	if (line.substring(end).trim().startsWith("(")) {
+		// debug("TRUE")
+		return true;
+	}
+	return false;
+}
+
+export function isClassMethod(line:string,token:string) {
+	const start = line.indexOf(token);
+	const end = start + token.length;
+	if (isFunction(line,token)) {
+		// debug(line.substring(0,start));
+		if (line.substring(0,start).trim().endsWith(".")) {
+			return true;
+		}
+	}
+	return false;
+}
+export function getClassOfMethod(line:string,token:string) {
+	const start = line.indexOf(token);
+	const end = start + token.length;
+	line = line.substring(0,start-1);
+	const className = /[a-zA-Z_]\w*$/m;
+	let m: RegExpExecArray | null;
+	while(m = className.exec(line)) {
+		const c = m[0];
+		//debug(c);
+		return c;
+	}
+
+}

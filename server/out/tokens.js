@@ -6,6 +6,9 @@ exports.getTokenInfo = getTokenInfo;
 exports.getTokenAt = getTokenAt;
 exports.getVariableTypeFromFunction = getVariableTypeFromFunction;
 exports.updateTokensForLine = updateTokensForLine;
+exports.isFunction = isFunction;
+exports.isClassMethod = isClassMethod;
+exports.getClassOfMethod = getClassOfMethod;
 const data_1 = require("./data");
 const comments_1 = require("./comments");
 function getAllTokens(textDocument) {
@@ -93,6 +96,39 @@ function tokenizeDoc(doc) {
             value: kw
         };
         tokens.push(token);
+    }
+}
+function isFunction(line, token) {
+    const start = line.indexOf(token);
+    const end = start + token.length;
+    // debug(line.substring(end).trim());
+    if (line.substring(end).trim().startsWith("(")) {
+        // debug("TRUE")
+        return true;
+    }
+    return false;
+}
+function isClassMethod(line, token) {
+    const start = line.indexOf(token);
+    const end = start + token.length;
+    if (isFunction(line, token)) {
+        // debug(line.substring(0,start));
+        if (line.substring(0, start).trim().endsWith(".")) {
+            return true;
+        }
+    }
+    return false;
+}
+function getClassOfMethod(line, token) {
+    const start = line.indexOf(token);
+    const end = start + token.length;
+    line = line.substring(0, start - 1);
+    const className = /[a-zA-Z_]\w*$/m;
+    let m;
+    while (m = className.exec(line)) {
+        const c = m[0];
+        //debug(c);
+        return c;
     }
 }
 //# sourceMappingURL=tokens.js.map
