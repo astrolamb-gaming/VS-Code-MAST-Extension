@@ -177,6 +177,7 @@ connection.onInitialized(() => {
 	});
 	debug()
 	
+	
 	if (hasConfigurationCapability) {
 		// Register for all configuration changes.
 		connection.client.register(DidChangeConfigurationNotification.type, undefined);

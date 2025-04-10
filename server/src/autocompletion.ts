@@ -39,7 +39,7 @@ let currentLine = 0;
 
 export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, text: TextDocument): CompletionItem[] {
 	debug("Staring onCompletion");
-	return getGlobals().artFiles;
+	// return getGlobals().artFiles;
 	const cache = getCache(text.uri);
 	let ci : CompletionItem[] = [];
 	debug("Cache loaded.");

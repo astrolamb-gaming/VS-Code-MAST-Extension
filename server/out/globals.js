@@ -5,6 +5,9 @@ exports.getGlobals = getGlobals;
 const console_1 = require("console");
 const fileFunctions_1 = require("./fileFunctions");
 const path = require("path");
+const fs = require("fs");
+const os = require("os");
+const sharp = require("sharp");
 const vscode_languageserver_1 = require("vscode-languageserver");
 const server_1 = require("./server");
 const shipData_1 = require("./shipData");
@@ -49,7 +52,7 @@ class Globals {
                 };
                 this.libModuleCompletionItems.push(ci);
             }
-            this.artFiles = this.findArtFiles();
+            this.artFiles = this.findArtFiles(false);
         }
     }
     loadLibs() {
@@ -134,40 +137,60 @@ class Globals {
         }
         return ds;
     }
-    findArtFiles() {
+    findArtFiles(byID) {
         let ret = [];
         const files = (0, fileFunctions_1.getFilesInDir)(path.join(this.artemisDir, "data", "graphics"));
-        // let relPath = path.join(path.relative("./",getGlobals().artemisDir),"data","graphics","ships");
-        // if (relPath !== "") {
-        // 	// fs.opendir(relPath,(err,dir)=>{
-        // 	// 	let res: fs.Dirent | null;
-        // 	// 	while (res = dir.readSync()) {
-        // 	// 		debug(res);
-        // 	// 	}
-        // 	// })
-        // }
+        const ids = [];
+        if (byID) {
+            for (const file of files) {
+                if (file.endsWith(".obj")) {
+                    ids.push(path.basename(file).replace(".obj", ""));
+                }
+            }
+        }
+        // Build Temp folder
+        const tempPath = path.join(os.tmpdir(), "cosmosImages");
+        if (!fs.existsSync(tempPath)) {
+            fs.mkdirSync(tempPath);
+        }
+        (0, console_1.debug)(tempPath);
         for (const file of files) {
+            // Regardless if we're using ID or not, we want to create the file
             if (file.endsWith(".png")) {
-                const fileBase = file.replace(".png", "");
-                const docs = {
-                    kind: "markdown",
-                    value: ""
-                };
-                let val = "";
-                // let relFile = path.join(relPath,path.basename(file)).replace(/\\/g,"/");
-                // This works, but can't scale the images
-                val = val + "![" + path.basename(file) + "](file:///" + file.replace(/\\/g, "/") + ")";
-                // Doesn't work
-                // val = "<img src='file:///" + file.replace(/\\/g,"/") + "' width=256 height=256>"
-                docs.value = val;
-                (0, console_1.debug)(val);
-                const c = {
-                    label: path.basename(file).replace(".png", ""),
-                    kind: vscode_languageserver_1.CompletionItemKind.File,
-                    documentation: docs,
-                    insertText: path.basename(file)
-                };
-                ret.push(c);
+                const tempFile = path.join(tempPath, path.basename(file));
+                if (!fs.existsSync(tempFile)) {
+                    try {
+                        sharp(file).resize(256, 256).toFile(tempFile);
+                    }
+                    catch (e) {
+                        (0, console_1.debug)(tempFile);
+                        (0, console_1.debug)(e);
+                    }
+                }
+                if (byID) {
+                    for (const id of ids) {
+                        if (path.basename(file).includes(id)) {
+                        }
+                    }
+                    continue;
+                }
+                // Effectively an else statement
+                if (file.endsWith(".png")) {
+                    const docs = {
+                        kind: "markdown",
+                        value: ""
+                    };
+                    let val = "![" + path.basename(file) + "](/" + tempFile + ")";
+                    docs.value = val;
+                    (0, console_1.debug)(val);
+                    const c = {
+                        label: path.basename(file),
+                        kind: vscode_languageserver_1.CompletionItemKind.File,
+                        documentation: docs,
+                        insertText: path.basename(file)
+                    };
+                    ret.push(c);
+                }
             }
         }
         return ret;

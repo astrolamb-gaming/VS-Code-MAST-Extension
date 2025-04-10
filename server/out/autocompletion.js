@@ -35,7 +35,7 @@ function prepCompletions(files) {
 let currentLine = 0;
 function onCompletion(_textDocumentPosition, text) {
     (0, console_1.debug)("Staring onCompletion");
-    return (0, globals_1.getGlobals)().artFiles;
+    // return getGlobals().artFiles;
     const cache = (0, cache_1.getCache)(text.uri);
     let ci = [];
     (0, console_1.debug)("Cache loaded.");
