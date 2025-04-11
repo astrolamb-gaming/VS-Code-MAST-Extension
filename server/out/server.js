@@ -130,14 +130,6 @@ exports.connection.onInitialize((params) => {
 });
 exports.connection.onInitialized(() => {
     (0, console_1.debug)("Initialized");
-    fs.opendir("./", (err, dir) => {
-        (0, console_1.debug)(err);
-        let res;
-        while (res = dir.readSync()) {
-            (0, console_1.debug)(res);
-        }
-    });
-    (0, console_1.debug)();
     if (hasConfigurationCapability) {
         // Register for all configuration changes.
         exports.connection.client.register(node_1.DidChangeConfigurationNotification.type, undefined);

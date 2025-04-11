@@ -52,7 +52,7 @@ class Globals {
                 };
                 this.libModuleCompletionItems.push(ci);
             }
-            this.artFiles = this.findArtFiles(false);
+            this.artFiles = this.findArtFiles(true);
         }
     }
     loadLibs() {
@@ -145,6 +145,17 @@ class Globals {
             for (const file of files) {
                 if (file.endsWith(".obj")) {
                     ids.push(path.basename(file).replace(".obj", ""));
+                    const docs = {
+                        kind: "markdown",
+                        value: ""
+                    };
+                    const ci = {
+                        label: path.basename(file).replace(".obj", ""),
+                        kind: vscode_languageserver_1.CompletionItemKind.File,
+                        insertText: path.basename(file).replace(".obj", ""),
+                        documentation: docs
+                    };
+                    ret.push(ci);
                 }
             }
         }
@@ -157,10 +168,18 @@ class Globals {
         for (const file of files) {
             // Regardless if we're using ID or not, we want to create the file
             if (file.endsWith(".png")) {
-                const tempFile = path.join(tempPath, path.basename(file));
+                let tempFile = path.join(tempPath, path.basename(file));
+                if (byID) {
+                    tempFile = tempFile.replace(".png", "_100.png");
+                }
                 if (!fs.existsSync(tempFile)) {
                     try {
-                        sharp(file).resize(256, 256).toFile(tempFile);
+                        if (byID) {
+                            sharp(file).resize(100, 100).toFile(tempFile);
+                        }
+                        else {
+                            sharp(file).resize(256, 256).toFile(tempFile);
+                        }
                     }
                     catch (e) {
                         (0, console_1.debug)(tempFile);
@@ -168,8 +187,17 @@ class Globals {
                     }
                 }
                 if (byID) {
-                    for (const id of ids) {
-                        if (path.basename(file).includes(id)) {
+                    for (const c of ret) {
+                        if (path.basename(file).includes(c.label)) {
+                            let val = "";
+                            if (c.documentation !== undefined)
+                                val = c.documentation.value;
+                            val = val + "![" + path.basename(file) + "](/" + tempFile + ")\n";
+                            (0, console_1.debug)(val);
+                            c.documentation = {
+                                kind: "markdown",
+                                value: val
+                            };
                         }
                     }
                     continue;

@@ -168,15 +168,6 @@ connection.onInitialize((params: InitializeParams) => {
 connection.onInitialized(() => {
 
 	debug("Initialized");
-	fs.opendir("./",(err, dir)=>{
-		debug(err)
-		let res: fs.Dirent | null;
-		while(res = dir.readSync()) {
-			debug(res);
-		}
-	});
-	debug()
-	
 	
 	if (hasConfigurationCapability) {
 		// Register for all configuration changes.
