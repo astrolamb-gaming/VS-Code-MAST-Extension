@@ -168,7 +168,7 @@ export class Globals {
 					ids.push(id);
 					const docs: MarkupContent = {
 						kind: "markdown",
-						value: ""
+						value: "![img](/img_dir)\n![diffuse](/diffuse_dir)"
 					}
 					const ci: CompletionItem = {
 						label: id,
@@ -188,12 +188,17 @@ export class Globals {
 		}
 		for (const file of files) {
 			const baseName = path.basename(file).toLowerCase();
+			let tempFile = path.join(tempPath,baseName);
+			if (byID) tempFile = tempFile.replace(".png","_150.png");
+			// if (!baseName.includes("_diffuse")) {
+			// 	if (fs.existsSync(tempFile.replace("256","1024")) || fs.existsSync(tempFile.replace("1024","256"))) {
+			// 		continue;
+			// 	}
+			// }
 			// Regardless if we're using ID or not, we want to create the file
-			if (baseName.endsWith(".png") && (baseName.includes("_diffuse") || baseName.includes("256") || baseName.includes("1024"))) {
-				let tempFile = path.join(tempPath,baseName);
-				if (byID) {
-					tempFile = tempFile.replace(".png","_150.png");
-				}
+			if (baseName.endsWith(".png") && !baseName.includes("specular") && !baseName.includes("emissive") && !baseName.includes("normal")) {
+				debug(baseName)
+				if (byID) {				
 				// if (!fs.existsSync(tempFile)) {
 					try {
 						if (byID) {
@@ -205,23 +210,27 @@ export class Globals {
 						debug(tempFile)
 						debug(e);
 					}
-				if (byID) {
-					
+
 					for (const c of ret) {
 						if (baseName.includes(c.label)) {
 							const base = baseName.replace(".png","");
-							if (base === (c.label+ "_diffuse") || base === c.label + "256" || base === c.label + "1024") {
-								let val = "";
-								if (c.documentation !== undefined) val = (c.documentation as MarkupContent).value;
-								// if (val.includes(base)) continue;
-								if (base.includes("256") && val.includes("1024")) continue;
-								if (base.includes("1024") && val.includes("256")) continue;
-								val = val + "![" + baseName + "](/" + tempFile + ")\n";
-								c.documentation = {
-									kind: "markdown",
-									value: val
-								};
+							let val = "";
+							if (c.documentation !== undefined) val = (c.documentation as MarkupContent).value;
+							debug(baseName)
+							if (!val.includes("img") && !baseName.includes("diffuse")) continue;
+							if (!val.includes("diffuse") && baseName.includes("diffuse")) continue;
+							// if (val.includes(base)) continue;
+							if (baseName.includes("diffuse")) {
+								val = val.replace("diffuse",baseName).replace("diffuse_dir",tempFile);
+							} else {
+								val = val.replace("img",baseName).replace("img_dir",tempFile);
 							}
+							// val = val + "![" + baseName + "](/" + tempFile + ")\n";
+							debug(val);
+							c.documentation = {
+								kind: "markdown",
+								value: val
+							};
 						}
 					}
 					continue;
