@@ -14,6 +14,7 @@ import { getGlobals } from './globals';
 import { getCurrentMethodName } from './signatureHelp';
 import { getRolesAsCompletionItem, getRolesForFile } from './roles';
 import { getVariableNamesInDoc, getVariablesAsCompletionItem } from './variables';
+import { buildFaction } from './factions';
 
 let classes: IClassObject[] = [];
 let defaultFunctionCompletionItems: CompletionItem[] = [];
@@ -38,6 +39,7 @@ export function prepCompletions(files: PyFile[]) {
 let currentLine = 0;
 
 export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, text: TextDocument): CompletionItem[] {
+	// return buildFaction("kra","Kralien_Set");
 	debug("Staring onCompletion");
 	// return getGlobals().artFiles;
 	const cache = getCache(text.uri);
@@ -173,6 +175,8 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 							}
 						} else if (sig.parameters[i].label === "art_id") {
 							// Get all possible art files
+							return getGlobals().artFiles;
+						} else if (sig.parameters[i].label === 'art') {
 							return getGlobals().artFiles;
 						}
 					}

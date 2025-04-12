@@ -34,6 +34,7 @@ function prepCompletions(files) {
 }
 let currentLine = 0;
 function onCompletion(_textDocumentPosition, text) {
+    // return buildFaction("kra","Kralien_Set");
     (0, console_1.debug)("Staring onCompletion");
     // return getGlobals().artFiles;
     const cache = (0, cache_1.getCache)(text.uri);
@@ -164,6 +165,9 @@ function onCompletion(_textDocumentPosition, text) {
                         }
                         else if (sig.parameters[i].label === "art_id") {
                             // Get all possible art files
+                            return (0, globals_1.getGlobals)().artFiles;
+                        }
+                        else if (sig.parameters[i].label === 'art') {
                             return (0, globals_1.getGlobals)().artFiles;
                         }
                     }

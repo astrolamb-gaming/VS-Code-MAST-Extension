@@ -326,6 +326,11 @@ class Function {
             this.name = className;
         }
         this.functionType = cikStr;
+        // if (params.includes('art')) {
+        // 	debug("NEW ART")
+        // 	debug(params)
+        // 	debug(this.className + "." + this.name)
+        // }
         this.parameters = this.buildParams(params);
         this.completionItem = this.buildCompletionItem(cik);
         this.signatureInformation = this.buildSignatureInformation();

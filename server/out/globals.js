@@ -139,23 +139,25 @@ class Globals {
     }
     findArtFiles(byID) {
         let ret = [];
-        const files = (0, fileFunctions_1.getFilesInDir)(path.join(this.artemisDir, "data", "graphics"));
+        const files = (0, fileFunctions_1.getFilesInDir)(path.join(this.artemisDir, "data", "graphics", "ships"));
         const ids = [];
         if (byID) {
             for (const file of files) {
                 if (file.endsWith(".obj")) {
-                    ids.push(path.basename(file).replace(".obj", ""));
+                    const id = path.basename(file).replace(".obj", "").toLowerCase();
+                    ids.push(id);
                     const docs = {
                         kind: "markdown",
                         value: ""
                     };
                     const ci = {
-                        label: path.basename(file).replace(".obj", ""),
+                        label: id,
                         kind: vscode_languageserver_1.CompletionItemKind.File,
-                        insertText: path.basename(file).replace(".obj", ""),
+                        insertText: id,
                         documentation: docs
                     };
                     ret.push(ci);
+                    (0, console_1.debug)(id);
                 }
             }
         }
@@ -164,40 +166,46 @@ class Globals {
         if (!fs.existsSync(tempPath)) {
             fs.mkdirSync(tempPath);
         }
-        (0, console_1.debug)(tempPath);
         for (const file of files) {
+            const baseName = path.basename(file).toLowerCase();
             // Regardless if we're using ID or not, we want to create the file
-            if (file.endsWith(".png")) {
-                let tempFile = path.join(tempPath, path.basename(file));
+            if (baseName.endsWith(".png") && (baseName.includes("_diffuse") || baseName.includes("256") || baseName.includes("1024"))) {
+                let tempFile = path.join(tempPath, baseName);
                 if (byID) {
-                    tempFile = tempFile.replace(".png", "_100.png");
+                    tempFile = tempFile.replace(".png", "_150.png");
                 }
-                if (!fs.existsSync(tempFile)) {
-                    try {
-                        if (byID) {
-                            sharp(file).resize(100, 100).toFile(tempFile);
-                        }
-                        else {
-                            sharp(file).resize(256, 256).toFile(tempFile);
-                        }
+                // if (!fs.existsSync(tempFile)) {
+                try {
+                    if (byID) {
+                        sharp(file).resize(150, 150).toFile(tempFile);
                     }
-                    catch (e) {
-                        (0, console_1.debug)(tempFile);
-                        (0, console_1.debug)(e);
+                    else {
+                        sharp(file).resize(256, 256).toFile(tempFile);
                     }
+                }
+                catch (e) {
+                    (0, console_1.debug)(tempFile);
+                    (0, console_1.debug)(e);
                 }
                 if (byID) {
                     for (const c of ret) {
-                        if (path.basename(file).includes(c.label)) {
-                            let val = "";
-                            if (c.documentation !== undefined)
-                                val = c.documentation.value;
-                            val = val + "![" + path.basename(file) + "](/" + tempFile + ")\n";
-                            (0, console_1.debug)(val);
-                            c.documentation = {
-                                kind: "markdown",
-                                value: val
-                            };
+                        if (baseName.includes(c.label)) {
+                            const base = baseName.replace(".png", "");
+                            if (base === (c.label + "_diffuse") || base === c.label + "256" || base === c.label + "1024") {
+                                let val = "";
+                                if (c.documentation !== undefined)
+                                    val = c.documentation.value;
+                                // if (val.includes(base)) continue;
+                                if (base.includes("256") && val.includes("1024"))
+                                    continue;
+                                if (base.includes("1024") && val.includes("256"))
+                                    continue;
+                                val = val + "![" + baseName + "](/" + tempFile + ")\n";
+                                c.documentation = {
+                                    kind: "markdown",
+                                    value: val
+                                };
+                            }
                         }
                     }
                     continue;
