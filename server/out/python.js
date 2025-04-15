@@ -53,7 +53,7 @@ async function getGlobalFunctions(sbs_utils) {
     return ret;
 }
 async function compileMission(mastFile, content, sbs_utils) {
-    (0, console_1.debug)(sbs_utils);
+    // debug(sbs_utils)
     // if (sbs_utils[0] !== 'artemis-sbs.sbs_utils.v1.0.1.sbslib') {
     // 	return [];
     // }
@@ -98,7 +98,7 @@ async function compileMission(mastFile, content, sbs_utils) {
     regularOptions = o;
     //debug(o);
     //errors = await runScript(basicOptions);
-    //errors = await bigFile(o, content);
+    errors = await bigFile(o, content);
     errors = [];
     return errors;
 }
@@ -141,12 +141,13 @@ async function bigFile(options, content) {
             let mj = message.replace(/[\[\]]/g, "");
             let errs = mj.split("', '");
             errors = errors.concat(errs);
-            (0, console_1.debug)(errors);
+            // debug(errors);
         }
     });
     // end the input stream and allow the process to exit
     await myscript.end(function (err) {
         compiled = true;
+        (0, console_1.debug)(errors);
         if (err)
             throw err;
         // console.log('The exit code was: ' + code);

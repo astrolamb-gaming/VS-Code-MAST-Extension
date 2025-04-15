@@ -10,6 +10,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { checkEnableRoutes } from './routeLabels';
 import { URI } from 'vscode-uri';
 import { fixFileName } from './fileFunctions';
+import { compileMission } from './python';
 
 let debugStrs : string = "";//Debug: ${workspaceFolder}\n";
 
@@ -114,9 +115,9 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	}
 
 	const mastCompilerErrors:string[] = [];
-	// compileMission(textDocument.uri, textDocument.getText(), getCache(textDocument.uri).storyJson.sbslib).then((errors)=>{
-	// 	debug(errors);
-	// });
+	compileMission(textDocument.uri, textDocument.getText(), getCache(textDocument.uri).storyJson.sbslib).then((errors)=>{
+		debug(errors);
+	});
 	// const functionSigs = checkFunctionSignatures(textDocument);
 	// debug(functionSigs);
 	// diagnostics = diagnostics.concat(functionSigs);

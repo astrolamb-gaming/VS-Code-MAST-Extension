@@ -47,7 +47,7 @@ function onHover(_pos, text) {
         }
         return { contents: "string" };
     }
-    (0, console_1.debug)(symbol);
+    // debug(symbol);
     //hover.contents = symbol;
     let hoverText = symbol;
     if ((0, tokens_1.isClassMethod)(hoveredLine, symbol)) {
@@ -88,7 +88,7 @@ function onHover(_pos, text) {
         for (const m of cache.missionDefaultFunctions) {
             if (m.name === symbol) {
                 hoverText = m.completionItem.detail; // + "\n\n" + m.completionItem.documentation;
-                (0, console_1.debug)(m.documentation.toString());
+                // debug(m.documentation.toString())
                 let mc = {
                     kind: "markdown",
                     value: "```javascript\n" + hoverText + "\n```\n```text\n\n" + m.documentation.toString() + "\n```\n"

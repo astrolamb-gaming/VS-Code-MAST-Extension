@@ -27,6 +27,9 @@ sys.path.append(sbs_utilsPath)
 
 errors = None
 
+##### This prevents an exception from sbs_mast_procedural.py that gets the value of `sys.modules['script']`
+sys.modules['script'] = sys.modules.get('__main__')
+
 try:
 	from sbs_utils.mast.maststory import MastStory # type: ignore
 except Exception as e:
@@ -44,7 +47,7 @@ try:
 except:
 	exc_type, exc_value, exc_tb = sys.exc_info()
 	stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
-	print(stack_trace)
+	# print(stack_trace)
 if not loaded:
 	try:
 		# Works
@@ -52,9 +55,11 @@ if not loaded:
 		from sbs_utils.mast.mast import Mast
 		from sbs_utils.mast import core_nodes
 		from sbs_utils.mast_sbs import story_nodes
-		from sbs_utils.mast_sbs.mast_sbs_procedural import * # type: ignore
-		# # type: ignore
-		
+
+		## This will throw an expection unless you use
+		## "sys.modules['script'] = sys.modules.get('__main__')"
+		## earlier in the script.
+		from sbs_utils.mast_sbs.mast_sbs_procedural import * # type: ignore		
 
 	except:
 		exc_type, exc_value, exc_tb = sys.exc_info()

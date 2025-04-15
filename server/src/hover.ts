@@ -50,7 +50,7 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 		return {contents: "string"};
 	}
 	
-	debug(symbol);
+	// debug(symbol);
 	//hover.contents = symbol;
 	
 	let hoverText: string|MarkupContent|undefined = symbol;
@@ -92,7 +92,7 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 		for (const m of cache.missionDefaultFunctions) {
 			if(m.name === symbol) {
 				hoverText = m.completionItem.detail;// + "\n\n" + m.completionItem.documentation;
-				debug(m.documentation.toString())
+				// debug(m.documentation.toString())
 				let mc: MarkupContent = {
 					kind: "markdown",
 					value: "```javascript\n" + hoverText + "\n```\n```text\n\n" + m.documentation.toString() + "\n```\n"

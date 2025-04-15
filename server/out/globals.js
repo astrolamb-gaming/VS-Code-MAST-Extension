@@ -157,7 +157,7 @@ class Globals {
                         documentation: docs
                     };
                     ret.push(ci);
-                    (0, console_1.debug)(id);
+                    // debug(id);
                 }
             }
         }
@@ -178,7 +178,7 @@ class Globals {
             // }
             // Regardless if we're using ID or not, we want to create the file
             if (baseName.endsWith(".png") && !baseName.includes("specular") && !baseName.includes("emissive") && !baseName.includes("normal")) {
-                (0, console_1.debug)(baseName);
+                // debug(baseName)
                 if (byID) {
                     // if (!fs.existsSync(tempFile)) {
                     try {
@@ -199,7 +199,7 @@ class Globals {
                             let val = "";
                             if (c.documentation !== undefined)
                                 val = c.documentation.value;
-                            (0, console_1.debug)(baseName);
+                            // debug(baseName)
                             if (!val.includes("img") && !baseName.includes("diffuse"))
                                 continue;
                             if (!val.includes("diffuse") && baseName.includes("diffuse"))
@@ -212,7 +212,7 @@ class Globals {
                                 val = val.replace("img", baseName).replace("img_dir", tempFile);
                             }
                             // val = val + "![" + baseName + "](/" + tempFile + ")\n";
-                            (0, console_1.debug)(val);
+                            // debug(val);
                             c.documentation = {
                                 kind: "markdown",
                                 value: val
@@ -229,7 +229,7 @@ class Globals {
                     };
                     let val = "![" + path.basename(file) + "](/" + tempFile + ")";
                     docs.value = val;
-                    (0, console_1.debug)(val);
+                    // debug(val);
                     const c = {
                         label: path.basename(file),
                         kind: vscode_languageserver_1.CompletionItemKind.File,

@@ -177,7 +177,7 @@ export class Globals {
 						documentation: docs
 					}
 					ret.push(ci);
-					debug(id);
+					// debug(id);
 				}
 			}
 		}
@@ -197,7 +197,7 @@ export class Globals {
 			// }
 			// Regardless if we're using ID or not, we want to create the file
 			if (baseName.endsWith(".png") && !baseName.includes("specular") && !baseName.includes("emissive") && !baseName.includes("normal")) {
-				debug(baseName)
+				// debug(baseName)
 				if (byID) {				
 				// if (!fs.existsSync(tempFile)) {
 					try {
@@ -216,7 +216,7 @@ export class Globals {
 							const base = baseName.replace(".png","");
 							let val = "";
 							if (c.documentation !== undefined) val = (c.documentation as MarkupContent).value;
-							debug(baseName)
+							// debug(baseName)
 							if (!val.includes("img") && !baseName.includes("diffuse")) continue;
 							if (!val.includes("diffuse") && baseName.includes("diffuse")) continue;
 							// if (val.includes(base)) continue;
@@ -226,7 +226,7 @@ export class Globals {
 								val = val.replace("img",baseName).replace("img_dir",tempFile);
 							}
 							// val = val + "![" + baseName + "](/" + tempFile + ")\n";
-							debug(val);
+							// debug(val);
 							c.documentation = {
 								kind: "markdown",
 								value: val
@@ -243,7 +243,7 @@ export class Globals {
 					}
 					let val = "![" + path.basename(file) + "](/" + tempFile + ")"
 					docs.value = val;
-					debug(val);
+					// debug(val);
 					const c: CompletionItem = {
 						label: path.basename(file),
 						kind: CompletionItemKind.File,
