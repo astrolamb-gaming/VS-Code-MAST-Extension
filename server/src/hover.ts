@@ -65,14 +65,15 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 				for (const m of co.methods) {
 					if(m.name === symbol) {
 						hoverText = m.completionItem.detail;// + "\n\n" + m.completionItem.documentation;
-						debug(m.documentation.toString());
+						debug(m.documentation as string);
 						let mc: MarkupContent = {
 							kind: "markdown",
-							value: "```javascript\n" + hoverText + "\n```\n```text\n\n" + m.documentation.toString() + "\n```\n"
+							value: "```javascript\n" + m.buildFunctionDetails() + "\n```\n```text\n\n" + (m.documentation as string) + "\n```\n"
 						}
 						//mc.value = m.documentation.toString();
 						hoverText = mc;
 						if (hoverText === undefined) {
+							debug("Error, hoverText is undefined")
 							hoverText = ""
 						}
 						found = true;
@@ -95,7 +96,7 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 				// debug(m.documentation.toString())
 				let mc: MarkupContent = {
 					kind: "markdown",
-					value: "```javascript\n" + hoverText + "\n```\n```text\n\n" + m.documentation.toString() + "\n```\n"
+					value: "```javascript\n" + m.buildFunctionDetails() + "\n```\n\n```text\n\n" + m.documentation.toString() + "\n```\n"
 				}
 				// mc.value = m.documentation.toString();
 				hoverText = mc;

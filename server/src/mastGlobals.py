@@ -1,17 +1,22 @@
-
+#!/usr/bin/env python
 import math
 import sys
 import traceback
 import inspect
 import numbers
 
-print(inspect.signature(math.cos))
-print(inspect.signature(eval('math.cos')))
+# print(inspect.signature(math.cos))
+# print(inspect.signature(eval('math.cos')))
 
 sys.modules['script'] = sys.modules.get('__main__')
 sbs_utilsPath = sys.argv[1] # Very important
 sbsPath = sys.argv[2]
-print(sbs_utilsPath)
+try: 
+	if sys.argv[3]:
+		pass
+except:
+	pass
+# print(sbs_utilsPath)
 
 # for testing:
 # sbs_utilsPath = "D:\\Cosmos Dev\\Cosmos-1-0-1\\data\missions\\__lib__\\artemis-sbs.sbs_utils.v1.0.2.01.sbslib"
@@ -226,10 +231,18 @@ def getGlobals(globals):
 				continue
 	print("Count: " + str(count))
 
+
+def getOnlyGlobals(globals):
+	for k in globals:
+		mod = str(globals[k]).replace("\\","/")
+		# print("{"+f"\"name\":\"{k}\",\"value\":\"{mod}\"" + "}")
+		print(k)
+		# print(globals[k])
+
 # try:
 sys.path.append(sbsPath)
 sys.path.append(sbs_utilsPath)
-print(sbs_utilsPath)
+# print(sbs_utilsPath)
 loaded = False
 try:
 	# Only purpose of this try statement is if the user is using an older version of sbs_utils.
@@ -241,7 +254,7 @@ try:
 except:
 	exc_type, exc_value, exc_tb = sys.exc_info()
 	stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
-	print(stack_trace)
+	# print(stack_trace)
 if not loaded:
 	try:
 		# Works
@@ -254,7 +267,7 @@ if not loaded:
 		# g = globals()
 		# for k in g:
 		# 	print(f"{k[0]}\n{k[1]}")
-		getGlobals(MastGlobals.globals)
+		getOnlyGlobals(MastGlobals.globals)
 	except:
 		exc_type, exc_value, exc_tb = sys.exc_info()
 		stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))

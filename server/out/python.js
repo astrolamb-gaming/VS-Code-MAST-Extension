@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.sleep = void 0;
 exports.getGlobalFunctions = getGlobalFunctions;
 exports.compileMission = compileMission;
+exports.getTokenInfo = getTokenInfo;
 const python_shell_1 = require("python-shell");
 const fileFunctions_1 = require("./fileFunctions");
 const console_1 = require("console");
@@ -99,14 +100,18 @@ async function compileMission(mastFile, content, sbs_utils) {
     //debug(o);
     //errors = await runScript(basicOptions);
     errors = await bigFile(o, content);
-    errors = [];
+    // errors = [];
     return errors;
 }
 let shell;
 async function getTokenInfo(token) {
     if (shell === undefined || shell === null) {
-        shell = new python_shell_1.PythonShell('mastCompile.py', regularOptions);
+        shell = new python_shell_1.PythonShell('mastFunctionInfo.py', regularOptions);
     }
+    shell.on('message', (parsedChunk) => {
+        (0, console_1.debug)(parsedChunk);
+        shell.removeAllListeners();
+    });
     shell.send(token);
 }
 async function runScript(o) {
@@ -157,6 +162,8 @@ async function bigFile(options, content) {
     while (!compiled) {
         await (0, exports.sleep)(100);
     }
+    (0, console_1.debug)(errors);
+    (0, console_1.debug)("Returning from python.ts");
     return errors;
 }
 //# sourceMappingURL=python.js.map

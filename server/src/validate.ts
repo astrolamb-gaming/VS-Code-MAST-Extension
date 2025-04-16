@@ -114,10 +114,11 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		debug("Couldn't get labels?");
 	}
 
-	const mastCompilerErrors:string[] = [];
-	compileMission(textDocument.uri, textDocument.getText(), getCache(textDocument.uri).storyJson.sbslib).then((errors)=>{
-		debug(errors);
-	});
+	// const mastCompilerErrors:string[] = await compileMission(textDocument.uri, textDocument.getText(), getCache(textDocument.uri).storyJson.sbslib);
+	// debug(mastCompilerErrors);
+	// .then((errors)=>{
+	// 	debug(errors);
+	// });
 	// const functionSigs = checkFunctionSignatures(textDocument);
 	// debug(functionSigs);
 	// diagnostics = diagnostics.concat(functionSigs);

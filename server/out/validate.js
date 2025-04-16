@@ -12,7 +12,6 @@ const server_1 = require("./server");
 const routeLabels_1 = require("./routeLabels");
 const vscode_uri_1 = require("vscode-uri");
 const fileFunctions_1 = require("./fileFunctions");
-const python_1 = require("./python");
 let debugStrs = ""; //Debug: ${workspaceFolder}\n";
 let exclude = [];
 async function validateTextDocument(textDocument) {
@@ -106,10 +105,11 @@ async function validateTextDocument(textDocument) {
         (0, console_1.debug)(e);
         (0, console_1.debug)("Couldn't get labels?");
     }
-    const mastCompilerErrors = [];
-    (0, python_1.compileMission)(textDocument.uri, textDocument.getText(), (0, cache_1.getCache)(textDocument.uri).storyJson.sbslib).then((errors) => {
-        (0, console_1.debug)(errors);
-    });
+    // const mastCompilerErrors:string[] = await compileMission(textDocument.uri, textDocument.getText(), getCache(textDocument.uri).storyJson.sbslib);
+    // debug(mastCompilerErrors);
+    // .then((errors)=>{
+    // 	debug(errors);
+    // });
     // const functionSigs = checkFunctionSignatures(textDocument);
     // debug(functionSigs);
     // diagnostics = diagnostics.concat(functionSigs);

@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 from inspect import *
 import traceback
 import sys

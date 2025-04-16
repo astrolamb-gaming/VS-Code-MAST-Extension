@@ -106,15 +106,19 @@ export async function compileMission(mastFile: string, content: string, sbs_util
 	
 	//errors = await runScript(basicOptions);
 	errors = await bigFile(o, content);
-	errors = [];
+	// errors = [];
 	return errors;
 }
 
 let shell: PythonShell;
-async function getTokenInfo(token: string) {
+export async function getTokenInfo(token: string) {
 	if (shell === undefined || shell === null) {
-		shell = new PythonShell('mastCompile.py', regularOptions);
+		shell = new PythonShell('mastFunctionInfo.py', regularOptions);
 	}
+	shell.on('message',(parsedChunk)=>{
+		debug(parsedChunk);
+		shell.removeAllListeners();
+	})
 	shell.send(token);
 }
 
@@ -175,7 +179,7 @@ async function bigFile(options: Options, content: string): Promise<string[]> {
 	while (!compiled) {
 		await sleep(100);
 	}
-
-
+	debug(errors);
+	debug("Returning from python.ts")
 	return errors
 }

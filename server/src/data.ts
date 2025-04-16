@@ -11,6 +11,13 @@ import { getVariableNamesInDoc } from './variables';
 import { getGlobals } from './globals';
 import { getRolesForFile } from './roles';
 
+const replaceNames = [
+	['simulation','sim']
+]
+
+let asClasses = ["sbs.py","scatter.py","faces.py"];
+// TODO: Account for names_random_kralien() instead of names.random_kralien() or random_kralien()
+
 export class FileCache {
 	uri: string;
 	parentFolder: string;
@@ -200,8 +207,8 @@ export class PyFile extends FileCache {
 				//debug(f);
 			}
 		}
-		let oddballs = ["sbs.py","scatter.py","faces.py"];
-		for (const o of oddballs) {
+		
+		for (const o of asClasses) {
 			if (path.basename(this.uri) === o) {
 				const c = new ClassObject("", o);
 				c.name = o.replace(".py","");
@@ -293,6 +300,13 @@ export class ClassObject implements IClassObject {
 		
 		// TODO: Could pull the class parent and interfaces (if any). Would this be useful?
 		this.name = getRegExMatch(raw,className).replace("class ","").replace(/(\(.*?\))?:/,"");
+		
+		for (const n of replaceNames) {
+			if (this.name === n[0]) {
+				this.name = n[1];
+			}
+		}
+
 		// if (this.name === "" && sourceFile.endsWith("sbs.py")) {
 		// 	this.name = "sbs";
 		// }
@@ -464,6 +478,18 @@ export class Function implements IFunction {
 	}
 
 	/**
+	 * Helper function, returns information about the function in the format of 
+	 * "(function) ClassName.functionName(params): returnType"
+	 * @returns 
+	 */
+	buildFunctionDetails() : string {
+		let classRef = ((this.className === "") ? "" : this.className + ".");
+		if (this.functionType === 'constructor') { classRef = ""; }
+		let ci_details: string = "(" + this.functionType + ") " + classRef + this.name + "(" + this.rawParams + "): " + this.returnType;
+		return ci_details;
+	}
+
+	/**
 	 * Helper function, should only be called by constructor.
 	 * @returns 
 	 */
@@ -481,13 +507,19 @@ export class Function implements IFunction {
 		let classRef = ((this.className === "") ? "" : this.className + ".");
 		// For constructor functions, we don't want something like vec2.vec2(args). We just want vec2(args).
 		if (cik === CompletionItemKind.Constructor) { classRef = ""; }
-		let ci_details: string = "(" + this.functionType + ") " + classRef + label + "(" + this.rawParams + "): " + retType;
+		// let ci_details: string = "(" + this.functionType + ") " + classRef + this.name + "(" + this.rawParams + "): " + this.returnType;
+
+		let docs: MarkupContent = {
+			kind: 'markdown',
+			value: "```javascript\n" + this.buildFunctionDetails() + "\n```\n\n```text\n" + this.documentation + "```"
+		}
+
 		let ci : CompletionItem = {
 			label: this.name,
 			kind: cik,
 			//command: { command: 'editor.action.triggerSuggest', title: 'Re-trigger completions...' },
-			documentation: this.documentation,
-			detail: ci_details,
+			documentation: docs,// this.documentation,
+			// detail: ci_details,
 			labelDetails: labelDetails,
 			insertText: this.name
 		}

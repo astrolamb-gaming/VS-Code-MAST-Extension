@@ -23,6 +23,7 @@ const cache_1 = require("./cache");
 const variables_1 = require("./variables");
 const globals_1 = require("./globals");
 const validate_1 = require("./validate");
+const python_1 = require("./python");
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 exports.connection = (0, node_1.createConnection)(node_1.ProposedFeatures.all);
@@ -115,13 +116,40 @@ exports.connection.onInitialize((params) => {
         let cache = (0, cache_1.getCache)(uri.fsPath);
         (0, console_1.debug)("Getting globals");
         // Uncommment this to enable python stuff
-        // try {
-        // 	let globalFuncs = getGlobalFunctions(cache.storyJson.sbslib).then((funcs)=>{
-        // 		debug(funcs);
-        // 	});
-        // } catch (e) {
-        // 	debug(e)
-        // }
+        try {
+            let globalFuncs = (0, python_1.getGlobalFunctions)(cache.storyJson.sbslib).then((funcs) => {
+                const classes = Object.fromEntries(cache.missionClasses.map(obj => [obj.name, obj]));
+                const functions = Object.fromEntries(cache.missionDefaultFunctions.map(obj => [obj.name, obj]));
+                (0, console_1.debug)(funcs);
+                for (const f of funcs) {
+                    (0, console_1.debug)(f);
+                    try {
+                        // const json = JSON.parse(f);
+                        // debug(json);
+                        // debug(json['name']);
+                        // let found = false;
+                        // const c = classes[json['name']];
+                        // if (c === undefined) debug(json['name'] + " is undefined");
+                        // // if (found) continue;
+                        // const df = functions[json['name']];
+                        // if (df === undefined) debug(json['name'] + " is undefined");
+                        // if (found) {
+                        // 	debug(json['name'] + " is found!");
+                        // } else {
+                        // 	debug("Checking for... " + json['name']);
+                        // 	// getTokenInfo(json['name'])
+                        // }
+                    }
+                    catch (ex) {
+                        (0, console_1.debug)(f);
+                        (0, console_1.debug)(ex);
+                    }
+                }
+            });
+        }
+        catch (e) {
+            (0, console_1.debug)(e);
+        }
     }
     else {
         (0, console_1.debug)("No Workspace folders");
