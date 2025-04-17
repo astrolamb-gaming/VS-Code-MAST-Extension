@@ -157,9 +157,9 @@ connection.onInitialize((params: InitializeParams) => {
 			let globalFuncs = getGlobalFunctions(cache.storyJson.sbslib).then((funcs)=>{
 				const classes = Object.fromEntries(cache.missionClasses.map(obj => [obj.name, obj]));
 				const functions = Object.fromEntries(cache.missionDefaultFunctions.map(obj => [obj.name, obj]));
-				debug(funcs);
+				// debug(funcs);
 				for (const f of funcs) {
-					debug(f);
+					// debug(f);
 					try {
 						// const json = JSON.parse(f);
 						// debug(json);

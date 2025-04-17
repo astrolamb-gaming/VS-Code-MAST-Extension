@@ -271,7 +271,7 @@ export class MissionCache {
 				this.missionPyModules.push(p);
 				if (file.includes("sbs_utils") && !file.includes("procedural")) {
 					// Don't wanat anything not procedural included???
-					if (file.includes("scatter") || file.includes("faces")) {
+					if (file.includes("scatter") || file.includes("faces") || file.includes("names")) {
 						//don't return
 					} else {
 						return;
@@ -293,8 +293,7 @@ export class MissionCache {
 				this.missionMastModules.push(m);
 			}
 		});
-		
-		
+
 		//debug(this.missionDefaultCompletions);
 		//debug(this.missionClasses);
 	}

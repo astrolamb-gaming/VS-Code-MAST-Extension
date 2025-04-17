@@ -15,10 +15,23 @@ const cache_1 = require("./cache");
 const variables_1 = require("./variables");
 const globals_1 = require("./globals");
 const roles_1 = require("./roles");
+/**
+ * This accounts for classes that use a different name as a global than the class name.
+ * E.g. the sim global variable refers to the simulation class. Instead of simulation.functionName(), use sim.functionName().
+ */
 const replaceNames = [
     ['simulation', 'sim']
 ];
-let asClasses = ["sbs.py", "scatter.py", "faces.py"];
+/**
+ * This accounts for modules that are treated as classes instead of just adding the functions as default functions.
+ * So instead of simply using the arc() function from scatter.py, you'd need to use scatter.arc()
+ */
+const asClasses = ["sbs.py", "scatter.py", "faces.py"];
+/**
+ * This accounts for modules that prepend the class name to the function name.
+ * E.g. names.random_kralien_name() would become names_random_kralien_name()
+ */
+const prepend = ["ship_data.py", "names.py", "scatter.py"];
 // TODO: Account for names_random_kralien() instead of names.random_kralien() or random_kralien()
 class FileCache {
     constructor(uri) {
@@ -203,6 +216,22 @@ class PyFile extends FileCache {
                 this.classes.push(c);
                 this.defaultFunctionCompletionItems = [];
                 this.defaultFunctions = [];
+            }
+        }
+        // This checks if the module name should be prepended to the function names in this module
+        let prefix = "";
+        for (const o of prepend) {
+            (0, console_1.debug)("Checking " + o);
+            if (path.basename(this.uri) === o) {
+                (0, console_1.debug)(" Adding " + o + "_ to prepend functions");
+                prefix = o.replace(".py", "_");
+                for (const m of this.defaultFunctions) {
+                    m.name = prefix + m.name;
+                }
+                for (const c of this.defaultFunctionCompletionItems) {
+                    c.label = prefix + c.label;
+                    c.insertText = prefix + c.insertText;
+                }
             }
         }
     }
@@ -410,6 +439,10 @@ class Function {
             kind: 'markdown',
             value: "```javascript\n" + this.buildFunctionDetails() + "\n```\n\n```text\n" + this.documentation + "```"
         };
+        let insert = this.name;
+        if (this.parameters.length === 0) {
+            insert = this.name + "()";
+        }
         let ci = {
             label: this.name,
             kind: cik,
@@ -417,7 +450,7 @@ class Function {
             documentation: docs, // this.documentation,
             // detail: ci_details,
             labelDetails: labelDetails,
-            insertText: this.name
+            insertText: insert
         };
         return ci;
     }

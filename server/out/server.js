@@ -120,9 +120,9 @@ exports.connection.onInitialize((params) => {
             let globalFuncs = (0, python_1.getGlobalFunctions)(cache.storyJson.sbslib).then((funcs) => {
                 const classes = Object.fromEntries(cache.missionClasses.map(obj => [obj.name, obj]));
                 const functions = Object.fromEntries(cache.missionDefaultFunctions.map(obj => [obj.name, obj]));
-                (0, console_1.debug)(funcs);
+                // debug(funcs);
                 for (const f of funcs) {
-                    (0, console_1.debug)(f);
+                    // debug(f);
                     try {
                         // const json = JSON.parse(f);
                         // debug(json);

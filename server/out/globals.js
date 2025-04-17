@@ -87,7 +87,7 @@ class Globals {
                             }
                             lineNum += 1;
                         }
-                        (0, console_1.debug)(this.widget_stylestrings);
+                        // debug(this.widget_stylestrings)
                     });
                 }
                 // Now we get all the object_data options, used by blob.set() and blob.get()
