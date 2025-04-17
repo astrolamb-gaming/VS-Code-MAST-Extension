@@ -271,7 +271,7 @@ export class MissionCache {
 				this.missionPyModules.push(p);
 				if (file.includes("sbs_utils") && !file.includes("procedural")) {
 					// Don't wanat anything not procedural included???
-					if (file.includes("scatter") || file.includes("faces") || file.includes("names")) {
+					if (file.includes("scatter") || file.includes("faces") || file.includes("names") || file.includes("vec.py")) {
 						//don't return
 					} else {
 						return;
@@ -453,7 +453,7 @@ export class MissionCache {
 			for (const m of c.methodSignatureInformation) {
 				if (m.label === name) {
 					return m;
-				}	
+				}
 			}
 		}
 		return undefined;

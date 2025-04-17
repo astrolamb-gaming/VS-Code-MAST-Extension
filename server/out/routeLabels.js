@@ -190,6 +190,7 @@ function loadMediaLabels(textData = "") {
     return mediaLabels;
 }
 // I'd love to find a way to get all these programmatically, but for now....
+// From procedural/routes.py
 function getRouteLabelVars(route) {
     let retVars = [];
     if (route.includes("collision")) {
@@ -271,6 +272,7 @@ function getRouteLabelVars(route) {
             retVars.push(arr[1]);
         }
     }
+    retVars.push("EVENT");
     return retVars;
 }
 /**

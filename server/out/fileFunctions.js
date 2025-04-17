@@ -223,7 +223,7 @@ function fixFileName(uri) {
     if (uri.startsWith("file")) {
         uri = vscode_uri_1.URI.parse(uri).fsPath;
     }
-    return uri;
+    return uri.replace(/\\/g, "/");
 }
 function getArtemisDirFromChild(child) {
     if (child.endsWith(":\\")) {

@@ -4,7 +4,7 @@ import { debug } from 'console';
 import { CompletionItem, CompletionItemKind, CompletionItemLabelDetails, InlineValueRequest, integer, MarkupContent, ParameterInformation, SignatureInformation } from 'vscode-languageserver';
 import { LabelInfo, parseLabelsInFile } from './labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { getParentFolder } from './fileFunctions';
+import { fixFileName, getParentFolder } from './fileFunctions';
 import exp = require('constants');
 import { getCache } from './cache';
 import { getVariableNamesInDoc } from './variables';
@@ -137,6 +137,7 @@ export class PyFile extends FileCache {
 	defaultFunctionCompletionItems: CompletionItem[] = [];
 	classes: IClassObject[] = [];
 	constructor(uri: string, fileContents:string = "") {
+		uri = fixFileName(uri);
 		super(uri);
 		// If fileContents is NOT an empty string (e.g. if it's from a zipped folder), then all we do is parse the contents
 		
@@ -210,11 +211,12 @@ export class PyFile extends FileCache {
 					}
 				} else {
 					// Only add to class list if it's actually a class (or sbs)
-					this.classes.push(co);
+					if (co.methods.length !== 0) this.classes.push(co);
 					//debug(co);
 				}
 			} else if (t.startsWith("def")) {
-				const f = new Function(t, "");
+				// if (source.includes("sbs.py")) debug("TYRING ANOTHER SBS FUNCTION"); debug(source);
+				const f = new Function(t, "", source);
 				this.defaultFunctions.push(f);
 				this.defaultFunctionCompletionItems.push(f.completionItem);
 				//debug(f);
@@ -240,9 +242,7 @@ export class PyFile extends FileCache {
 		// This checks if the module name should be prepended to the function names in this module
 		let prefix = "";
 		for (const o of prepend) {
-			debug("Checking " + o)
 			if (path.basename(this.uri) === o) {
-				debug(" Adding " + o + "_ to prepend functions")
 				prefix = o.replace(".py","_");
 				for (const m of this.defaultFunctions) {
 					m.name = prefix + m.name;
@@ -348,7 +348,8 @@ export class ClassObject implements IClassObject {
 
 		// Parse functions
 		let functionSource = (this.name === "") ? sourceFile : this.name;
-		this.methods = parseFunctions(raw, functionSource);
+		// debug(this.sourceFile)
+		this.methods = parseFunctions(raw, functionSource, this.sourceFile);
 		for (const i in this.methods) {
 			if (this.methods[i].functionType === "constructor") {
 				this.constructorFunction = this.methods[i];
@@ -398,12 +399,14 @@ export class Function implements IFunction {
 	rawParams: string;
 	parameters: IParameter[];
 	returnType: string;
+	sourceFile: string;
 
 	completionItem: CompletionItem;
 	signatureInformation: SignatureInformation;
 
-	constructor(raw: string, className: string) {
+	constructor(raw: string, className: string, sourceFile: string) {
 		this.className = className;
+		this.sourceFile = sourceFile;
 		this.parameters = [];
 		const functionName : RegExp = /(?:def\s)(.+?)(?:\()/gm; ///((def\s)(.+?)\()/gm; // Look for "def functionName(" to parse function names.
 		//let className : RegExp = /class (.+?):/gm; // Look for "class ClassName:" to parse class names.
@@ -516,8 +519,66 @@ export class Function implements IFunction {
 	buildFunctionDetails() : string {
 		let classRef = ((this.className === "") ? "" : this.className + ".");
 		if (this.functionType === 'constructor') { classRef = ""; }
-		let ci_details: string = "(" + this.functionType + ") " + classRef + this.name + "(" + this.rawParams + "): " + this.returnType;
+		let paramList = "";
+		if (this.functionType !== 'property') paramList = "(" + this.rawParams + ")" + paramList;
+		let retType = "";
+		if (this.returnType !== "") retType = " -> " + this.returnType;
+		let ci_details: string = "(" + this.functionType + ") " + classRef + this.name + paramList + retType;
 		return ci_details;
+	}
+
+	/**
+	 * 
+	 * @returns a new {@link MarkupContent MarkupContent} representing the function and its documentation.
+	 */
+	buildMarkUpContent(docs: string = ""): MarkupContent {
+		if (this.sourceFile.includes("sbs.py")) debug("Generating an SBS function"); debug(this.sourceFile);
+		/** 
+		 * TODO: Fix this for CompletionItem in {@link buildCompletionItem buildCompletionItem}
+		 */ 
+
+		if (docs === "") {
+			docs = this.documentation.toString();
+		}
+
+		const functionDetails = "```javascript\n" + this.buildFunctionDetails() + "\n```";
+		const documentation = "```text\n\n" + this.documentation + "```";
+		// const documentation = (this.documentation as string).replace(/\t/g,"&emsp;").replace(/    /g,"&emsp;").replace(/\n/g,"\\\n");
+		
+		
+		//                    artemis-sbs.LegendaryMissions.upgrades.v1.0.4.mastlib/upgrade.py
+		// https://github.com/artemis-sbs/LegendaryMissions/blob/main/upgrades/upgrade.py
+
+		//                  artemis-sbs.sbs_utils.v1.0.4.sbslib/sbs_utils/procedural/roles.py
+		// https://github.com/artemis-sbs/sbs_utils/blob/master/sbs_utils/procedural/roles.py
+
+		// https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/mock/sbs.py
+		// https://github.com/artemis-sbs/sbs_utils/blob/master/mock/sbs.py
+
+		// Convert the source to reference the applicable sbs_utils or legendarymissions github page
+		const regex: RegExp = /\.v((\d+)\.(\d+)\.(\d+))\.(\d+\.)*(((mast|sbs)lib)|(zip))/;
+
+		let source = this.sourceFile;
+		if (this.sourceFile.includes("sbs.py")) debug("Generating an SBS MarkupContent");
+		let url = ""
+		debug(source)
+		if (source.includes("LegendaryMissions")) {
+			source = "https://github.com/" + source.replace(regex, "").replace("LegendaryMissions.","LegendaryMissions/blob/main/");
+		} else if (source.includes("githubusercontent")) {
+			debug("Githubusercontent foudn");
+			source = source.replace("raw.githubusercontent","github").replace("/master","/blob/master");
+		} else if (source.includes("sbs_utils")) {
+			source = "https://github.com/" + source.replace(regex, "/blob/master").replace(".","/");
+		} 
+
+
+
+		const ret: MarkupContent = {
+			kind: "markdown",
+			value: "```javascript\n" + this.buildFunctionDetails() + "\n```\n\n```text\n\n" + docs + "\n\nSource: " + "\n```\n" + source
+			// value: functionDetails + "\n" + documentation + "\n\n" + source
+		}
+		return ret;
 	}
 
 	/**
@@ -539,14 +600,19 @@ export class Function implements IFunction {
 		// For constructor functions, we don't want something like vec2.vec2(args). We just want vec2(args).
 		if (cik === CompletionItemKind.Constructor) { classRef = ""; }
 		// let ci_details: string = "(" + this.functionType + ") " + classRef + this.name + "(" + this.rawParams + "): " + this.returnType;
-
+		const functionDetails = "```javascript\n" + this.buildFunctionDetails() + "\n```";
+		// const documentation = "```text\n\n" + this.documentation + "```";
+		const documentation = (this.documentation as string).replace(/\t/g,"&emsp;").replace(/    /g,"&emsp;").replace(/\n/g,"\\\n");
+		// debug(documentation)
+		const source = "Source: " + this.sourceFile;
 		let docs: MarkupContent = {
 			kind: 'markdown',
-			value: "```javascript\n" + this.buildFunctionDetails() + "\n```\n\n```text\n" + this.documentation + "```"
+			value: functionDetails + "  \n  " + documentation + "  \n  " + source
 		}
-
+		// let docs = this.buildMarkUpContent(documentation);
+		// docs.value = docs.value.replace(/\t/g,"&emsp;").replace(/    /g,"&emsp;").replace(/\n/g,"\\\n");
 		let insert = this.name;
-		if (this.parameters.length === 0) {
+		if (this.parameters.length === 0 && this.functionType !== "property") {
 			insert = this.name + "()"
 		}
 
@@ -637,7 +703,7 @@ export function getRegExMatch(sourceString : string, pattern : RegExp) : string 
  * @param raw The raw text contents, as a string
  * @returns List of {@link Function Function} items
  */
-function parseFunctions(raw: string, source: string) {
+function parseFunctions(raw: string, source: string, sourceFile: string) {
 	let m: RegExpExecArray | null;
 
 	const fList : Function[] = [];
@@ -656,7 +722,7 @@ function parseFunctions(raw: string, source: string) {
 	let isSetter : RegExp = /\.setter/;
 
 	while ((m = wholeFunction.exec(raw))) {
-		const f: Function = new Function(m[0], source);
+		const f: Function = new Function(m[0], source, sourceFile);
 		fList.push(f);
 	}
 	return fList;

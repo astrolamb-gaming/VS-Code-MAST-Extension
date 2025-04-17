@@ -188,6 +188,7 @@ export function loadMediaLabels(textData: string = ""): IRouteLabel[] {
 }
 
 // I'd love to find a way to get all these programmatically, but for now....
+// From procedural/routes.py
 export function getRouteLabelVars(route:string) {
 
 	let retVars: string[] = [];
@@ -277,6 +278,7 @@ export function getRouteLabelVars(route:string) {
 			retVars.push(arr[1]);
 		}
 	}
+	retVars.push("EVENT");
 	return retVars;
 }
 

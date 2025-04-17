@@ -412,7 +412,11 @@ connection.onCompletion(
 			return [];
 		}
 		try {
-			return onCompletion(_textDocumentPosition,text);
+			const ci: CompletionItem[] = onCompletion(_textDocumentPosition,text);
+			// for (const c of ci) {
+			// 	debug(c.documentation);
+			// }
+			return ci;
 		} catch (e) {
 			debug("onCompletion failure\n" + e);
 			return undefined;

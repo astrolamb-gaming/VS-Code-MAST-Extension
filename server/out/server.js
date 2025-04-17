@@ -320,7 +320,11 @@ exports.connection.onCompletion((_textDocumentPosition) => {
         return [];
     }
     try {
-        return (0, autocompletion_1.onCompletion)(_textDocumentPosition, text);
+        const ci = (0, autocompletion_1.onCompletion)(_textDocumentPosition, text);
+        // for (const c of ci) {
+        // 	debug(c.documentation);
+        // }
+        return ci;
     }
     catch (e) {
         (0, console_1.debug)("onCompletion failure\n" + e);

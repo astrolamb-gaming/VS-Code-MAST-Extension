@@ -66,10 +66,11 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 					if(m.name === symbol) {
 						hoverText = m.completionItem.detail;// + "\n\n" + m.completionItem.documentation;
 						debug(m.documentation as string);
-						let mc: MarkupContent = {
-							kind: "markdown",
-							value: "```javascript\n" + m.buildFunctionDetails() + "\n```\n```text\n\n" + (m.documentation as string) + "\n```\n"
-						}
+						// let mc: MarkupContent = {
+						// 	kind: "markdown",
+						// 	value: "```javascript\n" + m.buildFunctionDetails() + "\n```\n```text\n\n" + (m.documentation as string) + "\n```\n"
+						// }
+						let mc = m.buildMarkUpContent();
 						//mc.value = m.documentation.toString();
 						hoverText = mc;
 						if (hoverText === undefined) {
@@ -94,10 +95,11 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 			if(m.name === symbol) {
 				hoverText = m.completionItem.detail;// + "\n\n" + m.completionItem.documentation;
 				// debug(m.documentation.toString())
-				let mc: MarkupContent = {
-					kind: "markdown",
-					value: "```javascript\n" + m.buildFunctionDetails() + "\n```\n\n```text\n\n" + m.documentation.toString() + "\n```\n"
-				}
+				// let mc: MarkupContent = {
+				// 	kind: "markdown",
+				// 	value: "```javascript\n" + m.buildFunctionDetails() + "\n```\n\n```text\n\n" + m.documentation.toString() + "\n```\n"
+				// }
+				let mc = m.buildMarkUpContent();
 				// mc.value = m.documentation.toString();
 				hoverText = mc;
 				if (hoverText === undefined) {

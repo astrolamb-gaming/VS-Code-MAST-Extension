@@ -62,10 +62,11 @@ function onHover(_pos, text) {
                     if (m.name === symbol) {
                         hoverText = m.completionItem.detail; // + "\n\n" + m.completionItem.documentation;
                         (0, console_1.debug)(m.documentation);
-                        let mc = {
-                            kind: "markdown",
-                            value: "```javascript\n" + m.buildFunctionDetails() + "\n```\n```text\n\n" + m.documentation + "\n```\n"
-                        };
+                        // let mc: MarkupContent = {
+                        // 	kind: "markdown",
+                        // 	value: "```javascript\n" + m.buildFunctionDetails() + "\n```\n```text\n\n" + (m.documentation as string) + "\n```\n"
+                        // }
+                        let mc = m.buildMarkUpContent();
                         //mc.value = m.documentation.toString();
                         hoverText = mc;
                         if (hoverText === undefined) {
@@ -90,10 +91,11 @@ function onHover(_pos, text) {
             if (m.name === symbol) {
                 hoverText = m.completionItem.detail; // + "\n\n" + m.completionItem.documentation;
                 // debug(m.documentation.toString())
-                let mc = {
-                    kind: "markdown",
-                    value: "```javascript\n" + m.buildFunctionDetails() + "\n```\n\n```text\n\n" + m.documentation.toString() + "\n```\n"
-                };
+                // let mc: MarkupContent = {
+                // 	kind: "markdown",
+                // 	value: "```javascript\n" + m.buildFunctionDetails() + "\n```\n\n```text\n\n" + m.documentation.toString() + "\n```\n"
+                // }
+                let mc = m.buildMarkUpContent();
                 // mc.value = m.documentation.toString();
                 hoverText = mc;
                 if (hoverText === undefined) {

@@ -330,6 +330,9 @@ function onCompletion(_textDocumentPosition, text) {
                 // c.methods[0].completionItem.kind == CompletionItemKind.Method;
                 return c.methodCompletionItems;
             }
+            if (iStr.endsWith("EVENT.") && c.name === "event") {
+                return c.methodCompletionItems;
+            }
         }
     }
     //debug(ci.length);

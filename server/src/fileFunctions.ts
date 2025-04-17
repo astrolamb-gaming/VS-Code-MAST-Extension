@@ -253,7 +253,7 @@ export function fixFileName(uri:string) {
 	if (uri.startsWith("file")) {
 		uri = URI.parse(uri).fsPath;
 	}
-	return uri;
+	return uri.replace(/\\/g,"/");
 }
 
 export function getArtemisDirFromChild(child: string): string | null {
