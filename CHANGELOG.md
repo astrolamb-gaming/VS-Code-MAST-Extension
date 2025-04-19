@@ -6,8 +6,24 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
-* Show token information on hover
 * Determine variable types based on function return values, etc.
+
+### 0.8.0
+
+* Add function information on hover
+* Add blob entry information on hover
+* Add simulation class functions when using the sim global variable
+* Add functions that should have the module name prepended to them (e.g. functions in names.py are used in a format like `names_random_arvonian_name()`)
+* Add autocompletion for shipData.json entries
+	* Add images as part of autocompletion for art_id parameters for functions
+* Add EVENT as a route label variable
+* Add event class properties to autocompletion for EVENT
+* Add vec.py for the Vec3 class
+* Add source reference for sbs, sbs_utils, and LegendaryMission functions in the hover information. Link takes you to the appropriate github page.
+* Fix for file name checking of python files
+* Fix for variable detection
+* Fix for duplicate label check
+* Change to use markdown instead of just text for function information - easier to read
 
 ### 0.7.0
 
