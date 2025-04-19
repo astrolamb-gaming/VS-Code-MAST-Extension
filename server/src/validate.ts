@@ -57,7 +57,7 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	let diagnostics: Diagnostic[] = [];
 	let errorSources: ErrorInstance[] = [];
 
-	// for (const s of comments) {
+	// for (const s of strs) {
 	// 	let r: Range = {
 	// 		start: textDocument.positionAt(s.start),
 	// 		end: textDocument.positionAt(s.end)

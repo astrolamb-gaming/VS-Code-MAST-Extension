@@ -49,7 +49,7 @@ async function validateTextDocument(textDocument) {
     let problems = 0;
     let diagnostics = [];
     let errorSources = [];
-    // for (const s of comments) {
+    // for (const s of strs) {
     // 	let r: Range = {
     // 		start: textDocument.positionAt(s.start),
     // 		end: textDocument.positionAt(s.end)
