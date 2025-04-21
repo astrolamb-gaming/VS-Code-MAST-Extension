@@ -32,7 +32,7 @@ const stringCache: Map<string,CRange[]> = new Map();
 export function getStrings(doc: TextDocument): CRange[] {
 	let strings = stringCache.get(doc.uri);
 	if (strings === undefined) {
-		strings = parseComments(doc);
+		strings = parseStrings(doc);
 	}
 	return strings;
 }
@@ -45,7 +45,7 @@ const yamlCache: Map<string,CRange[]> = new Map();
 export function getYamls(doc: TextDocument): CRange[] {
 	let yamls = yamlCache.get(doc.uri);
 	if (yamls === undefined) {
-		yamls = parseComments(doc);
+		yamls = parseYamls(doc);
 	}
 	return yamls;
 }
@@ -58,7 +58,7 @@ const squareBracketCache: Map<string,CRange[]> = new Map();
 export function getSquareBrackets(doc: TextDocument): CRange[] {
 	let sqbs = squareBracketCache.get(doc.uri);
 	if (sqbs === undefined) {
-		sqbs = parseComments(doc);
+		sqbs = parseSquareBrackets(doc);
 	}
 	return sqbs;
 }

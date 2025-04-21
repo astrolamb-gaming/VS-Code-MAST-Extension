@@ -375,11 +375,15 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	//debug(ci.length);
 	ci = ci.concat(cache.getCompletions());
 	let keywords : string[] = [
-		"def",
+		// "def", // Pretty sure we can't define functions in a mast file
 		"async",
 		"on change",
 		"await",
+		"default",
 		"shared",
+		"assigned",
+		"client",
+		"temp",
 		"import",
 		"if",
 		"else",

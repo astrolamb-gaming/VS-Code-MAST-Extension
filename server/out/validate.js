@@ -37,10 +37,11 @@ async function validateTextDocument(textDocument) {
     if (settings !== null) {
         maxNumberOfProblems = settings.maxNumberOfProblems;
     }
-    let squareBrackets = (0, comments_1.parseSquareBrackets)(textDocument);
-    let strs = (0, comments_1.parseStrings)(textDocument);
-    let comments = (0, comments_1.parseComments)(textDocument);
-    let yamls = (0, comments_1.parseYamls)(textDocument);
+    // These all happen in cache.updateFileInfo() above
+    // let squareBrackets = parseSquareBrackets(textDocument);
+    // let strs = parseStrings(textDocument);
+    // let comments = parseComments(textDocument);
+    // let yamls = parseYamls(textDocument);
     // The validator creates diagnostics for all uppercase words length 2 and more
     const text = textDocument.getText();
     //currentDocument = textDocument;

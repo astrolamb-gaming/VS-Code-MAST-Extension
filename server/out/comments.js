@@ -45,7 +45,7 @@ const stringCache = new Map();
 function getStrings(doc) {
     let strings = stringCache.get(doc.uri);
     if (strings === undefined) {
-        strings = parseComments(doc);
+        strings = parseStrings(doc);
     }
     return strings;
 }
@@ -58,7 +58,7 @@ const yamlCache = new Map();
 function getYamls(doc) {
     let yamls = yamlCache.get(doc.uri);
     if (yamls === undefined) {
-        yamls = parseComments(doc);
+        yamls = parseYamls(doc);
     }
     return yamls;
 }
@@ -71,7 +71,7 @@ const squareBracketCache = new Map();
 function getSquareBrackets(doc) {
     let sqbs = squareBracketCache.get(doc.uri);
     if (sqbs === undefined) {
-        sqbs = parseComments(doc);
+        sqbs = parseSquareBrackets(doc);
     }
     return sqbs;
 }

@@ -10,6 +10,9 @@ import { getCache } from './cache';
 import { getVariableNamesInDoc } from './variables';
 import { getGlobals } from './globals';
 import { getRolesForFile } from './roles';
+import { CRange, parseComments, parseSquareBrackets, parseStrings, parseYamls } from './comments';
+import { connection, sendToClient } from './server';
+import { parsePrefabs } from './prefabs';
 
 /**
  * This accounts for classes that use a different name as a global than the class name. 
@@ -78,6 +81,13 @@ export class MastFile extends FileCache {
 	// TODO: Add system for tracking variables in a mast file
 	variables: string[] = [];
 	roles: string[] = [];
+
+	prefabs: LabelInfo[] = [];
+	
+	strings: CRange[] = [];
+	comments: CRange[] = [];
+	yamls: CRange[] = [];
+	squareBrackets: CRange[] = [];
 	
 	constructor(uri: string, fileContents:string = "") {
 		//debug("building mast file");
@@ -102,15 +112,23 @@ export class MastFile extends FileCache {
 			}
 		} else if (path.extname(uri) === ".py") {
 			// Shouldn't do anything, Py files are very different from mast
+			debug("ERROR: Trying to parse a .py file as a .mast file: " + uri);
+			// Send notification to client?
 		}
 	}
 
 	parse(text: string) {
 		const textDocument: TextDocument = TextDocument.create(this.uri, "mast", 1, text);
 		this.labelNames = parseLabelsInFile(text, this.uri);
+		this.prefabs = parsePrefabs(this.labelNames);
 		// TODO: Parse variables, etc
 		this.variables = getVariableNamesInDoc(textDocument);
 		this.roles = getRolesForFile(text);
+		this.comments = parseComments(textDocument);
+		this.strings = parseStrings(textDocument);
+		this.yamls = parseYamls(textDocument);
+		this.squareBrackets = parseSquareBrackets(textDocument);
+		
 	}
 
 	getVariableNames() {
@@ -571,11 +589,13 @@ export class Function implements IFunction {
 			source = "https://github.com/" + source.replace(regex, "/blob/master").replace(".","/");
 		} 
 
-
-
+		source = "\nSource:  \n  " + source;
+		if (docs !== "") {
+			docs = "\n\n```text\n\n" + docs + "\n```";
+		}
 		const ret: MarkupContent = {
 			kind: "markdown",
-			value: "```javascript\n" + this.buildFunctionDetails() + "\n```\n\n```text\n\n" + docs + "\n\nSource: " + "\n```\n" + source
+			value: "```javascript\n" + this.buildFunctionDetails() + "\n```" + docs + source
 			// value: functionDetails + "\n" + documentation + "\n\n" + source
 		}
 		return ret;

@@ -15,6 +15,8 @@ const cache_1 = require("./cache");
 const variables_1 = require("./variables");
 const globals_1 = require("./globals");
 const roles_1 = require("./roles");
+const comments_1 = require("./comments");
+const prefabs_1 = require("./prefabs");
 /**
  * This accounts for classes that use a different name as a global than the class name.
  * E.g. the sim global variable refers to the simulation class. Instead of simulation.functionName(), use sim.functionName().
@@ -67,6 +69,11 @@ class MastFile extends FileCache {
         // TODO: Add system for tracking variables in a mast file
         this.variables = [];
         this.roles = [];
+        this.prefabs = [];
+        this.strings = [];
+        this.comments = [];
+        this.yamls = [];
+        this.squareBrackets = [];
         if (path.extname(uri) === ".mast") {
             // If the contents are aleady read, we parse and move on. Don't need to read or parse again.
             if (fileContents !== "") {
@@ -89,14 +96,21 @@ class MastFile extends FileCache {
         }
         else if (path.extname(uri) === ".py") {
             // Shouldn't do anything, Py files are very different from mast
+            (0, console_1.debug)("ERROR: Trying to parse a .py file as a .mast file: " + uri);
+            // Send notification to client?
         }
     }
     parse(text) {
         const textDocument = vscode_languageserver_textdocument_1.TextDocument.create(this.uri, "mast", 1, text);
         this.labelNames = (0, labels_1.parseLabelsInFile)(text, this.uri);
+        this.prefabs = (0, prefabs_1.parsePrefabs)(this.labelNames);
         // TODO: Parse variables, etc
         this.variables = (0, variables_1.getVariableNamesInDoc)(textDocument);
         this.roles = (0, roles_1.getRolesForFile)(text);
+        this.comments = (0, comments_1.parseComments)(textDocument);
+        this.strings = (0, comments_1.parseStrings)(textDocument);
+        this.yamls = (0, comments_1.parseYamls)(textDocument);
+        this.squareBrackets = (0, comments_1.parseSquareBrackets)(textDocument);
     }
     getVariableNames() {
         let arr = [];
@@ -464,9 +478,13 @@ class Function {
         else if (source.includes("sbs_utils")) {
             source = "https://github.com/" + source.replace(regex, "/blob/master").replace(".", "/");
         }
+        source = "\nSource:  \n  " + source;
+        if (docs !== "") {
+            docs = "\n\n```text\n\n" + docs + "\n```";
+        }
         const ret = {
             kind: "markdown",
-            value: "```javascript\n" + this.buildFunctionDetails() + "\n```\n\n```text\n\n" + docs + "\n\nSource: " + "\n```\n" + source
+            value: "```javascript\n" + this.buildFunctionDetails() + "\n```" + docs + source
             // value: functionDetails + "\n" + documentation + "\n\n" + source
         };
         return ret;

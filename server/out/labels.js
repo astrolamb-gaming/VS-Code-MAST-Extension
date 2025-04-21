@@ -15,6 +15,7 @@ const cache_1 = require("./cache");
 const vscode_uri_1 = require("vscode-uri");
 const path = require("path");
 const fileFunctions_1 = require("./fileFunctions");
+const comments_1 = require("./comments");
 var LabelType;
 (function (LabelType) {
     LabelType[LabelType["LABEL"] = 0] = "LABEL";
@@ -61,6 +62,7 @@ function parseLabels(text, src, type = "main") {
             end: 0,
             length: m[0].length,
             metadata: "",
+            comments: "",
             subLabels: [],
             srcFile: src
         };
@@ -87,7 +89,7 @@ function parseLabels(text, src, type = "main") {
     // Add END as a main label, last so we don't need to mess with it in earlier iterations.
     // Also add "main" as a main label, since it can happen that sublabels are defined before any user-defined main labels.
     if (type === "main") {
-        const endLabel = { type: "main", name: "END", start: text.length - 1, end: text.length, length: 3, metadata: "", subLabels: [], srcFile: src };
+        const endLabel = { type: "main", name: "END", start: text.length - 1, end: text.length, length: 3, metadata: "", comments: "", subLabels: [], srcFile: src };
         labels.push(endLabel);
         let end = text.length;
         for (const i in labels) {
@@ -95,7 +97,7 @@ function parseLabels(text, src, type = "main") {
                 end = labels[i].start - 1;
             }
         }
-        const mainLabel = { type: "main", name: "main", start: 0, end: end, length: 4, metadata: "", subLabels: [], srcFile: src };
+        const mainLabel = { type: "main", name: "main", start: 0, end: end, length: 4, metadata: "", comments: "", subLabels: [], srcFile: src };
         labels.push(mainLabel);
     }
     //debug(labels);
@@ -111,6 +113,14 @@ function getMetadata(text) {
     text = text.replace(/```/g, "").trim();
     text = text.substring(text.indexOf("\n"));
     return text;
+}
+function getLabelDocs(text) {
+    let ret = "";
+    const lines = text.split("\n");
+    // TODO: figure out how to do the label documentation checking
+    // I THINK it'll be just all comments right under the label definition.
+    // But I need to check that the comments should always be prior to the metadata
+    return ret;
 }
 function parseLabelsInFile(text, src) {
     let mainLabels = parseLabels(text, src, "main");
@@ -354,6 +364,9 @@ function findBadLabels(t) {
             continue;
         }
         if (lbl.startsWith("->")) {
+            continue;
+        }
+        if ((0, comments_1.isInYaml)(t, m.index)) {
             continue;
         }
         //debug("Testing " + m[0]);

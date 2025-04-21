@@ -344,11 +344,15 @@ function onCompletion(_textDocumentPosition, text) {
     //debug(ci.length);
     ci = ci.concat(cache.getCompletions());
     let keywords = [
-        "def",
+        // "def", // Pretty sure we can't define functions in a mast file
         "async",
         "on change",
         "await",
+        "default",
         "shared",
+        "assigned",
+        "client",
+        "temp",
         "import",
         "if",
         "else",

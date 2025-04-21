@@ -68,10 +68,10 @@ export class MissionCache {
 	missionClasses: IClassObject[] = [];
 	missionDefaultFunctions: Function[] = [];
 
-	// string is the full file path and name
-	// FileCache is the information associated with the file
-	pyFileInfo: PyFile[] = [];
-	mastFileInfo: MastFile[] = [];
+
+	// These are for the files specific to this mission.
+	pyFileCache: PyFile[] = [];
+	mastFileCache: MastFile[] = [];
 
 	//// Other Labels
 	// Route Labels - From RouteDecoratorLabel class
@@ -108,10 +108,10 @@ export class MissionCache {
 		this.missionDefaultSignatures = [];
 		this.missionMastModules = [];
 		this.missionPyModules = [];
-		this.pyFileInfo = [];
+		this.pyFileCache = [];
 		this.resourceLabels = [];
 		this.mediaLabels = [];
-		this.mastFileInfo = [];
+		this.mastFileCache = [];
 		this.storyJson = new StoryJson(path.join(this.missionURI,"story.json"));
 		this.storyJson.readFile().then(()=>{this.modulesLoaded()});
 		loadSbs().then((p)=>{
@@ -136,7 +136,7 @@ export class MissionCache {
 				} else {
 					// Parse MAST File
 					const m: MastFile = new MastFile(file);
-					this.mastFileInfo.push(m);
+					this.mastFileCache.push(m);
 				}
 				
 
@@ -149,7 +149,7 @@ export class MissionCache {
 				} else {
 					// Parse Python File
 					const p: PyFile = new PyFile(file);
-					this.pyFileInfo.push(p);
+					this.pyFileCache.push(p);
 				}
 			}
 		}
@@ -300,11 +300,9 @@ export class MissionCache {
 
 	updateFileInfo(doc: TextDocument) {
 		if (doc.languageId === "mast") {
-			for (const f of this.mastFileInfo) {
-				if (fixFileName(f.uri) === fixFileName(doc.uri)) {
-					f.parse(doc.getText());
-				}
-			}
+			this.getMastFile(doc.getText()).parse(doc.getText());
+		} else if (doc.languageId === "py") {
+			// this.getPyFile(doc.getText())
 		}
 	}
 
@@ -341,7 +339,7 @@ export class MissionCache {
 		const parent = getParentFolder(URI.parse(file).fsPath);
 		const inits = getInitContents(file);
 		let ci: CompletionItem[] = [];
-		for (const m of this.mastFileInfo) {
+		for (const m of this.mastFileCache) {
 			if (m.parentFolder === parent) {
 				// Check if the file is included in the init file
 				for (const i of inits) {
@@ -365,7 +363,7 @@ export class MissionCache {
 		let fileUri: string = fixFileName(textDocument.uri);
 		let li: LabelInfo[] = [];
 		//debug(this.mastFileInfo);
-		for (const f of this.mastFileInfo) {
+		for (const f of this.mastFileCache) {
 			
 			if (f.uri === fileUri) {
 				li = li.concat(f.labelNames);
@@ -394,7 +392,7 @@ export class MissionCache {
 	 */
 	updateLabels(textDocument: TextDocument) {
 		let fileUri: string = fixFileName(textDocument.uri);
-		for (const file of this.mastFileInfo) {
+		for (const file of this.mastFileCache) {
 			if (file.uri === fileUri) {
 				file.labelNames = parseLabelsInFile(textDocument.getText(), textDocument.uri);
 			}
@@ -469,7 +467,7 @@ export class MissionCache {
 		let roles: string[] = [];
 		const ini = getInitContents(folder);
 		debug(ini);
-		for (const m of this.mastFileInfo) {
+		for (const m of this.mastFileCache) {
 			debug(folder);
 			if (ini.includes(path.basename(m.uri))) {
 				roles = roles.concat(m.roles);
@@ -478,6 +476,35 @@ export class MissionCache {
 		return roles;
 	}
 
+	/**
+	 * Must actually be a mast file, so check before using!
+	 * @param uri The uri of the file
+	 */
+	getMastFile(uri:string): MastFile {
+		uri = fixFileName(uri);
+		for (const m of this.mastFileCache) {
+			if (m.uri === fixFileName(uri)) {
+				return m;
+			}
+		}
+		const m: MastFile = new MastFile(uri);
+		return m;
+	}
+
+	/**
+	 * Must actually be a python file, so check before using!
+	 * @param uri The uri of the file
+	 */
+	getPyFile(uri:string) : PyFile {
+		uri = fixFileName(uri);
+		for (const p of this.pyFileCache) {
+			if (p.uri === fixFileName(uri)) {
+				return p;
+			}
+		}
+		const p: PyFile = new PyFile(uri);
+		return p;
+	}
 }
 
 interface StoryJsonContents {
