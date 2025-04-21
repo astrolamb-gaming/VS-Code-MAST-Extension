@@ -1,5 +1,5 @@
 import { debug } from 'console';
-import { findSubfolderByName, getArtemisDirFromChild, getFilesInDir, getFolders, readFile } from './fileFunctions';
+import { findSubfolderByName, fixFileName, getArtemisDirFromChild, getFilesInDir, getFolders, readFile } from './fileFunctions';
 import path = require('path');
 import fs = require('fs');
 import os = require('os');
@@ -20,6 +20,7 @@ interface WidgetStyleString {
 }
 
 export class Globals {
+	currentFile: string = "";
 	skyboxes: CompletionItem[];
 	music: CompletionItem[];
 	data_set_entries: DataSetItem[];
@@ -155,6 +156,18 @@ export class Globals {
 			}
 		}
 		return ds;
+	}
+
+	getCurrentFile(): string {
+		return this.currentFile;
+	}
+
+	setCurrentFile(f:string): void {
+		this.currentFile = fixFileName(f);
+	}
+
+	isCurrentFile(f:string): boolean {
+		return fixFileName(f) === f;
 	}
 
 	private findArtFiles(byID:boolean): CompletionItem[] {

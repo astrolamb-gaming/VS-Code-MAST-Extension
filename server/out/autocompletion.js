@@ -37,6 +37,12 @@ function onCompletion(_textDocumentPosition, text) {
     // return buildFaction("kra","Kralien_Set");
     (0, console_1.debug)("Staring onCompletion");
     // return getGlobals().artFiles;
+    if (!(0, globals_1.getGlobals)().isCurrentFile(text.uri)) {
+        // update cache info
+        // update strings and comments
+        // update labels?
+        (0, globals_1.getGlobals)().setCurrentFile(text.uri);
+    }
     const cache = (0, cache_1.getCache)(text.uri);
     let ci = [];
     (0, console_1.debug)("Cache loaded.");
@@ -99,12 +105,12 @@ function onCompletion(_textDocumentPosition, text) {
     //
     (0, console_1.debug)(iStr);
     // If we're inside a comment or a string, we don't want autocompletion.
-    if ((0, comments_1.isInComment)(pos)) {
+    if ((0, comments_1.isInComment)(text, pos)) {
         (0, console_1.debug)("Is in Comment");
         return ci;
     }
-    (0, comments_1.getYamls)(text);
-    if ((0, comments_1.isInYaml)(pos)) {
+    (0, comments_1.parseYamls)(text);
+    if ((0, comments_1.isInYaml)(text, pos)) {
         (0, console_1.debug)("Is in Yaml");
         ci = ci.concat(cache.getCompletions());
         return ci;
@@ -114,12 +120,12 @@ function onCompletion(_textDocumentPosition, text) {
     // TODO: Faces: Add ability to get the desired image from tiles: https://stackoverflow.com/questions/11533606/javascript-splitting-a-tileset-image-to-be-stored-in-2d-image-array
     if (iStr.endsWith("\"") || iStr.endsWith("'")) {
         (0, console_1.debug)("Updating strings...");
-        (0, comments_1.getStrings)(text);
+        (0, comments_1.parseStrings)(text);
     }
     // This is to get rid of " or ' at end so we don't have to check for both
     const blobStr = iStr.substring(0, iStr.length - 1);
     (0, console_1.debug)(blobStr);
-    if ((0, comments_1.isInString)(pos)) {
+    if ((0, comments_1.isInString)(text, pos)) {
         if (!(0, comments_1.isTextInBracket)(iStr, pos)) {
             // Here we check for blob info
             if (blobStr.endsWith(".set(") || blobStr.endsWith(".get(")) {

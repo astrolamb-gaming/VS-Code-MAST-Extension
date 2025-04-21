@@ -29,10 +29,10 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 	let hoveredLine = getCurrentLineFromTextDocument(_pos, text);
 	const symbol = getHoveredSymbol(hoveredLine, _pos.position.character);
 	// If it's a comment, we'll just ignore it.
-	if (isInComment(pos)) {
+	if (isInComment(text,pos)) {
 		return {contents: "comment"};
 	}
-	if (isInString(pos)) {
+	if (isInString(text,pos)) {
 		const func = before.lastIndexOf("(");
 		if (func > 0) {
 			const end = before.substring(0,func);

@@ -1,20 +1,68 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.getComments = getComments;
+exports.getStrings = getStrings;
+exports.getYamls = getYamls;
 exports.isInComment = isInComment;
 exports.getSquareBrackets = getSquareBrackets;
 exports.isInSquareBrackets = isInSquareBrackets;
 exports.isInString = isInString;
 exports.isInYaml = isInYaml;
-exports.getComments = getComments;
-exports.getYamls = getYamls;
+exports.parseComments = parseComments;
+exports.parseYamls = parseYamls;
 exports.getIndentations = getIndentations;
 exports.getMatchesForRegex = getMatchesForRegex;
 exports.getBrackets = getBrackets;
 exports.isTextInBracket = isTextInBracket;
-exports.getStrings = getStrings;
+exports.parseStrings = parseStrings;
 exports.replaceRegexMatchWithUnderscore = replaceRegexMatchWithUnderscore;
 const fs = require("fs");
-function isInComment(loc) {
+/**
+ * TODO:
+ * 		Fix comment and string checking for hover
+ * 		When switching to another tab, the cache doesn't update
+ */
+const commentCache = new Map();
+/**
+ * Get all comments within the specified {@link TextDocument TextDocument}.
+ * @param doc The {@link TextDocument TextDocument}
+ * @returns An array of {@link CRange CRange}
+ */
+function getComments(doc) {
+    let comments = commentCache.get(doc.uri);
+    if (comments === undefined) {
+        comments = parseComments(doc);
+    }
+    return comments;
+}
+const stringCache = new Map();
+/**
+ * Get all strings within the specified {@link TextDocument TextDocument}.
+ * @param doc The {@link TextDocument TextDocument}
+ * @returns An array of {@link CRange CRange}
+ */
+function getStrings(doc) {
+    let strings = stringCache.get(doc.uri);
+    if (strings === undefined) {
+        strings = parseComments(doc);
+    }
+    return strings;
+}
+const yamlCache = new Map();
+/**
+ * Get all metadata within the specified {@link TextDocument TextDocument}.
+ * @param doc The {@link TextDocument TextDocument}
+ * @returns An array of {@link CRange CRange}
+ */
+function getYamls(doc) {
+    let yamls = yamlCache.get(doc.uri);
+    if (yamls === undefined) {
+        yamls = parseComments(doc);
+    }
+    return yamls;
+}
+function isInComment(doc, loc) {
+    let commentRanges = getComments(doc);
     for (const r in commentRanges) {
         if (commentRanges[r].start <= loc && commentRanges[r].end >= loc) {
             return true;
@@ -22,9 +70,9 @@ function isInComment(loc) {
     }
     return false;
 }
-let commentRanges = [];
-let stringRanges = [];
-let yamlRanges = [];
+// let commentRanges:CRange[] = [];
+// let stringRanges: CRange[] = [];
+// let yamlRanges: CRange[] = [];
 let squareBracketRanges = [];
 function getSquareBrackets(textDocument) {
     const pattern = /\[.*?\]/g;
@@ -49,7 +97,8 @@ function isInSquareBrackets(loc) {
     }
     return false;
 }
-function isInString(loc) {
+function isInString(doc, loc) {
+    let stringRanges = getStrings(doc);
     for (const r in stringRanges) {
         if (stringRanges[r].start <= loc && stringRanges[r].end >= loc) {
             return true;
@@ -57,7 +106,8 @@ function isInString(loc) {
     }
     return false;
 }
-function isInYaml(loc) {
+function isInYaml(doc, loc) {
+    let yamlRanges = getYamls(doc);
     for (const r in yamlRanges) {
         if (yamlRanges[r].start <= loc && yamlRanges[r].end >= loc) {
             return true;
@@ -72,10 +122,17 @@ function isInYaml(loc) {
  *  and updates the CRanges based on that.
  * @param textDocument
  */
-function getComments(textDocument) {
+/**
+ * Parses a {@link TextDocument TextDocument} for all comments within it.
+ * Saves the information in a Map. Use {@link getComments getComments} to retrieve saved info.
+ * @param textDocument The {@link TextDocument TextDocument} to parse
+ * @returns An array of {@link CRange CRange}
+ */
+function parseComments(textDocument) {
     let text = textDocument.getText();
-    getStrings(textDocument);
-    commentRanges = [];
+    let strRng = [];
+    strRng = getStrings(textDocument);
+    let commentRanges = [];
     let comment = /^[ \t]*(#.*)($|\n)/gm;
     let comments = getMatchesForRegex(comment, text);
     commentRanges = commentRanges.concat(comments);
@@ -90,8 +147,7 @@ function getComments(textDocument) {
         text = replaceRegexMatchWithUnderscore(text, f);
     }
     let m;
-    let strRng = [];
-    strRng = stringRanges; //getMatchesForRegex(pattern,text);
+    // strRng = stringRanges;//getMatchesForRegex(pattern,text);
     //pattern = /\#.*?(\"|$)/gm;
     pattern = /#+[^#\n\r\f]*/g;
     // Not using the more complicated version because there could be an accidental error in the color code.
@@ -110,7 +166,7 @@ function getComments(textDocument) {
         // within a string. If so, it's not a real comment.
         // E.g. spawn_asteroid("whatever", "asteroid,#", "whatever") has a # inside of a set
         // of double quotes, so it doesn't actually indicate a comment start.
-        if (!isInString(m.index) && !isInSquareBrackets(m.index)) {
+        if (!isInString(textDocument, m.index) && !isInSquareBrackets(m.index)) {
             const r = {
                 start: m.index,
                 end: m.index + m[0].length + 1
@@ -121,17 +177,21 @@ function getComments(textDocument) {
             // Do nothing, with new regex of #+...\#\n it will go to next # in line anyways, if it exists
         }
     }
+    commentCache.set(textDocument.uri, commentRanges);
     return commentRanges;
 }
-function getYamls(textDocument) {
+/**
+ * Parses a {@link TextDocument TextDocument} for all metadata within it.
+ * Saves the information in a Map. Use {@link getYamls getYamls} to retrieve saved info.
+ * @param textDocument The {@link TextDocument TextDocument} to parse
+ * @returns An array of {@link CRange CRange}
+ */
+function parseYamls(textDocument) {
     const text = textDocument.getText();
     let yamls = [];
     let yaml = /```[ \t]*.*?[ \t]*?```/gms;
     yamls = getMatchesForRegex(yaml, text);
-    yamlRanges = yamls;
-    //debug(strings);
-    //stringRanges = yamls;
-    //debug("Strings found: " + strings.length);
+    yamlCache.set(textDocument.uri, yamls);
     return yamls;
 }
 const indents = [];
@@ -190,7 +250,13 @@ function isTextInBracket(text, pos) {
     }
     return false;
 }
-function getStrings(textDocument) {
+/**
+ * Parses a {@link TextDocument TextDocument} for all strings within it.
+ * Saves the information in a Map. Use {@link getStrings getStrings} to retrieve saved info.
+ * @param textDocument The {@link TextDocument TextDocument} to parse
+ * @returns An array of {@link CRange CRange}
+ */
+function parseStrings(textDocument) {
     let text = textDocument.getText();
     let strings = [];
     // TODO: Get all sets of {} to see if we're in an f-string and need to exclude sections of the string
@@ -279,9 +345,16 @@ function getStrings(textDocument) {
     }
     // Update the global stringRanges variable
     strings = strings.concat(fstringsOnly);
-    stringRanges = strings;
+    // stringRanges = strings;
+    stringCache.set(textDocument.uri, strings);
     return strings;
 }
+/**
+ * Really just a helper function that gets rid of sections of code that have already been parsed
+ * @param text
+ * @param match
+ * @returns
+ */
 function replaceRegexMatchWithUnderscore(text, match) {
     text = text.replace(text.substring(match.start, match.end), "".padEnd(match.end - match.start, "_"));
     return text;

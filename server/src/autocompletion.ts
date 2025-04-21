@@ -4,7 +4,7 @@ import { getMainLabelAtPos } from './labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { IClassObject, PyFile } from './data';
 import { getRouteLabelVars } from './routeLabels';
-import { getStrings, getYamls, isInComment, isInString, isInYaml, isTextInBracket } from './comments';
+import { parseStrings, parseYamls, isInComment, isInString, isInYaml, isTextInBracket } from './comments';
 import { getCache } from './cache';
 import path = require('path');
 import fs = require("fs");
@@ -42,6 +42,12 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// return buildFaction("kra","Kralien_Set");
 	debug("Staring onCompletion");
 	// return getGlobals().artFiles;
+	if (!getGlobals().isCurrentFile(text.uri)) {
+		// update cache info
+		// update strings and comments
+		// update labels?
+		getGlobals().setCurrentFile(text.uri);
+	}
 	const cache = getCache(text.uri);
 	let ci : CompletionItem[] = [];
 	debug("Cache loaded.");
@@ -107,12 +113,12 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	debug(iStr);
 
 	// If we're inside a comment or a string, we don't want autocompletion.
-	if (isInComment(pos)) {
+	if (isInComment(text,pos)) {
 		debug("Is in Comment")
 		return ci;
 	}
-	getYamls(text);
-	if (isInYaml(pos)) {
+	parseYamls(text);
+	if (isInYaml(text,pos)) {
 		debug("Is in Yaml")
 		ci = ci.concat(cache.getCompletions());
 		return ci;
@@ -123,12 +129,12 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// TODO: Faces: Add ability to get the desired image from tiles: https://stackoverflow.com/questions/11533606/javascript-splitting-a-tileset-image-to-be-stored-in-2d-image-array
 	if (iStr.endsWith("\"") || iStr.endsWith("'")) {
 		debug("Updating strings...")
-		getStrings(text);
+		parseStrings(text);
 	}
 	// This is to get rid of " or ' at end so we don't have to check for both
 	const blobStr = iStr.substring(0,iStr.length-1);
 	debug(blobStr)
-	if (isInString(pos)) {
+	if (isInString(text,pos)) {
 		if (!isTextInBracket(iStr,pos)) {
 			// Here we check for blob info
 			if (blobStr.endsWith(".set(") || blobStr.endsWith(".get(")) {

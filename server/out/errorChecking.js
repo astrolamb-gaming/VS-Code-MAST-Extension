@@ -106,9 +106,9 @@ function checkFunctionSignatures(textDocument) {
     while (m = functionRegex.exec(text)) {
         const functions = [];
         const line = m[0];
-        if ((0, comments_1.isInComment)(m.index))
+        if ((0, comments_1.isInComment)(textDocument, m.index))
             continue;
-        if ((0, comments_1.isInString)(m.index) && !(0, comments_1.isInYaml)(m.index))
+        if ((0, comments_1.isInString)(textDocument, m.index) && !(0, comments_1.isInYaml)(textDocument, m.index))
             continue;
         const functionName = line.match(singleFunc);
         (0, console_1.debug)(functionName);

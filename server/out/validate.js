@@ -38,9 +38,9 @@ async function validateTextDocument(textDocument) {
         maxNumberOfProblems = settings.maxNumberOfProblems;
     }
     (0, comments_1.getSquareBrackets)(textDocument);
-    let strs = (0, comments_1.getStrings)(textDocument);
-    let comments = (0, comments_1.getComments)(textDocument);
-    (0, comments_1.getYamls)(textDocument);
+    let strs = (0, comments_1.parseStrings)(textDocument);
+    let comments = (0, comments_1.parseComments)(textDocument);
+    (0, comments_1.parseYamls)(textDocument);
     // The validator creates diagnostics for all uppercase words length 2 and more
     const text = textDocument.getText();
     //currentDocument = textDocument;
@@ -166,8 +166,8 @@ async function validateTextDocument(textDocument) {
     diagnostics = diagnostics.filter((d) => {
         const start = textDocument.offsetAt(d.range.start);
         const end = textDocument.offsetAt(d.range.end);
-        const inStr = !(0, comments_1.isInString)(start) || !(0, comments_1.isInString)(end);
-        const inCom = !(0, comments_1.isInComment)(start) || !(0, comments_1.isInComment)(end);
+        const inStr = !(0, comments_1.isInString)(textDocument, start) || !(0, comments_1.isInString)(textDocument, end);
+        const inCom = !(0, comments_1.isInComment)(textDocument, start) || !(0, comments_1.isInComment)(textDocument, end);
         return inStr || inCom;
     });
     const d = (0, errorChecking_1.checkLastLine)(textDocument);

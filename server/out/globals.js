@@ -13,6 +13,7 @@ const server_1 = require("./server");
 const shipData_1 = require("./shipData");
 class Globals {
     constructor() {
+        this.currentFile = "";
         this.widget_stylestrings = [];
         this.artemisDir = "";
         this.artFiles = [];
@@ -136,6 +137,15 @@ class Globals {
             }
         }
         return ds;
+    }
+    getCurrentFile() {
+        return this.currentFile;
+    }
+    setCurrentFile(f) {
+        this.currentFile = (0, fileFunctions_1.fixFileName)(f);
+    }
+    isCurrentFile(f) {
+        return (0, fileFunctions_1.fixFileName)(f) === f;
     }
     findArtFiles(byID) {
         let ret = [];

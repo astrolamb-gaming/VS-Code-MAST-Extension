@@ -3,7 +3,7 @@ import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 import * as fs from 'fs';
 import { CompletionItem, CompletionItemKind, integer, Position } from 'vscode-languageserver';
 import { ClassObject, getVariablesInFile } from './data';
-import { CRange, getComments, getStrings } from './comments';
+import { CRange, getComments, getStrings, parseComments, parseStrings } from './comments';
 
 export function getAllTokens(textDocument: TextDocument) {
 	let variables = getVariablesInFile(textDocument);

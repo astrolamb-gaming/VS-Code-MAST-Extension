@@ -2,7 +2,7 @@ import { debug } from 'console';
 import * as path from 'path';
 import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
 import { getCache } from './cache';
-import { getSquareBrackets, getComments, getStrings, getYamls, isInString, isInComment, getMatchesForRegex } from './comments';
+import { getSquareBrackets, parseComments, parseStrings, parseYamls, isInString, isInComment, getMatchesForRegex } from './comments';
 import { checkLastLine, findDiagnostic } from './errorChecking';
 import { checkLabels } from './labels';
 import { ErrorInstance, getDocumentSettings } from './server';
@@ -42,9 +42,9 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		maxNumberOfProblems = settings.maxNumberOfProblems;
 	}
 	getSquareBrackets(textDocument);
-	let strs = getStrings(textDocument);
-	let comments = getComments(textDocument);
-	getYamls(textDocument);
+	let strs = parseStrings(textDocument);
+	let comments = parseComments(textDocument);
+	parseYamls(textDocument);
 
 	// The validator creates diagnostics for all uppercase words length 2 and more
 	const text = textDocument.getText();
@@ -176,8 +176,8 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	diagnostics = diagnostics.filter((d)=>{
 		const start = textDocument.offsetAt(d.range.start);
 		const end = textDocument.offsetAt(d.range.end);
-		const inStr = !isInString(start) || !isInString(end)
-		const inCom = !isInComment(start) || !isInComment(end);
+		const inStr = !isInString(textDocument, start) || !isInString(textDocument,end)
+		const inCom = !isInComment(textDocument,start) || !isInComment(textDocument,end);
 		return inStr || inCom;
 	})
 
