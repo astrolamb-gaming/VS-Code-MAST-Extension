@@ -2,7 +2,7 @@ import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 import { Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, integer } from 'vscode-languageserver/node';
 import {hasDiagnosticRelatedInformationCapability} from './server';
 import { debug } from 'console';
-import { parseComments, parseStrings, isInComment, isInString, isInYaml, replaceRegexMatchWithUnderscore, getComments, getStrings } from './comments';
+import { isInComment, isInString, isInYaml, replaceRegexMatchWithUnderscore, getComments, getStrings } from './comments';
 
 /**
  * Checks if the file ends with an empty line.

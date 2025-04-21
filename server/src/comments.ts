@@ -49,7 +49,19 @@ export function getYamls(doc: TextDocument): CRange[] {
 	}
 	return yamls;
 }
-
+const squareBracketCache: Map<string,CRange[]> = new Map();
+/**
+ * Get all square brackets within the specified {@link TextDocument TextDocument}.
+ * @param doc The {@link TextDocument TextDocument}
+ * @returns An array of {@link CRange CRange}
+ */
+export function getSquareBrackets(doc: TextDocument): CRange[] {
+	let sqbs = squareBracketCache.get(doc.uri);
+	if (sqbs === undefined) {
+		sqbs = parseComments(doc);
+	}
+	return sqbs;
+}
 
 export interface CRange {
 	start: integer,
@@ -69,7 +81,13 @@ export function isInComment(doc: TextDocument, loc:integer):boolean {
 // let yamlRanges: CRange[] = [];
 let squareBracketRanges: CRange[] = [];
 
-export function getSquareBrackets(textDocument: TextDocument) {
+/**
+ * Parses a {@link TextDocument TextDocument} for all square brackets [...] within it.
+ * Saves the information in a Map. Use {@link getComments getComments} to retrieve saved info.
+ * @param textDocument The {@link TextDocument TextDocument} to parse
+ * @returns An array of {@link CRange CRange}
+ */
+export function parseSquareBrackets(textDocument: TextDocument) {
 	const pattern = /\[.*?\]/g;
 	const brackets: CRange[] = [];
 	let m: RegExpExecArray | null;

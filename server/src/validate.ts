@@ -2,7 +2,7 @@ import { debug } from 'console';
 import * as path from 'path';
 import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
 import { getCache } from './cache';
-import { getSquareBrackets, parseComments, parseStrings, parseYamls, isInString, isInComment, getMatchesForRegex } from './comments';
+import { parseComments, parseStrings, parseYamls, isInString, isInComment, getMatchesForRegex, parseSquareBrackets } from './comments';
 import { checkLastLine, findDiagnostic } from './errorChecking';
 import { checkLabels } from './labels';
 import { ErrorInstance, getDocumentSettings } from './server';
@@ -41,10 +41,10 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	if (settings !== null) {
 		maxNumberOfProblems = settings.maxNumberOfProblems;
 	}
-	getSquareBrackets(textDocument);
+	let squareBrackets = parseSquareBrackets(textDocument);
 	let strs = parseStrings(textDocument);
 	let comments = parseComments(textDocument);
-	parseYamls(textDocument);
+	let yamls = parseYamls(textDocument);
 
 	// The validator creates diagnostics for all uppercase words length 2 and more
 	const text = textDocument.getText();

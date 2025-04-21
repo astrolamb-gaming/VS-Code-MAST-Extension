@@ -4,7 +4,7 @@ import { getMainLabelAtPos } from './labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { IClassObject, PyFile } from './data';
 import { getRouteLabelVars } from './routeLabels';
-import { parseStrings, parseYamls, isInComment, isInString, isInYaml, isTextInBracket } from './comments';
+import { isInComment, isInString, isInYaml, isTextInBracket } from './comments';
 import { getCache } from './cache';
 import path = require('path');
 import fs = require("fs");
@@ -117,7 +117,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		debug("Is in Comment")
 		return ci;
 	}
-	parseYamls(text);
+	
 	if (isInYaml(text,pos)) {
 		debug("Is in Yaml")
 		ci = ci.concat(cache.getCompletions());
@@ -127,10 +127,16 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// TODO: Check and make absolutely sure that isTextInBracket is working properly
 	// TODO: May be useful to have a list of used string words that can be added via autocomplete (i.e. roles)
 	// TODO: Faces: Add ability to get the desired image from tiles: https://stackoverflow.com/questions/11533606/javascript-splitting-a-tileset-image-to-be-stored-in-2d-image-array
-	if (iStr.endsWith("\"") || iStr.endsWith("'")) {
-		debug("Updating strings...")
-		parseStrings(text);
-	}
+
+
+// TODO: Verify that this isn't necessary, should not be if validate.js is working as intended
+	// if (iStr.endsWith("\"") || iStr.endsWith("'")) {
+	// 	debug("Updating strings...")
+	// 	parseStrings(text);
+	// }
+
+
+
 	// This is to get rid of " or ' at end so we don't have to check for both
 	const blobStr = iStr.substring(0,iStr.length-1);
 	debug(blobStr)

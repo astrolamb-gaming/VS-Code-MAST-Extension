@@ -109,7 +109,6 @@ function onCompletion(_textDocumentPosition, text) {
         (0, console_1.debug)("Is in Comment");
         return ci;
     }
-    (0, comments_1.parseYamls)(text);
     if ((0, comments_1.isInYaml)(text, pos)) {
         (0, console_1.debug)("Is in Yaml");
         ci = ci.concat(cache.getCompletions());
@@ -118,10 +117,11 @@ function onCompletion(_textDocumentPosition, text) {
     // TODO: Check and make absolutely sure that isTextInBracket is working properly
     // TODO: May be useful to have a list of used string words that can be added via autocomplete (i.e. roles)
     // TODO: Faces: Add ability to get the desired image from tiles: https://stackoverflow.com/questions/11533606/javascript-splitting-a-tileset-image-to-be-stored-in-2d-image-array
-    if (iStr.endsWith("\"") || iStr.endsWith("'")) {
-        (0, console_1.debug)("Updating strings...");
-        (0, comments_1.parseStrings)(text);
-    }
+    // TODO: Verify that this isn't necessary, should not be if validate.js is working as intended
+    // if (iStr.endsWith("\"") || iStr.endsWith("'")) {
+    // 	debug("Updating strings...")
+    // 	parseStrings(text);
+    // }
     // This is to get rid of " or ' at end so we don't have to check for both
     const blobStr = iStr.substring(0, iStr.length - 1);
     (0, console_1.debug)(blobStr);

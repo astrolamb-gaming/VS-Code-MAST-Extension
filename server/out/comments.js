@@ -3,8 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getComments = getComments;
 exports.getStrings = getStrings;
 exports.getYamls = getYamls;
-exports.isInComment = isInComment;
 exports.getSquareBrackets = getSquareBrackets;
+exports.isInComment = isInComment;
+exports.parseSquareBrackets = parseSquareBrackets;
 exports.isInSquareBrackets = isInSquareBrackets;
 exports.isInString = isInString;
 exports.isInYaml = isInYaml;
@@ -61,6 +62,19 @@ function getYamls(doc) {
     }
     return yamls;
 }
+const squareBracketCache = new Map();
+/**
+ * Get all square brackets within the specified {@link TextDocument TextDocument}.
+ * @param doc The {@link TextDocument TextDocument}
+ * @returns An array of {@link CRange CRange}
+ */
+function getSquareBrackets(doc) {
+    let sqbs = squareBracketCache.get(doc.uri);
+    if (sqbs === undefined) {
+        sqbs = parseComments(doc);
+    }
+    return sqbs;
+}
 function isInComment(doc, loc) {
     let commentRanges = getComments(doc);
     for (const r in commentRanges) {
@@ -74,7 +88,13 @@ function isInComment(doc, loc) {
 // let stringRanges: CRange[] = [];
 // let yamlRanges: CRange[] = [];
 let squareBracketRanges = [];
-function getSquareBrackets(textDocument) {
+/**
+ * Parses a {@link TextDocument TextDocument} for all square brackets [...] within it.
+ * Saves the information in a Map. Use {@link getComments getComments} to retrieve saved info.
+ * @param textDocument The {@link TextDocument TextDocument} to parse
+ * @returns An array of {@link CRange CRange}
+ */
+function parseSquareBrackets(textDocument) {
     const pattern = /\[.*?\]/g;
     const brackets = [];
     let m;
