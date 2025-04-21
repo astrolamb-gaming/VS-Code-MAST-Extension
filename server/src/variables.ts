@@ -5,11 +5,11 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 export let variables: CompletionItem[] = [];
 export function getVariableNamesInDoc(textDocument: TextDocument) {
 	let vars: string[] = [];
-	const variableRX = /^[\t ]*[a-zA-Z_]\w*[\t ]*(?==[^=])/gm;
+	const variableRX = /^[\t ]*((shared|assigned|client|temp)\s+)?[a-zA-Z_]\w*[\t ]*(?==[^=])/gm;
 	const text = textDocument.getText();
 	let m: RegExpExecArray | null;
 	while (m = variableRX.exec(text)) {
-		const v = m[0].trim();
+		const v = m[0].replace(/(shared|assigned|client|temp)/g,"").trim();
 		//debug(m[0])
 		if (!vars.includes(v)) {
 			vars.push(v);
