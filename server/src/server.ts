@@ -20,10 +20,19 @@ import {
 	SignatureHelpParams,
 	Hover,
 	TextDocumentChangeEvent,
+	TextDocumentIdentifier,
+	Definition,
+	Location,
+	CancellationToken,
+	WorkDoneProgressReporter,
+	ResultProgressReporter,
+	LocationLink,
+	HandlerResult,
+	DefinitionParams,
 
 } from 'vscode-languageserver/node';
 import { URI } from 'vscode-uri';
-import { TextDocument } from 'vscode-languageserver-textdocument';
+import { Position, Range, TextDocument } from 'vscode-languageserver-textdocument';
 import { LabelInfo } from './labels';
 import { onCompletion } from './autocompletion';
 import { debug} from 'console';
@@ -102,6 +111,7 @@ connection.onInitialize((params: InitializeParams) => {
 				interFileDependencies: false,
 				workspaceDiagnostics: false
 			},
+			definitionProvider: true,
 			codeActionProvider: true,
 			executeCommandProvider: {
 				commands: [
@@ -524,3 +534,29 @@ connection.onNotification("custom/storyJsonResponse",(response)=>{
 			break;
 	}
 });
+
+
+
+// connection.onDefinition((textDocumentIdentifier: TextDocumentIdentifier): Definition => {
+// 	return Location.create(textDocumentIdentifier.uri, {
+// 	  start: { line: 2, character: 5 },
+// 	  end: { line: 2, character: 6 }
+// 	});
+//   });
+
+connection.onDefinition((params: DefinitionParams,token: CancellationToken,workDoneProgress:WorkDoneProgressReporter,resultProgress:ResultProgressReporter<LocationLink[] | Location[]> | undefined): HandlerResult<Definition | LocationLink[] | null | undefined, void>=>{
+	let handlerResult: HandlerResult<Definition | LocationLink[] | null | undefined, void>;
+	let start: Position = {line: 1, character: 1}
+	let end: Position = {line: 1, character: 5}
+	let range: Range = {
+		start: start,
+		end: end
+	}
+	let def: Location = {
+		uri: params.textDocument.uri,
+		range: range
+	}
+	const definition: Definition = def;
+	return handlerResult;
+})
+

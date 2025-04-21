@@ -70,6 +70,7 @@ exports.connection.onInitialize((params) => {
                 interFileDependencies: false,
                 workspaceDiagnostics: false
             },
+            definitionProvider: true,
             codeActionProvider: true,
             executeCommandProvider: {
                 commands: [
@@ -414,5 +415,26 @@ exports.connection.onNotification("custom/storyJsonResponse", (response) => {
             // Do nothing
             break;
     }
+});
+// connection.onDefinition((textDocumentIdentifier: TextDocumentIdentifier): Definition => {
+// 	return Location.create(textDocumentIdentifier.uri, {
+// 	  start: { line: 2, character: 5 },
+// 	  end: { line: 2, character: 6 }
+// 	});
+//   });
+exports.connection.onDefinition((params, token, workDoneProgress, resultProgress) => {
+    let handlerResult;
+    let start = { line: 1, character: 1 };
+    let end = { line: 1, character: 5 };
+    let range = {
+        start: start,
+        end: end
+    };
+    let def = {
+        uri: params.textDocument.uri,
+        range: range
+    };
+    const definition = def;
+    return handlerResult;
 });
 //# sourceMappingURL=server.js.map
