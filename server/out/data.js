@@ -457,12 +457,24 @@ class Function {
         // https://github.com/artemis-sbs/sbs_utils/blob/master/sbs_utils/procedural/roles.py
         // https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/mock/sbs.py
         // https://github.com/artemis-sbs/sbs_utils/blob/master/mock/sbs.py
-        // Convert the source to reference the applicable sbs_utils or legendarymissions github page
-        const regex = /\.v((\d+)\.(\d+)\.(\d+))\.(\d+\.)*(((mast|sbs)lib)|(zip))/;
-        let source = this.sourceFile;
+        let source = this.determineSource(this.sourceFile);
+        source = "\nSource:  \n  " + source;
+        if (docs !== "") {
+            docs = "\n\n```text\n\n" + docs + "\n```";
+        }
+        const ret = {
+            kind: "markdown",
+            value: "```javascript\n" + this.buildFunctionDetails() + "\n```" + docs + source
+            // value: functionDetails + "\n" + documentation + "\n\n" + source
+        };
+        return ret;
+    }
+    determineSource(source) {
         if (this.sourceFile.includes("sbs.py"))
             (0, console_1.debug)("Generating an SBS MarkupContent");
         let url = "";
+        // Convert the source to reference the applicable sbs_utils or legendarymissions github page
+        const regex = /\.v((\d+)\.(\d+)\.(\d+))\.(\d+\.)*(((mast|sbs)lib)|(zip))/;
         (0, console_1.debug)(source);
         if (source.includes("LegendaryMissions")) {
             source = "https://github.com/" + source.replace(regex, "").replace("LegendaryMissions.", "LegendaryMissions/blob/main/");
@@ -474,16 +486,7 @@ class Function {
         else if (source.includes("sbs_utils")) {
             source = "https://github.com/" + source.replace(regex, "/blob/master").replace(".", "/");
         }
-        source = "\nSource:  \n  " + source;
-        if (docs !== "") {
-            docs = "\n\n```text\n\n" + docs + "\n```";
-        }
-        const ret = {
-            kind: "markdown",
-            value: "```javascript\n" + this.buildFunctionDetails() + "\n```" + docs + source
-            // value: functionDetails + "\n" + documentation + "\n\n" + source
-        };
-        return ret;
+        return source;
     }
     /**
      * Helper function, should only be called by constructor.
@@ -509,7 +512,7 @@ class Function {
         // const documentation = "```text\n\n" + this.documentation + "```";
         const documentation = this.documentation.replace(/\t/g, "&emsp;").replace(/    /g, "&emsp;").replace(/\n/g, "\\\n");
         // debug(documentation)
-        const source = "Source: " + this.sourceFile;
+        const source = "Source: " + this.determineSource(this.sourceFile);
         let docs = {
             kind: 'markdown',
             value: functionDetails + "  \n  " + documentation + "  \n  " + source

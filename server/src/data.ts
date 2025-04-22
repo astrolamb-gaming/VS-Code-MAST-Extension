@@ -569,21 +569,10 @@ export class Function implements IFunction {
 		// https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/mock/sbs.py
 		// https://github.com/artemis-sbs/sbs_utils/blob/master/mock/sbs.py
 
-		// Convert the source to reference the applicable sbs_utils or legendarymissions github page
-		const regex: RegExp = /\.v((\d+)\.(\d+)\.(\d+))\.(\d+\.)*(((mast|sbs)lib)|(zip))/;
+		
 
-		let source = this.sourceFile;
-		if (this.sourceFile.includes("sbs.py")) debug("Generating an SBS MarkupContent");
-		let url = ""
-		debug(source)
-		if (source.includes("LegendaryMissions")) {
-			source = "https://github.com/" + source.replace(regex, "").replace("LegendaryMissions.","LegendaryMissions/blob/main/");
-		} else if (source.includes("githubusercontent")) {
-			debug("Githubusercontent foudn");
-			source = source.replace("raw.githubusercontent","github").replace("/master","/blob/master");
-		} else if (source.includes("sbs_utils")) {
-			source = "https://github.com/" + source.replace(regex, "/blob/master").replace(".","/");
-		} 
+		let source = this.determineSource(this.sourceFile);
+		
 
 		source = "\nSource:  \n  " + source;
 		if (docs !== "") {
@@ -595,6 +584,23 @@ export class Function implements IFunction {
 			// value: functionDetails + "\n" + documentation + "\n\n" + source
 		}
 		return ret;
+	}
+
+	determineSource(source: string): string {
+		if (this.sourceFile.includes("sbs.py")) debug("Generating an SBS MarkupContent");
+		let url = ""
+		// Convert the source to reference the applicable sbs_utils or legendarymissions github page
+		const regex: RegExp = /\.v((\d+)\.(\d+)\.(\d+))\.(\d+\.)*(((mast|sbs)lib)|(zip))/;
+		debug(source)
+		if (source.includes("LegendaryMissions")) {
+			source = "https://github.com/" + source.replace(regex, "").replace("LegendaryMissions.","LegendaryMissions/blob/main/");
+		} else if (source.includes("githubusercontent")) {
+			debug("Githubusercontent foudn");
+			source = source.replace("raw.githubusercontent","github").replace("/master","/blob/master");
+		} else if (source.includes("sbs_utils")) {
+			source = "https://github.com/" + source.replace(regex, "/blob/master").replace(".","/");
+		} 
+		return source;
 	}
 
 	/**
@@ -620,7 +626,7 @@ export class Function implements IFunction {
 		// const documentation = "```text\n\n" + this.documentation + "```";
 		const documentation = (this.documentation as string).replace(/\t/g,"&emsp;").replace(/    /g,"&emsp;").replace(/\n/g,"\\\n");
 		// debug(documentation)
-		const source = "Source: " + this.sourceFile;
+		const source = "Source: " + this.determineSource(this.sourceFile);
 		let docs: MarkupContent = {
 			kind: 'markdown',
 			value: functionDetails + "  \n  " + documentation + "  \n  " + source
