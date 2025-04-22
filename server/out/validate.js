@@ -5,11 +5,11 @@ const console_1 = require("console");
 const path = require("path");
 const vscode_languageserver_1 = require("vscode-languageserver");
 const cache_1 = require("./cache");
-const comments_1 = require("./comments");
+const comments_1 = require("./tokens/comments");
 const errorChecking_1 = require("./errorChecking");
-const labels_1 = require("./labels");
+const labels_1 = require("./tokens/labels");
 const server_1 = require("./server");
-const routeLabels_1 = require("./routeLabels");
+const routeLabels_1 = require("./tokens/routeLabels");
 const vscode_uri_1 = require("vscode-uri");
 const fileFunctions_1 = require("./fileFunctions");
 let debugStrs = ""; //Debug: ${workspaceFolder}\n";
@@ -29,19 +29,20 @@ async function validateTextDocument(textDocument) {
             }
         });
     }
+    (0, console_1.debug)("Starting file update");
     cache.updateFileInfo(textDocument);
-    //debug("Validating document");
+    (0, console_1.debug)("Validating document");
     // In this simple example we get the settings for every validate run.
     let maxNumberOfProblems = 100;
     const settings = await (0, server_1.getDocumentSettings)(textDocument.uri);
     if (settings !== null) {
         maxNumberOfProblems = settings.maxNumberOfProblems;
     }
-    // These all happen in cache.updateFileInfo() above
-    // let squareBrackets = parseSquareBrackets(textDocument);
-    // let strs = parseStrings(textDocument);
-    // let comments = parseComments(textDocument);
-    // let yamls = parseYamls(textDocument);
+    // These all don't happen in cache.updateFileInfo() above, since this data is stored separately
+    let squareBrackets = (0, comments_1.parseSquareBrackets)(textDocument);
+    let strs = (0, comments_1.parseStrings)(textDocument);
+    let comments = (0, comments_1.parseComments)(textDocument);
+    let yamls = (0, comments_1.parseYamls)(textDocument);
     // The validator creates diagnostics for all uppercase words length 2 and more
     const text = textDocument.getText();
     //currentDocument = textDocument;
@@ -50,7 +51,7 @@ async function validateTextDocument(textDocument) {
     let problems = 0;
     let diagnostics = [];
     let errorSources = [];
-    // for (const s of strs) {
+    // for (const s of getComments(textDocument)) {
     // 	let r: Range = {
     // 		start: textDocument.positionAt(s.start),
     // 		end: textDocument.positionAt(s.end)

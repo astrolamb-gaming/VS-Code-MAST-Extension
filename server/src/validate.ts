@@ -2,12 +2,12 @@ import { debug } from 'console';
 import * as path from 'path';
 import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
 import { getCache } from './cache';
-import { parseComments, parseStrings, parseYamls, isInString, isInComment, getMatchesForRegex, parseSquareBrackets } from './comments';
+import { parseComments, parseStrings, parseYamls, isInString, isInComment, getMatchesForRegex, parseSquareBrackets, getComments } from './tokens/comments';
 import { checkLastLine, findDiagnostic } from './errorChecking';
-import { checkLabels } from './labels';
+import { checkLabels } from './tokens/labels';
 import { ErrorInstance, getDocumentSettings } from './server';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { checkEnableRoutes } from './routeLabels';
+import { checkEnableRoutes } from './tokens/routeLabels';
 import { URI } from 'vscode-uri';
 import { fixFileName } from './fileFunctions';
 import { compileMission } from './python';
@@ -32,20 +32,20 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 			}
 		});
 	}
-	
+	debug("Starting file update")
 	cache.updateFileInfo(textDocument);
-	//debug("Validating document");
+	debug("Validating document");
 	// In this simple example we get the settings for every validate run.
 	let maxNumberOfProblems = 100;
 	const settings = await getDocumentSettings(textDocument.uri);
 	if (settings !== null) {
 		maxNumberOfProblems = settings.maxNumberOfProblems;
 	}
-	// These all happen in cache.updateFileInfo() above
-	// let squareBrackets = parseSquareBrackets(textDocument);
-	// let strs = parseStrings(textDocument);
-	// let comments = parseComments(textDocument);
-	// let yamls = parseYamls(textDocument);
+	// These all don't happen in cache.updateFileInfo() above, since this data is stored separately
+	let squareBrackets = parseSquareBrackets(textDocument);
+	let strs = parseStrings(textDocument);
+	let comments = parseComments(textDocument);
+	let yamls = parseYamls(textDocument);
 
 	
 
@@ -60,7 +60,7 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	let diagnostics: Diagnostic[] = [];
 	let errorSources: ErrorInstance[] = [];
 
-	// for (const s of strs) {
+	// for (const s of getComments(textDocument)) {
 	// 	let r: Range = {
 	// 		start: textDocument.positionAt(s.start),
 	// 		end: textDocument.positionAt(s.end)

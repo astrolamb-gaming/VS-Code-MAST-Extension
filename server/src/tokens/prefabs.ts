@@ -1,6 +1,4 @@
-import { TextDocument } from 'vscode-languageserver-textdocument';
-import { getYamls } from './comments';
-import { getCache } from './cache';
+
 import { LabelInfo } from './labels';
 
 

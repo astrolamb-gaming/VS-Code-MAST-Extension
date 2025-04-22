@@ -2,17 +2,17 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { debug } from 'console';
 import { CompletionItem, CompletionItemKind, CompletionItemLabelDetails, InlineValueRequest, integer, MarkupContent, ParameterInformation, SignatureInformation } from 'vscode-languageserver';
-import { LabelInfo, parseLabelsInFile } from './labels';
+import { LabelInfo, parseLabelsInFile } from './tokens/labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { fixFileName, getParentFolder } from './fileFunctions';
 import exp = require('constants');
 import { getCache } from './cache';
-import { getVariableNamesInDoc } from './variables';
+import { getVariableNamesInDoc } from './tokens/variables';
 import { getGlobals } from './globals';
 import { getRolesForFile } from './roles';
-import { CRange, parseComments, parseSquareBrackets, parseStrings, parseYamls } from './comments';
+import { CRange, parseComments, parseSquareBrackets, parseStrings, parseYamls } from './tokens/comments';
 import { connection, sendToClient } from './server';
-import { parsePrefabs } from './prefabs';
+import { parsePrefabs } from './tokens/prefabs';
 
 /**
  * This accounts for classes that use a different name as a global than the class name. 
@@ -39,7 +39,7 @@ export class FileCache {
 	parentFolder: string;
 	variableNames: string[] = [];
 	constructor(uri: string) {
-		this.uri = uri;
+		this.uri = fixFileName(uri);
 		let parent = "sbs_utils";
 		if (!uri.includes("sbs_utils") && !uri.includes("mastlib")) {
 			parent = getParentFolder(uri);
@@ -84,10 +84,10 @@ export class MastFile extends FileCache {
 
 	prefabs: LabelInfo[] = [];
 	
-	strings: CRange[] = [];
-	comments: CRange[] = [];
-	yamls: CRange[] = [];
-	squareBrackets: CRange[] = [];
+	// strings: CRange[] = [];
+	// comments: CRange[] = [];
+	// yamls: CRange[] = [];
+	// squareBrackets: CRange[] = [];
 	
 	constructor(uri: string, fileContents:string = "") {
 		//debug("building mast file");
@@ -118,17 +118,13 @@ export class MastFile extends FileCache {
 	}
 
 	parse(text: string) {
+		debug("parsing mast file: " + this.uri)
 		const textDocument: TextDocument = TextDocument.create(this.uri, "mast", 1, text);
 		this.labelNames = parseLabelsInFile(text, this.uri);
 		this.prefabs = parsePrefabs(this.labelNames);
 		// TODO: Parse variables, etc
 		this.variables = getVariableNamesInDoc(textDocument);
-		this.roles = getRolesForFile(text);
-		this.comments = parseComments(textDocument);
-		this.strings = parseStrings(textDocument);
-		this.yamls = parseYamls(textDocument);
-		this.squareBrackets = parseSquareBrackets(textDocument);
-		
+		this.roles = getRolesForFile(text);		
 	}
 
 	getVariableNames() {

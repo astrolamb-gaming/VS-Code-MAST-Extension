@@ -33,14 +33,14 @@ import {
 } from 'vscode-languageserver/node';
 import { URI } from 'vscode-uri';
 import { Position, Range, TextDocument } from 'vscode-languageserver-textdocument';
-import { LabelInfo } from './labels';
+import { LabelInfo } from './tokens/labels';
 import { onCompletion } from './autocompletion';
 import { debug} from 'console';
 import { onHover } from './hover';
 import { onSignatureHelp } from './signatureHelp';
 import fs = require("fs");
 import { getCache, loadCache } from './cache';
-import { getVariableNamesInDoc } from './variables';
+import { getVariableNamesInDoc } from './tokens/variables';
 import { getGlobals } from './globals';
 import { validateTextDocument } from './validate';
 import path = require('path');

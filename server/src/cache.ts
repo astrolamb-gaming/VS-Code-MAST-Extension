@@ -2,13 +2,13 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { CompletionItem, integer, SignatureInformation } from 'vscode-languageserver';
 import { IClassObject, MastFile, PyFile, Function } from './data';
-import { parseLabelsInFile, LabelInfo } from './labels';
+import { parseLabelsInFile, LabelInfo } from './tokens/labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
 import { prepCompletions } from './autocompletion';
 import { prepSignatures } from './signatureHelp';
 import { parse, RX } from './rx';
-import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } from './routeLabels';
+import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } from './tokens/routeLabels';
 import { fixFileName, getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readZipArchive } from './fileFunctions';
 import { connection, notifyClient, sendToClient } from './server';
 import { URI } from 'vscode-uri';
@@ -300,7 +300,8 @@ export class MissionCache {
 
 	updateFileInfo(doc: TextDocument) {
 		if (doc.languageId === "mast") {
-			this.getMastFile(doc.getText()).parse(doc.getText());
+			debug("Updating mast file");
+			this.getMastFile(doc.uri).parse(doc.getText());
 		} else if (doc.languageId === "py") {
 			// this.getPyFile(doc.getText())
 		}

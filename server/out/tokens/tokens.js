@@ -9,8 +9,8 @@ exports.updateTokensForLine = updateTokensForLine;
 exports.isFunction = isFunction;
 exports.isClassMethod = isClassMethod;
 exports.getClassOfMethod = getClassOfMethod;
-const data_1 = require("./data");
-const comments_1 = require("./tokens/comments");
+const data_1 = require("../data");
+const comments_1 = require("../tokens/comments");
 function getAllTokens(textDocument) {
     let variables = (0, data_1.getVariablesInFile)(textDocument);
 }

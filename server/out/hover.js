@@ -3,10 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.onHover = onHover;
 const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
-const comments_1 = require("./comments");
+const comments_1 = require("./tokens/comments");
 const cache_1 = require("./cache");
 const globals_1 = require("./globals");
-const tokens_1 = require("./tokens");
+const tokens_1 = require("./tokens/tokens");
 function onHover(_pos, text) {
     if (text.languageId !== "mast") {
         return undefined;

@@ -20,10 +20,11 @@ const hover_1 = require("./hover");
 const signatureHelp_1 = require("./signatureHelp");
 const fs = require("fs");
 const cache_1 = require("./cache");
-const variables_1 = require("./variables");
+const variables_1 = require("./tokens/variables");
 const globals_1 = require("./globals");
 const validate_1 = require("./validate");
 const python_1 = require("./python");
+const goToDefinition_1 = require("./goToDefinition");
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 exports.connection = (0, node_1.createConnection)(node_1.ProposedFeatures.all);
@@ -423,18 +424,7 @@ exports.connection.onNotification("custom/storyJsonResponse", (response) => {
 // 	});
 //   });
 exports.connection.onDefinition((params, token, workDoneProgress, resultProgress) => {
-    let handlerResult;
-    let start = { line: 1, character: 1 };
-    let end = { line: 1, character: 5 };
-    let range = {
-        start: start,
-        end: end
-    };
-    let def = {
-        uri: params.textDocument.uri,
-        range: range
-    };
-    const definition = def;
-    return handlerResult;
+    let def = (0, goToDefinition_1.onDefinition)(params);
+    return def;
 });
 //# sourceMappingURL=server.js.map

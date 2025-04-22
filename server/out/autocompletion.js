@@ -4,17 +4,16 @@ exports.prepCompletions = prepCompletions;
 exports.onCompletion = onCompletion;
 const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
-const labels_1 = require("./labels");
-const routeLabels_1 = require("./routeLabels");
-const comments_1 = require("./comments");
+const labels_1 = require("./tokens/labels");
+const routeLabels_1 = require("./tokens/routeLabels");
+const comments_1 = require("./tokens/comments");
 const cache_1 = require("./cache");
 const path = require("path");
 const fileFunctions_1 = require("./fileFunctions");
-const tokens_1 = require("./tokens");
+const tokens_1 = require("./tokens/tokens");
 const globals_1 = require("./globals");
 const signatureHelp_1 = require("./signatureHelp");
 const roles_1 = require("./roles");
-const variables_1 = require("./variables");
 let classes = [];
 let defaultFunctionCompletionItems = [];
 /**
@@ -38,9 +37,7 @@ function onCompletion(_textDocumentPosition, text) {
     (0, console_1.debug)("Staring onCompletion");
     // return getGlobals().artFiles;
     if (!(0, globals_1.getGlobals)().isCurrentFile(text.uri)) {
-        // update cache info
-        // update strings and comments
-        // update labels?
+        (0, cache_1.getCache)(text.uri).updateFileInfo(text);
         (0, globals_1.getGlobals)().setCurrentFile(text.uri);
     }
     const cache = (0, cache_1.getCache)(text.uri);
@@ -80,7 +77,7 @@ function onCompletion(_textDocumentPosition, text) {
         return ci;
     }
     else {
-        (0, console_1.debug)("NOT an init file");
+        // debug("NOT an init file");
     }
     let variables = [];
     try {
@@ -94,8 +91,9 @@ function onCompletion(_textDocumentPosition, text) {
         currentLine = _textDocumentPosition.position.line;
         // Here we can do any logic that doesn't need to be done every character change
         (0, console_1.debug)("Updating variables list");
-        const varNames = (0, variables_1.getVariableNamesInDoc)(text);
-        variables = (0, variables_1.getVariablesAsCompletionItem)(varNames);
+        // const varNames = getVariableNamesInDoc(text);
+        const variables = (0, cache_1.getCache)(text.uri).getVariables(text.uri);
+        // variables = getVariablesAsCompletionItem(varNames);
     }
     (0, console_1.debug)("updating tokens...");
     (0, tokens_1.updateTokensForLine)(currentLine);
@@ -369,7 +367,7 @@ function onCompletion(_textDocumentPosition, text) {
         ci.push(i);
     }
     // Add Route-specific variables, e.g. COLLISION_ID or SCIENCE_TARGET
-    const lbl = (0, labels_1.getMainLabelAtPos)(pos);
+    const lbl = (0, labels_1.getMainLabelAtPos)(pos, cache.getMastFile(text.uri).labelNames);
     (0, console_1.debug)("Main label at pos: ");
     (0, console_1.debug)(lbl);
     if (lbl.type === "route") {

@@ -1,10 +1,10 @@
 import { debug } from 'console';
 import { Hover, integer, MarkupContent, Position, TextDocumentPositionParams } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { isInComment, isInString } from './comments';
+import { isInComment, isInString } from './tokens/comments';
 import { getCache } from './cache';
 import { getGlobals } from './globals';
-import { getClassOfMethod, isClassMethod, isFunction } from './tokens';
+import { getClassOfMethod, isClassMethod, isFunction } from './tokens/tokens';
 
 export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : Hover | undefined {
 	if (text.languageId !== "mast") {

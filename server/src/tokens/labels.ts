@@ -1,12 +1,12 @@
 import { Diagnostic, DiagnosticSeverity, integer } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { relatedMessage } from './errorChecking';
-import { labelNames, updateLabelNames } from "./server";
+import { relatedMessage } from '../errorChecking';
+import { labelNames, updateLabelNames } from "../server";
 import { debug } from 'console';
-import { getCache } from './cache';
+import { getCache } from '../cache';
 import { URI } from 'vscode-uri';
 import path = require('path');
-import { fixFileName } from './fileFunctions';
+import { fixFileName } from '../fileFunctions';
 import { isInYaml } from './comments';
 
 
@@ -527,13 +527,7 @@ function findBadLabels(t: TextDocument) : Diagnostic[] {
 	return diagnostics;
 }
 
-export function getMainLabelAtPos(pos: integer, labels: LabelInfo[] = []): LabelInfo {
-	if (labels.length === 0) {
-		// TODO: labelNames is a global variable. Should change?
-		labels = labelNames;
-	}
-	// debug(labels)
-	// debug(pos);
+export function getMainLabelAtPos(pos: integer, labels: LabelInfo[]): LabelInfo {
 	let closestLabel = labels[0];
 	for (const i in labels) {
 		// Could be route or main label

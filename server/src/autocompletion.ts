@@ -1,19 +1,19 @@
 import { debug } from 'console';
 import { CompletionItem, CompletionItemKind, CompletionItemTag, integer, MarkupContent, SignatureInformation, TextDocumentPositionParams } from 'vscode-languageserver';
-import { getMainLabelAtPos } from './labels';
+import { getMainLabelAtPos } from './tokens/labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { IClassObject, PyFile } from './data';
-import { getRouteLabelVars } from './routeLabels';
-import { isInComment, isInString, isInYaml, isTextInBracket } from './comments';
+import { getRouteLabelVars } from './tokens/routeLabels';
+import { isInComment, isInString, isInYaml, isTextInBracket } from './tokens/comments';
 import { getCache } from './cache';
 import path = require('path');
 import fs = require("fs");
 import { fixFileName, getFilesInDir } from './fileFunctions';
-import { updateTokensForLine } from './tokens';
+import { updateTokensForLine } from './tokens/tokens';
 import { getGlobals } from './globals';
 import { getCurrentMethodName } from './signatureHelp';
 import { getRolesAsCompletionItem, getRolesForFile } from './roles';
-import { getVariableNamesInDoc, getVariablesAsCompletionItem } from './variables';
+import { getVariableNamesInDoc, getVariablesAsCompletionItem } from './tokens/variables';
 import { buildFaction } from './factions';
 
 let classes: IClassObject[] = [];
@@ -43,9 +43,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	debug("Staring onCompletion");
 	// return getGlobals().artFiles;
 	if (!getGlobals().isCurrentFile(text.uri)) {
-		// update cache info
-		// update strings and comments
-		// update labels?
+		getCache(text.uri).updateFileInfo(text);
 		getGlobals().setCurrentFile(text.uri);
 	}
 	const cache = getCache(text.uri);
@@ -84,7 +82,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		}
 		return ci;
 	} else {
-		debug("NOT an init file");
+		// debug("NOT an init file");
 	}
 	let variables: CompletionItem[] = [];
 	try {
@@ -97,8 +95,9 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		currentLine = _textDocumentPosition.position.line;
 		// Here we can do any logic that doesn't need to be done every character change
 		debug("Updating variables list")
-		const varNames = getVariableNamesInDoc(text);
-		variables = getVariablesAsCompletionItem(varNames);
+		// const varNames = getVariableNamesInDoc(text);
+		const variables = getCache(text.uri).getVariables(text.uri);
+		// variables = getVariablesAsCompletionItem(varNames);
 	}
 	debug("updating tokens...")
 	updateTokensForLine(currentLine);
@@ -401,7 +400,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	}
 
 	// Add Route-specific variables, e.g. COLLISION_ID or SCIENCE_TARGET
-	const lbl = getMainLabelAtPos(pos);
+	const lbl = getMainLabelAtPos(pos,cache.getMastFile(text.uri).labelNames);
 	debug("Main label at pos: ");
 	debug(lbl)
 	if (lbl.type === "route") {

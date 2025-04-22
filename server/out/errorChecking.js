@@ -7,7 +7,7 @@ exports.checkFunctionSignatures = checkFunctionSignatures;
 const node_1 = require("vscode-languageserver/node");
 const server_1 = require("./server");
 const console_1 = require("console");
-const comments_1 = require("./comments");
+const comments_1 = require("./tokens/comments");
 /**
  * Checks if the file ends with an empty line.
  * @param textDocument

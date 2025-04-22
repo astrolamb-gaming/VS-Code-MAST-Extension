@@ -8,15 +8,14 @@ const path = require("path");
 const fs = require("fs");
 const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
-const labels_1 = require("./labels");
+const labels_1 = require("./tokens/labels");
 const vscode_languageserver_textdocument_1 = require("vscode-languageserver-textdocument");
 const fileFunctions_1 = require("./fileFunctions");
 const cache_1 = require("./cache");
-const variables_1 = require("./variables");
+const variables_1 = require("./tokens/variables");
 const globals_1 = require("./globals");
 const roles_1 = require("./roles");
-const comments_1 = require("./comments");
-const prefabs_1 = require("./prefabs");
+const prefabs_1 = require("./tokens/prefabs");
 /**
  * This accounts for classes that use a different name as a global than the class name.
  * E.g. the sim global variable refers to the simulation class. Instead of simulation.functionName(), use sim.functionName().
@@ -38,7 +37,7 @@ const prepend = ["ship_data.py", "names.py", "scatter.py"];
 class FileCache {
     constructor(uri) {
         this.variableNames = [];
-        this.uri = uri;
+        this.uri = (0, fileFunctions_1.fixFileName)(uri);
         let parent = "sbs_utils";
         if (!uri.includes("sbs_utils") && !uri.includes("mastlib")) {
             parent = (0, fileFunctions_1.getParentFolder)(uri);
@@ -61,6 +60,10 @@ class FileCache {
 }
 exports.FileCache = FileCache;
 class MastFile extends FileCache {
+    // strings: CRange[] = [];
+    // comments: CRange[] = [];
+    // yamls: CRange[] = [];
+    // squareBrackets: CRange[] = [];
     constructor(uri, fileContents = "") {
         //debug("building mast file");
         super(uri);
@@ -70,10 +73,6 @@ class MastFile extends FileCache {
         this.variables = [];
         this.roles = [];
         this.prefabs = [];
-        this.strings = [];
-        this.comments = [];
-        this.yamls = [];
-        this.squareBrackets = [];
         if (path.extname(uri) === ".mast") {
             // If the contents are aleady read, we parse and move on. Don't need to read or parse again.
             if (fileContents !== "") {
@@ -101,16 +100,13 @@ class MastFile extends FileCache {
         }
     }
     parse(text) {
+        (0, console_1.debug)("parsing mast file: " + this.uri);
         const textDocument = vscode_languageserver_textdocument_1.TextDocument.create(this.uri, "mast", 1, text);
         this.labelNames = (0, labels_1.parseLabelsInFile)(text, this.uri);
         this.prefabs = (0, prefabs_1.parsePrefabs)(this.labelNames);
         // TODO: Parse variables, etc
         this.variables = (0, variables_1.getVariableNamesInDoc)(textDocument);
         this.roles = (0, roles_1.getRolesForFile)(text);
-        this.comments = (0, comments_1.parseComments)(textDocument);
-        this.strings = (0, comments_1.parseStrings)(textDocument);
-        this.yamls = (0, comments_1.parseYamls)(textDocument);
-        this.squareBrackets = (0, comments_1.parseSquareBrackets)(textDocument);
     }
     getVariableNames() {
         let arr = [];

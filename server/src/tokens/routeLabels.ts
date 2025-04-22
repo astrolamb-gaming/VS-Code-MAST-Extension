@@ -2,7 +2,7 @@ import { debug } from 'console';
 import { CompletionItem, CompletionItemKind, CompletionItemLabelDetails, Diagnostic, DiagnosticSeverity, Position } from 'vscode-languageserver';
 import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 import { parseLabelsInFile } from './labels';
-import { getCache } from './cache';
+import { getCache } from '../cache';
 
 //const routeLabels: IRouteLabel[] = [];
 //const mediaLabels: IRouteLabel[] = [];

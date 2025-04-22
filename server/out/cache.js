@@ -7,12 +7,12 @@ exports.getCache = getCache;
 const fs = require("fs");
 const path = require("path");
 const data_1 = require("./data");
-const labels_1 = require("./labels");
+const labels_1 = require("./tokens/labels");
 const console_1 = require("console");
 const autocompletion_1 = require("./autocompletion");
 const signatureHelp_1 = require("./signatureHelp");
 const rx_1 = require("./rx");
-const routeLabels_1 = require("./routeLabels");
+const routeLabels_1 = require("./tokens/routeLabels");
 const fileFunctions_1 = require("./fileFunctions");
 const server_1 = require("./server");
 const vscode_uri_1 = require("vscode-uri");
@@ -273,7 +273,8 @@ class MissionCache {
     }
     updateFileInfo(doc) {
         if (doc.languageId === "mast") {
-            this.getMastFile(doc.getText()).parse(doc.getText());
+            (0, console_1.debug)("Updating mast file");
+            this.getMastFile(doc.uri).parse(doc.getText());
         }
         else if (doc.languageId === "py") {
             // this.getPyFile(doc.getText())
