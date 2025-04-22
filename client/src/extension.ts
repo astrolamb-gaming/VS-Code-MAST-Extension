@@ -148,8 +148,9 @@ export function activate(context: ExtensionContext) {
 	context.subscriptions.push(mastNotif);
 
 	// This opens the specified file in the editor.
-	const showJson = client.onNotification('custom/showFile', (file)=>{
+	const showJson = client.onNotification('custom/showFile', (file, open=false)=>{
 		file = vscode.Uri.file(file);
+		if (open) vscode.workspace.openTextDocument(file);
 		window.showTextDocument(file);
 	});
 	context.subscriptions.push(showJson);

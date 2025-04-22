@@ -2,6 +2,8 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import * as fs from 'fs';
 import { integer } from 'vscode-languageserver';
 import exp = require('constants');
+import { fixFileName } from '../fileFunctions';
+import { debug } from 'console';
 
 
 /**
@@ -17,7 +19,10 @@ const commentCache: Map<string,CRange[]> = new Map();
  * @returns An array of {@link CRange CRange}
  */
 export function getComments(doc: TextDocument): CRange[] {
-	let comments = commentCache.get(doc.uri);
+	for (const f of commentCache.keys()) {
+		debug(f);
+	}
+	let comments = commentCache.get(fixFileName(doc.uri));
 	if (comments === undefined) {
 		comments = parseComments(doc);
 	}
@@ -30,7 +35,7 @@ const stringCache: Map<string,CRange[]> = new Map();
  * @returns An array of {@link CRange CRange}
  */
 export function getStrings(doc: TextDocument): CRange[] {
-	let strings = stringCache.get(doc.uri);
+	let strings = stringCache.get(fixFileName(doc.uri));
 	if (strings === undefined) {
 		strings = parseStrings(doc);
 	}
@@ -43,7 +48,7 @@ const yamlCache: Map<string,CRange[]> = new Map();
  * @returns An array of {@link CRange CRange}
  */
 export function getYamls(doc: TextDocument): CRange[] {
-	let yamls = yamlCache.get(doc.uri);
+	let yamls = yamlCache.get(fixFileName(doc.uri));
 	if (yamls === undefined) {
 		yamls = parseYamls(doc);
 	}
@@ -56,7 +61,7 @@ const squareBracketCache: Map<string,CRange[]> = new Map();
  * @returns An array of {@link CRange CRange}
  */
 export function getSquareBrackets(doc: TextDocument): CRange[] {
-	let sqbs = squareBracketCache.get(doc.uri);
+	let sqbs = squareBracketCache.get(fixFileName(doc.uri));
 	if (sqbs === undefined) {
 		sqbs = parseSquareBrackets(doc);
 	}
@@ -201,7 +206,7 @@ export function parseComments(textDocument: TextDocument): CRange[] {
 			// Do nothing, with new regex of #+...\#\n it will go to next # in line anyways, if it exists
 		}
 	}
-	commentCache.set(textDocument.uri, commentRanges);
+	commentCache.set(fixFileName(textDocument.uri), commentRanges);
 	return commentRanges;
 }
 
@@ -216,7 +221,7 @@ export function parseYamls(textDocument: TextDocument) {
 	let yamls: CRange[] = [];
 	let yaml = /```[ \t]*.*?[ \t]*?```/gms;
 	yamls = getMatchesForRegex(yaml,text);
-	yamlCache.set(textDocument.uri,yamls);
+	yamlCache.set(fixFileName(textDocument.uri),yamls);
 	return yamls;
 }
 
@@ -392,7 +397,7 @@ export function parseStrings(textDocument: TextDocument) {
 	// Update the global stringRanges variable
 	strings = strings.concat(fstringsOnly);
 	// stringRanges = strings;
-	stringCache.set(textDocument.uri,strings);
+	stringCache.set(fixFileName(textDocument.uri),strings);
 	return strings;
 }
 

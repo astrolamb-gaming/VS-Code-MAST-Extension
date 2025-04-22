@@ -9,6 +9,7 @@ exports.updateTokensForLine = updateTokensForLine;
 exports.isFunction = isFunction;
 exports.isClassMethod = isClassMethod;
 exports.getClassOfMethod = getClassOfMethod;
+exports.getWordRangeAtPosition = getWordRangeAtPosition;
 const data_1 = require("../data");
 const comments_1 = require("../tokens/comments");
 function getAllTokens(textDocument) {
@@ -108,6 +109,13 @@ function isFunction(line, token) {
     }
     return false;
 }
+/**
+ * Somewhat misleading of a name, since it returns true if it's just a parameter
+ * E.g. class.param would return true for param
+ * @param line
+ * @param token
+ * @returns
+ */
 function isClassMethod(line, token) {
     const start = line.indexOf(token);
     const end = start + token.length;
@@ -130,5 +138,20 @@ function getClassOfMethod(line, token) {
         //debug(c);
         return c;
     }
+}
+function getWordRangeAtPosition(line, pos) {
+    let start = pos.character;
+    let end = pos.character;
+    while (line.charAt(start).match(/\w/)) {
+        start = start - 1;
+    }
+    while (line.charAt(end).match(/\w/)) {
+        end = end + 1;
+    }
+    let range = {
+        start: { line: pos.line, character: start },
+        end: { line: pos.line, character: end }
+    };
+    return range;
 }
 //# sourceMappingURL=tokens.js.map

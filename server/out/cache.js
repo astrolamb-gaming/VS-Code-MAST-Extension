@@ -132,6 +132,7 @@ class MissionCache {
             }
         }
         //this.checkForInitFolder(this.missionURI);
+        (0, console_1.debug)("Number of py files: " + this.pyFileCache.length);
     }
     async checkForInitFolder(folder) {
         // if (this.ingoreInitFileMissing) return;

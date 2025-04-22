@@ -1,7 +1,7 @@
 import { debug } from 'console';
 import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 import * as fs from 'fs';
-import { integer } from 'vscode-languageserver';
+import { integer, Position } from 'vscode-languageserver';
 import { getVariablesInFile } from '../data';
 import { CRange, getComments, getStrings } from '../tokens/comments';
 
@@ -126,6 +126,13 @@ export function isFunction(line:string,token:string) {
 	return false;
 }
 
+/**
+ * Somewhat misleading of a name, since it returns true if it's just a parameter
+ * E.g. class.param would return true for param
+ * @param line 
+ * @param token 
+ * @returns 
+ */
 export function isClassMethod(line:string,token:string) {
 	const start = line.indexOf(token);
 	const end = start + token.length;
@@ -149,4 +156,20 @@ export function getClassOfMethod(line:string,token:string) {
 		return c;
 	}
 
+}
+
+export function getWordRangeAtPosition(line:string, pos:Position):Range {
+	let start = pos.character;
+	let end = pos.character;
+	while(line.charAt(start).match(/\w/)) {
+		start = start -1;
+	}
+	while (line.charAt(end).match(/\w/)) {
+		end = end + 1;
+	}
+	let range:Range = {
+		start: {line:pos.line,character:start},
+		end: {line:pos.line,character:end}
+	}
+	return range;
 }

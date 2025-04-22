@@ -100,7 +100,7 @@ class MastFile extends FileCache {
         }
     }
     parse(text) {
-        (0, console_1.debug)("parsing mast file: " + this.uri);
+        // debug("parsing mast file: " + this.uri)
         const textDocument = vscode_languageserver_textdocument_1.TextDocument.create(this.uri, "mast", 1, text);
         this.labelNames = (0, labels_1.parseLabelsInFile)(text, this.uri);
         this.prefabs = (0, prefabs_1.parsePrefabs)(this.labelNames);
@@ -475,12 +475,12 @@ class Function {
         let url = "";
         // Convert the source to reference the applicable sbs_utils or legendarymissions github page
         const regex = /\.v((\d+)\.(\d+)\.(\d+))\.(\d+\.)*(((mast|sbs)lib)|(zip))/;
-        (0, console_1.debug)(source);
+        // debug(source)
         if (source.includes("LegendaryMissions")) {
             source = "https://github.com/" + source.replace(regex, "").replace("LegendaryMissions.", "LegendaryMissions/blob/main/");
         }
         else if (source.includes("githubusercontent")) {
-            (0, console_1.debug)("Githubusercontent foudn");
+            // debug("Githubusercontent foudn");
             source = source.replace("raw.githubusercontent", "github").replace("/master", "/blob/master");
         }
         else if (source.includes("sbs_utils")) {

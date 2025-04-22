@@ -154,7 +154,7 @@ export class MissionCache {
 			}
 		}
 		//this.checkForInitFolder(this.missionURI);
-
+		debug("Number of py files: "+this.pyFileCache.length);
 	}
 
 	async checkForInitFolder(folder:string) : Promise<boolean> {

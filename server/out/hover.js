@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.onHover = onHover;
+exports.getCurrentLineFromTextDocument = getCurrentLineFromTextDocument;
+exports.getHoveredSymbol = getHoveredSymbol;
 const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
 const comments_1 = require("./tokens/comments");
@@ -24,7 +26,7 @@ function onHover(_pos, text) {
     // 	end: t.positionAt(m.index + m[0].length)
     // }
     //debug("Getting line");
-    let hoveredLine = getCurrentLineFromTextDocument(_pos, text);
+    let hoveredLine = getCurrentLineFromTextDocument(_pos.position, text);
     const symbol = getHoveredSymbol(hoveredLine, _pos.position.character);
     // If it's a comment, we'll just ignore it.
     if ((0, comments_1.isInComment)(text, pos)) {
@@ -116,9 +118,9 @@ function onHover(_pos, text) {
     return hover;
 }
 function getCurrentLineFromTextDocument(_pos, text) {
-    const pos = text.offsetAt(_pos.position);
-    const startOfLine = pos - _pos.position.character;
-    const endPosition = vscode_languageserver_1.Position.create(_pos.position.line + 1, 0);
+    const pos = text.offsetAt(_pos);
+    const startOfLine = pos - _pos.character;
+    const endPosition = vscode_languageserver_1.Position.create(_pos.line + 1, 0);
     // endPosition.line += 1;
     // endPosition.character = 0;
     const end = text.offsetAt(endPosition);

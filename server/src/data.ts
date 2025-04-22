@@ -118,7 +118,7 @@ export class MastFile extends FileCache {
 	}
 
 	parse(text: string) {
-		debug("parsing mast file: " + this.uri)
+		// debug("parsing mast file: " + this.uri)
 		const textDocument: TextDocument = TextDocument.create(this.uri, "mast", 1, text);
 		this.labelNames = parseLabelsInFile(text, this.uri);
 		this.prefabs = parsePrefabs(this.labelNames);
@@ -591,11 +591,11 @@ export class Function implements IFunction {
 		let url = ""
 		// Convert the source to reference the applicable sbs_utils or legendarymissions github page
 		const regex: RegExp = /\.v((\d+)\.(\d+)\.(\d+))\.(\d+\.)*(((mast|sbs)lib)|(zip))/;
-		debug(source)
+		// debug(source)
 		if (source.includes("LegendaryMissions")) {
 			source = "https://github.com/" + source.replace(regex, "").replace("LegendaryMissions.","LegendaryMissions/blob/main/");
 		} else if (source.includes("githubusercontent")) {
-			debug("Githubusercontent foudn");
+			// debug("Githubusercontent foudn");
 			source = source.replace("raw.githubusercontent","github").replace("/master","/blob/master");
 		} else if (source.includes("sbs_utils")) {
 			source = "https://github.com/" + source.replace(regex, "/blob/master").replace(".","/");

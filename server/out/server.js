@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.labelNames = exports.hasDiagnosticRelatedInformationCapability = exports.connection = void 0;
+exports.labelNames = exports.hasDiagnosticRelatedInformationCapability = exports.documents = exports.connection = void 0;
 exports.getDocumentSettings = getDocumentSettings;
 exports.updateLabelNames = updateLabelNames;
 exports.myDebug = myDebug;
@@ -29,7 +29,7 @@ const goToDefinition_1 = require("./goToDefinition");
 // Also include all preview / proposed LSP features.
 exports.connection = (0, node_1.createConnection)(node_1.ProposedFeatures.all);
 // Create a simple text document manager.
-const documents = new node_1.TextDocuments(vscode_languageserver_textdocument_1.TextDocument);
+exports.documents = new node_1.TextDocuments(vscode_languageserver_textdocument_1.TextDocument);
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
 exports.hasDiagnosticRelatedInformationCapability = false;
@@ -171,7 +171,7 @@ exports.connection.onInitialized(() => {
     }
 });
 exports.connection.onCodeAction((params) => {
-    const textDocument = documents.get(params.textDocument.uri);
+    const textDocument = exports.documents.get(params.textDocument.uri);
     if (textDocument === undefined) {
         return undefined;
     }
@@ -234,12 +234,12 @@ function getDocumentSettings(resource) {
     return result;
 }
 // Only keep settings for open documents
-documents.onDidClose(e => {
+exports.documents.onDidClose(e => {
     documentSettings.delete(e.document.uri);
 });
 exports.connection.languages.diagnostics.on(async (params) => {
     //TODO: get info from other files in same directory
-    const document = documents.get(params.textDocument.uri);
+    const document = exports.documents.get(params.textDocument.uri);
     // connection.workspace.getWorkspaceFolders().then((value:WorkspaceFolder[] | null) => {
     // 	if (value !== null) {
     // 		value[0].uri
@@ -302,7 +302,7 @@ exports.connection.onSignatureHelp((_textDocPos) => {
     if (!_textDocPos.textDocument.uri.endsWith("mast")) {
         return;
     }
-    const text = documents.get(_textDocPos.textDocument.uri);
+    const text = exports.documents.get(_textDocPos.textDocument.uri);
     if (text === undefined) {
         return undefined;
     }
@@ -317,7 +317,7 @@ exports.connection.onCompletion((_textDocumentPosition) => {
     if (_textDocumentPosition.textDocument.uri.endsWith("__init__.mast")) {
         (0, console_1.debug)("Can't get completions from __init__.mast file");
     }
-    const text = documents.get(_textDocumentPosition.textDocument.uri);
+    const text = exports.documents.get(_textDocumentPosition.textDocument.uri);
     if (text === undefined) {
         return [];
     }
@@ -355,7 +355,7 @@ function updateLabelNames(li) {
 // 	}
 // );
 exports.connection.onHover((_textDocumentPosition) => {
-    const text = documents.get(_textDocumentPosition.textDocument.uri);
+    const text = exports.documents.get(_textDocumentPosition.textDocument.uri);
     if (text === undefined) {
         (0, console_1.debug)("Undefined");
         return undefined;
@@ -381,7 +381,7 @@ exports.connection.onHover((_textDocumentPosition) => {
 // }
 // Make the text document manager listen on the connection
 // for open, change and close text document events
-documents.listen(exports.connection);
+exports.documents.listen(exports.connection);
 // Listen on the connection
 exports.connection.listen();
 function myDebug(str) {
@@ -424,7 +424,11 @@ exports.connection.onNotification("custom/storyJsonResponse", (response) => {
 // 	});
 //   });
 exports.connection.onDefinition((params, token, workDoneProgress, resultProgress) => {
-    let def = (0, goToDefinition_1.onDefinition)(params);
+    const document = exports.documents.get(params.textDocument.uri);
+    let def = undefined;
+    if (document !== undefined) {
+        def = (0, goToDefinition_1.onDefinition)(document, params.position);
+    }
     return def;
 });
 //# sourceMappingURL=server.js.map

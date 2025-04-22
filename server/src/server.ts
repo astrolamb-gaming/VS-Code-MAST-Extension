@@ -28,7 +28,7 @@ import {
 	ResultProgressReporter,
 	LocationLink,
 	HandlerResult,
-	DefinitionParams,
+	DefinitionParams
 
 } from 'vscode-languageserver/node';
 import { URI } from 'vscode-uri';
@@ -53,7 +53,7 @@ import { onDefinition } from './goToDefinition';
 export const connection = createConnection(ProposedFeatures.all);
 
 // Create a simple text document manager.
-const documents = new TextDocuments(TextDocument);
+export const documents = new TextDocuments(TextDocument);
 
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
@@ -546,7 +546,10 @@ connection.onNotification("custom/storyJsonResponse",(response)=>{
 //   });
 
 connection.onDefinition((params: DefinitionParams,token: CancellationToken,workDoneProgress:WorkDoneProgressReporter,resultProgress:ResultProgressReporter<LocationLink[] | Location[]> | undefined): HandlerResult<Definition | LocationLink[] | null | undefined, void>=>{
-	let def = onDefinition(params);
+	const document = documents.get(params.textDocument.uri);
+	let def = undefined;
+	if (document !== undefined) {
+		def = onDefinition(document,params.position);
+	}
 	return def;
 })
-

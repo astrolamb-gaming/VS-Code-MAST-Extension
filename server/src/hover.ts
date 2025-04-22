@@ -26,7 +26,7 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 	// 	end: t.positionAt(m.index + m[0].length)
 	// }
 	//debug("Getting line");
-	let hoveredLine = getCurrentLineFromTextDocument(_pos, text);
+	let hoveredLine = getCurrentLineFromTextDocument(_pos.position, text);
 	const symbol = getHoveredSymbol(hoveredLine, _pos.position.character);
 	// If it's a comment, we'll just ignore it.
 	if (isInComment(text,pos)) {
@@ -122,10 +122,10 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 	return hover;
 }
 
-function getCurrentLineFromTextDocument(_pos: TextDocumentPositionParams, text: TextDocument) : string {
-	const pos : integer = text.offsetAt(_pos.position);
-	const startOfLine : integer = pos - _pos.position.character;
-	const endPosition = Position.create(_pos.position.line + 1, 0);
+export function getCurrentLineFromTextDocument(_pos: Position, text: TextDocument) : string {
+	const pos : integer = text.offsetAt(_pos);
+	const startOfLine : integer = pos - _pos.character;
+	const endPosition = Position.create(_pos.line + 1, 0);
 	// endPosition.line += 1;
 	// endPosition.character = 0;
 	const end : integer = text.offsetAt(endPosition);
@@ -167,7 +167,7 @@ function getHoveredSymbolOld(str: string, pos: integer): string {
  * @param str The string in which you're finding the hovered item. Get this using {@link getCurrentLineFromTextDocument getCurrentLineFromTextDocument}.
  * @param pos The position in the string where you're hovering. Get this from {@link TextDocumentPositionParams TextDocumentPositionParams}.{@link Position Position}.character
  */
-function getHoveredSymbol(str: string, pos: integer): string {
+export function getHoveredSymbol(str: string, pos: integer): string {
 	const words : RegExp = /[a-zA-Z_]\w*/g;
 	let m: RegExpExecArray | null;
 	let res = "";

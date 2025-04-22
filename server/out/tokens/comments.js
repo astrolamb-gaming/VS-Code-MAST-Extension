@@ -18,6 +18,8 @@ exports.isTextInBracket = isTextInBracket;
 exports.parseStrings = parseStrings;
 exports.replaceRegexMatchWithUnderscore = replaceRegexMatchWithUnderscore;
 const fs = require("fs");
+const fileFunctions_1 = require("../fileFunctions");
+const console_1 = require("console");
 /**
  * TODO:
  * 		Fix comment and string checking for hover
@@ -30,7 +32,10 @@ const commentCache = new Map();
  * @returns An array of {@link CRange CRange}
  */
 function getComments(doc) {
-    let comments = commentCache.get(doc.uri);
+    for (const f of commentCache.keys()) {
+        (0, console_1.debug)(f);
+    }
+    let comments = commentCache.get((0, fileFunctions_1.fixFileName)(doc.uri));
     if (comments === undefined) {
         comments = parseComments(doc);
     }
@@ -43,7 +48,7 @@ const stringCache = new Map();
  * @returns An array of {@link CRange CRange}
  */
 function getStrings(doc) {
-    let strings = stringCache.get(doc.uri);
+    let strings = stringCache.get((0, fileFunctions_1.fixFileName)(doc.uri));
     if (strings === undefined) {
         strings = parseStrings(doc);
     }
@@ -56,7 +61,7 @@ const yamlCache = new Map();
  * @returns An array of {@link CRange CRange}
  */
 function getYamls(doc) {
-    let yamls = yamlCache.get(doc.uri);
+    let yamls = yamlCache.get((0, fileFunctions_1.fixFileName)(doc.uri));
     if (yamls === undefined) {
         yamls = parseYamls(doc);
     }
@@ -69,7 +74,7 @@ const squareBracketCache = new Map();
  * @returns An array of {@link CRange CRange}
  */
 function getSquareBrackets(doc) {
-    let sqbs = squareBracketCache.get(doc.uri);
+    let sqbs = squareBracketCache.get((0, fileFunctions_1.fixFileName)(doc.uri));
     if (sqbs === undefined) {
         sqbs = parseSquareBrackets(doc);
     }
@@ -197,7 +202,7 @@ function parseComments(textDocument) {
             // Do nothing, with new regex of #+...\#\n it will go to next # in line anyways, if it exists
         }
     }
-    commentCache.set(textDocument.uri, commentRanges);
+    commentCache.set((0, fileFunctions_1.fixFileName)(textDocument.uri), commentRanges);
     return commentRanges;
 }
 /**
@@ -211,7 +216,7 @@ function parseYamls(textDocument) {
     let yamls = [];
     let yaml = /```[ \t]*.*?[ \t]*?```/gms;
     yamls = getMatchesForRegex(yaml, text);
-    yamlCache.set(textDocument.uri, yamls);
+    yamlCache.set((0, fileFunctions_1.fixFileName)(textDocument.uri), yamls);
     return yamls;
 }
 const indents = [];
@@ -366,7 +371,7 @@ function parseStrings(textDocument) {
     // Update the global stringRanges variable
     strings = strings.concat(fstringsOnly);
     // stringRanges = strings;
-    stringCache.set(textDocument.uri, strings);
+    stringCache.set((0, fileFunctions_1.fixFileName)(textDocument.uri), strings);
     return strings;
 }
 /**
