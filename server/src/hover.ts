@@ -5,6 +5,7 @@ import { isInComment, isInString } from './tokens/comments';
 import { getCache } from './cache';
 import { getGlobals } from './globals';
 import { getClassOfMethod, isClassMethod, isFunction } from './tokens/tokens';
+import { variableModifiers } from './tokens/variables';
 
 export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : Hover | undefined {
 	if (text.languageId !== "mast") {
@@ -48,6 +49,11 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 			}
 		}
 		return {contents: "string"};
+	}
+	for (const s of variableModifiers) {
+		if (s[0] === symbol) {
+			return {contents: s[1]};
+		}
 	}
 	
 	// debug(symbol);
@@ -168,7 +174,7 @@ function getHoveredSymbolOld(str: string, pos: integer): string {
  * @param pos The position in the string where you're hovering. Get this from {@link TextDocumentPositionParams TextDocumentPositionParams}.{@link Position Position}.character
  */
 export function getHoveredSymbol(str: string, pos: integer): string {
-	const words : RegExp = /[a-zA-Z_]\w*/g;
+	const words : RegExp = /[a-zA-Z_/]\w*/g;
 	let m: RegExpExecArray | null;
 	let res = "";
 	let regexCounter = 0;
@@ -179,7 +185,11 @@ export function getHoveredSymbol(str: string, pos: integer): string {
 		const end = start + m[0].length;
 		if (pos >= start && pos <= end) {
 			res = str.substring(start,end);
-			break;
+			// If it's a route, we're done here.
+			if (getHoveredRoute(res)) break;
+			// If it's not a route, but it doesn't contain slashes, then we're good.
+			if (res.match(/[a-zA-Z_]\w*/)) break;
+			// Otherwise, we'll just ignore this and move on.
 		}
 		regexCounter += 1;
 		if (regexCounter > 10) {
@@ -187,6 +197,17 @@ export function getHoveredSymbol(str: string, pos: integer): string {
 		}
 	}
 	return res;
+}
+
+export function getHoveredRoute(str: string) {
+	const routeLabel: RegExp = /^([ \t]*)(\/{2,})(\w+)(\/\w+)*/m;
+	let m: RegExpMatchArray | null;
+	let res = "";
+	m = str.match(routeLabel);
+	if (m) {
+		return true;
+	}
+	return false;
 }
 
 

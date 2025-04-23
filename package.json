@@ -71,7 +71,8 @@
 				"editor.defaultColorDecorators": "auto",
 				"editor.showFoldingControls": "always",
 				"editor.folding": true,
-				"editor.foldingStrategy": "indentation"
+				"editor.foldingStrategy": "indentation",
+				"editor.wordSeparators": "`~!@#$%^&*()-=+[{]}\\|;:'\",.<>?"
 			},
 			"editor.tokenColorCustomizations": {
 				"textMateRules": [

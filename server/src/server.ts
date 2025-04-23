@@ -550,6 +550,7 @@ connection.onDefinition((params: DefinitionParams,token: CancellationToken,workD
 	let def = undefined;
 	if (document !== undefined) {
 		def = onDefinition(document,params.position);
+		def.then((loc)=>{debug(loc)});
 	}
 	return def;
 })

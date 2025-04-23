@@ -372,11 +372,15 @@ export class MissionCache {
 				// Check if the mast files are in scope
 				// TODO: Check init.mast for if any files should not be included
 				//debug(fileUri);
-				if (f.parentFolder === getParentFolder(fileUri)) {
-					//debug("adding labels for: ");
-					//debug(f);
-					li = li.concat(f.labelNames);
-				}
+
+				// I had previously thought that files outside of the current folder were not in scope.
+				// I was wrong.
+				// if (f.parentFolder === getParentFolder(fileUri)) {
+				// 	//debug("adding labels for: ");
+				// 	//debug(f);
+				// 	li = li.concat(f.labelNames);
+				// }
+				li = li.concat(f.labelNames);
 			}
 		}
 		//debug(li);

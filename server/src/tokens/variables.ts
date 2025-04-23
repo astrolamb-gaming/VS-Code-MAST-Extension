@@ -2,9 +2,10 @@ import { CompletionItem, CompletionItemKind } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 // TODO: Add these to autocomplete and hover
-const variableModifiers: string[][] = [
+export const variableModifiers: string[][] = [
 	["default", "`Default` means that if the variable is not already defined, define it. Otherwise, skip. So it does not overwrite if it exists."],
-	["shared","variables with this modifier are used by the server and all clients"],
+	["shared","Variables with this modifier are used by the server and all clients"],
+	// TODO: what do assigned and temp do to variables?
 	["assigned",""],
 	["client","Variables with the `client` modifier are only used by the client."],
 	["temp",""]

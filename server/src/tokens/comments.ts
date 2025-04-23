@@ -19,9 +19,9 @@ const commentCache: Map<string,CRange[]> = new Map();
  * @returns An array of {@link CRange CRange}
  */
 export function getComments(doc: TextDocument): CRange[] {
-	for (const f of commentCache.keys()) {
-		debug(f);
-	}
+	// for (const f of commentCache.keys()) {
+	// 	debug(f);
+	// }
 	let comments = commentCache.get(fixFileName(doc.uri));
 	if (comments === undefined) {
 		comments = parseComments(doc);

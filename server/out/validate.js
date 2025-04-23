@@ -16,7 +16,6 @@ let debugStrs = ""; //Debug: ${workspaceFolder}\n";
 let exclude = [];
 async function validateTextDocument(textDocument) {
     if (textDocument.languageId === "json") {
-        // TODO: Add autocompletion for story.json
         (0, console_1.debug)("THIS IS A JSON FILE");
         return [];
     }

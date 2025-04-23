@@ -428,6 +428,7 @@ exports.connection.onDefinition((params, token, workDoneProgress, resultProgress
     let def = undefined;
     if (document !== undefined) {
         def = (0, goToDefinition_1.onDefinition)(document, params.position);
+        def.then((loc) => { (0, console_1.debug)(loc); });
     }
     return def;
 });

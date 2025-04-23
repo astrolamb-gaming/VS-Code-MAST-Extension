@@ -19,7 +19,6 @@ exports.parseStrings = parseStrings;
 exports.replaceRegexMatchWithUnderscore = replaceRegexMatchWithUnderscore;
 const fs = require("fs");
 const fileFunctions_1 = require("../fileFunctions");
-const console_1 = require("console");
 /**
  * TODO:
  * 		Fix comment and string checking for hover
@@ -32,9 +31,9 @@ const commentCache = new Map();
  * @returns An array of {@link CRange CRange}
  */
 function getComments(doc) {
-    for (const f of commentCache.keys()) {
-        (0, console_1.debug)(f);
-    }
+    // for (const f of commentCache.keys()) {
+    // 	debug(f);
+    // }
     let comments = commentCache.get((0, fileFunctions_1.fixFileName)(doc.uri));
     if (comments === undefined) {
         comments = parseComments(doc);

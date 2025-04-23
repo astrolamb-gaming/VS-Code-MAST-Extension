@@ -1,13 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.variables = void 0;
+exports.variables = exports.variableModifiers = void 0;
 exports.getVariableNamesInDoc = getVariableNamesInDoc;
 exports.getVariablesAsCompletionItem = getVariablesAsCompletionItem;
 const vscode_languageserver_1 = require("vscode-languageserver");
 // TODO: Add these to autocomplete and hover
-const variableModifiers = [
+exports.variableModifiers = [
     ["default", "`Default` means that if the variable is not already defined, define it. Otherwise, skip. So it does not overwrite if it exists."],
-    ["shared", "variables with this modifier are used by the server and all clients"],
+    ["shared", "Variables with this modifier are used by the server and all clients"],
+    // TODO: what do assigned and temp do to variables?
     ["assigned", ""],
     ["client", "Variables with the `client` modifier are only used by the client."],
     ["temp", ""]

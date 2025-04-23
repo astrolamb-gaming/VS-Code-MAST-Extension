@@ -1,4 +1,4 @@
-import { Diagnostic, DiagnosticSeverity, integer } from 'vscode-languageserver';
+import { Diagnostic, DiagnosticSeverity, integer, Position, Range } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { relatedMessage } from '../errorChecking';
 import { labelNames, updateLabelNames } from "../server";
@@ -8,6 +8,7 @@ import { URI } from 'vscode-uri';
 import path = require('path');
 import { fixFileName } from '../fileFunctions';
 import { isInYaml } from './comments';
+import { start } from 'repl';
 
 
 export interface LabelInfo {
@@ -19,7 +20,8 @@ export interface LabelInfo {
 	metadata: string,
 	comments: string,
 	subLabels: LabelInfo[],
-	srcFile: string
+	srcFile: string,
+	range: Range
 }
 export enum LabelType {
 	LABEL,
@@ -61,6 +63,11 @@ export function parseLabels(text: string, src: string, type: string = "main"): L
 	
 	while (m = definedLabel.exec(text)) {
 		const str = m[0].replace(/(=|-|\+)/g,"").trim();
+		const startIndex = m[0].indexOf(str) + m.index;
+		const range: Range = {
+			start: td.positionAt(startIndex),
+			end: td.positionAt(startIndex + str.length)
+		}
 		
 		const li: LabelInfo = {
 			type: type,
@@ -71,7 +78,8 @@ export function parseLabels(text: string, src: string, type: string = "main"): L
 			metadata: "",
 			comments: "",
 			subLabels: [],
-			srcFile: src
+			srcFile: src,
+			range: range
 		}
 
 		if (m[0].trim().startsWith("//")) {
@@ -100,7 +108,11 @@ export function parseLabels(text: string, src: string, type: string = "main"): L
 	// Add END as a main label, last so we don't need to mess with it in earlier iterations.
 	// Also add "main" as a main label, since it can happen that sublabels are defined before any user-defined main labels.
 	if (type === "main") {
-		const endLabel: LabelInfo = { type: "main", name: "END", start: text.length-1,end: text.length, length: 3, metadata: "", comments: "", subLabels: [], srcFile: src }
+		let loc: Range = {
+			start: td.positionAt(text.length-1),
+			end: td.positionAt(text.length)
+		}
+		const endLabel: LabelInfo = { range: loc, type: "main", name: "END", start: text.length-1,end: text.length, length: 3, metadata: "", comments: "", subLabels: [], srcFile: src }
 		labels.push(endLabel);
 		let end:integer = text.length;
 		for (const i in labels) {
@@ -108,7 +120,11 @@ export function parseLabels(text: string, src: string, type: string = "main"): L
 				end = labels[i].start-1;
 			}
 		}
-		const mainLabel: LabelInfo = { type: "main", name: "main", start: 0, end: end, length: 4, metadata: "", comments: "", subLabels: [], srcFile: src }
+		loc = {
+			start: td.positionAt(0),
+			end: td.positionAt(end)
+		}
+		const mainLabel: LabelInfo = { range: loc, type: "main", name: "main", start: 0, end: end, length: 4, metadata: "", comments: "", subLabels: [], srcFile: src }
 		labels.push(mainLabel);
 	}
 	//debug(labels);

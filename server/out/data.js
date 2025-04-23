@@ -166,6 +166,7 @@ class PyFile extends FileCache {
         let checkText;
         let blockIndices = [];
         let m;
+        const doc = vscode_languageserver_textdocument_1.TextDocument.create(source, "py", 1, text);
         // Iterate over all classes to get their indices
         //classIndices.push(0);
         while (m = blockStart.exec(text)) {
@@ -185,34 +186,71 @@ class PyFile extends FileCache {
         // while class functions are addded to a ClassObject object.
         for (let i = 0; i < len; i++) {
             let t;
+            let start = blockIndices[0];
             if (i === 0) {
-                t = text.substring(0, blockIndices[0]);
+                t = text.substring(0, start);
             }
             else {
-                t = text.substring(blockIndices[i - 1], blockIndices[i]);
+                start = blockIndices[i - 1];
+                t = text.substring(start, blockIndices[i]);
             }
             if (t.startsWith("class")) {
                 const co = new ClassObject(t, source);
+                co.startPos = start + t.indexOf(co.name);
+                const r = {
+                    start: doc.positionAt(co.startPos),
+                    end: doc.positionAt(co.startPos + co.name.length)
+                };
+                co.location = {
+                    uri: source,
+                    range: r
+                };
                 // Since sbs functions aren't part of a class, but do need a "sbs." prefix, we pretend sbs is its own class. 
                 // PyFile handles that.
                 if (co.name === "") {
                     this.defaultFunctions = co.methods;
-                    for (const m in co.methods) {
-                        this.defaultFunctionCompletionItems.push(co.methods[m].completionItem);
+                    for (const m of co.methods) {
+                        m.startIndex = start + t.indexOf("def " + m.name) + 4;
+                        m.location = {
+                            uri: source,
+                            range: {
+                                start: doc.positionAt(m.startIndex),
+                                end: doc.positionAt(m.startIndex + m.name.length)
+                            }
+                        };
+                        this.defaultFunctionCompletionItems.push(m.completionItem);
                     }
                 }
                 else {
                     // Only add to class list if it's actually a class (or sbs)
                     if (co.methods.length !== 0)
                         this.classes.push(co);
+                    for (const m of co.methods) {
+                        m.startIndex = start + t.indexOf("def " + m.name) + 4;
+                        m.location = {
+                            uri: source,
+                            range: {
+                                start: doc.positionAt(m.startIndex),
+                                end: doc.positionAt(m.startIndex + m.name.length)
+                            }
+                        };
+                    }
                     //debug(co);
                 }
             }
             else if (t.startsWith("def")) {
                 // if (source.includes("sbs.py")) debug("TYRING ANOTHER SBS FUNCTION"); debug(source);
-                const f = new Function(t, "", source);
-                this.defaultFunctions.push(f);
-                this.defaultFunctionCompletionItems.push(f.completionItem);
+                const m = new Function(t, "", source);
+                m.startIndex = start + t.indexOf("def " + m.name) + 4;
+                m.location = {
+                    uri: source,
+                    range: {
+                        start: doc.positionAt(m.startIndex),
+                        end: doc.positionAt(m.startIndex + m.name.length)
+                    }
+                };
+                this.defaultFunctions.push(m);
+                this.defaultFunctionCompletionItems.push(m.completionItem);
                 //debug(f);
             }
         }
@@ -253,6 +291,8 @@ class ClassObject {
         this.methods = [];
         this.methodCompletionItems = [];
         this.methodSignatureInformation = [];
+        this.startPos = 0;
+        this.location = { uri: sourceFile, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } } };
         let className = /^class .+?:/gm; // Look for "class ClassName:" to parse class names.
         const parentClass = /\(\w*?\):/;
         let comment = /((\"){3,3}(.*?)(\"){3,3})|(\.\.\.)/m;
@@ -313,6 +353,8 @@ exports.ClassObject = ClassObject;
 class Function {
     constructor(raw, className, sourceFile) {
         this.name = "";
+        this.startIndex = 0;
+        this.location = { uri: sourceFile, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } } };
         this.className = className;
         this.sourceFile = sourceFile;
         this.parameters = [];
@@ -470,8 +512,7 @@ class Function {
         return ret;
     }
     determineSource(source) {
-        if (this.sourceFile.includes("sbs.py"))
-            (0, console_1.debug)("Generating an SBS MarkupContent");
+        // if (this.sourceFile.includes("sbs.py")) debug("Generating an SBS MarkupContent");
         let url = "";
         // Convert the source to reference the applicable sbs_utils or legendarymissions github page
         const regex = /\.v((\d+)\.(\d+)\.(\d+))\.(\d+\.)*(((mast|sbs)lib)|(zip))/;

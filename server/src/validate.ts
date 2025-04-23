@@ -19,7 +19,6 @@ let exclude: string[] = [];
 export async function validateTextDocument(textDocument: TextDocument): Promise<Diagnostic[]> {
 
 	if (textDocument.languageId === "json") {
-		// TODO: Add autocompletion for story.json
 		debug("THIS IS A JSON FILE");
 		return [];
 	}

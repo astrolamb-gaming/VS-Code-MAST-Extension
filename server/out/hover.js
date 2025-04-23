@@ -3,12 +3,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.onHover = onHover;
 exports.getCurrentLineFromTextDocument = getCurrentLineFromTextDocument;
 exports.getHoveredSymbol = getHoveredSymbol;
+exports.getHoveredRoute = getHoveredRoute;
 const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
 const comments_1 = require("./tokens/comments");
 const cache_1 = require("./cache");
 const globals_1 = require("./globals");
 const tokens_1 = require("./tokens/tokens");
+const variables_1 = require("./tokens/variables");
 function onHover(_pos, text) {
     if (text.languageId !== "mast") {
         return undefined;
@@ -48,6 +50,11 @@ function onHover(_pos, text) {
             }
         }
         return { contents: "string" };
+    }
+    for (const s of variables_1.variableModifiers) {
+        if (s[0] === symbol) {
+            return { contents: s[1] };
+        }
     }
     // debug(symbol);
     //hover.contents = symbol;
@@ -161,7 +168,7 @@ function getHoveredSymbolOld(str, pos) {
  * @param pos The position in the string where you're hovering. Get this from {@link TextDocumentPositionParams TextDocumentPositionParams}.{@link Position Position}.character
  */
 function getHoveredSymbol(str, pos) {
-    const words = /[a-zA-Z_]\w*/g;
+    const words = /[a-zA-Z_/]\w*/g;
     let m;
     let res = "";
     let regexCounter = 0;
@@ -171,7 +178,13 @@ function getHoveredSymbol(str, pos) {
         const end = start + m[0].length;
         if (pos >= start && pos <= end) {
             res = str.substring(start, end);
-            break;
+            // If it's a route, we're done here.
+            if (getHoveredRoute(res))
+                break;
+            // If it's not a route, but it doesn't contain slashes, then we're good.
+            if (res.match(/[a-zA-Z_]\w*/))
+                break;
+            // Otherwise, we'll just ignore this and move on.
         }
         regexCounter += 1;
         if (regexCounter > 10) {
@@ -179,6 +192,16 @@ function getHoveredSymbol(str, pos) {
         }
     }
     return res;
+}
+function getHoveredRoute(str) {
+    const routeLabel = /^([ \t]*)(\/{2,})(\w+)(\/\w+)*/m;
+    let m;
+    let res = "";
+    m = str.match(routeLabel);
+    if (m) {
+        return true;
+    }
+    return false;
 }
 /**
  * a shared variable is shared by all tasks. i.e. global.
