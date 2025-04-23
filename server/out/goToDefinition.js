@@ -70,6 +70,15 @@ async function onDefinition(doc, pos) {
                     }
                 }
             }
+            for (const p of (0, cache_1.getCache)(doc.uri).missionPyModules) {
+                for (const f of p.defaultFunctions) {
+                    if (f.name === symbol) {
+                        const loc = f.location;
+                        // loc.uri = "file:///" + loc.uri;
+                        return loc;
+                    }
+                }
+            }
         }
         // Now let's check over all the labels, to see if it's a label. This will be most useful for most people I think.
         const mainLabels = (0, cache_1.getCache)(doc.uri).getLabels(doc);

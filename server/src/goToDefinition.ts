@@ -74,6 +74,15 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 					}
 				}
 			}
+			for (const p of getCache(doc.uri).missionPyModules) {
+				for (const f of p.defaultFunctions) {
+					if (f.name === symbol) {
+						const loc:Location = f.location;
+						// loc.uri = "file:///" + loc.uri;
+						return loc;
+					}
+				}
+			}
 		}
 		// Now let's check over all the labels, to see if it's a label. This will be most useful for most people I think.
 		const mainLabels = getCache(doc.uri).getLabels(doc);
