@@ -11,6 +11,7 @@ const vscode_1 = require("vscode");
 const vscode = require("vscode");
 const fs = require("fs");
 const node_1 = require("vscode-languageclient/node");
+let mainProgress;
 let client;
 let outputChannel;
 outputChannel = vscode_1.window.createOutputChannel("MAST Client Output", { log: true });
@@ -102,6 +103,31 @@ function activate(context) {
     //let ib = window.createInputBox();
     // ib.prompt = "Choose modules"
     // ib.show();
+    const prog1 = client.onProgress(new node_1.ProgressType, "Loadding data...", (increment) => {
+        debug(increment);
+    });
+    context.subscriptions.push(prog1);
+    const prog = client.onNotification('custom/progressNotif', (increment) => {
+        debug("Progressing....  " + increment);
+        vscode_1.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: "Loading data...",
+            cancellable: true
+        }, (progress, token) => {
+            mainProgress = progress;
+            token.onCancellationRequested(() => {
+                console.log("User canceled the long running operation");
+            });
+            progress.report({ message: "Loading data...", increment: increment });
+            const p = new Promise(resolve => {
+                setTimeout(() => {
+                    resolve();
+                }, 5000);
+            });
+            return p;
+        });
+    });
+    context.subscriptions.push(prog);
     const storyJsonListener = client.onNotification('custom/storyJson', (message) => {
         debug("Story Json Notification recieved");
         //window.showQuickPick([{label:"One"},{label:"Two"}]);

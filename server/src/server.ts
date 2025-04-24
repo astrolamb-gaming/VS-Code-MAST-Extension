@@ -28,7 +28,9 @@ import {
 	ResultProgressReporter,
 	LocationLink,
 	HandlerResult,
-	DefinitionParams
+	DefinitionParams,
+	ProgressType,
+	integer
 
 } from 'vscode-languageserver/node';
 import { URI } from 'vscode-uri';
@@ -142,60 +144,50 @@ connection.onInitialize((params: InitializeParams) => {
 	}
 
 	if (params.workspaceFolders) {
-		const workspaceFolder = params.workspaceFolders[0];
-		//debug(workspaceFolder.uri);
-		//readAllFilesIn(workspaceFolder);
-		
-		const uri = URI.parse(workspaceFolder.uri);
-
-		// let adir = getArtemisDirFromChild(uri.fsPath);
-		// debug(adir);
-		// try {
-		// 	notifyClient("Sending the message");
-		// } catch (e) {
-		// 	debug(e);
-		// 	console.error(e);
-		// }
+		progressUpdate(0);
 		debug("Loading cache");
-		loadCache(uri.fsPath);
+		for (const workspaceFolder of params.workspaceFolders) {
+			// const workspaceFolder = params.workspaceFolders[0];
+			const uri = URI.parse(workspaceFolder.uri);
+			loadCache(uri.fsPath);
+			let cache = getCache(uri.fsPath);
+		}
 		debug("Cache loaded")
-		let cache = getCache(uri.fsPath);
-		debug("Getting globals");
 
 // Uncommment this to enable python stuff
 
-		try {
-			let globalFuncs = getGlobalFunctions(cache.storyJson.sbslib).then((funcs)=>{
-				const classes = Object.fromEntries(cache.missionClasses.map(obj => [obj.name, obj]));
-				const functions = Object.fromEntries(cache.missionDefaultFunctions.map(obj => [obj.name, obj]));
-				// debug(funcs);
-				for (const f of funcs) {
-					// debug(f);
-					try {
-						// const json = JSON.parse(f);
-						// debug(json);
-						// debug(json['name']);
-						// let found = false;
-						// const c = classes[json['name']];
-						// if (c === undefined) debug(json['name'] + " is undefined");
-						// // if (found) continue;
-						// const df = functions[json['name']];
-						// if (df === undefined) debug(json['name'] + " is undefined");
-						// if (found) {
-						// 	debug(json['name'] + " is found!");
-						// } else {
-						// 	debug("Checking for... " + json['name']);
-						// 	// getTokenInfo(json['name'])
-						// }
-					} catch (ex) {
-						debug(f);
-						debug(ex);
-					}
-				}
-			});
-		} catch (e) {
-			debug(e)
-		}
+		// try {
+		// 	let globalFuncs = getGlobalFunctions(cache.storyJson.sbslib).then((funcs)=>{
+		// 		const classes = Object.fromEntries(cache.missionClasses.map(obj => [obj.name, obj]));
+		// 		const functions = Object.fromEntries(cache.missionDefaultFunctions.map(obj => [obj.name, obj]));
+		// 		// debug(funcs);
+		// 		for (const f of funcs) {
+		// 			// debug(f);
+		// 			try {
+		// 				// const json = JSON.parse(f);
+		// 				// debug(json);
+		// 				// debug(json['name']);
+		// 				// let found = false;
+		// 				// const c = classes[json['name']];
+		// 				// if (c === undefined) debug(json['name'] + " is undefined");
+		// 				// // if (found) continue;
+		// 				// const df = functions[json['name']];
+		// 				// if (df === undefined) debug(json['name'] + " is undefined");
+		// 				// if (found) {
+		// 				// 	debug(json['name'] + " is found!");
+		// 				// } else {
+		// 				// 	debug("Checking for... " + json['name']);
+		// 				// 	// getTokenInfo(json['name'])
+		// 				// }
+		// 			} catch (ex) {
+		// 				debug(f);
+		// 				debug(ex);
+		// 			}
+		// 		}
+		// 	});
+		// } catch (e) {
+		// 	debug(e)
+		// }
 		
 	} else {
 		debug("No Workspace folders");
@@ -218,7 +210,10 @@ connection.onInitialized(() => {
 
 	}
 	
-	
+	// connection.workspace.getWorkspaceFolders().then((folders)=>{
+	// 	debug(folders);
+	// 	// progressUpdate(100);
+	// })
 	
 });
 connection.onCodeAction((params) => {
@@ -487,12 +482,7 @@ connection.onHover((_textDocumentPosition: TextDocumentPositionParams): Hover | 
 // 	return tokens;
 // }
 
-// Make the text document manager listen on the connection
-// for open, change and close text document events
-documents.listen(connection);
 
-// Listen on the connection
-connection.listen();
 
 export function myDebug(str:any) {
     if (str === undefined) {
@@ -553,4 +543,18 @@ connection.onDefinition((params: DefinitionParams,token: CancellationToken,workD
 		def.then((loc)=>{debug(loc)});
 	}
 	return def;
-})
+});
+
+export function progressUpdate(num:integer) {
+	// connection.sendProgress(new ProgressType<integer>,"Loading data...",num);
+	sendToClient("progressNotif",num);
+}
+
+
+
+// Make the text document manager listen on the connection
+// for open, change and close text document events
+documents.listen(connection);
+
+// Listen on the connection
+connection.listen();

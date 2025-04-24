@@ -4,7 +4,7 @@
  * ------------------------------------------------------------------------------------------ */
 
 import * as path from 'path';
-import { workspace, ExtensionContext , window as Window, window, OutputChannel, LogOutputChannel} from 'vscode';
+import { workspace, ExtensionContext , window as Window, window, OutputChannel, LogOutputChannel, Progress } from 'vscode';
 import * as vscode from 'vscode';
 import fs = require("fs");
 
@@ -12,11 +12,15 @@ import {
 	integer,
 	LanguageClient,
 	LanguageClientOptions,
+	ProgressType,
 	ServerOptions,
 	TransportKind
 } from 'vscode-languageclient/node';
 
-
+let mainProgress: Progress<{
+    message?: string;
+    increment?: number;
+}>;
 
 let client: LanguageClient;
 let outputChannel: LogOutputChannel;
@@ -133,6 +137,38 @@ export function activate(context: ExtensionContext) {
 	//let ib = window.createInputBox();
 	// ib.prompt = "Choose modules"
 	// ib.show();
+
+	const prog1 = client.onProgress(new ProgressType<number>,"Loadding data...",(increment)=>{
+		debug(increment);
+	});
+	context.subscriptions.push(prog1);
+
+	const prog = client.onNotification('custom/progressNotif',(increment)=>{
+		debug("Progressing....  " + increment);
+		
+		window.withProgress({
+			location: vscode.ProgressLocation.Notification,
+			title: "Loading data...",
+			cancellable: true
+		},(progress, token) => {
+			mainProgress = progress;
+			token.onCancellationRequested(() => {
+				console.log("User canceled the long running operation");
+			});
+			progress.report({message: "Loading data...", increment: increment})
+			const p = new Promise<void>(resolve => {
+				setTimeout(() => {
+					resolve();
+				}, 5000);
+			});
+	
+			return p;
+		})
+	});
+	context.subscriptions.push(prog);
+
+
+
 	const storyJsonListener = client.onNotification('custom/storyJson', (message)=>{
 		debug("Story Json Notification recieved")
 		//window.showQuickPick([{label:"One"},{label:"Two"}]);

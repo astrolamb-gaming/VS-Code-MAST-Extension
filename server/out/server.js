@@ -6,6 +6,7 @@ exports.updateLabelNames = updateLabelNames;
 exports.myDebug = myDebug;
 exports.notifyClient = notifyClient;
 exports.sendToClient = sendToClient;
+exports.progressUpdate = progressUpdate;
 /* --------------------------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
@@ -23,7 +24,6 @@ const cache_1 = require("./cache");
 const variables_1 = require("./tokens/variables");
 const globals_1 = require("./globals");
 const validate_1 = require("./validate");
-const python_1 = require("./python");
 const goToDefinition_1 = require("./goToDefinition");
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -100,58 +100,48 @@ exports.connection.onInitialize((params) => {
         };
     }
     if (params.workspaceFolders) {
-        const workspaceFolder = params.workspaceFolders[0];
-        //debug(workspaceFolder.uri);
-        //readAllFilesIn(workspaceFolder);
-        const uri = vscode_uri_1.URI.parse(workspaceFolder.uri);
-        // let adir = getArtemisDirFromChild(uri.fsPath);
-        // debug(adir);
-        // try {
-        // 	notifyClient("Sending the message");
-        // } catch (e) {
-        // 	debug(e);
-        // 	console.error(e);
-        // }
+        progressUpdate(0);
         (0, console_1.debug)("Loading cache");
-        (0, cache_1.loadCache)(uri.fsPath);
+        for (const workspaceFolder of params.workspaceFolders) {
+            // const workspaceFolder = params.workspaceFolders[0];
+            const uri = vscode_uri_1.URI.parse(workspaceFolder.uri);
+            (0, cache_1.loadCache)(uri.fsPath);
+            let cache = (0, cache_1.getCache)(uri.fsPath);
+        }
         (0, console_1.debug)("Cache loaded");
-        let cache = (0, cache_1.getCache)(uri.fsPath);
-        (0, console_1.debug)("Getting globals");
         // Uncommment this to enable python stuff
-        try {
-            let globalFuncs = (0, python_1.getGlobalFunctions)(cache.storyJson.sbslib).then((funcs) => {
-                const classes = Object.fromEntries(cache.missionClasses.map(obj => [obj.name, obj]));
-                const functions = Object.fromEntries(cache.missionDefaultFunctions.map(obj => [obj.name, obj]));
-                // debug(funcs);
-                for (const f of funcs) {
-                    // debug(f);
-                    try {
-                        // const json = JSON.parse(f);
-                        // debug(json);
-                        // debug(json['name']);
-                        // let found = false;
-                        // const c = classes[json['name']];
-                        // if (c === undefined) debug(json['name'] + " is undefined");
-                        // // if (found) continue;
-                        // const df = functions[json['name']];
-                        // if (df === undefined) debug(json['name'] + " is undefined");
-                        // if (found) {
-                        // 	debug(json['name'] + " is found!");
-                        // } else {
-                        // 	debug("Checking for... " + json['name']);
-                        // 	// getTokenInfo(json['name'])
-                        // }
-                    }
-                    catch (ex) {
-                        (0, console_1.debug)(f);
-                        (0, console_1.debug)(ex);
-                    }
-                }
-            });
-        }
-        catch (e) {
-            (0, console_1.debug)(e);
-        }
+        // try {
+        // 	let globalFuncs = getGlobalFunctions(cache.storyJson.sbslib).then((funcs)=>{
+        // 		const classes = Object.fromEntries(cache.missionClasses.map(obj => [obj.name, obj]));
+        // 		const functions = Object.fromEntries(cache.missionDefaultFunctions.map(obj => [obj.name, obj]));
+        // 		// debug(funcs);
+        // 		for (const f of funcs) {
+        // 			// debug(f);
+        // 			try {
+        // 				// const json = JSON.parse(f);
+        // 				// debug(json);
+        // 				// debug(json['name']);
+        // 				// let found = false;
+        // 				// const c = classes[json['name']];
+        // 				// if (c === undefined) debug(json['name'] + " is undefined");
+        // 				// // if (found) continue;
+        // 				// const df = functions[json['name']];
+        // 				// if (df === undefined) debug(json['name'] + " is undefined");
+        // 				// if (found) {
+        // 				// 	debug(json['name'] + " is found!");
+        // 				// } else {
+        // 				// 	debug("Checking for... " + json['name']);
+        // 				// 	// getTokenInfo(json['name'])
+        // 				// }
+        // 			} catch (ex) {
+        // 				debug(f);
+        // 				debug(ex);
+        // 			}
+        // 		}
+        // 	});
+        // } catch (e) {
+        // 	debug(e)
+        // }
     }
     else {
         (0, console_1.debug)("No Workspace folders");
@@ -169,6 +159,10 @@ exports.connection.onInitialized(() => {
             exports.connection.console.log('Workspace folder change event received.');
         });
     }
+    // connection.workspace.getWorkspaceFolders().then((folders)=>{
+    // 	debug(folders);
+    // 	// progressUpdate(100);
+    // })
 });
 exports.connection.onCodeAction((params) => {
     const textDocument = exports.documents.get(params.textDocument.uri);
@@ -379,11 +373,6 @@ exports.connection.onHover((_textDocumentPosition) => {
 // 	SemanticTokensBuilder.
 // 	return tokens;
 // }
-// Make the text document manager listen on the connection
-// for open, change and close text document events
-exports.documents.listen(exports.connection);
-// Listen on the connection
-exports.connection.listen();
 function myDebug(str) {
     if (str === undefined) {
         str = "UNDEFINED";
@@ -432,4 +421,13 @@ exports.connection.onDefinition((params, token, workDoneProgress, resultProgress
     }
     return def;
 });
+function progressUpdate(num) {
+    // connection.sendProgress(new ProgressType<integer>,"Loading data...",num);
+    sendToClient("progressNotif", num);
+}
+// Make the text document manager listen on the connection
+// for open, change and close text document events
+exports.documents.listen(exports.connection);
+// Listen on the connection
+exports.connection.listen();
 //# sourceMappingURL=server.js.map
