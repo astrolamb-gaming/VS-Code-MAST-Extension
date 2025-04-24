@@ -48,7 +48,7 @@ async function onDefinition(doc, pos) {
                         for (const f of c.methods) {
                             if (f.name === symbol) {
                                 const loc = f.location;
-                                loc.uri = "file:///" + loc.uri;
+                                loc.uri = (0, fileFunctions_1.fileFromUri)(loc.uri);
                                 return loc;
                             }
                         }
@@ -78,7 +78,7 @@ async function onDefinition(doc, pos) {
                         // Now we know which file we need to parse
                         // await sendToClient("showFile",uri); // Probably not how to do this, though I'll keep this around for now, just in case.
                         const loc = f.location;
-                        loc.uri = "file:///" + loc.uri;
+                        loc.uri = (0, fileFunctions_1.fileFromUri)(loc.uri);
                         return loc;
                     }
                 }
@@ -87,7 +87,7 @@ async function onDefinition(doc, pos) {
                 for (const f of p.defaultFunctions) {
                     if (f.name === symbol) {
                         const loc = f.location;
-                        loc.uri = "file:///" + loc.uri;
+                        loc.uri = (0, fileFunctions_1.fileFromUri)(loc.uri);
                         return loc;
                     }
                 }
@@ -100,7 +100,7 @@ async function onDefinition(doc, pos) {
             if (sub.name === symbol) {
                 (0, console_1.debug)(sub);
                 const loc = {
-                    uri: "file:///" + sub.srcFile,
+                    uri: (0, fileFunctions_1.fileFromUri)(sub.srcFile),
                     range: sub.range
                 };
                 return loc;
@@ -110,7 +110,7 @@ async function onDefinition(doc, pos) {
             if (main.name === symbol) {
                 (0, console_1.debug)(main);
                 const loc = {
-                    uri: "file:///" + main.srcFile,
+                    uri: (0, fileFunctions_1.fileFromUri)(main.srcFile),
                     range: main.range
                 };
                 return loc;

@@ -1,5 +1,5 @@
 import { DefinitionParams, integer, Location, Position, Range } from 'vscode-languageserver';
-import { fixFileName, readFile } from './fileFunctions';
+import { fileFromUri, fixFileName, readFile } from './fileFunctions';
 import { getComments, isInComment, isInString, isInYaml } from './tokens/comments';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
@@ -52,7 +52,7 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 						for (const f of c.methods) {
 							if (f.name === symbol) {
 								const loc:Location = f.location;
-								loc.uri = "file:///" + loc.uri;
+								loc.uri = fileFromUri(loc.uri);
 								return loc;
 							}
 						}
@@ -82,7 +82,7 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 						// Now we know which file we need to parse
 						// await sendToClient("showFile",uri); // Probably not how to do this, though I'll keep this around for now, just in case.
 						const loc:Location = f.location;
-						loc.uri = "file:///" + loc.uri;
+						loc.uri = fileFromUri(loc.uri);
 						return loc;
 					}
 				}
@@ -91,7 +91,7 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 				for (const f of p.defaultFunctions) {
 					if (f.name === symbol) {
 						const loc:Location = f.location;
-						loc.uri = "file:///" + loc.uri;
+						loc.uri = fileFromUri(loc.uri);
 						return loc;
 					}
 				}
@@ -104,7 +104,7 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 			if (sub.name === symbol) {
 				debug(sub);
 				const loc:Location = {
-					uri: "file:///" + sub.srcFile,
+					uri: fileFromUri(sub.srcFile),
 					range: sub.range
 				}
 				return loc
@@ -114,7 +114,7 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 			if (main.name === symbol) {
 				debug(main);
 				const loc:Location = {
-					uri: "file:///" + main.srcFile,
+					uri: fileFromUri(main.srcFile),
 					range: main.range
 				}
 				return loc

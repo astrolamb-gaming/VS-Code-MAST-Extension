@@ -31,7 +31,7 @@ exports.connection = (0, node_1.createConnection)(node_1.ProposedFeatures.all);
 // Create a simple text document manager.
 exports.documents = new node_1.TextDocuments(vscode_languageserver_textdocument_1.TextDocument);
 let hasConfigurationCapability = false;
-let hasWorkspaceFolderCapability = false;
+let hasWorkspaceFolderCapability = true;
 exports.hasDiagnosticRelatedInformationCapability = false;
 exports.labelNames = [];
 // let functionData : SignatureInformation[] = [];
@@ -104,6 +104,7 @@ exports.connection.onInitialize((params) => {
         (0, console_1.debug)("Loading cache");
         for (const workspaceFolder of params.workspaceFolders) {
             // const workspaceFolder = params.workspaceFolders[0];
+            (0, console_1.debug)("Loading cache for " + workspaceFolder.name);
             const uri = vscode_uri_1.URI.parse(workspaceFolder.uri);
             (0, cache_1.loadCache)(uri.fsPath);
             let cache = (0, cache_1.getCache)(uri.fsPath);

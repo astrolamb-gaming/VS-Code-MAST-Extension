@@ -617,10 +617,10 @@ export class Function implements IFunction {
 
 		
 
-		let source = this.determineSource(this.sourceFile);
+		let source = ""//this.determineSource(this.sourceFile);
 		
 
-		source = "\nSource:  \n  " + source;
+		source = '';//"\nSource:  \n  " + source;
 		if (docs !== "") {
 			docs = "\n\n```text\n\n" + docs + "\n```";
 		}
@@ -675,7 +675,7 @@ export class Function implements IFunction {
 		const source = "Source: " + this.determineSource(this.sourceFile);
 		let docs: MarkupContent = {
 			kind: 'markdown',
-			value: functionDetails + "  \n  " + documentation + "  \n  " + source
+			value: functionDetails + "  \n  " + documentation// + "  \n  " + source
 		}
 		// let docs = this.buildMarkUpContent(documentation);
 		// docs.value = docs.value.replace(/\t/g,"&emsp;").replace(/    /g,"&emsp;").replace(/\n/g,"\\\n");

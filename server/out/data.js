@@ -499,8 +499,8 @@ class Function {
         // https://github.com/artemis-sbs/sbs_utils/blob/master/sbs_utils/procedural/roles.py
         // https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/mock/sbs.py
         // https://github.com/artemis-sbs/sbs_utils/blob/master/mock/sbs.py
-        let source = this.determineSource(this.sourceFile);
-        source = "\nSource:  \n  " + source;
+        let source = ""; //this.determineSource(this.sourceFile);
+        source = ''; //"\nSource:  \n  " + source;
         if (docs !== "") {
             docs = "\n\n```text\n\n" + docs + "\n```";
         }
@@ -556,7 +556,7 @@ class Function {
         const source = "Source: " + this.determineSource(this.sourceFile);
         let docs = {
             kind: 'markdown',
-            value: functionDetails + "  \n  " + documentation + "  \n  " + source
+            value: functionDetails + "  \n  " + documentation // + "  \n  " + source
         };
         // let docs = this.buildMarkUpContent(documentation);
         // docs.value = docs.value.replace(/\t/g,"&emsp;").replace(/    /g,"&emsp;").replace(/\n/g,"\\\n");

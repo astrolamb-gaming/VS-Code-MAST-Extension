@@ -58,7 +58,7 @@ export const connection = createConnection(ProposedFeatures.all);
 export const documents = new TextDocuments(TextDocument);
 
 let hasConfigurationCapability = false;
-let hasWorkspaceFolderCapability = false;
+let hasWorkspaceFolderCapability = true;
 export let hasDiagnosticRelatedInformationCapability = false;
 export let labelNames : LabelInfo[] = [];
 
@@ -148,6 +148,7 @@ connection.onInitialize((params: InitializeParams) => {
 		debug("Loading cache");
 		for (const workspaceFolder of params.workspaceFolders) {
 			// const workspaceFolder = params.workspaceFolders[0];
+			debug("Loading cache for " + workspaceFolder.name);
 			const uri = URI.parse(workspaceFolder.uri);
 			loadCache(uri.fsPath);
 			let cache = getCache(uri.fsPath);

@@ -256,6 +256,13 @@ export function fixFileName(uri:string) {
 	return uri.replace(/\\/g,"/");
 }
 
+export function fileFromUri(uri: string): string {
+	if (!uri.startsWith("file:///")) {
+		return "file:///" + uri;
+	}
+	return uri;
+}
+
 export function getArtemisDirFromChild(child: string): string | null {
 	if (child.endsWith(":\\")) {
 		return null;

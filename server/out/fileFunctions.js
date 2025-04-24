@@ -12,6 +12,7 @@ exports.getParentFolder = getParentFolder;
 exports.getInitContents = getInitContents;
 exports.getMissionFolder = getMissionFolder;
 exports.fixFileName = fixFileName;
+exports.fileFromUri = fileFromUri;
 exports.getArtemisDirFromChild = getArtemisDirFromChild;
 const path = require("path");
 const fs = require("fs");
@@ -224,6 +225,12 @@ function fixFileName(uri) {
         uri = vscode_uri_1.URI.parse(uri).fsPath;
     }
     return uri.replace(/\\/g, "/");
+}
+function fileFromUri(uri) {
+    if (!uri.startsWith("file:///")) {
+        return "file:///" + uri;
+    }
+    return uri;
 }
 function getArtemisDirFromChild(child) {
     if (child.endsWith(":\\")) {
