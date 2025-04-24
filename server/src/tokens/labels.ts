@@ -1,4 +1,4 @@
-import { Diagnostic, DiagnosticSeverity, integer, Position, Range } from 'vscode-languageserver';
+import { Diagnostic, DiagnosticSeverity, integer, MarkupContent, Position, Range } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { relatedMessage } from '../errorChecking';
 import { debug } from 'console';
@@ -8,6 +8,7 @@ import path = require('path');
 import { fixFileName } from '../fileFunctions';
 import { isInYaml } from './comments';
 import { start } from 'repl';
+import { getCurrentLineFromTextDocument } from '../hover';
 
 
 export interface LabelInfo {
@@ -67,6 +68,18 @@ export function parseLabels(text: string, src: string, type: string = "main"): L
 			start: td.positionAt(startIndex),
 			end: td.positionAt(startIndex + str.length)
 		}
+
+		let comments:string = "";
+		const pos = range.start;
+		for (let lineCount = range.start.line; lineCount < td.lineCount-1; lineCount++) {
+			pos.line += 1;
+			const line = getCurrentLineFromTextDocument(pos,td).trim();
+			if (line.startsWith("\"") || line.startsWith("'")) {
+				comments += line.substring(1,line.length).trim() + "\n";
+			} else {
+				break;
+			}
+		}
 		
 		const li: LabelInfo = {
 			type: type,
@@ -75,7 +88,7 @@ export function parseLabels(text: string, src: string, type: string = "main"): L
 			end: 0,
 			length: m[0].length,
 			metadata: "",
-			comments: "",
+			comments: comments.trim(),
 			subLabels: [],
 			srcFile: src,
 			range: range
@@ -137,9 +150,27 @@ function getMetadata(text:string):string {
 	if (start === -1 || end === -1) {
 		return ret;
 	}
+	text = text.substring(start,end)
 	text = text.replace(/```/g,"").trim();
-	text = text.substring(text.indexOf("\n"));
+	// text = text.substring(text.indexOf("\n"));
 	return text;
+}
+
+export function buildLabelDocs(label:LabelInfo): MarkupContent {
+	let val = "";
+	if (label.metadata !== "") {
+		val = label.comments + "\nDefault metadata:\n```\n" + label.metadata + "\n```\n"
+	} else {
+		val = label.comments;
+	}
+	if (val === "") {
+		val = "No information specified for the '" + label.name + "' label.";
+	}
+	let docs:MarkupContent = {
+		kind: "markdown",
+		value: val
+	};
+	return docs;
 }
 
 function getLabelDocs(text:string):string {

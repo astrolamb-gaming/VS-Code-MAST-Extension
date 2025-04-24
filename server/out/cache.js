@@ -383,7 +383,7 @@ class MissionCache {
         // Remove duplicates (should just be a bunch of END entries)
         // Could also include labels that exist in another file
         const arrUniq = [...new Map(li.map(v => [v.name, v])).values()];
-        return li;
+        return arrUniq;
     }
     /**
      * Call when the contents of a file changes

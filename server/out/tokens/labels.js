@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.LabelType = void 0;
 exports.parseLabels = parseLabels;
+exports.buildLabelDocs = buildLabelDocs;
 exports.parseLabelsInFile = parseLabelsInFile;
 exports.checkForDuplicateLabelsInList = checkForDuplicateLabelsInList;
 exports.checkLabels = checkLabels;
@@ -15,6 +16,7 @@ const vscode_uri_1 = require("vscode-uri");
 const path = require("path");
 const fileFunctions_1 = require("../fileFunctions");
 const comments_1 = require("./comments");
+const hover_1 = require("../hover");
 var LabelType;
 (function (LabelType) {
     LabelType[LabelType["LABEL"] = 0] = "LABEL";
@@ -59,6 +61,18 @@ function parseLabels(text, src, type = "main") {
             start: td.positionAt(startIndex),
             end: td.positionAt(startIndex + str.length)
         };
+        let comments = "";
+        const pos = range.start;
+        for (let lineCount = range.start.line; lineCount < td.lineCount - 1; lineCount++) {
+            pos.line += 1;
+            const line = (0, hover_1.getCurrentLineFromTextDocument)(pos, td).trim();
+            if (line.startsWith("\"") || line.startsWith("'")) {
+                comments += line.substring(1, line.length).trim() + "\n";
+            }
+            else {
+                break;
+            }
+        }
         const li = {
             type: type,
             name: str,
@@ -66,7 +80,7 @@ function parseLabels(text, src, type = "main") {
             end: 0,
             length: m[0].length,
             metadata: "",
-            comments: "",
+            comments: comments.trim(),
             subLabels: [],
             srcFile: src,
             range: range
@@ -123,9 +137,27 @@ function getMetadata(text) {
     if (start === -1 || end === -1) {
         return ret;
     }
+    text = text.substring(start, end);
     text = text.replace(/```/g, "").trim();
-    text = text.substring(text.indexOf("\n"));
+    // text = text.substring(text.indexOf("\n"));
     return text;
+}
+function buildLabelDocs(label) {
+    let val = "";
+    if (label.metadata !== "") {
+        val = label.comments + "\nDefault metadata:\n```\n" + label.metadata + "\n```\n";
+    }
+    else {
+        val = label.comments;
+    }
+    if (val === "") {
+        val = "No information specified for the '" + label.name + "' label.";
+    }
+    let docs = {
+        kind: "markdown",
+        value: val
+    };
+    return docs;
 }
 function getLabelDocs(text) {
     let ret = "";

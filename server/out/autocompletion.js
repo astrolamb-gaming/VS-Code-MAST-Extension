@@ -276,7 +276,7 @@ function onCompletion(_textDocumentPosition, text) {
                 continue;
             if ((0, fileFunctions_1.fixFileName)(labelNames[i].srcFile) !== (0, fileFunctions_1.fixFileName)(text.uri) && labelNames[i].name === "END")
                 continue;
-            ci.push({ label: labelNames[i].name, kind: vscode_languageserver_1.CompletionItemKind.Event, labelDetails: { description: path.basename(labelNames[i].srcFile) } });
+            ci.push({ documentation: (0, labels_1.buildLabelDocs)(labelNames[i]), label: labelNames[i].name, kind: vscode_languageserver_1.CompletionItemKind.Event, labelDetails: { description: path.basename(labelNames[i].srcFile) } });
         }
         const lbl = (0, labels_1.getMainLabelAtPos)(startOfLine, labelNames);
         if (lbl === undefined) {
@@ -290,7 +290,7 @@ function onCompletion(_textDocumentPosition, text) {
                 (0, console_1.debug)(lbl.name);
                 (0, console_1.debug)(subs);
                 for (const i in subs) {
-                    ci.push({ label: subs[i].name, kind: vscode_languageserver_1.CompletionItemKind.Event, labelDetails: { description: "Sub-label of: " + lbl.name } });
+                    ci.push({ documentation: (0, labels_1.buildLabelDocs)(subs[i]), label: subs[i].name, kind: vscode_languageserver_1.CompletionItemKind.Event, labelDetails: { description: "Sub-label of: " + lbl.name } });
                 }
             }
             return ci;

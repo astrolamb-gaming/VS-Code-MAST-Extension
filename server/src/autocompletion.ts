@@ -1,6 +1,6 @@
 import { debug } from 'console';
 import { CompletionItem, CompletionItemKind, CompletionItemTag, integer, MarkupContent, SignatureInformation, TextDocumentPositionParams } from 'vscode-languageserver';
-import { getMainLabelAtPos } from './tokens/labels';
+import { buildLabelDocs, getMainLabelAtPos } from './tokens/labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { IClassObject, PyFile } from './data';
 import { getRouteLabelVars } from './tokens/routeLabels';
@@ -298,7 +298,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			if (labelNames[i].name === "main") continue;
 			if (labelNames[i].name.startsWith("//")) continue;
 			if (fixFileName(labelNames[i].srcFile) !== fixFileName(text.uri) && labelNames[i].name === "END") continue;
-			ci.push({label: labelNames[i].name, kind: CompletionItemKind.Event, labelDetails: {description: path.basename(labelNames[i].srcFile)}});
+			ci.push({documentation: buildLabelDocs(labelNames[i]),label: labelNames[i].name, kind: CompletionItemKind.Event, labelDetails: {description: path.basename(labelNames[i].srcFile)}});
 		}
 		const lbl = getMainLabelAtPos(startOfLine,labelNames);
 		if (lbl === undefined) {
@@ -311,7 +311,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				debug(lbl.name);
 				debug(subs);
 				for (const i in subs) {
-					ci.push({label: subs[i].name, kind: CompletionItemKind.Event, labelDetails: {description: "Sub-label of: " + lbl.name}});
+					ci.push({documentation: buildLabelDocs(subs[i]),label: subs[i].name, kind: CompletionItemKind.Event, labelDetails: {description: "Sub-label of: " + lbl.name}});
 				}
 			}
 			return ci;

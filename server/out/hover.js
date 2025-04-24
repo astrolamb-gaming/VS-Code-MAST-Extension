@@ -11,6 +11,7 @@ const cache_1 = require("./cache");
 const globals_1 = require("./globals");
 const tokens_1 = require("./tokens/tokens");
 const variables_1 = require("./tokens/variables");
+const labels_1 = require("./tokens/labels");
 function onHover(_pos, text) {
     if (text.languageId !== "mast") {
         return undefined;
@@ -111,6 +112,24 @@ function onHover(_pos, text) {
                     hoverText = "";
                 }
                 break;
+            }
+        }
+    }
+    else {
+        // Check if it's a label
+        const mainLabels = (0, cache_1.getCache)(text.uri).getLabels(text);
+        const mainLabelAtPos = (0, labels_1.getMainLabelAtPos)(text.offsetAt(_pos.position), mainLabels);
+        for (const sub of mainLabelAtPos.subLabels) {
+            if (sub.name === symbol) {
+                (0, console_1.debug)(sub);
+                // hoverText = sub.comments;
+                return { contents: (0, labels_1.buildLabelDocs)(sub) };
+            }
+        }
+        for (const main of mainLabels) {
+            if (main.name === symbol) {
+                (0, console_1.debug)(main);
+                return { contents: (0, labels_1.buildLabelDocs)(main) };
             }
         }
     }

@@ -1,11 +1,13 @@
 import { debug } from 'console';
-import { Hover, integer, MarkupContent, Position, TextDocumentPositionParams } from 'vscode-languageserver';
+import { Hover, integer, Location, MarkupContent, Position, TextDocumentPositionParams } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { isInComment, isInString } from './tokens/comments';
 import { getCache } from './cache';
 import { getGlobals } from './globals';
 import { getClassOfMethod, isClassMethod, isFunction } from './tokens/tokens';
 import { variableModifiers } from './tokens/variables';
+import { buildLabelDocs, getMainLabelAtPos } from './tokens/labels';
+import { fileFromUri } from './fileFunctions';
 
 export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : Hover | undefined {
 	if (text.languageId !== "mast") {
@@ -112,6 +114,23 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 					hoverText = ""
 				}
 				break;
+			}
+		}
+	} else {
+		// Check if it's a label
+		const mainLabels = getCache(text.uri).getLabels(text);
+		const mainLabelAtPos = getMainLabelAtPos(text.offsetAt(_pos.position),mainLabels);
+		for (const sub of mainLabelAtPos.subLabels) {
+			if (sub.name === symbol) {
+				debug(sub);
+				// hoverText = sub.comments;
+				return {contents: buildLabelDocs(sub)}
+			}
+		}
+		for (const main of mainLabels) {
+			if (main.name === symbol) {
+				debug(main);
+				return {contents: buildLabelDocs(main)}
 			}
 		}
 	}
