@@ -285,6 +285,9 @@ class Globals {
         }
         return ci;
     }
+    getAllMissions() {
+        return (0, fileFunctions_1.getFolders)(path.join(this.artemisDir, "data", "missions"));
+    }
 }
 exports.Globals = Globals;
 let globals = new Globals();

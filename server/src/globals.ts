@@ -303,6 +303,10 @@ export class Globals {
 		}
 		return ci;
 	}
+
+	getAllMissions(): string[] {
+		return getFolders(path.join(this.artemisDir,"data","missions"));
+	}
 }
 
 let globals: Globals = new Globals();

@@ -17,6 +17,7 @@ const fileFunctions_1 = require("./fileFunctions");
 const server_1 = require("./server");
 const vscode_uri_1 = require("vscode-uri");
 const globals_1 = require("./globals");
+const os = require("os");
 function loadCache(dir) {
     // TODO: Need a list of caches, in case there are files from more than one mission folder open
     let cache = getCache(dir);
@@ -92,7 +93,9 @@ class MissionCache {
         this.mediaLabels = [];
         this.mastFileCache = [];
         this.storyJson = new StoryJson(path.join(this.missionURI, "story.json"));
-        this.storyJson.readFile().then(() => { this.modulesLoaded(); });
+        this.storyJson.readFile()
+            .then(() => { this.modulesLoaded(); })
+            .finally(() => { (0, console_1.debug)("Finished loading modules"); });
         loadSbs().then((p) => {
             (0, console_1.debug)("Loaded SBS, starting to parse.");
             if (p !== null) {
@@ -200,75 +203,96 @@ class MissionCache {
             //debug(this.missionLibFolder);
             const lib = this.storyJson.mastlib.concat(this.storyJson.sbslib);
             let complete = 0;
+            (0, console_1.debug)("Beginning to load modules");
             for (const zip of lib) {
-                const zipPath = path.join(this.missionLibFolder, zip);
-                (0, fileFunctions_1.readZipArchive)(zipPath).then((data) => {
-                    //debug("Zip archive read for " + zipPath);
-                    this.handleZipData(data, zip);
-                    complete += 1;
-                }).catch(err => {
-                    (0, console_1.debug)("Error unzipping. \n" + err);
-                    if (("" + err).includes("Invalid filename")) {
-                        libErrs.push("File does not exist:\n" + zipPath);
+                let found = false;
+                for (const m of (0, globals_1.getGlobals)().getAllMissions()) {
+                    if (this.storyJson.getModuleBaseName(zip).toLowerCase().includes(m.toLowerCase())) {
+                        found = true;
+                        // Here we refer to the mission instead of the zip
+                        const missionFolder = path.join((0, globals_1.getGlobals)().artemisDir, "data", "missions", m);
+                        const files = (0, fileFunctions_1.getFilesInDir)(missionFolder, true);
+                        for (const f of files) {
+                            const data = (0, fileFunctions_1.readFile)(f).then((data) => {
+                                this.handleZipData(data, f);
+                            });
+                        }
                     }
-                    complete += 1;
-                });
+                }
+                if (!found) {
+                    // Here we load the module from the zip
+                    const zipPath = path.join(this.missionLibFolder, zip);
+                    (0, fileFunctions_1.readZipArchive)(zipPath).then((data) => {
+                        (0, console_1.debug)("Loading " + zip);
+                        data.forEach((data, file) => {
+                            (0, console_1.debug)(file);
+                            if (zip !== "") {
+                                file = path.join(zip, file);
+                            }
+                            file = saveZipTempFile(file, data);
+                            this.handleZipData(data, file);
+                        });
+                        complete += 1;
+                    }).catch(err => {
+                        (0, console_1.debug)("Error unzipping. \n  " + err);
+                        if (("" + err).includes("Invalid filename")) {
+                            libErrs.push("File does not exist:\n" + zipPath);
+                        }
+                        complete += 1;
+                    });
+                }
             }
-            // while (complete < lib.length) {
-            // 	await sleep(50);
-            // }
-            // if (libErrs.length > 0) {
-            // 	storyJsonNotif(0,this.storyJson.uri,"",libErrs.join("\n"));
-            // }
         }
         catch (e) {
             (0, console_1.debug)("Error in modulesLoaded()");
             (0, console_1.debug)(e);
         }
     }
-    handleZipData(zip, parentFolder = "") {
-        //debug(zip);
-        zip.forEach((data, file) => {
-            //debug(file)
-            if (parentFolder !== "") {
-                file = parentFolder + path.sep + file;
-            }
-            //debug(file);
-            if (file.endsWith("__init__.mast") || file.endsWith("__init__.py")) {
-                // Do nothing
-            }
-            else if (file.endsWith(".py")) {
-                //debug("Checking: " + file)
-                this.routeLabels = this.routeLabels.concat((0, routeLabels_1.loadRouteLabels)(data));
-                // this.mediaLabels = this.mediaLabels.concat(loadMediaLabels(data));
-                // this.resourceLabels = this.resourceLabels.concat(loadResourceLabels(data));
-                const p = new data_1.PyFile(file, data);
-                this.missionPyModules.push(p);
-                if (file.includes("sbs_utils") && !file.includes("procedural")) {
-                    // Don't wanat anything not procedural included???
-                    if (file.includes("scatter") || file.includes("faces") || file.includes("names") || file.includes("vec.py")) {
-                        //don't return
-                    }
-                    else {
-                        return;
-                    }
+    handleZipData(data, file = "") {
+        // debug(zip);
+        // zip.forEach((data, file)=>{
+        // 	debug(file)
+        // 	if (parentFolder !== "") {
+        // 		file = path.join(parentFolder,file);
+        // 	}
+        // 	file = saveZipTempFile(file,data);
+        (0, console_1.debug)(file);
+        // file = tempFile;
+        if (file.endsWith("__init__.mast") || file.endsWith("__init__.py")) {
+            // Do nothing
+        }
+        else if (file.endsWith(".py")) {
+            //debug("Checking: " + file)
+            this.routeLabels = this.routeLabels.concat((0, routeLabels_1.loadRouteLabels)(data));
+            // this.mediaLabels = this.mediaLabels.concat(loadMediaLabels(data));
+            // this.resourceLabels = this.resourceLabels.concat(loadResourceLabels(data));
+            const p = new data_1.PyFile(file, data);
+            this.missionPyModules.push(p);
+            if (file.includes("sbs_utils") && !file.includes("procedural")) {
+                // Don't wanat anything not procedural included???
+                if (file.includes("scatter") || file.includes("faces") || file.includes("names") || file.includes("vec.py")) {
+                    //don't return
                 }
-                this.missionClasses = this.missionClasses.concat(p.classes);
-                //debug(this.missionClasses);
-                this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.defaultFunctionCompletionItems);
-                //this.missionDefaultSignatures = this.missionDefaultSignatures.concat(p.defaultFunctions)
-                //p.defaultFunctions
-                this.missionDefaultFunctions = this.missionDefaultFunctions.concat(p.defaultFunctions);
-                for (const s of p.defaultFunctions) {
-                    this.missionDefaultSignatures.push(s.signatureInformation);
+                else {
+                    return;
                 }
             }
-            else if (file.endsWith(".mast")) {
-                //debug("Building file: " + file);
-                const m = new data_1.MastFile(file, data);
-                this.missionMastModules.push(m);
+            this.missionClasses = this.missionClasses.concat(p.classes);
+            //debug(this.missionClasses);
+            this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.defaultFunctionCompletionItems);
+            //this.missionDefaultSignatures = this.missionDefaultSignatures.concat(p.defaultFunctions)
+            //p.defaultFunctions
+            this.missionDefaultFunctions = this.missionDefaultFunctions.concat(p.defaultFunctions);
+            for (const s of p.defaultFunctions) {
+                this.missionDefaultSignatures.push(s.signatureInformation);
             }
-        });
+        }
+        else if (file.endsWith(".mast")) {
+            //debug("Building file: " + file);
+            const m = new data_1.MastFile(file, data);
+            this.missionMastModules.push(m);
+        }
+        // });
         //debug(this.missionDefaultCompletions);
         //debug(this.missionClasses);
     }
@@ -349,6 +373,10 @@ class MissionCache {
                 // }
                 li = li.concat(f.labelNames);
             }
+        }
+        // This gets stuff from LegendaryMissions, if the current file isn't LegendaryMissions itself.
+        for (const f of this.missionMastModules) {
+            li = li.concat(f.labelNames);
         }
         //debug(li);
         // Remove duplicates (should just be a bunch of END entries)
@@ -709,6 +737,7 @@ async function loadSbs() {
     try {
         const data = await fetch(gh);
         text = await data.text();
+        gh = saveZipTempFile("sbs.py", text);
         return new data_1.PyFile(gh, text);
     }
     catch (e) {
@@ -823,5 +852,23 @@ function getCache(name, reloadCache = false) {
         caches.push(ret);
     }
     return ret;
+}
+function saveZipTempFile(uri, contents) {
+    const tempPath = (0, fileFunctions_1.fixFileName)(path.join(os.tmpdir(), "cosmosModules", uri));
+    // if (uri.includes("sbs_utils")) {
+    (0, console_1.debug)(path.dirname(tempPath));
+    // }
+    // if (!fs.existsSync(tempPath)) {
+    // 	fs.mkdirSync(tempPath);
+    // }
+    // let tempFile = path.join(tempPath,uri);
+    if (!fs.existsSync(path.dirname(tempPath))) {
+        (0, console_1.debug)("Making dir: " + path.dirname(tempPath));
+        fs.mkdirSync(path.dirname(tempPath), { recursive: true });
+    }
+    (0, console_1.debug)(tempPath);
+    //debug(file);
+    fs.writeFileSync(tempPath, contents);
+    return tempPath;
 }
 //# sourceMappingURL=cache.js.map

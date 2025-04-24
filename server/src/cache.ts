@@ -9,13 +9,14 @@ import { prepCompletions } from './autocompletion';
 import { prepSignatures } from './signatureHelp';
 import { parse, RX } from './rx';
 import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } from './tokens/routeLabels';
-import { fixFileName, getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readZipArchive } from './fileFunctions';
+import { fixFileName, getFileContents, getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readZipArchive } from './fileFunctions';
 import { connection, notifyClient, sendToClient } from './server';
 import { URI } from 'vscode-uri';
 import { getGlobals } from './globals';
 import { send } from 'process';
 import { getRolesAsCompletionItem } from './roles';
 import { deprecate } from 'util';
+import * as os from 'os';
 
 
 export function loadCache(dir: string) {
@@ -113,7 +114,9 @@ export class MissionCache {
 		this.mediaLabels = [];
 		this.mastFileCache = [];
 		this.storyJson = new StoryJson(path.join(this.missionURI,"story.json"));
-		this.storyJson.readFile().then(()=>{this.modulesLoaded()});
+		this.storyJson.readFile()
+			.then(()=>{this.modulesLoaded()})
+			.finally(()=>{debug("Finished loading modules")});
 		loadSbs().then((p)=>{
 			debug("Loaded SBS, starting to parse.");
 			if (p !== null) {
@@ -225,41 +228,66 @@ export class MissionCache {
 			//debug(this.missionLibFolder);
 			const lib = this.storyJson.mastlib.concat(this.storyJson.sbslib);
 			let complete = 0;
+			debug("Beginning to load modules");
 			for (const zip of lib) {
-				const zipPath = path.join(this.missionLibFolder,zip);
-				readZipArchive(zipPath).then((data)=>{
-					//debug("Zip archive read for " + zipPath);
-					this.handleZipData(data,zip);
-					complete += 1;
-				}).catch(err =>{
-					debug("Error unzipping. \n" + err);
-					if (("" + err).includes("Invalid filename")) {
-						libErrs.push("File does not exist:\n" + zipPath);
+				let found = false;
+				for (const m of getGlobals().getAllMissions()) {
+					if (this.storyJson.getModuleBaseName(zip).toLowerCase().includes(m.toLowerCase())) {
+						found = true;
+						// Here we refer to the mission instead of the zip
+						const missionFolder = path.join(getGlobals().artemisDir,"data","missions",m);
+						const files = getFilesInDir(missionFolder,true);
+						for (const f of files) {
+							const data = readFile(f).then((data)=>{
+								this.handleZipData(data, f);
+							});
+						}
 					}
-					complete += 1;
-				});
+				}
+				if (!found) {
+					// Here we load the module from the zip
+					const zipPath = path.join(this.missionLibFolder,zip);
+					readZipArchive(zipPath).then((data)=>{
+						debug("Loading " + zip);
+						data.forEach((data,file)=>{
+							debug(file)
+							if (zip !== "") {
+								file = path.join(zip,file);
+							}
+							file = saveZipTempFile(file,data);
+							this.handleZipData(data,file);
+						})
+						
+						complete += 1;
+					}).catch(err =>{
+						debug("Error unzipping. \n  " + err);
+						if (("" + err).includes("Invalid filename")) {
+							libErrs.push("File does not exist:\n" + zipPath);
+						}
+						complete += 1;
+					});
+				}
 			}
-			// while (complete < lib.length) {
-			// 	await sleep(50);
-			// }
-			// if (libErrs.length > 0) {
-			// 	storyJsonNotif(0,this.storyJson.uri,"",libErrs.join("\n"));
-			// }
-		}catch(e) {
+		} catch(e) {
 			debug("Error in modulesLoaded()");
 			debug(e);
 		}
-		
 	}
 
-	handleZipData(zip: Map<string, string>, parentFolder:string = "") {
-		//debug(zip);
-		zip.forEach((data, file)=>{
-			//debug(file)
-			if (parentFolder !== "") {
-				file = parentFolder + path.sep + file;
-			}
-			//debug(file);
+	
+
+	handleZipData(data:string, file:string = "") {
+		// debug(zip);
+		// zip.forEach((data, file)=>{
+		// 	debug(file)
+			
+		// 	if (parentFolder !== "") {
+		// 		file = path.join(parentFolder,file);
+		// 	}
+
+		// 	file = saveZipTempFile(file,data);
+			debug(file);
+			// file = tempFile;
 			if (file.endsWith("__init__.mast") || file.endsWith("__init__.py")) {
 				// Do nothing
 			} else if (file.endsWith(".py")) {
@@ -292,7 +320,7 @@ export class MissionCache {
 				const m = new MastFile(file, data);
 				this.missionMastModules.push(m);
 			}
-		});
+		// });
 
 		//debug(this.missionDefaultCompletions);
 		//debug(this.missionClasses);
@@ -382,6 +410,11 @@ export class MissionCache {
 				// }
 				li = li.concat(f.labelNames);
 			}
+		}
+
+		// This gets stuff from LegendaryMissions, if the current file isn't LegendaryMissions itself.
+		for (const f of this.missionMastModules) {
+			li = li.concat(f.labelNames);
 		}
 		//debug(li);
 		// Remove duplicates (should just be a bunch of END entries)
@@ -763,6 +796,7 @@ async function loadSbs(): Promise<PyFile|null>{
 	try {
 		const data = await fetch(gh);
 		text = await data.text();
+		gh = saveZipTempFile("sbs.py",text);
 		return new PyFile(gh, text);
 	} catch (e) {
 		debug("Can't find sbs.py on github");
@@ -882,4 +916,22 @@ export function getCache(name:string, reloadCache:boolean = false): MissionCache
 	return ret;
 }
 
-
+function saveZipTempFile(uri:string, contents:string) : string{
+	const tempPath = fixFileName(path.join(os.tmpdir(),"cosmosModules",uri));
+	// if (uri.includes("sbs_utils")) {
+		debug(path.dirname(tempPath));
+	// }
+	// if (!fs.existsSync(tempPath)) {
+	// 	fs.mkdirSync(tempPath);
+	// }
+	// let tempFile = path.join(tempPath,uri);
+	
+	if (!fs.existsSync(path.dirname(tempPath))) {
+		debug("Making dir: " + path.dirname(tempPath));
+		fs.mkdirSync(path.dirname(tempPath), { recursive: true });
+	}
+	debug(tempPath);
+	//debug(file);
+	fs.writeFileSync(tempPath,contents);
+	return tempPath;
+}
