@@ -81,6 +81,8 @@ class MissionCache {
         this.load();
     }
     load() {
+        (0, console_1.debug)("Starting MissionCache.load()");
+        (0, server_1.progressUpdate)(0);
         // (re)set all the arrays before (re)populating them.
         this.missionClasses = [];
         this.missionDefaultCompletions = [];
@@ -94,10 +96,14 @@ class MissionCache {
         this.mastFileCache = [];
         this.storyJson = new StoryJson(path.join(this.missionURI, "story.json"));
         this.storyJson.readFile()
-            .then(() => { this.modulesLoaded(); })
-            .finally(() => { (0, console_1.debug)("Finished loading modules"); });
+            .then(() => {
+            this.modulesLoaded().then(() => {
+                (0, console_1.debug)("Modules loaded.");
+            });
+        });
+        // .finally(()=>{debug("Finished loading modules")});
         loadSbs().then((p) => {
-            (0, console_1.debug)("Loaded SBS, starting to parse.");
+            // debug("Loaded SBS, starting to parse.");
             if (p !== null) {
                 this.missionPyModules.push(p);
                 this.missionClasses = this.missionClasses.concat(p.classes);
@@ -106,6 +112,7 @@ class MissionCache {
                     this.missionDefaultSignatures.push(s.signatureInformation);
                 }
             }
+            (0, console_1.debug)("Finished loading sbs");
         });
         let files = (0, fileFunctions_1.getFilesInDir)(this.missionURI);
         //debug(files);
@@ -204,6 +211,7 @@ class MissionCache {
             const lib = this.storyJson.mastlib.concat(this.storyJson.sbslib);
             let complete = 0;
             (0, console_1.debug)("Beginning to load modules");
+            const total = lib.length;
             for (const zip of lib) {
                 let found = false;
                 for (const m of (0, globals_1.getGlobals)().getAllMissions()) {
@@ -215,6 +223,8 @@ class MissionCache {
                         for (const f of files) {
                             const data = (0, fileFunctions_1.readFile)(f).then((data) => {
                                 this.handleZipData(data, f);
+                                complete += 1;
+                                // progressUpdate(complete/total*100);
                             });
                         }
                     }
@@ -231,14 +241,14 @@ class MissionCache {
                             }
                             file = saveZipTempFile(file, data);
                             this.handleZipData(data, file);
+                            complete += 1;
+                            // progressUpdate(complete/total*100);
                         });
-                        complete += 1;
                     }).catch(err => {
                         (0, console_1.debug)("Error unzipping. \n  " + err);
                         if (("" + err).includes("Invalid filename")) {
                             libErrs.push("File does not exist:\n" + zipPath);
                         }
-                        complete += 1;
                     });
                 }
             }
@@ -248,21 +258,18 @@ class MissionCache {
             (0, console_1.debug)(e);
         }
     }
+    /**
+     * Takes file name and contents and handles them. Checks if it's a .py or .mast file, creates the relevant object, ignores everything else.
+     * Also ignores __init__ files of both the mast and py varieties
+     * @param data Contents of a file, as a {@link string string}
+     * @param file name of a file, as a {@link string string}
+     * @returns
+     */
     handleZipData(data, file = "") {
-        // debug(zip);
-        // zip.forEach((data, file)=>{
-        // 	debug(file)
-        // 	if (parentFolder !== "") {
-        // 		file = path.join(parentFolder,file);
-        // 	}
-        // 	file = saveZipTempFile(file,data);
-        (0, console_1.debug)(file);
-        // file = tempFile;
         if (file.endsWith("__init__.mast") || file.endsWith("__init__.py")) {
             // Do nothing
         }
         else if (file.endsWith(".py")) {
-            //debug("Checking: " + file)
             this.routeLabels = this.routeLabels.concat((0, routeLabels_1.loadRouteLabels)(data));
             // this.mediaLabels = this.mediaLabels.concat(loadMediaLabels(data));
             // this.resourceLabels = this.resourceLabels.concat(loadResourceLabels(data));
@@ -278,10 +285,7 @@ class MissionCache {
                 }
             }
             this.missionClasses = this.missionClasses.concat(p.classes);
-            //debug(this.missionClasses);
             this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.defaultFunctionCompletionItems);
-            //this.missionDefaultSignatures = this.missionDefaultSignatures.concat(p.defaultFunctions)
-            //p.defaultFunctions
             this.missionDefaultFunctions = this.missionDefaultFunctions.concat(p.defaultFunctions);
             for (const s of p.defaultFunctions) {
                 this.missionDefaultSignatures.push(s.signatureInformation);
@@ -292,9 +296,6 @@ class MissionCache {
             const m = new data_1.MastFile(file, data);
             this.missionMastModules.push(m);
         }
-        // });
-        //debug(this.missionDefaultCompletions);
-        //debug(this.missionClasses);
     }
     updateFileInfo(doc) {
         if (doc.languageId === "mast") {
@@ -855,19 +856,11 @@ function getCache(name, reloadCache = false) {
 }
 function saveZipTempFile(uri, contents) {
     const tempPath = (0, fileFunctions_1.fixFileName)(path.join(os.tmpdir(), "cosmosModules", uri));
-    // if (uri.includes("sbs_utils")) {
-    (0, console_1.debug)(path.dirname(tempPath));
-    // }
-    // if (!fs.existsSync(tempPath)) {
-    // 	fs.mkdirSync(tempPath);
-    // }
-    // let tempFile = path.join(tempPath,uri);
     if (!fs.existsSync(path.dirname(tempPath))) {
         (0, console_1.debug)("Making dir: " + path.dirname(tempPath));
         fs.mkdirSync(path.dirname(tempPath), { recursive: true });
     }
     (0, console_1.debug)(tempPath);
-    //debug(file);
     fs.writeFileSync(tempPath, contents);
     return tempPath;
 }

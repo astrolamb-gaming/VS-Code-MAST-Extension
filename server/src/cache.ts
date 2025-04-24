@@ -10,7 +10,7 @@ import { prepSignatures } from './signatureHelp';
 import { parse, RX } from './rx';
 import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } from './tokens/routeLabels';
 import { fixFileName, getFileContents, getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readZipArchive } from './fileFunctions';
-import { connection, notifyClient, sendToClient } from './server';
+import { connection, notifyClient, progressUpdate, sendToClient } from './server';
 import { URI } from 'vscode-uri';
 import { getGlobals } from './globals';
 import { send } from 'process';
@@ -102,6 +102,8 @@ export class MissionCache {
 	}
 
 	load() {
+		debug("Starting MissionCache.load()");
+		progressUpdate(0);
 		// (re)set all the arrays before (re)populating them.
 		this.missionClasses = [];
 		this.missionDefaultCompletions = [];
@@ -115,10 +117,14 @@ export class MissionCache {
 		this.mastFileCache = [];
 		this.storyJson = new StoryJson(path.join(this.missionURI,"story.json"));
 		this.storyJson.readFile()
-			.then(()=>{this.modulesLoaded()})
-			.finally(()=>{debug("Finished loading modules")});
+			.then(()=>{
+				this.modulesLoaded().then(()=>{
+					debug("Modules loaded.");
+				})
+			})
+			// .finally(()=>{debug("Finished loading modules")});
 		loadSbs().then((p)=>{
-			debug("Loaded SBS, starting to parse.");
+			// debug("Loaded SBS, starting to parse.");
 			if (p !== null) {
 				this.missionPyModules.push(p);
 				this.missionClasses = this.missionClasses.concat(p.classes);
@@ -127,6 +133,7 @@ export class MissionCache {
 					this.missionDefaultSignatures.push(s.signatureInformation);
 				}
 			}
+			debug("Finished loading sbs");
 		});
 		let files: string[] = getFilesInDir(this.missionURI);
 		//debug(files);
@@ -229,6 +236,7 @@ export class MissionCache {
 			const lib = this.storyJson.mastlib.concat(this.storyJson.sbslib);
 			let complete = 0;
 			debug("Beginning to load modules");
+			const total = lib.length;
 			for (const zip of lib) {
 				let found = false;
 				for (const m of getGlobals().getAllMissions()) {
@@ -240,6 +248,8 @@ export class MissionCache {
 						for (const f of files) {
 							const data = readFile(f).then((data)=>{
 								this.handleZipData(data, f);
+								complete += 1;
+								// progressUpdate(complete/total*100);
 							});
 						}
 					}
@@ -256,15 +266,14 @@ export class MissionCache {
 							}
 							file = saveZipTempFile(file,data);
 							this.handleZipData(data,file);
-						})
-						
-						complete += 1;
+							complete += 1;
+							// progressUpdate(complete/total*100);
+						});
 					}).catch(err =>{
 						debug("Error unzipping. \n  " + err);
 						if (("" + err).includes("Invalid filename")) {
 							libErrs.push("File does not exist:\n" + zipPath);
 						}
-						complete += 1;
 					});
 				}
 			}
@@ -274,56 +283,41 @@ export class MissionCache {
 		}
 	}
 
-	
-
+	/**
+	 * Takes file name and contents and handles them. Checks if it's a .py or .mast file, creates the relevant object, ignores everything else.
+	 * Also ignores __init__ files of both the mast and py varieties
+	 * @param data Contents of a file, as a {@link string string}
+	 * @param file name of a file, as a {@link string string}
+	 * @returns 
+	 */
 	handleZipData(data:string, file:string = "") {
-		// debug(zip);
-		// zip.forEach((data, file)=>{
-		// 	debug(file)
-			
-		// 	if (parentFolder !== "") {
-		// 		file = path.join(parentFolder,file);
-		// 	}
-
-		// 	file = saveZipTempFile(file,data);
-			debug(file);
-			// file = tempFile;
-			if (file.endsWith("__init__.mast") || file.endsWith("__init__.py")) {
-				// Do nothing
-			} else if (file.endsWith(".py")) {
-				//debug("Checking: " + file)
-				this.routeLabels = this.routeLabels.concat(loadRouteLabels(data));
-				// this.mediaLabels = this.mediaLabels.concat(loadMediaLabels(data));
-				// this.resourceLabels = this.resourceLabels.concat(loadResourceLabels(data));
-				const p = new PyFile(file, data);
-				this.missionPyModules.push(p);
-				if (file.includes("sbs_utils") && !file.includes("procedural")) {
-					// Don't wanat anything not procedural included???
-					if (file.includes("scatter") || file.includes("faces") || file.includes("names") || file.includes("vec.py")) {
-						//don't return
-					} else {
-						return;
-					}
+		if (file.endsWith("__init__.mast") || file.endsWith("__init__.py")) {
+			// Do nothing
+		} else if (file.endsWith(".py")) {
+			this.routeLabels = this.routeLabels.concat(loadRouteLabels(data));
+			// this.mediaLabels = this.mediaLabels.concat(loadMediaLabels(data));
+			// this.resourceLabels = this.resourceLabels.concat(loadResourceLabels(data));
+			const p = new PyFile(file, data);
+			this.missionPyModules.push(p);
+			if (file.includes("sbs_utils") && !file.includes("procedural")) {
+				// Don't wanat anything not procedural included???
+				if (file.includes("scatter") || file.includes("faces") || file.includes("names") || file.includes("vec.py")) {
+					//don't return
+				} else {
+					return;
 				}
-				
-				this.missionClasses = this.missionClasses.concat(p.classes);
-				//debug(this.missionClasses);
-				this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.defaultFunctionCompletionItems);
-				//this.missionDefaultSignatures = this.missionDefaultSignatures.concat(p.defaultFunctions)
-				//p.defaultFunctions
-				this.missionDefaultFunctions = this.missionDefaultFunctions.concat(p.defaultFunctions);
-				for (const s of p.defaultFunctions) {
-					this.missionDefaultSignatures.push(s.signatureInformation);
-				}
-			} else if (file.endsWith(".mast")) {
-				//debug("Building file: " + file);
-				const m = new MastFile(file, data);
-				this.missionMastModules.push(m);
 			}
-		// });
-
-		//debug(this.missionDefaultCompletions);
-		//debug(this.missionClasses);
+			this.missionClasses = this.missionClasses.concat(p.classes);
+			this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.defaultFunctionCompletionItems);
+			this.missionDefaultFunctions = this.missionDefaultFunctions.concat(p.defaultFunctions);
+			for (const s of p.defaultFunctions) {
+				this.missionDefaultSignatures.push(s.signatureInformation);
+			}
+		} else if (file.endsWith(".mast")) {
+			//debug("Building file: " + file);
+			const m = new MastFile(file, data);
+			this.missionMastModules.push(m);
+		}
 	}
 
 	updateFileInfo(doc: TextDocument) {
@@ -918,20 +912,11 @@ export function getCache(name:string, reloadCache:boolean = false): MissionCache
 
 function saveZipTempFile(uri:string, contents:string) : string{
 	const tempPath = fixFileName(path.join(os.tmpdir(),"cosmosModules",uri));
-	// if (uri.includes("sbs_utils")) {
-		debug(path.dirname(tempPath));
-	// }
-	// if (!fs.existsSync(tempPath)) {
-	// 	fs.mkdirSync(tempPath);
-	// }
-	// let tempFile = path.join(tempPath,uri);
-	
 	if (!fs.existsSync(path.dirname(tempPath))) {
 		debug("Making dir: " + path.dirname(tempPath));
 		fs.mkdirSync(path.dirname(tempPath), { recursive: true });
 	}
 	debug(tempPath);
-	//debug(file);
 	fs.writeFileSync(tempPath,contents);
 	return tempPath;
 }

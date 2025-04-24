@@ -5,7 +5,7 @@ import fs = require('fs');
 import os = require('os');
 import sharp = require('sharp');
 import { CompletionItem, CompletionItemLabelDetails, CompletionItemKind, SignatureInformation, MarkupContent } from 'vscode-languageserver';
-import { connection } from './server';
+import { connection, notifyClient, progressUpdate } from './server';
 import { ShipData } from './shipData';
 
 interface DataSetItem {
@@ -32,6 +32,7 @@ export class Globals {
 	artemisDir: string = "";
 	artFiles: CompletionItem[] = [];
 	constructor() {
+		// progressUpdate(0);
 		const thisDir = path.resolve("../");
 		const adir = getArtemisDirFromChild(thisDir);
 		debug("Artemis Directory: ");

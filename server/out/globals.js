@@ -17,6 +17,7 @@ class Globals {
         this.widget_stylestrings = [];
         this.artemisDir = "";
         this.artFiles = [];
+        // progressUpdate(0);
         const thisDir = path.resolve("../");
         const adir = (0, fileFunctions_1.getArtemisDirFromChild)(thisDir);
         (0, console_1.debug)("Artemis Directory: ");
