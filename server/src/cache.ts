@@ -119,7 +119,7 @@ export class MissionCache {
 		this.storyJson.readFile()
 			.then(()=>{
 				this.modulesLoaded().then(()=>{
-					debug("Modules loaded.");
+					debug("Modules loaded for " + this.missionName);
 				})
 			})
 			// .finally(()=>{debug("Finished loading modules")});
@@ -133,7 +133,7 @@ export class MissionCache {
 					this.missionDefaultSignatures.push(s.signatureInformation);
 				}
 			}
-			debug("Finished loading sbs");
+			debug("Finished loading sbs for " + this.missionName);
 		});
 		let files: string[] = getFilesInDir(this.missionURI);
 		//debug(files);
@@ -668,6 +668,7 @@ export class StoryJson {
 	 * Must be called after instantiating the object.
 	 */
 	async readFile() {
+		if (path.dirname(this.uri).endsWith("sbs_utils")) return;
 		try {
 			const data = fs.readFileSync(this.uri, "utf-8");
 			this.parseFile(data);
