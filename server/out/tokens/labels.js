@@ -9,7 +9,6 @@ exports.getMainLabelAtPos = getMainLabelAtPos;
 const vscode_languageserver_1 = require("vscode-languageserver");
 const vscode_languageserver_textdocument_1 = require("vscode-languageserver-textdocument");
 const errorChecking_1 = require("../errorChecking");
-const server_1 = require("../server");
 const console_1 = require("console");
 const cache_1 = require("../cache");
 const vscode_uri_1 = require("vscode-uri");
@@ -254,7 +253,7 @@ function checkLabels(textDocument) {
     // 		}
     // 	}
     // }
-    (0, server_1.updateLabelNames)(mainLabels);
+    // updateLabelNames(mainLabels);
     //debug("Iterating over called labels");
     while (m = calledLabel.exec(text)) {
         const str = m[0].replace(/(->)|(jump )/g, "").trim();

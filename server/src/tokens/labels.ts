@@ -1,7 +1,6 @@
 import { Diagnostic, DiagnosticSeverity, integer, Position, Range } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { relatedMessage } from '../errorChecking';
-import { labelNames, updateLabelNames } from "../server";
 import { debug } from 'console';
 import { getCache } from '../cache';
 import { URI } from 'vscode-uri';
@@ -275,7 +274,7 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 	// 		}
 	// 	}
 	// }
-	updateLabelNames(mainLabels);
+	// updateLabelNames(mainLabels);
 	//debug("Iterating over called labels");
 	while (m = calledLabel.exec(text)) {
 		const str = m[0].replace(/(->)|(jump )/g,"").trim();
