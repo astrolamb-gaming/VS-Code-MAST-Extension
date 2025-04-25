@@ -11,6 +11,7 @@ Includes:
 	* Checks if labels are defined, and defined properly
 	* Checks for proper route label usage
 	* Proper f-string usage
+	* Checks if label names are overriden by a variable name
 * Autocompletion for applicable functions within the sbs and sbs_utils packages
 	* sbs package
 	* scatter package
@@ -19,6 +20,7 @@ Includes:
 * Autocompletion for variables etc in current file and files in scope
 * Autocompletion for labels in current file and files in scope
 * Function signature information (i.e. notes on argument types)
+* Go To Definition functionality
 * Checks for module versions
 	* Can update all to latest version, or manually update
 * In mission folders, checks for `__init__.mast` in the folder you're working in. If it doesn't exist, will promt with an option to auto-generate the file, with all .mast and .py files included automatically.

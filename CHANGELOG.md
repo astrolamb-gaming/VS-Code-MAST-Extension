@@ -8,6 +8,22 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 * Determine variable types based on function return values, etc.
 
+### 0.9.0
+
+* Note that the loading time for the extension has increased a bit due to more operations being done on startup - I'll work on this for later updates
+* Add error if a variable name overrides a label name
+* Add label information on hover
+* Add Go To Definition for modules
+	* If the module exists as a regular mission, directs to the mission folder
+* Fix bugs related to string and comment parsing when switching between files
+* Fix for variables with keywords like default or shared
+* Add default, assigned, client, and temp as keywords for autocompletion
+* Updated hovers such that there's less wasted space when there's no documentation
+* Fix for error in metadata, it thought lists were malformed labels
+* Added check for if a label is a prefab (TODO: Check if it's an objective, brain, etc)
+* Fix for workspaces
+
+
 ### 0.8.0
 
 * Add function information on hover
