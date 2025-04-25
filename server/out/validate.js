@@ -19,6 +19,8 @@ async function validateTextDocument(textDocument) {
         (0, console_1.debug)("THIS IS A JSON FILE");
         return [];
     }
+    if (textDocument.languageId !== "mast")
+        return [];
     const cache = (0, cache_1.getCache)(textDocument.uri);
     const folder = path.dirname(vscode_uri_1.URI.parse(textDocument.uri).fsPath);
     if (!exclude.includes(folder)) {
@@ -114,6 +116,7 @@ async function validateTextDocument(textDocument) {
     // const functionSigs = checkFunctionSignatures(textDocument);
     // debug(functionSigs);
     // diagnostics = diagnostics.concat(functionSigs);
+    // Checking string errors
     let fstring = /\".*\{.*\}.*\"/g;
     let interior = /{.*\".*\".*}/g;
     while (m = fstring.exec(text)) {
@@ -164,6 +167,7 @@ async function validateTextDocument(textDocument) {
     }
     //checkForDuplicateLabelsInFile(textDocument);
     // For applicable diagnostics, check if they, or parts of them, are inside of a string or comment.
+    // Some things should be checked after this. Other things should be checked before.
     diagnostics = diagnostics.filter((d) => {
         const start = textDocument.offsetAt(d.range.start);
         const end = textDocument.offsetAt(d.range.end);
@@ -171,9 +175,22 @@ async function validateTextDocument(textDocument) {
         const inCom = !(0, comments_1.isInComment)(textDocument, start) || !(0, comments_1.isInComment)(textDocument, end);
         return inStr || inCom;
     });
-    const d = (0, errorChecking_1.checkLastLine)(textDocument);
+    let d = (0, errorChecking_1.checkLastLine)(textDocument);
     if (d !== undefined) {
         diagnostics.push(d);
+    }
+    for (const label of cache.getLabels(textDocument)) {
+        for (const v of cache.getVariables(textDocument)) {
+            if (label.name === v.name) {
+                d = {
+                    range: v.range,
+                    message: "'" + v.name + "' is used as a label name. Don't override label names!",
+                    severity: vscode_languageserver_1.DiagnosticSeverity.Error,
+                    source: "mast extension"
+                };
+                diagnostics.push(d);
+            }
+        }
     }
     const r = (0, routeLabels_1.checkEnableRoutes)(textDocument);
     diagnostics = diagnostics.concat(r);

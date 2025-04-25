@@ -17,6 +17,7 @@ import { send } from 'process';
 import { getRolesAsCompletionItem } from './roles';
 import { deprecate } from 'util';
 import * as os from 'os';
+import { Variable } from './tokens/variables';
 
 
 export function loadCache(dir: string) {
@@ -358,52 +359,53 @@ export class MissionCache {
 	 * TODO: This should only return variables that are in scope
 	 * @returns 
 	 */
-	getVariables(file:string): CompletionItem[] {
-		const parent = getParentFolder(URI.parse(file).fsPath);
-		const inits = getInitContents(file);
+	getVariableCompletionItems(doc:TextDocument|undefined): CompletionItem[] {
+		// const parent = getParentFolder(URI.parse(file).fsPath);
+		// const inits = getInitContents(fixFileName(doc?.uri));
 		let ci: CompletionItem[] = [];
 		for (const m of this.mastFileCache) {
-			if (m.parentFolder === parent) {
-				// Check if the file is included in the init file
-				for (const i of inits) {
-					if (i === path.basename(m.uri)) {
-						ci = ci.concat(m.getVariableNames());
-					}
-				}
+			// if (m.parentFolder === parent) {
+			// 	// Check if the file is included in the init file
+			// 	for (const i of inits) {
+			// 		if (i === path.basename(m.uri)) {
+			ci = ci.concat(m.getVariableNames());
+			// 		}
+			// 	}
 				
-			}
+			// }
+			// for (const v of m.variables) {
+				
+			// }
 		}
 		//const arrUniq = [...new Map(ci.map(v => [v.label, v])).values()]
 		return ci;
 	}
 
+	getVariables(doc:TextDocument|undefined) {
+		let vars: Variable[] = [];
+		for (const m of this.mastFileCache) {
+			if (doc) {
+				if (fixFileName(m.uri) === fixFileName(doc.uri)) {
+					vars = vars.concat(m.variables);
+				}
+			} else {
+				vars = vars.concat(m.variables);
+			}
+		}
+		return vars;
+	}
+
 	
 	/**
 	 * @param fileUri The uri of the file. 
-	 * @returns List of {@link LabelInfo LabelInfo} applicable to the current scope
+	 * @returns List of {@link LabelInfo LabelInfo} applicable to the current scope (including modules)
 	 */
 	getLabels(textDocument: TextDocument): LabelInfo[] {
 		let fileUri: string = fixFileName(textDocument.uri);
 		let li: LabelInfo[] = [];
 		//debug(this.mastFileInfo);
 		for (const f of this.mastFileCache) {
-			
-			if (f.uri === fileUri) {
 				li = li.concat(f.labelNames);
-			} else {
-				// Check if the mast files are in scope
-				// TODO: Check init.mast for if any files should not be included
-				//debug(fileUri);
-
-				// I had previously thought that files outside of the current folder were not in scope.
-				// I was wrong.
-				// if (f.parentFolder === getParentFolder(fileUri)) {
-				// 	//debug("adding labels for: ");
-				// 	//debug(f);
-				// 	li = li.concat(f.labelNames);
-				// }
-				li = li.concat(f.labelNames);
-			}
 		}
 
 		// This gets stuff from LegendaryMissions, if the current file isn't LegendaryMissions itself.
@@ -444,6 +446,11 @@ export class MissionCache {
 			ci = ci.concat(this.missionDefaultCompletions);
 			for (const c of this.missionClasses) {
 				ci.push(c.completionItem);
+			}
+			for (const p of this.pyFileCache) {
+				for (const f of p.defaultFunctions) {
+					ci.push(f.completionItem);
+				}
 			}
 			// TODO: Add variables in scope
 			return ci;

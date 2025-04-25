@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Parameter = exports.Function = exports.ClassObject = exports.PyFile = exports.MastFile = exports.FileCache = void 0;
 exports.getRegExMatch = getRegExMatch;
 exports.getLabelDescription = getLabelDescription;
-exports.getVariablesInFile = getVariablesInFile;
 const path = require("path");
 const fs = require("fs");
 const console_1 = require("console");
@@ -12,10 +11,10 @@ const labels_1 = require("./tokens/labels");
 const vscode_languageserver_textdocument_1 = require("vscode-languageserver-textdocument");
 const fileFunctions_1 = require("./fileFunctions");
 const cache_1 = require("./cache");
-const variables_1 = require("./tokens/variables");
 const globals_1 = require("./globals");
 const roles_1 = require("./roles");
 const prefabs_1 = require("./tokens/prefabs");
+const variables_1 = require("./tokens/variables");
 /**
  * This accounts for classes that use a different name as a global than the class name.
  * E.g. the sim global variable refers to the simulation class. Instead of simulation.functionName(), use sim.functionName().
@@ -59,6 +58,17 @@ class FileCache {
     }
 }
 exports.FileCache = FileCache;
+// export interface Variable {
+// 	name: string,
+// 	/**
+// 	 * Given that MAST and Python are not stronly typed, there are lots of possible types the variable could have.
+// 	 */
+// 	possibleTypes: string[],
+// 	/**
+// 	 * variable modifiers like "shared"
+// 	 */
+// 	modifiers: string[]
+// }
 class MastFile extends FileCache {
     // strings: CRange[] = [];
     // comments: CRange[] = [];
@@ -105,7 +115,8 @@ class MastFile extends FileCache {
         this.labelNames = (0, labels_1.parseLabelsInFile)(text, this.uri);
         this.prefabs = (0, prefabs_1.parsePrefabs)(this.labelNames);
         // TODO: Parse variables, etc
-        this.variables = (0, variables_1.getVariableNamesInDoc)(textDocument);
+        //this.variables = getVariableNamesInDoc(textDocument);
+        this.variables = (0, variables_1.parseVariables)(textDocument); //
         this.roles = (0, roles_1.getRolesForFile)(text);
     }
     getVariableNames() {
@@ -113,7 +124,7 @@ class MastFile extends FileCache {
         (0, console_1.debug)("Getting variable names");
         for (const v of this.variables) {
             const ci = {
-                label: v,
+                label: v.name,
                 kind: vscode_languageserver_1.CompletionItemKind.Variable,
                 //TODO: Check type of variable?
                 labelDetails: { description: path.basename(this.uri) + ": var" },
@@ -157,6 +168,11 @@ class PyFile extends FileCache {
         }
     }
     parseWholeFile(text, source) {
+        // Gotta clear old data
+        this.defaultFunctionCompletionItems = [];
+        this.classes = [];
+        this.defaultFunctions = [];
+        this.variableNames = [];
         //if (!source.endsWith("timers.py")) return;
         // super.parseVariables(text); We don't actually want to look for variable names in python files
         // Instead of just assuming that there is always another class following, it could be a function, so we need to account for this.
@@ -706,52 +722,52 @@ function getLabelDescription(td, pos) {
     }
     return labelDesc;
 }
-function getVariablesInFile(textDocument) {
-    const text = textDocument.getText();
-    const cache = (0, cache_1.getCache)(textDocument.uri);
-    (0, console_1.debug)("Trying to get variables");
-    let variables = [];
-    const pattern = /^\s*?\w+(?=\s*=[^=]\s*?)/gm;
-    const lines = text.split("\n");
-    (0, console_1.debug)("Done getting variables");
-    let m;
-    let found = false;
-    for (const line of lines) {
-        const match = line.match(pattern);
-        if (match) {
-            const v = match[0];
-            (0, console_1.debug)(v);
-            // Get the variable type at this point
-            const equal = line.indexOf("=") + 1;
-            const typeEvalStr = line.substring(equal).trim();
-            (0, console_1.debug)(typeEvalStr);
-            const t = getVariableTypes(typeEvalStr, textDocument.uri);
-            (0, console_1.debug)(t);
-            // Check if the variable is already found
-            let found = false;
-            for (const _var of variables) {
-                if (_var.name === v) {
-                    found = true;
-                    // If it's already part of the list, then do this:
-                    for (const varType of t) {
-                        if (!_var.possibleTypes.includes(varType)) {
-                            _var.possibleTypes.push(varType);
-                        }
-                    }
-                    break;
-                }
-            }
-            if (!found) {
-                const variable = {
-                    name: v,
-                    possibleTypes: t,
-                    modifiers: []
-                };
-            }
-        }
-    }
-    return variables;
-}
+// export function getVariablesInFile(textDocument:TextDocument) {
+// 	const text = textDocument.getText();
+// 	const cache = getCache(textDocument.uri);
+// 	debug("Trying to get variables");
+// 	let variables: Variable[] = [];
+// 	const pattern: RegExp = /^\s*?\w+(?=\s*=[^=]\s*?)/gm;
+// 	const lines = text.split("\n");
+// 	debug("Done getting variables");
+// 	let m: RegExpExecArray | null;
+// 	let found = false;
+// 	for (const line of lines) {
+// 		const match = line.match(pattern);
+// 		if (match) {
+// 			const v = match[0];
+// 			debug(v);
+// 			// Get the variable type at this point
+// 			const equal = line.indexOf("=")+1;
+// 			const typeEvalStr = line.substring(equal).trim();
+// 			debug(typeEvalStr);
+// 			const t = getVariableTypes(typeEvalStr,textDocument.uri);
+// 			debug(t);
+// 			// Check if the variable is already found
+// 			let found = false;
+// 			for (const _var of variables) {
+// 				if (_var.name === v) {
+// 					found = true;
+// 					// If it's already part of the list, then do this:
+// 					for (const varType of t) {
+// 						if (!_var.possibleTypes.includes(varType)) {
+// 							_var.possibleTypes.push(varType);
+// 						}
+// 					}
+// 					break;
+// 				}
+// 			}
+// 			if (!found) {
+// 				const variable:Variable = {
+// 					name: v,
+// 					possibleTypes: t,
+// 					modifiers: []
+// 				}
+// 			}
+// 		}
+// 	}
+// 	return variables;
+// }
 function getVariableTypes(typeEvalStr, uri) {
     let types = [];
     const test = "to_object(amb_id)" === typeEvalStr;

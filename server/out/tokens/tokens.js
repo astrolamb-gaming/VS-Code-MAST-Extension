@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TokenType = void 0;
-exports.getAllTokens = getAllTokens;
 exports.getTokenInfo = getTokenInfo;
 exports.getTokenAt = getTokenAt;
 exports.getVariableTypeFromFunction = getVariableTypeFromFunction;
@@ -11,11 +10,7 @@ exports.isClassMethod = isClassMethod;
 exports.getClassOfMethod = getClassOfMethod;
 exports.getWordRangeAtPosition = getWordRangeAtPosition;
 const console_1 = require("console");
-const data_1 = require("../data");
 const comments_1 = require("../tokens/comments");
-function getAllTokens(textDocument) {
-    let variables = (0, data_1.getVariablesInFile)(textDocument);
-}
 var TokenType;
 (function (TokenType) {
     TokenType[TokenType["VARIABLE"] = 0] = "VARIABLE";

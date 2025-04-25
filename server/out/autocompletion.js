@@ -10,7 +10,6 @@ const comments_1 = require("./tokens/comments");
 const cache_1 = require("./cache");
 const path = require("path");
 const fileFunctions_1 = require("./fileFunctions");
-const tokens_1 = require("./tokens/tokens");
 const globals_1 = require("./globals");
 const signatureHelp_1 = require("./signatureHelp");
 const roles_1 = require("./roles");
@@ -79,24 +78,16 @@ function onCompletion(_textDocumentPosition, text) {
     else {
         // debug("NOT an init file");
     }
-    let variables = [];
-    try {
-        variables = cache.getVariables(text.uri);
-    }
-    catch (e) {
-        (0, console_1.debug)(e);
-    }
-    (0, console_1.debug)("Variables parsed.");
-    if (currentLine != _textDocumentPosition.position.line) {
-        currentLine = _textDocumentPosition.position.line;
-        // Here we can do any logic that doesn't need to be done every character change
-        (0, console_1.debug)("Updating variables list");
-        // const varNames = getVariableNamesInDoc(text);
-        const variables = (0, cache_1.getCache)(text.uri).getVariables(text.uri);
-        // variables = getVariablesAsCompletionItem(varNames);
-    }
-    (0, console_1.debug)("updating tokens...");
-    (0, tokens_1.updateTokensForLine)(currentLine);
+    // if (currentLine != _textDocumentPosition.position.line) {
+    // 	currentLine = _textDocumentPosition.position.line;
+    // 	// Here we can do any logic that doesn't need to be done every character change
+    // 	// debug("Updating variables list")
+    // 	// const varNames = getVariableNamesInDoc(text);
+    // 	// const variables = cache.getVariableCompletionItems(text);
+    // 	// variables = getVariablesAsCompletionItem(varNames);
+    // }
+    // // debug("updating tokens...")
+    // // updateTokensForLine(currentLine);
     // getVariablesInFile(text);
     // return ci;
     //debug("" + startOfLine as string);
@@ -181,6 +172,46 @@ function onCompletion(_textDocumentPosition, text) {
             return ci;
         }
     }
+    // If we're defining a label, we don't want autocomplete.
+    // TODO: ++ labels should have specific names
+    if (iStr.trim().startsWith("--") || iStr.trim().startsWith("==") || iStr.trim().startsWith("++")) {
+        return ci;
+    }
+    // Media labels only get the skybox names
+    else if (iStr.endsWith("@media/skybox/")) {
+        return (0, globals_1.getGlobals)().skyboxes;
+        // Get Music Options (default vs Artemis2)
+    }
+    else if (iStr.endsWith("@media/music/")) {
+        return (0, globals_1.getGlobals)().music;
+    }
+    // Route Label autocompletion
+    if (iStr.trim().startsWith("//")) {
+        // If this is a route label, but NOT anything after it, then we only return route labels
+        if (!iStr.trim().includes(" ")) {
+            (0, console_1.debug)("Getting regular route labels");
+            ci = cache.getRouteLabels(); //getRouteLabelAutocompletions(iStr);
+            return ci;
+        }
+        else {
+            const route = iStr.trim().substring(0, iStr.trim().indexOf(" "));
+            const rlvs = (0, routeLabels_1.getRouteLabelVars)(route);
+            (0, console_1.debug)(rlvs);
+            for (const s of rlvs) {
+                const c = {
+                    label: s,
+                    kind: vscode_languageserver_1.CompletionItemKind.EnumMember,
+                    labelDetails: { description: "Route-specific Variable" }
+                };
+                ci.push(c);
+            }
+        }
+        // TODO: Add media, map, gui/tab, and console autocompletion items
+    }
+    else if (iStr.trim().startsWith("@")) {
+        ci = cache.getMediaLabels();
+        return ci;
+    }
     /**
  * 		□ All
         □ Scan
@@ -221,46 +252,6 @@ function onCompletion(_textDocumentPosition, text) {
             labelDetails: { description: "Comms Target" }
         };
         ci.push(c);
-        return ci;
-    }
-    // If we're defining a label, we don't want autocomplete.
-    // TODO: ++ labels should have specific names
-    if (iStr.trim().startsWith("--") || iStr.trim().startsWith("==") || iStr.trim().startsWith("++")) {
-        return ci;
-    }
-    // Media labels only get the skybox names
-    else if (iStr.endsWith("@media/skybox/")) {
-        return (0, globals_1.getGlobals)().skyboxes;
-        // Get Music Options (default vs Artemis2)
-    }
-    else if (iStr.endsWith("@media/music/")) {
-        return (0, globals_1.getGlobals)().music;
-    }
-    // Route Label autocompletion
-    if (iStr.trim().startsWith("//")) {
-        // If this is a route label, but NOT anything after it, then we only return route labels
-        if (!iStr.trim().includes(" ")) {
-            (0, console_1.debug)("Getting regular route labels");
-            ci = cache.getRouteLabels(); //getRouteLabelAutocompletions(iStr);
-            return ci;
-        }
-        else {
-            const route = iStr.trim().substring(0, iStr.trim().indexOf(" "));
-            const rlvs = (0, routeLabels_1.getRouteLabelVars)(route);
-            (0, console_1.debug)(rlvs);
-            for (const s of rlvs) {
-                const c = {
-                    label: s,
-                    kind: vscode_languageserver_1.CompletionItemKind.EnumMember,
-                    labelDetails: { description: "Route-specific Variable" }
-                };
-                ci.push(c);
-            }
-        }
-        // TODO: Add media, map, gui/tab, and console autocompletion items
-    }
-    else if (iStr.trim().startsWith("@")) {
-        ci = cache.getMediaLabels();
         return ci;
     }
     // Handle label autocompletion
@@ -371,21 +362,29 @@ function onCompletion(_textDocumentPosition, text) {
     (0, console_1.debug)("Main label at pos: ");
     (0, console_1.debug)(lbl);
     if (lbl.type === "route") {
-        if (!iStr.trim().startsWith("//")) {
-            const vars = (0, routeLabels_1.getRouteLabelVars)(lbl.name);
-            for (const s of vars) {
-                const c = {
-                    label: s,
-                    kind: vscode_languageserver_1.CompletionItemKind.EnumMember,
-                    labelDetails: { description: "Route-specific Variable" }
-                };
-                ci.push(c);
-            }
+        // if (!iStr.trim().startsWith("//")) {
+        const vars = (0, routeLabels_1.getRouteLabelVars)(lbl.name);
+        for (const s of vars) {
+            const c = {
+                label: s,
+                kind: vscode_languageserver_1.CompletionItemKind.EnumMember,
+                labelDetails: { description: "Route-specific Variable" }
+            };
+            ci.push(c);
         }
+        // }
     }
     // Add variable names to autocomplete list
     // TODO: Add variables from other files in scope?
-    (0, console_1.debug)(variables);
+    let variables = [];
+    try {
+        variables = cache.getVariableCompletionItems(text);
+    }
+    catch (e) {
+        (0, console_1.debug)(e);
+    }
+    (0, console_1.debug)("Variables parsed.");
+    // debug(variables)
     ci = ci.concat(variables);
     //debug(ci.length);
     //ci = ci.concat(defaultFunctionCompletionItems);

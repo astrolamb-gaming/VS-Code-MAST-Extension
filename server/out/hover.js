@@ -33,7 +33,7 @@ function onHover(_pos, text) {
     const symbol = getHoveredSymbol(hoveredLine, _pos.position.character);
     // If it's a comment, we'll just ignore it.
     if ((0, comments_1.isInComment)(text, pos)) {
-        return { contents: "comment" };
+        return undefined;
     }
     if ((0, comments_1.isInString)(text, pos)) {
         const func = before.lastIndexOf("(");
@@ -50,7 +50,7 @@ function onHover(_pos, text) {
                 }
             }
         }
-        return { contents: "string" };
+        return undefined;
     }
     for (const s of variables_1.variableModifiers) {
         if (s[0] === symbol) {
@@ -108,10 +108,14 @@ function onHover(_pos, text) {
                 let mc = m.buildMarkUpContent();
                 // mc.value = m.documentation.toString();
                 hoverText = mc;
-                if (hoverText === undefined) {
-                    hoverText = "";
+                return { contents: mc };
+            }
+        }
+        for (const m of cache.pyFileCache) {
+            for (const p of m.defaultFunctions) {
+                if (p.name === symbol) {
+                    return { contents: p.buildMarkUpContent() };
                 }
-                break;
             }
         }
     }
@@ -133,6 +137,20 @@ function onHover(_pos, text) {
             }
         }
     }
+    // Now we'll check for variables
+    // for (const file of getCache(text.uri).mastFileCache) {
+    // 	for (const v of file.variables) {
+    // 		if (v.name === symbol) {
+    // 			let doc: string = "Possible types:\n"
+    // 			for (const t of v.types) {
+    // 				if (!doc.includes(t)) {
+    // 					doc = doc + "\n"
+    // 				}
+    // 			}
+    // 			return {contents: doc}
+    // 		}
+    // 	}
+    // }
     // let str: MarkupContent = {
     // 	kind: 'plaintext', // 'markdown' or 'plaintext'
     // 	value: ''

@@ -2,12 +2,11 @@ import { debug } from 'console';
 import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 import * as fs from 'fs';
 import { integer, Position } from 'vscode-languageserver';
-import { getVariablesInFile } from '../data';
 import { CRange, getComments, getStrings } from '../tokens/comments';
 
-export function getAllTokens(textDocument: TextDocument) {
-	let variables = getVariablesInFile(textDocument);
-}
+// export function getAllTokens(textDocument: TextDocument) {
+// 	let variables = getVariablesInFile(textDocument);
+// }
 
 export interface Token {
 	type: TokenType,

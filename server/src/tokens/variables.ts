@@ -2,6 +2,7 @@ import { CompletionItem, CompletionItemKind, Range } from 'vscode-languageserver
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { getCurrentLineFromTextDocument } from '../hover';
 import { debug } from 'console';
+import { getCache } from '../cache';
 
 // TODO: Add these to autocomplete and hover
 export const variableModifiers: string[][] = [
@@ -13,10 +14,11 @@ export const variableModifiers: string[][] = [
 	["temp",""]
 ]
 
-interface Variable {
+export interface Variable {
 	name: string,
 	range: Range,
 	doc: string,
+	equals: string,
 	types: string[]
 }
 
@@ -36,7 +38,7 @@ export function getVariableNamesInDoc(doc: TextDocument) {
 	return vars;
 }
 
-export function parseVariables(doc: TextDocument) {
+export function parseVariables(doc: TextDocument): Variable[] {
 	let ret: Variable[] = [];
 	const variableRX = /^[\t ]*(default[ \t]+)?((shared|assigned|client|temp)\s+)?[a-zA-Z_]\w*[\t ]*(?==[^=])/gm;
 	const text = doc.getText();
@@ -48,37 +50,53 @@ export function parseVariables(doc: TextDocument) {
 		const range: Range = { start: doc.positionAt(start), end: doc.positionAt(end)}
 		const line = getCurrentLineFromTextDocument(range.start,doc);
 		let val = line.substring(line.indexOf("=")+1,line.length).trim();
-		debug("Variable: " + v);
-		debug(val);
 		let var1: Variable = {
 			name: v,
 			range: range,
 			doc: '',
+			equals: val,
 			types: []
 		}
-		if (val.match(/-?\d+/)) {
-			var1.types.push("number");
-		}
-		const match = val.match(/(\w+\.)?(\w+)\(/);
-		if (match) {
-			const func = match[2]
-		}
+		// Instead of parsing the type every time an updated is made (super inefficient, loading takes forever),
+		// we're instead going to parse just the applicable variable.
+		ret.push(var1);
 	}
-	ret = [...new Map(ret.map(v => [v.name, v])).values()]
+	ret = [...new Map(ret.map(v => [v.range, v])).values()];
+	// debug(ret);
 	return ret;
 }
 
-export function getVariablesAsCompletionItem(vars: string[]) {
+export function getVariablesAsCompletionItem(vars: Variable[]) {
 	const arr: CompletionItem[] = [];
 	for (const v of vars) {
 		const ci: CompletionItem = {
-			label: v,
+			label: v.name,
 			kind: CompletionItemKind.Variable,
 			//TODO: Check type of variable?
-			labelDetails: {description: "var"}
+			labelDetails: {description: "var"},
+			documentation: "Possible types:\n"
+		}
+		for (const d of v.types) {
+
 		}
 		arr.push(ci);
 	}
 	variables = arr;
 	return arr;
 } 
+
+export function getVariableAsCompletionItem(vars: Variable): CompletionItem {
+	const ci: CompletionItem = {
+		label: vars.name,
+		kind: CompletionItemKind.Variable,
+		labelDetails: {description: "var"}
+	}
+	let doc: string = "Possible types:\n"
+	for (const v of vars.types) {
+		if (!doc.includes(v)) {
+			doc = doc + "\n"
+		}
+	}
+	ci.documentation = doc.trim();
+	return ci;
+}

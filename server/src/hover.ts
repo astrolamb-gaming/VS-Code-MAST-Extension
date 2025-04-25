@@ -33,7 +33,7 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 	const symbol = getHoveredSymbol(hoveredLine, _pos.position.character);
 	// If it's a comment, we'll just ignore it.
 	if (isInComment(text,pos)) {
-		return {contents: "comment"};
+		return undefined;
 	}
 	if (isInString(text,pos)) {
 		const func = before.lastIndexOf("(");
@@ -50,7 +50,7 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 				}
 			}
 		}
-		return {contents: "string"};
+		return undefined;
 	}
 	for (const s of variableModifiers) {
 		if (s[0] === symbol) {
@@ -110,10 +110,14 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 				let mc = m.buildMarkUpContent();
 				// mc.value = m.documentation.toString();
 				hoverText = mc;
-				if (hoverText === undefined) {
-					hoverText = ""
+				return {contents: mc}
+			}
+		}
+		for (const m of cache.pyFileCache) {
+			for (const p of m.defaultFunctions) {
+				if (p.name === symbol) {
+					return {contents: p.buildMarkUpContent()}
 				}
-				break;
 			}
 		}
 	} else {
@@ -134,6 +138,22 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 			}
 		}
 	}
+
+
+	// Now we'll check for variables
+	// for (const file of getCache(text.uri).mastFileCache) {
+	// 	for (const v of file.variables) {
+	// 		if (v.name === symbol) {
+	// 			let doc: string = "Possible types:\n"
+	// 			for (const t of v.types) {
+	// 				if (!doc.includes(t)) {
+	// 					doc = doc + "\n"
+	// 				}
+	// 			}
+	// 			return {contents: doc}
+	// 		}
+	// 	}
+	// }
 
 	// let str: MarkupContent = {
 	// 	kind: 'plaintext', // 'markdown' or 'plaintext'

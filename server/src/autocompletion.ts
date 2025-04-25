@@ -84,23 +84,17 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	} else {
 		// debug("NOT an init file");
 	}
-	let variables: CompletionItem[] = [];
-	try {
-		variables = cache.getVariables(text.uri);
-	} catch(e) {
-		debug(e);
-	}
-	debug("Variables parsed.");
-	if (currentLine != _textDocumentPosition.position.line) {
-		currentLine = _textDocumentPosition.position.line;
-		// Here we can do any logic that doesn't need to be done every character change
-		debug("Updating variables list")
-		// const varNames = getVariableNamesInDoc(text);
-		const variables = getCache(text.uri).getVariables(text.uri);
-		// variables = getVariablesAsCompletionItem(varNames);
-	}
-	debug("updating tokens...")
-	updateTokensForLine(currentLine);
+	
+	// if (currentLine != _textDocumentPosition.position.line) {
+	// 	currentLine = _textDocumentPosition.position.line;
+	// 	// Here we can do any logic that doesn't need to be done every character change
+	// 	// debug("Updating variables list")
+	// 	// const varNames = getVariableNamesInDoc(text);
+	// 	// const variables = cache.getVariableCompletionItems(text);
+	// 	// variables = getVariablesAsCompletionItem(varNames);
+	// }
+	// // debug("updating tokens...")
+	// // updateTokensForLine(currentLine);
 	
 	
 	// getVariablesInFile(text);
@@ -200,6 +194,47 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	}
 
 
+	// If we're defining a label, we don't want autocomplete.
+	// TODO: ++ labels should have specific names
+	if (iStr.trim().startsWith("--") || iStr.trim().startsWith("==") || iStr.trim().startsWith("++")) {
+		return ci;
+	}
+
+	// Media labels only get the skybox names
+	else if (iStr.endsWith("@media/skybox/")) {
+		return getGlobals().skyboxes;
+	// Get Music Options (default vs Artemis2)
+	} else if (iStr.endsWith("@media/music/")) {
+		return getGlobals().music;
+	}
+
+	// Route Label autocompletion
+	if(iStr.trim().startsWith("//")) {
+		// If this is a route label, but NOT anything after it, then we only return route labels
+		if (!iStr.trim().includes(" ")) {
+			debug("Getting regular route labels")
+			ci = cache.getRouteLabels();//getRouteLabelAutocompletions(iStr);
+			return ci;
+		} else {
+			const route = iStr.trim().substring(0,iStr.trim().indexOf(" "));
+			const rlvs = getRouteLabelVars(route);
+			debug(rlvs)
+			for (const s of rlvs) {
+				const c: CompletionItem = {
+					label: s,
+					kind: CompletionItemKind.EnumMember,
+					labelDetails: {description: "Route-specific Variable"}
+				}
+				ci.push(c);
+			}
+		}
+		// TODO: Add media, map, gui/tab, and console autocompletion items
+	} else if (iStr.trim().startsWith("@")) {
+		ci = cache.getMediaLabels();
+		return ci;
+	}
+
+
 	/**
  * 		□ All
 		□ Scan
@@ -247,45 +282,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 
 	
 
-	// If we're defining a label, we don't want autocomplete.
-	// TODO: ++ labels should have specific names
-	if (iStr.trim().startsWith("--") || iStr.trim().startsWith("==") || iStr.trim().startsWith("++")) {
-		return ci;
-	}
 
-	// Media labels only get the skybox names
-	else if (iStr.endsWith("@media/skybox/")) {
-		return getGlobals().skyboxes;
-	// Get Music Options (default vs Artemis2)
-	} else if (iStr.endsWith("@media/music/")) {
-		return getGlobals().music;
-	}
-
-	// Route Label autocompletion
-	if(iStr.trim().startsWith("//")) {
-		// If this is a route label, but NOT anything after it, then we only return route labels
-		if (!iStr.trim().includes(" ")) {
-			debug("Getting regular route labels")
-			ci = cache.getRouteLabels();//getRouteLabelAutocompletions(iStr);
-			return ci;
-		} else {
-			const route = iStr.trim().substring(0,iStr.trim().indexOf(" "));
-			const rlvs = getRouteLabelVars(route);
-			debug(rlvs)
-			for (const s of rlvs) {
-				const c: CompletionItem = {
-					label: s,
-					kind: CompletionItemKind.EnumMember,
-					labelDetails: {description: "Route-specific Variable"}
-				}
-				ci.push(c);
-			}
-		}
-		// TODO: Add media, map, gui/tab, and console autocompletion items
-	} else if (iStr.trim().startsWith("@")) {
-		ci = cache.getMediaLabels();
-		return ci;
-	}
 	
 
 	// Handle label autocompletion
@@ -404,7 +401,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	debug("Main label at pos: ");
 	debug(lbl)
 	if (lbl.type === "route") {
-		if (!iStr.trim().startsWith("//")) {
+		// if (!iStr.trim().startsWith("//")) {
 			const vars = getRouteLabelVars(lbl.name);
 			for (const s of vars) {
 				const c: CompletionItem = {
@@ -414,13 +411,20 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				}
 				ci.push(c);
 			}
-		}
+		// }
 	}
 	
 
 	// Add variable names to autocomplete list
 	// TODO: Add variables from other files in scope?
-	debug(variables)
+	let variables: CompletionItem[] = [];
+	try {
+		variables = cache.getVariableCompletionItems(text);
+	} catch(e) {
+		debug(e);
+	}
+	debug("Variables parsed.");
+	// debug(variables)
 	ci = ci.concat(variables);
 
 	//debug(ci.length);

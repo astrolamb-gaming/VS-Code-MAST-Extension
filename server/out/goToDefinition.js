@@ -10,10 +10,9 @@ const tokens_1 = require("./tokens/tokens");
 const cache_1 = require("./cache");
 const vscode_uri_1 = require("vscode-uri");
 const labels_1 = require("./tokens/labels");
-const variables_1 = require("./tokens/variables");
 async function onDefinition(doc, pos) {
-    (0, variables_1.parseVariables)(doc);
-    return;
+    // parseVariables(doc);
+    // return;
     // First, let's check if it's in a comment or string
     // TODO: Check if it's a styestring or blob string, in which case we should open the applicable file?
     if ((0, comments_1.isInComment)(doc, doc.offsetAt(pos)) || (0, comments_1.isInString)(doc, doc.offsetAt(pos))) {

@@ -12,8 +12,8 @@ import { getMainLabelAtPos } from './tokens/labels';
 import { getVariableNamesInDoc, parseVariables } from './tokens/variables';
 
 export async function onDefinition(doc:TextDocument,pos:Position): Promise<Location | undefined> {
-	parseVariables(doc);
-	return;
+	// parseVariables(doc);
+	// return;
 	// First, let's check if it's in a comment or string
 	// TODO: Check if it's a styestring or blob string, in which case we should open the applicable file?
 	if(isInComment(doc,doc.offsetAt(pos)) || isInString(doc,doc.offsetAt(pos))) {
