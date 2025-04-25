@@ -247,7 +247,7 @@ export function checkForDuplicateLabelsInList(textDocument:TextDocument, labels:
 					} else {
 						f = "this file.";
 					}
-					message = "The label \"" + labels[j].name + "\" is used else where in " + f;
+					message = "The label \"" + labels[j].name + "\" is already defined in " + f;
 				}
 				d.relatedInformation = relatedMessage(textDocument,d.range, message);
 				diagnostics.push(d);

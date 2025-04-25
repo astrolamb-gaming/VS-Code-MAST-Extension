@@ -230,7 +230,7 @@ function checkForDuplicateLabelsInList(textDocument, labels = [], subLabels = fa
                     else {
                         f = "this file.";
                     }
-                    message = "The label \"" + labels[j].name + "\" is used else where in " + f;
+                    message = "The label \"" + labels[j].name + "\" is already defined in " + f;
                 }
                 d.relatedInformation = (0, errorChecking_1.relatedMessage)(textDocument, d.range, message);
                 diagnostics.push(d);
