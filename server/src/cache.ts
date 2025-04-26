@@ -742,8 +742,8 @@ export class StoryJson {
 		const manual: string = "Update manually";
 		const hide: string = "Don't show again";
 
-		const err = "story.json contains references to files that do not exist";
-		const warn = "Newer versions are available for story.json references";
+		const err = path.basename(getMissionFolder(this.uri)) + ": story.json contains references to files that do not exist";
+		const warn = path.basename(getMissionFolder(this.uri)) + ": Newer versions are available for story.json references";
 		let message;
 		if (errorType === 0) message = err;
 		if (errorType === 1) message = warn;

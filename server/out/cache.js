@@ -691,8 +691,8 @@ class StoryJson {
         const useLatest = "Update to latest";
         const manual = "Update manually";
         const hide = "Don't show again";
-        const err = "story.json contains references to files that do not exist";
-        const warn = "Newer versions are available for story.json references";
+        const err = path.basename((0, fileFunctions_1.getMissionFolder)(this.uri)) + ": story.json contains references to files that do not exist";
+        const warn = path.basename((0, fileFunctions_1.getMissionFolder)(this.uri)) + ": Newer versions are available for story.json references";
         let message;
         if (errorType === 0)
             message = err;
