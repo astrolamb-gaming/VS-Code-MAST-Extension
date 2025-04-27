@@ -112,7 +112,7 @@ class MissionCache {
                     this.missionDefaultSignatures.push(s.signatureInformation);
                 }
             }
-            (0, console_1.debug)("Finished loading sbs for " + this.missionName);
+            (0, console_1.debug)("Finished loading sbs_utils for " + this.missionName);
         });
         let files = (0, fileFunctions_1.getFilesInDir)(this.missionURI);
         //debug(files);
@@ -741,7 +741,7 @@ async function loadTypings() {
     }
 }
 async function loadSbs() {
-    let gh = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/mock/sbs.py";
+    let gh = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/typings/sbs/__init__.pyi";
     let text = "";
     try {
         const data = await fetch(gh);

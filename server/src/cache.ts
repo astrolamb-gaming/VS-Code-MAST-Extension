@@ -134,7 +134,7 @@ export class MissionCache {
 					this.missionDefaultSignatures.push(s.signatureInformation);
 				}
 			}
-			debug("Finished loading sbs for " + this.missionName);
+			debug("Finished loading sbs_utils for " + this.missionName);
 		});
 		let files: string[] = getFilesInDir(this.missionURI);
 		//debug(files);
@@ -793,7 +793,7 @@ async function loadTypings(): Promise<void> {
 }
 
 async function loadSbs(): Promise<PyFile|null>{
-	let gh: string = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/mock/sbs.py";
+	let gh: string = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/typings/sbs/__init__.pyi";
 	let text = "";
 	try {
 		const data = await fetch(gh);
