@@ -2,7 +2,7 @@ import { debug } from 'console';
 import { CompletionItem, CompletionItemKind, CompletionItemTag, integer, MarkupContent, SignatureInformation, TextDocumentPositionParams } from 'vscode-languageserver';
 import { buildLabelDocs, getMainLabelAtPos } from './tokens/labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { IClassObject, PyFile } from './data';
+import { asClasses, IClassObject, PyFile } from './data';
 import { getRouteLabelVars } from './tokens/routeLabels';
 import { isInComment, isInString, isInYaml, isTextInBracket } from './tokens/comments';
 import { getCache } from './cache';
@@ -353,6 +353,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// Check if this is a class
 	if (iStr.endsWith(".")) {
 		debug("Getting Classes...");
+		// First we check if a class is being referenced.
 		for (const c of cache.missionClasses) {
 			if (c.name === "sbs") {
 				debug("THIS IS SBS");
@@ -367,6 +368,24 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				return c.methodCompletionItems;
 			}
 		}
+		// Then we assume it's an object, but we can't determine the type, so we iterate over all the classes.
+		for (const c of cache.missionClasses) {
+			debug(c.name);
+			if (asClasses.includes(c.name)) continue;
+			for (const m of c.methods) {
+				// Don't want to include constructors, this is for properties
+				if (m.functionType === "constructor") continue;
+				const mc: CompletionItem = m.buildCompletionItem();
+				const mci: CompletionItem = {
+					label: m.name,
+					labelDetails: { detail: c.name, description: "desc"},
+					detail: "Detail: " + c.name
+				}
+				mc.label = "(" + c.name + ")." + m.name;
+				ci.push(mc);
+			}
+		}
+		return ci;
 	}
 
 	// const cm = getCurrentMethodName(iStr) {

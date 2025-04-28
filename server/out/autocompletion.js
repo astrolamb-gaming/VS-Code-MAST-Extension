@@ -5,6 +5,7 @@ exports.onCompletion = onCompletion;
 const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
 const labels_1 = require("./tokens/labels");
+const data_1 = require("./data");
 const routeLabels_1 = require("./tokens/routeLabels");
 const comments_1 = require("./tokens/comments");
 const cache_1 = require("./cache");
@@ -315,6 +316,7 @@ function onCompletion(_textDocumentPosition, text) {
     // Check if this is a class
     if (iStr.endsWith(".")) {
         (0, console_1.debug)("Getting Classes...");
+        // First we check if a class is being referenced.
         for (const c of cache.missionClasses) {
             if (c.name === "sbs") {
                 (0, console_1.debug)("THIS IS SBS");
@@ -329,6 +331,26 @@ function onCompletion(_textDocumentPosition, text) {
                 return c.methodCompletionItems;
             }
         }
+        // Then we assume it's an object, but we can't determine the type, so we iterate over all the classes.
+        for (const c of cache.missionClasses) {
+            (0, console_1.debug)(c.name);
+            if (data_1.asClasses.includes(c.name))
+                continue;
+            for (const m of c.methods) {
+                // Don't want to include constructors, this is for properties
+                if (m.functionType === "constructor")
+                    continue;
+                const mc = m.buildCompletionItem();
+                const mci = {
+                    label: m.name,
+                    labelDetails: { detail: c.name, description: "desc" },
+                    detail: "Detail: " + c.name
+                };
+                mc.label = "(" + c.name + ")." + m.name;
+                ci.push(mc);
+            }
+        }
+        return ci;
     }
     // const cm = getCurrentMethodName(iStr) {
     // 	for ()

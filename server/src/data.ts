@@ -23,12 +23,12 @@ const replaceNames = [
  * This accounts for modules that are treated as classes instead of just adding the functions as default functions.
  * So instead of simply using the arc() function from scatter.py, you'd need to use scatter.arc()
  */
-const asClasses = ["sbs.py","scatter.py","faces.py"];
+export const asClasses = ["sbs","scatter","faces"];
 /**
  * This accounts for modules that prepend the class name to the function name.
  * E.g. names.random_kralien_name() would become names_random_kralien_name()
  */
-const prepend = ["ship_data.py","names.py","scatter.py"];
+export const prepend = ["ship_data","names","scatter"];
 
 // TODO: Account for names_random_kralien() instead of names.random_kralien() or random_kralien()
 
@@ -281,9 +281,10 @@ export class PyFile extends FileCache {
 		}
 		
 		for (const o of asClasses) {
-			if (path.basename(this.uri) === o) {
+			if (path.basename(this.uri).replace(".py","") === o) {
 				const c = new ClassObject("", o);
-				c.name = o.replace(".py","");
+				c.name = o;
+				// c.name = o.replace(".py","");
 				c.completionItem = c.buildCompletionItem();
 				c.methods = this.defaultFunctions;
 				c.methodCompletionItems = this.defaultFunctionCompletionItems;
@@ -291,16 +292,18 @@ export class PyFile extends FileCache {
 					c.methodSignatureInformation.push(f.signatureInformation);
 				}
 				this.classes.push(c);
-				this.defaultFunctionCompletionItems = [];
-				this.defaultFunctions = [];
+				if (c.name !== "scatter") {
+					this.defaultFunctionCompletionItems = [];
+					this.defaultFunctions = [];
+				}
 			}
 		}
 
 		// This checks if the module name should be prepended to the function names in this module
 		let prefix = "";
 		for (const o of prepend) {
-			if (path.basename(this.uri) === o) {
-				prefix = o.replace(".py","_");
+			if (path.basename(this.uri).replace(".py","") === o) {
+				prefix = o + "_";//o.replace(".py","_");
 				for (const m of this.defaultFunctions) {
 					m.name = prefix + m.name;
 				}
@@ -541,13 +544,24 @@ export class Function implements IFunction {
 		// 	debug(params)
 		// 	debug(this.className + "." + this.name)
 		// }
+		// TODO: Only use these when really needed
 		this.parameters = this.buildParams(params);
-		this.completionItem = this.buildCompletionItem(cik);
+		this.completionItem = this.buildCompletionItem();
 		this.signatureInformation = this.buildSignatureInformation();
 		//debug(this);
 		return this;
 	}
-	/**
+
+	convertFunctionTypeToCompletionItemKind(type:string): CompletionItemKind {
+		let cik: CompletionItemKind = CompletionItemKind.Function;
+		if (type === "setter") return CompletionItemKind.Unit;
+		if (type === "property") return CompletionItemKind.Property;
+		if (type === "constructor") return CompletionItemKind.Constructor
+		if (type === "classmethod") return CompletionItemKind.Method;
+		return cik;
+	}
+ 
+ 	/**
 	 * Helper function, should only be called by constructor.
 	 * @param raw 
 	 * @returns 
@@ -657,7 +671,7 @@ export class Function implements IFunction {
 	 * Helper function, should only be called by constructor.
 	 * @returns 
 	 */
-	buildCompletionItem(cik: CompletionItemKind): CompletionItem {
+	buildCompletionItem(): CompletionItem {
 		//const ci: CompletionItem;
 		const labelDetails: CompletionItemLabelDetails = {
 			// Decided that this clutters up the UI too much. Same information is displayed in the CompletionItem details.
@@ -667,6 +681,8 @@ export class Function implements IFunction {
 		let label = this.name;
 		let retType = this.returnType;
 		let funcType = this.functionType;
+
+		let cik: CompletionItemKind = this.convertFunctionTypeToCompletionItemKind(this.functionType);
 		
 		let classRef = ((this.className === "") ? "" : this.className + ".");
 		// For constructor functions, we don't want something like vec2.vec2(args). We just want vec2(args).

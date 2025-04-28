@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Parameter = exports.Function = exports.ClassObject = exports.PyFile = exports.MastFile = exports.FileCache = void 0;
+exports.Parameter = exports.Function = exports.ClassObject = exports.PyFile = exports.MastFile = exports.FileCache = exports.prepend = exports.asClasses = void 0;
 exports.getRegExMatch = getRegExMatch;
 exports.getLabelDescription = getLabelDescription;
 const path = require("path");
@@ -26,12 +26,12 @@ const replaceNames = [
  * This accounts for modules that are treated as classes instead of just adding the functions as default functions.
  * So instead of simply using the arc() function from scatter.py, you'd need to use scatter.arc()
  */
-const asClasses = ["sbs.py", "scatter.py", "faces.py"];
+exports.asClasses = ["sbs", "scatter", "faces"];
 /**
  * This accounts for modules that prepend the class name to the function name.
  * E.g. names.random_kralien_name() would become names_random_kralien_name()
  */
-const prepend = ["ship_data.py", "names.py", "scatter.py"];
+exports.prepend = ["ship_data", "names", "scatter"];
 // TODO: Account for names_random_kralien() instead of names.random_kralien() or random_kralien()
 class FileCache {
     constructor(uri) {
@@ -270,10 +270,11 @@ class PyFile extends FileCache {
                 //debug(f);
             }
         }
-        for (const o of asClasses) {
-            if (path.basename(this.uri) === o) {
+        for (const o of exports.asClasses) {
+            if (path.basename(this.uri).replace(".py", "") === o) {
                 const c = new ClassObject("", o);
-                c.name = o.replace(".py", "");
+                c.name = o;
+                // c.name = o.replace(".py","");
                 c.completionItem = c.buildCompletionItem();
                 c.methods = this.defaultFunctions;
                 c.methodCompletionItems = this.defaultFunctionCompletionItems;
@@ -281,15 +282,17 @@ class PyFile extends FileCache {
                     c.methodSignatureInformation.push(f.signatureInformation);
                 }
                 this.classes.push(c);
-                this.defaultFunctionCompletionItems = [];
-                this.defaultFunctions = [];
+                if (c.name !== "scatter") {
+                    this.defaultFunctionCompletionItems = [];
+                    this.defaultFunctions = [];
+                }
             }
         }
         // This checks if the module name should be prepended to the function names in this module
         let prefix = "";
-        for (const o of prepend) {
-            if (path.basename(this.uri) === o) {
-                prefix = o.replace(".py", "_");
+        for (const o of exports.prepend) {
+            if (path.basename(this.uri).replace(".py", "") === o) {
+                prefix = o + "_"; //o.replace(".py","_");
                 for (const m of this.defaultFunctions) {
                     m.name = prefix + m.name;
                 }
@@ -440,11 +443,24 @@ class Function {
         // 	debug(params)
         // 	debug(this.className + "." + this.name)
         // }
+        // TODO: Only use these when really needed
         this.parameters = this.buildParams(params);
-        this.completionItem = this.buildCompletionItem(cik);
+        this.completionItem = this.buildCompletionItem();
         this.signatureInformation = this.buildSignatureInformation();
         //debug(this);
         return this;
+    }
+    convertFunctionTypeToCompletionItemKind(type) {
+        let cik = vscode_languageserver_1.CompletionItemKind.Function;
+        if (type === "setter")
+            return vscode_languageserver_1.CompletionItemKind.Unit;
+        if (type === "property")
+            return vscode_languageserver_1.CompletionItemKind.Property;
+        if (type === "constructor")
+            return vscode_languageserver_1.CompletionItemKind.Constructor;
+        if (type === "classmethod")
+            return vscode_languageserver_1.CompletionItemKind.Method;
+        return cik;
     }
     /**
      * Helper function, should only be called by constructor.
@@ -549,7 +565,7 @@ class Function {
      * Helper function, should only be called by constructor.
      * @returns
      */
-    buildCompletionItem(cik) {
+    buildCompletionItem() {
         //const ci: CompletionItem;
         const labelDetails = {
             // Decided that this clutters up the UI too much. Same information is displayed in the CompletionItem details.
@@ -559,6 +575,7 @@ class Function {
         let label = this.name;
         let retType = this.returnType;
         let funcType = this.functionType;
+        let cik = this.convertFunctionTypeToCompletionItemKind(this.functionType);
         let classRef = ((this.className === "") ? "" : this.className + ".");
         // For constructor functions, we don't want something like vec2.vec2(args). We just want vec2(args).
         if (cik === vscode_languageserver_1.CompletionItemKind.Constructor) {
