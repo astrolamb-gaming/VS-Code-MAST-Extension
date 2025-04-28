@@ -11,13 +11,14 @@ const sharp = require("sharp");
 const vscode_languageserver_1 = require("vscode-languageserver");
 const server_1 = require("./server");
 const shipData_1 = require("./shipData");
+const python_1 = require("./python");
 class Globals {
     constructor() {
         this.currentFile = "";
         this.widget_stylestrings = [];
         this.artemisDir = "";
         this.artFiles = [];
-        // progressUpdate(0);
+        (0, server_1.showProgressBar)(true);
         const thisDir = path.resolve("../");
         const adir = (0, fileFunctions_1.getArtemisDirFromChild)(thisDir);
         (0, console_1.debug)("Artemis Directory: ");
@@ -56,6 +57,7 @@ class Globals {
             }
             this.artFiles = this.findArtFiles(true);
         }
+        (0, server_1.showProgressBar)(false);
     }
     loadLibs() {
         let libs = [];
@@ -291,7 +293,10 @@ class Globals {
     }
 }
 exports.Globals = Globals;
-let globals = new Globals();
+let globals;
+(0, python_1.sleep)(100).then(() => {
+    globals = new Globals();
+});
 function getGlobals() {
     if (globals === null) {
         try {

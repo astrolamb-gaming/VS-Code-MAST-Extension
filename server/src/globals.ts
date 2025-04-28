@@ -5,8 +5,9 @@ import fs = require('fs');
 import os = require('os');
 import sharp = require('sharp');
 import { CompletionItem, CompletionItemLabelDetails, CompletionItemKind, SignatureInformation, MarkupContent } from 'vscode-languageserver';
-import { connection, notifyClient, progressUpdate } from './server';
+import { connection, notifyClient, showProgressBar } from './server';
 import { ShipData } from './shipData';
+import { sleep } from './python';
 
 interface DataSetItem {
 	name: string,
@@ -32,7 +33,7 @@ export class Globals {
 	artemisDir: string = "";
 	artFiles: CompletionItem[] = [];
 	constructor() {
-		// progressUpdate(0);
+		showProgressBar(true);
 		const thisDir = path.resolve("../");
 		const adir = getArtemisDirFromChild(thisDir);
 		debug("Artemis Directory: ");
@@ -70,7 +71,7 @@ export class Globals {
 			}
 			this.artFiles = this.findArtFiles(true);
 		}
-		
+		showProgressBar(false);
 	}
 
 	private loadLibs(): string[] {
@@ -309,8 +310,11 @@ export class Globals {
 		return getFolders(path.join(this.artemisDir,"data","missions"));
 	}
 }
+let globals: Globals;
+sleep(100).then(()=>{
+	globals = new Globals();
+})
 
-let globals: Globals = new Globals();
 
 export function getGlobals() {
 	if (globals === null) {

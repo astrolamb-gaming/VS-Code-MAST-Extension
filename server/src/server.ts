@@ -30,7 +30,10 @@ import {
 	HandlerResult,
 	DefinitionParams,
 	ProgressType,
-	integer
+	integer,
+	DocumentRangeFormattingRequest,
+	Disposable,
+	TextEdit
 
 } from 'vscode-languageserver/node';
 import { URI } from 'vscode-uri';
@@ -46,7 +49,7 @@ import { getVariableNamesInDoc } from './tokens/variables';
 import { getGlobals } from './globals';
 import { validateTextDocument } from './validate';
 import path = require('path');
-import { getGlobalFunctions } from './python';
+import { getGlobalFunctions, sleep } from './python';
 import { getTokenInfo } from './python';
 import { onDefinition } from './goToDefinition';
 
@@ -144,16 +147,22 @@ connection.onInitialize((params: InitializeParams) => {
 	}
 
 	if (params.workspaceFolders) {
-		progressUpdate(0);
-		debug("Loading cache");
-		for (const workspaceFolder of params.workspaceFolders) {
-			// const workspaceFolder = params.workspaceFolders[0];
-			debug("Loading cache for " + workspaceFolder.name);
-			const uri = URI.parse(workspaceFolder.uri);
-			loadCache(uri.fsPath);
-			let cache = getCache(uri.fsPath);
-		}
-		debug("Cache loaded")
+		showProgressBar(true);
+		// debug("Loading cache");
+		// for (const workspaceFolder of params.workspaceFolders) {
+		// 	// const workspaceFolder = params.workspaceFolders[0];
+		// 	debug("Loading cache for " + workspaceFolder.name);
+		// 	const uri = URI.parse(workspaceFolder.uri);
+		// 	// loadCache(uri.fsPath);
+		// 	try {
+		// 		if (fs.existsSync(uri.fsPath)) {
+		// 			let cache = getCache(uri.fsPath);
+		// 		}
+		// 	} catch (e) {
+		// 		debug(e);
+		// 	}
+		// }
+		// debug("Cache loaded")
 
 // Uncommment this to enable python stuff
 
@@ -394,9 +403,9 @@ connection.onDidChangeWatchedFiles(_change => {
  */
 connection.onSignatureHelp((_textDocPos: SignatureHelpParams): SignatureHelp | undefined =>{
 	//debug(functionData.length);
-	if (!_textDocPos.textDocument.uri.endsWith("mast")) {
-		return;
-	}
+	// if (!_textDocPos.textDocument.uri.endsWith("mast")) {
+	// 	return;
+	// }
 	const text = documents.get(_textDocPos.textDocument.uri);
 	if (text === undefined) {
 		return undefined;
@@ -498,14 +507,14 @@ export function myDebug(str:any) {
 }
 
 
-export function notifyClient(message:string) {
+export async function notifyClient(message:string) {
 	debug("Sending to client: " + message);
 	connection.sendNotification("custom/mastNotif", message);
 }
 
 
 
-export function sendToClient(notifName: string, data: any) {
+export async function sendToClient(notifName: string, data: any) {
 	connection.sendNotification("custom/" + notifName, data);
 }
 
@@ -548,12 +557,13 @@ connection.onDefinition((params: DefinitionParams,token: CancellationToken,workD
 	return def;
 });
 
-export function progressUpdate(num:integer) {
-	// connection.sendProgress(new ProgressType<integer>,"Loading data...",num);
-	sendToClient("progressNotif",num);
+export async function showProgressBar(visible: boolean) {
+	sendToClient("progressNotif",visible);
 }
 
-
+// connection.onDocumentRangeFormatting((params: DocumentRangeFormattingRequest, edits: TextEdit[] | undefined | null, n: never, v: void) : Disposable {
+	
+// });
 
 // Make the text document manager listen on the connection
 // for open, change and close text document events

@@ -82,7 +82,7 @@ class MissionCache {
     }
     load() {
         (0, console_1.debug)("Starting MissionCache.load()");
-        (0, server_1.progressUpdate)(0);
+        (0, server_1.showProgressBar)(true);
         // (re)set all the arrays before (re)populating them.
         this.missionClasses = [];
         this.missionDefaultCompletions = [];
@@ -97,12 +97,15 @@ class MissionCache {
         this.storyJson = new StoryJson(path.join(this.missionURI, "story.json"));
         this.storyJson.readFile()
             .then(() => {
+            (0, server_1.showProgressBar)(true);
             this.modulesLoaded().then(() => {
                 (0, console_1.debug)("Modules loaded for " + this.missionName);
+                (0, server_1.showProgressBar)(false);
             });
         });
         // .finally(()=>{debug("Finished loading modules")});
         loadSbs().then((p) => {
+            (0, server_1.showProgressBar)(true);
             // debug("Loaded SBS, starting to parse.");
             if (p !== null) {
                 this.missionPyModules.push(p);
@@ -113,6 +116,7 @@ class MissionCache {
                 }
             }
             (0, console_1.debug)("Finished loading sbs_utils for " + this.missionName);
+            (0, server_1.showProgressBar)(false);
         });
         let files = (0, fileFunctions_1.getFilesInDir)(this.missionURI);
         //debug(files);
@@ -516,6 +520,7 @@ class StoryJson {
         this.regex = /\.v((\d+)\.(\d+)\.(\d+))\.(\d+\.)*(((mast|sbs)lib)|(zip))/;
         this.errorCheckIgnore = false;
         this.uri = uri;
+        (0, server_1.showProgressBar)(true);
     }
     getModuleBaseName(module) {
         const res = this.regex.exec(module);

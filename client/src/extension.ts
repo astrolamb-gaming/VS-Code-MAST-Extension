@@ -4,7 +4,7 @@
  * ------------------------------------------------------------------------------------------ */
 
 import * as path from 'path';
-import { workspace, ExtensionContext , window as Window, window, OutputChannel, LogOutputChannel, Progress } from 'vscode';
+import { workspace, ExtensionContext , window as Window, window, OutputChannel, LogOutputChannel, Progress, ThemeColor } from 'vscode';
 import * as vscode from 'vscode';
 import fs = require("fs");
 
@@ -21,6 +21,11 @@ let mainProgress: Progress<{
     message?: string;
     increment?: number;
 }>;
+
+let myStatusBarItem: vscode.StatusBarItem;
+let statusBarItemText = "";
+let statusBarItemCount = 0;
+let timer: NodeJS.Timeout;
 
 let client: LanguageClient;
 let outputChannel: LogOutputChannel;
@@ -41,6 +46,8 @@ debug("Output channel created");
     }
     childProcess.spawn = mySpawn;
 })();
+
+export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export function activate(context: ExtensionContext) {
 	debug("Activating extension.");
@@ -133,6 +140,14 @@ export function activate(context: ExtensionContext) {
 		serverOptions,
 		clientOptions
 	);
+
+
+	// create a new status bar item that we can now manage
+	myStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
+	// myStatusBarItem.command = myCommandId;
+	context.subscriptions.push(myStatusBarItem);
+
+
 	//window.showQuickPick([{label:"One"},{label:"Two"}]);
 	//let ib = window.createInputBox();
 	// ib.prompt = "Choose modules"
@@ -143,29 +158,34 @@ export function activate(context: ExtensionContext) {
 	});
 	context.subscriptions.push(prog1);
 
-	const prog = client.onNotification('custom/progressNotif',(increment)=>{
-		debug("Progressing....  " + increment);
+	let statusBarStatus = true;
+	const prog = client.onNotification('custom/progressNotif',(show)=>{
+		// debug("Progressing....  " + increment);
 		
-		window.withProgress({
-			location: vscode.ProgressLocation.Notification,
-			title: "Loading data...",
-			cancellable: true
-		},(progress, token) => {
-			mainProgress = progress;
-			token.onCancellationRequested(() => {
-				console.log("User canceled the long running operation");
-			});
-			progress.report({message: "Loading data...", increment: increment})
-			const p = new Promise<void>(resolve => {
-				setTimeout(() => {
-					resolve();
-				}, 5000);
-			});
+		// window.withProgress({
+		// 	location: vscode.ProgressLocation.Notification,
+		// 	title: "Loading data...",
+		// 	cancellable: true
+		// },(progress, token) => {
+		// 	mainProgress = progress;
+		// 	token.onCancellationRequested(() => {
+		// 		console.log("User canceled the long running operation");
+		// 	});
+		// 	progress.report({message: "Loading data...", increment: increment})
+		// 	const p = new Promise<void>(resolve => {
+		// 		setTimeout(() => {
+		// 			resolve();
+		// 		}, 5000);
+		// 	});
 	
-			return p;
-		})
+		// 	return p;
+		// })
+
+		updateStatusBarItem(show);
+
 	});
 	context.subscriptions.push(prog);
+	updateStatusBarItem(true);
 
 
 
@@ -192,8 +212,37 @@ export function activate(context: ExtensionContext) {
 	context.subscriptions.push(showJson);
 	context.subscriptions.push(storyJsonListener);
 	// Start the client. This will also launch the server
+	
 	client.start();
+
+	// timer = setInterval(() => {
+	// 	if (statusBarItemCount = 4) {
+	// 		statusBarItemCount = 0;
+	// 		statusBarItemText = statusBarItemText.replace("....","");
+	// 	} else {
+	// 		statusBarItemText += ".";
+	// 		statusBarItemCount += 1;
+	// 	}
+	// 	updateStatusBarItem(statusBarItemText);
+	// }, 100);
+	// updateStatusBarItem("Loading MAST Extension");
 }
+
+function updateStatusBarItem(show:boolean): void {
+	// if (!timer) return;
+	// if (!timer.hasRef()) return;
+	// statusBarItemText = text;
+	if (show) {
+		myStatusBarItem.text = "$(loading~spin) Loading MAST Data";
+		myStatusBarItem.backgroundColor = new ThemeColor('statusBarItem.warningBackground')
+		myStatusBarItem.show();
+	} else {
+		myStatusBarItem.hide();
+		// timer.unref();
+	}
+}
+
+
 interface StoryJson {
 	errorType: integer,
 	jsonUri: string, 

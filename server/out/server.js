@@ -6,21 +6,19 @@ exports.updateLabelNames = updateLabelNames;
 exports.myDebug = myDebug;
 exports.notifyClient = notifyClient;
 exports.sendToClient = sendToClient;
-exports.progressUpdate = progressUpdate;
+exports.showProgressBar = showProgressBar;
 /* --------------------------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 //// <reference path="../src/sbs.pyi" />
 const node_1 = require("vscode-languageserver/node");
-const vscode_uri_1 = require("vscode-uri");
 const vscode_languageserver_textdocument_1 = require("vscode-languageserver-textdocument");
 const autocompletion_1 = require("./autocompletion");
 const console_1 = require("console");
 const hover_1 = require("./hover");
 const signatureHelp_1 = require("./signatureHelp");
 const fs = require("fs");
-const cache_1 = require("./cache");
 const variables_1 = require("./tokens/variables");
 const globals_1 = require("./globals");
 const validate_1 = require("./validate");
@@ -100,16 +98,22 @@ exports.connection.onInitialize((params) => {
         };
     }
     if (params.workspaceFolders) {
-        progressUpdate(0);
-        (0, console_1.debug)("Loading cache");
-        for (const workspaceFolder of params.workspaceFolders) {
-            // const workspaceFolder = params.workspaceFolders[0];
-            (0, console_1.debug)("Loading cache for " + workspaceFolder.name);
-            const uri = vscode_uri_1.URI.parse(workspaceFolder.uri);
-            (0, cache_1.loadCache)(uri.fsPath);
-            let cache = (0, cache_1.getCache)(uri.fsPath);
-        }
-        (0, console_1.debug)("Cache loaded");
+        showProgressBar(true);
+        // debug("Loading cache");
+        // for (const workspaceFolder of params.workspaceFolders) {
+        // 	// const workspaceFolder = params.workspaceFolders[0];
+        // 	debug("Loading cache for " + workspaceFolder.name);
+        // 	const uri = URI.parse(workspaceFolder.uri);
+        // 	// loadCache(uri.fsPath);
+        // 	try {
+        // 		if (fs.existsSync(uri.fsPath)) {
+        // 			let cache = getCache(uri.fsPath);
+        // 		}
+        // 	} catch (e) {
+        // 		debug(e);
+        // 	}
+        // }
+        // debug("Cache loaded")
         // Uncommment this to enable python stuff
         // try {
         // 	let globalFuncs = getGlobalFunctions(cache.storyJson.sbslib).then((funcs)=>{
@@ -294,9 +298,9 @@ exports.connection.onDidChangeWatchedFiles(_change => {
  */
 exports.connection.onSignatureHelp((_textDocPos) => {
     //debug(functionData.length);
-    if (!_textDocPos.textDocument.uri.endsWith("mast")) {
-        return;
-    }
+    // if (!_textDocPos.textDocument.uri.endsWith("mast")) {
+    // 	return;
+    // }
     const text = exports.documents.get(_textDocPos.textDocument.uri);
     if (text === undefined) {
         return undefined;
@@ -385,11 +389,11 @@ function myDebug(str) {
     (0, console_1.debug)(str);
     console.log(str);
 }
-function notifyClient(message) {
+async function notifyClient(message) {
     (0, console_1.debug)("Sending to client: " + message);
     exports.connection.sendNotification("custom/mastNotif", message);
 }
-function sendToClient(notifName, data) {
+async function sendToClient(notifName, data) {
     exports.connection.sendNotification("custom/" + notifName, data);
 }
 exports.connection.onNotification("custom/storyJsonResponse", (response) => {
@@ -424,10 +428,11 @@ exports.connection.onDefinition((params, token, workDoneProgress, resultProgress
     }
     return def;
 });
-function progressUpdate(num) {
-    // connection.sendProgress(new ProgressType<integer>,"Loading data...",num);
-    sendToClient("progressNotif", num);
+async function showProgressBar(visible) {
+    sendToClient("progressNotif", visible);
 }
+// connection.onDocumentRangeFormatting((params: DocumentRangeFormattingRequest, edits: TextEdit[] | undefined | null, n: never, v: void) : Disposable {
+// });
 // Make the text document manager listen on the connection
 // for open, change and close text document events
 exports.documents.listen(exports.connection);

@@ -4,6 +4,7 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.sleep = void 0;
 exports.activate = activate;
 exports.deactivate = deactivate;
 const path = require("path");
@@ -12,6 +13,10 @@ const vscode = require("vscode");
 const fs = require("fs");
 const node_1 = require("vscode-languageclient/node");
 let mainProgress;
+let myStatusBarItem;
+let statusBarItemText = "";
+let statusBarItemCount = 0;
+let timer;
 let client;
 let outputChannel;
 outputChannel = vscode_1.window.createOutputChannel("MAST Client Output", { log: true });
@@ -30,6 +35,8 @@ debug("Output channel created");
     }
     childProcess.spawn = mySpawn;
 })();
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+exports.sleep = sleep;
 function activate(context) {
     debug("Activating extension.");
     // The server is implemented in node
@@ -99,6 +106,10 @@ function activate(context) {
     // context.subscriptions.push(vscode.languages.registerCompletionItemProvider(GO_MODE, new GoCompletionItemProvider(), ".", "\""));
     // Create the language client and start the client.
     client = new node_1.LanguageClient('MAST-Language-Server', 'MAST Language Server', serverOptions, clientOptions);
+    // create a new status bar item that we can now manage
+    myStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
+    // myStatusBarItem.command = myCommandId;
+    context.subscriptions.push(myStatusBarItem);
     //window.showQuickPick([{label:"One"},{label:"Two"}]);
     //let ib = window.createInputBox();
     // ib.prompt = "Choose modules"
@@ -107,27 +118,30 @@ function activate(context) {
         debug(increment);
     });
     context.subscriptions.push(prog1);
-    const prog = client.onNotification('custom/progressNotif', (increment) => {
-        debug("Progressing....  " + increment);
-        vscode_1.window.withProgress({
-            location: vscode.ProgressLocation.Notification,
-            title: "Loading data...",
-            cancellable: true
-        }, (progress, token) => {
-            mainProgress = progress;
-            token.onCancellationRequested(() => {
-                console.log("User canceled the long running operation");
-            });
-            progress.report({ message: "Loading data...", increment: increment });
-            const p = new Promise(resolve => {
-                setTimeout(() => {
-                    resolve();
-                }, 5000);
-            });
-            return p;
-        });
+    let statusBarStatus = true;
+    const prog = client.onNotification('custom/progressNotif', (show) => {
+        // debug("Progressing....  " + increment);
+        // window.withProgress({
+        // 	location: vscode.ProgressLocation.Notification,
+        // 	title: "Loading data...",
+        // 	cancellable: true
+        // },(progress, token) => {
+        // 	mainProgress = progress;
+        // 	token.onCancellationRequested(() => {
+        // 		console.log("User canceled the long running operation");
+        // 	});
+        // 	progress.report({message: "Loading data...", increment: increment})
+        // 	const p = new Promise<void>(resolve => {
+        // 		setTimeout(() => {
+        // 			resolve();
+        // 		}, 5000);
+        // 	});
+        // 	return p;
+        // })
+        updateStatusBarItem(show);
     });
     context.subscriptions.push(prog);
+    updateStatusBarItem(true);
     const storyJsonListener = client.onNotification('custom/storyJson', (message) => {
         debug("Story Json Notification recieved");
         //window.showQuickPick([{label:"One"},{label:"Two"}]);
@@ -151,6 +165,31 @@ function activate(context) {
     context.subscriptions.push(storyJsonListener);
     // Start the client. This will also launch the server
     client.start();
+    // timer = setInterval(() => {
+    // 	if (statusBarItemCount = 4) {
+    // 		statusBarItemCount = 0;
+    // 		statusBarItemText = statusBarItemText.replace("....","");
+    // 	} else {
+    // 		statusBarItemText += ".";
+    // 		statusBarItemCount += 1;
+    // 	}
+    // 	updateStatusBarItem(statusBarItemText);
+    // }, 100);
+    // updateStatusBarItem("Loading MAST Extension");
+}
+function updateStatusBarItem(show) {
+    // if (!timer) return;
+    // if (!timer.hasRef()) return;
+    // statusBarItemText = text;
+    if (show) {
+        myStatusBarItem.text = "$(loading~spin) Loading MAST Data";
+        myStatusBarItem.backgroundColor = new vscode_1.ThemeColor('statusBarItem.warningBackground');
+        myStatusBarItem.show();
+    }
+    else {
+        myStatusBarItem.hide();
+        // timer.unref();
+    }
 }
 function deactivate() {
     if (!client) {

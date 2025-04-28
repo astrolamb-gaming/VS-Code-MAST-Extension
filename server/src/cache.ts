@@ -10,12 +10,12 @@ import { prepSignatures } from './signatureHelp';
 import { parse, RX } from './rx';
 import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } from './tokens/routeLabels';
 import { fixFileName, getFileContents, getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readZipArchive } from './fileFunctions';
-import { connection, notifyClient, progressUpdate, sendToClient } from './server';
+import { connection, notifyClient, showProgressBar as showProgressBar, sendToClient } from './server';
 import { URI } from 'vscode-uri';
 import { getGlobals } from './globals';
 import { send } from 'process';
 import { getRolesAsCompletionItem } from './roles';
-import { deprecate } from 'util';
+import { deprecate, formatWithOptions } from 'util';
 import * as os from 'os';
 import { Variable } from './tokens/variables';
 
@@ -104,7 +104,7 @@ export class MissionCache {
 
 	load() {
 		debug("Starting MissionCache.load()");
-		progressUpdate(0);
+		showProgressBar(true);
 		// (re)set all the arrays before (re)populating them.
 		this.missionClasses = [];
 		this.missionDefaultCompletions = [];
@@ -119,12 +119,15 @@ export class MissionCache {
 		this.storyJson = new StoryJson(path.join(this.missionURI,"story.json"));
 		this.storyJson.readFile()
 			.then(()=>{
+				showProgressBar(true);
 				this.modulesLoaded().then(()=>{
 					debug("Modules loaded for " + this.missionName);
+					showProgressBar(false);
 				})
 			})
 			// .finally(()=>{debug("Finished loading modules")});
 		loadSbs().then((p)=>{
+			showProgressBar(true);
 			// debug("Loaded SBS, starting to parse.");
 			if (p !== null) {
 				this.missionPyModules.push(p);
@@ -135,6 +138,7 @@ export class MissionCache {
 				}
 			}
 			debug("Finished loading sbs_utils for " + this.missionName);
+			showProgressBar(false);
 		});
 		let files: string[] = getFilesInDir(this.missionURI);
 		//debug(files);
@@ -567,6 +571,7 @@ export class StoryJson {
 
 	constructor(uri: string) {
 		this.uri = uri;
+		showProgressBar(true);
 	}
 
 	getModuleBaseName(module:string) {
