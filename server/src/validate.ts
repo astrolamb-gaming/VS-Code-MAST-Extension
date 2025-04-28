@@ -2,7 +2,7 @@ import { debug } from 'console';
 import * as path from 'path';
 import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
 import { getCache } from './cache';
-import { parseComments, parseStrings, parseYamls, isInString, isInComment, getMatchesForRegex, parseSquareBrackets, getComments } from './tokens/comments';
+import { parseComments, parseStrings, parseYamls, isInString, isInComment, getMatchesForRegex, parseSquareBrackets, getComments, getStrings } from './tokens/comments';
 import { checkLastLine, findDiagnostic } from './errorChecking';
 import { checkLabels } from './tokens/labels';
 import { ErrorInstance, getDocumentSettings } from './server';
@@ -60,7 +60,7 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	let diagnostics: Diagnostic[] = [];
 	let errorSources: ErrorInstance[] = [];
 
-	// for (const s of getComments(textDocument)) {
+	// for (const s of getStrings(textDocument)) {
 	// 	let r: Range = {
 	// 		start: textDocument.positionAt(s.start),
 	// 		end: textDocument.positionAt(s.end)
@@ -177,6 +177,7 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	
 	// For applicable diagnostics, check if they, or parts of them, are inside of a string or comment.
 	// Some things should be checked after this. Other things should be checked before.
+	// TODO: This doesn't appear to be working, e.g. enemy_taunt.mast
 	diagnostics = diagnostics.filter((d)=>{
 		const start = textDocument.offsetAt(d.range.start);
 		const end = textDocument.offsetAt(d.range.end);

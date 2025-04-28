@@ -44,6 +44,7 @@ function checkLastLine(textDocument) {
 function findDiagnostic(pattern, textDocument, severity, message, source, relatedInfo, maxProblems, problems) {
     let text = textDocument.getText();
     const commentsStrings = (0, comments_1.getComments)(textDocument).concat((0, comments_1.getStrings)(textDocument));
+    // TODO: This doesn't work right for weighted text in particular.
     for (const c of commentsStrings) {
         text = (0, comments_1.replaceRegexMatchWithUnderscore)(text, c);
     }

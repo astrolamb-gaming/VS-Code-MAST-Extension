@@ -52,7 +52,7 @@ async function validateTextDocument(textDocument) {
     let problems = 0;
     let diagnostics = [];
     let errorSources = [];
-    // for (const s of getComments(textDocument)) {
+    // for (const s of getStrings(textDocument)) {
     // 	let r: Range = {
     // 		start: textDocument.positionAt(s.start),
     // 		end: textDocument.positionAt(s.end)
@@ -168,6 +168,7 @@ async function validateTextDocument(textDocument) {
     //checkForDuplicateLabelsInFile(textDocument);
     // For applicable diagnostics, check if they, or parts of them, are inside of a string or comment.
     // Some things should be checked after this. Other things should be checked before.
+    // TODO: This doesn't appear to be working, e.g. enemy_taunt.mast
     diagnostics = diagnostics.filter((d) => {
         const start = textDocument.offsetAt(d.range.start);
         const end = textDocument.offsetAt(d.range.end);

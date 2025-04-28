@@ -39,6 +39,7 @@ export function checkLastLine(textDocument: TextDocument): Diagnostic | undefine
 export function findDiagnostic(pattern: RegExp, textDocument: TextDocument, severity: DiagnosticSeverity, message: string, source: string, relatedInfo: string, maxProblems: integer, problems: integer): Diagnostic[] {
 	let text = textDocument.getText();
 	const commentsStrings = getComments(textDocument).concat(getStrings(textDocument));
+	// TODO: This doesn't work right for weighted text in particular.
 	for (const c of commentsStrings) {
 		text = replaceRegexMatchWithUnderscore(text,c)
 	}
