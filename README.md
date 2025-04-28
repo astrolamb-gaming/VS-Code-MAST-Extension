@@ -46,7 +46,6 @@ Included dependencies:
 * Additional error checking
 * Check that functions contain the correct number of arguments
 * Variable type checking in functions
-* Autocompletion based on modules (e.g. Legendary Missions)
 
 ## Release Notes
 

@@ -4,9 +4,19 @@ All notable changes to the "mast" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [Unreleased]
+### To-DO and WIP
 
-* Determine variable types based on function return values, etc.
+* Determine variable types based on function return values, etc
+* Fix for weighted strings not being recognized as strings in certain situations
+* Show label autocompletions for functions that take a label as an argument
+
+### 0.9.1
+
+* Fix for loading tims from version 0.9.0, which also fixed an error when using multiple workspaces
+* Add loading indicator while the extension is loading information related to a given mission
+* Fixed reference for the sbs module, so now it will properly show the current sbs functions
+* Error messages for story.json now include the name of the mission, in case there are multiple story.json files that might need updated
+
 
 ### 0.9.0
 
