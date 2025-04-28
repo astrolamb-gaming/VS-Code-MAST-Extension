@@ -298,7 +298,7 @@ let globals;
     globals = new Globals();
 });
 function getGlobals() {
-    if (globals === null) {
+    if (globals === null || globals === undefined) {
         try {
             globals = new Globals();
         }

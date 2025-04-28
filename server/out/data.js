@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Parameter = exports.Function = exports.ClassObject = exports.PyFile = exports.MastFile = exports.FileCache = exports.prepend = exports.asClasses = void 0;
+exports.Parameter = exports.Function = exports.ClassObject = exports.PyFile = exports.MastFile = exports.FileCache = exports.prepend = exports.asClasses = exports.replaceNames = void 0;
 exports.getRegExMatch = getRegExMatch;
 exports.getLabelDescription = getLabelDescription;
 const path = require("path");
@@ -19,7 +19,7 @@ const variables_1 = require("./tokens/variables");
  * This accounts for classes that use a different name as a global than the class name.
  * E.g. the sim global variable refers to the simulation class. Instead of simulation.functionName(), use sim.functionName().
  */
-const replaceNames = [
+exports.replaceNames = [
     ['simulation', 'sim']
 ];
 /**
@@ -142,7 +142,7 @@ class PyFile extends FileCache {
         uri = (0, fileFunctions_1.fixFileName)(uri);
         super(uri);
         this.defaultFunctions = [];
-        this.defaultFunctionCompletionItems = [];
+        // defaultFunctionCompletionItems: CompletionItem[] = [];
         this.classes = [];
         // If fileContents is NOT an empty string (e.g. if it's from a zipped folder), then all we do is parse the contents
         if (path.extname(uri) === ".py") {
@@ -169,7 +169,7 @@ class PyFile extends FileCache {
     }
     parseWholeFile(text, source) {
         // Gotta clear old data
-        this.defaultFunctionCompletionItems = [];
+        // this.defaultFunctionCompletionItems = [];
         this.classes = [];
         this.defaultFunctions = [];
         this.variableNames = [];
@@ -234,7 +234,7 @@ class PyFile extends FileCache {
                                 end: doc.positionAt(m.startIndex + m.name.length)
                             }
                         };
-                        this.defaultFunctionCompletionItems.push(m.completionItem);
+                        // this.defaultFunctionCompletionItems.push(m.completionItem);
                     }
                 }
                 else {
@@ -266,24 +266,24 @@ class PyFile extends FileCache {
                     }
                 };
                 this.defaultFunctions.push(m);
-                this.defaultFunctionCompletionItems.push(m.completionItem);
+                // this.defaultFunctionCompletionItems.push(m.completionItem);
                 //debug(f);
             }
         }
         for (const o of exports.asClasses) {
             if (path.basename(this.uri).replace(".py", "") === o) {
-                const c = new ClassObject("", o);
+                const c = new ClassObject("", path.basename(this.uri));
                 c.name = o;
                 // c.name = o.replace(".py","");
                 c.completionItem = c.buildCompletionItem();
                 c.methods = this.defaultFunctions;
-                c.methodCompletionItems = this.defaultFunctionCompletionItems;
+                // c.methodCompletionItems = this.defaultFunctionCompletionItems;
                 for (const f of c.methods) {
                     c.methodSignatureInformation.push(f.signatureInformation);
                 }
                 this.classes.push(c);
                 if (c.name !== "scatter") {
-                    this.defaultFunctionCompletionItems = [];
+                    // this.defaultFunctionCompletionItems = [];
                     this.defaultFunctions = [];
                 }
             }
@@ -296,19 +296,26 @@ class PyFile extends FileCache {
                 for (const m of this.defaultFunctions) {
                     m.name = prefix + m.name;
                 }
-                for (const c of this.defaultFunctionCompletionItems) {
-                    c.label = prefix + c.label;
-                    c.insertText = prefix + c.insertText;
-                }
+                // for (const c of this.defaultFunctionCompletionItems) {
+                // 	c.label = prefix + c.label;
+                // 	c.insertText = prefix + c.insertText;
+                // }
             }
         }
+    }
+    getDefaultMethodCompletionItems() {
+        let ci = [];
+        for (const f of this.defaultFunctions) {
+            ci.push(f.buildCompletionItem());
+        }
+        return ci;
     }
 }
 exports.PyFile = PyFile;
 class ClassObject {
     constructor(raw, sourceFile) {
         this.methods = [];
-        this.methodCompletionItems = [];
+        // methodCompletionItems: CompletionItem[] = [];
         this.methodSignatureInformation = [];
         this.startPos = 0;
         this.location = { uri: sourceFile, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } } };
@@ -317,7 +324,7 @@ class ClassObject {
         let comment = /((\"){3,3}(.*?)(\"){3,3})|(\.\.\.)/m;
         // TODO: Could pull the class parent and interfaces (if any). Would this be useful?
         this.name = getRegExMatch(raw, className).replace("class ", "").replace(/(\(.*?\))?:/, "");
-        for (const n of replaceNames) {
+        for (const n of exports.replaceNames) {
             if (this.name === n[0]) {
                 this.name = n[1];
             }
@@ -337,11 +344,25 @@ class ClassObject {
             if (this.methods[i].functionType === "constructor") {
                 this.constructorFunction = this.methods[i];
             }
-            this.methodCompletionItems.push(this.methods[i].completionItem);
+            // this.methodCompletionItems.push(this.methods[i].completionItem);
             this.methodSignatureInformation.push(this.methods[i].signatureInformation); //.buildSignatureInformation());
         }
         this.completionItem = this.buildCompletionItem();
         return this;
+    }
+    getMethodCompletionItems() {
+        let ci = [];
+        for (const m of this.methods) {
+            ci.push(m.buildCompletionItem());
+        }
+        return ci;
+    }
+    getSignatures() {
+        let si = [];
+        for (const m of this.methods) {
+            si.push(m.buildSignatureInformation());
+        }
+        return si;
     }
     /**
      * Helper function, should only be called by constructor.
@@ -562,8 +583,8 @@ class Function {
         return source;
     }
     /**
-     * Helper function, should only be called by constructor.
-     * @returns
+     * Using this instead of saving multiple copies of the same data. Also reduces load time.
+     * @returns The {@link CompletionItem CompletionItem} that represents this function.
      */
     buildCompletionItem() {
         //const ci: CompletionItem;

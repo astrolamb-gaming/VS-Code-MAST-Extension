@@ -9,7 +9,6 @@ const path = require("path");
 const data_1 = require("./data");
 const labels_1 = require("./tokens/labels");
 const console_1 = require("console");
-const autocompletion_1 = require("./autocompletion");
 const signatureHelp_1 = require("./signatureHelp");
 const rx_1 = require("./rx");
 const routeLabels_1 = require("./tokens/routeLabels");
@@ -53,7 +52,7 @@ class MissionCache {
         // They apply to ALL files in the mission folder.
         this.missionPyModules = [];
         this.missionMastModules = [];
-        this.missionDefaultCompletions = [];
+        // missionDefaultCompletions: CompletionItem[] = [];
         this.missionDefaultSignatures = [];
         this.missionClasses = [];
         this.missionDefaultFunctions = [];
@@ -85,7 +84,7 @@ class MissionCache {
         (0, server_1.showProgressBar)(true);
         // (re)set all the arrays before (re)populating them.
         this.missionClasses = [];
-        this.missionDefaultCompletions = [];
+        // this.missionDefaultCompletions = [];
         this.missionDefaultFunctions = [];
         this.missionDefaultSignatures = [];
         this.missionMastModules = [];
@@ -109,8 +108,9 @@ class MissionCache {
             // debug("Loaded SBS, starting to parse.");
             if (p !== null) {
                 this.missionPyModules.push(p);
+                (0, console_1.debug)("addding " + p.uri);
                 this.missionClasses = this.missionClasses.concat(p.classes);
-                this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.defaultFunctionCompletionItems);
+                // this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.getDefaultMethodCompletionItems());
                 for (const s of p.defaultFunctions) {
                     this.missionDefaultSignatures.push(s.signatureInformation);
                 }
@@ -289,7 +289,7 @@ class MissionCache {
                 }
             }
             this.missionClasses = this.missionClasses.concat(p.classes);
-            this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.defaultFunctionCompletionItems);
+            // this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.getDefaultMethodCompletionItems());
             this.missionDefaultFunctions = this.missionDefaultFunctions.concat(p.defaultFunctions);
             for (const s of p.defaultFunctions) {
                 this.missionDefaultSignatures.push(s.signatureInformation);
@@ -413,7 +413,10 @@ class MissionCache {
         // Don't need to do this, but will be slightly faster than iterating over missionClasses and then returning the defaults
         if (_class === "") {
             //debug(ci.length);
-            ci = ci.concat(this.missionDefaultCompletions);
+            // ci = ci.concat(this.missionDefaultCompletions);
+            for (const f of this.missionDefaultFunctions) {
+                ci.push(f.buildCompletionItem());
+            }
             for (const c of this.missionClasses) {
                 ci.push(c.completionItem);
             }
@@ -422,18 +425,17 @@ class MissionCache {
                     ci.push(f.completionItem);
                 }
             }
-            // TODO: Add variables in scope
             return ci;
         }
-        (0, console_1.debug)(this.missionDefaultCompletions.length);
+        // I don't think this is ever used.
         for (const c of this.missionClasses) {
             if (c.name === _class) {
                 (0, console_1.debug)(c.name + " is the class we're looking for.");
-                (0, console_1.debug)(c.methodCompletionItems);
-                return c.methodCompletionItems;
+                (0, console_1.debug)(c.getMethodCompletionItems());
+                return c.getMethodCompletionItems();
             }
         }
-        return this.missionDefaultCompletions;
+        return []; //this.missionDefaultCompletions;
     }
     getMethodSignatures(name) {
         let si = this.missionDefaultSignatures;
@@ -738,7 +740,7 @@ async function loadTypings() {
             //sourceFiles.push(parseWholeFile(textData, files[page]));
             sourceFiles.push(new data_1.PyFile(url));
         }
-        (0, autocompletion_1.prepCompletions)(sourceFiles);
+        // prepCompletions(sourceFiles);
         (0, signatureHelp_1.prepSignatures)(sourceFiles);
     }
     catch (err) {

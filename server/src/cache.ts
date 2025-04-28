@@ -1,21 +1,17 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { CompletionItem, integer, SignatureInformation } from 'vscode-languageserver';
-import { IClassObject, MastFile, PyFile, Function } from './data';
+import { MastFile, PyFile, Function, ClassObject } from './data';
 import { parseLabelsInFile, LabelInfo } from './tokens/labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
-import { prepCompletions } from './autocompletion';
 import { prepSignatures } from './signatureHelp';
 import { parse, RX } from './rx';
 import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } from './tokens/routeLabels';
-import { fixFileName, getFileContents, getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readZipArchive } from './fileFunctions';
+import { fixFileName, getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readZipArchive } from './fileFunctions';
 import { connection, notifyClient, showProgressBar as showProgressBar, sendToClient } from './server';
 import { URI } from 'vscode-uri';
 import { getGlobals } from './globals';
-import { send } from 'process';
-import { getRolesAsCompletionItem } from './roles';
-import { deprecate, formatWithOptions } from 'util';
 import * as os from 'os';
 import { Variable } from './tokens/variables';
 
@@ -65,9 +61,9 @@ export class MissionCache {
 	// They apply to ALL files in the mission folder.
 	missionPyModules: PyFile[] = [];
 	missionMastModules: MastFile[] = [];
-	missionDefaultCompletions: CompletionItem[] = [];
+	// missionDefaultCompletions: CompletionItem[] = [];
 	missionDefaultSignatures: SignatureInformation[] = [];
-	missionClasses: IClassObject[] = [];
+	missionClasses: ClassObject[] = [];
 	missionDefaultFunctions: Function[] = [];
 
 
@@ -107,7 +103,7 @@ export class MissionCache {
 		showProgressBar(true);
 		// (re)set all the arrays before (re)populating them.
 		this.missionClasses = [];
-		this.missionDefaultCompletions = [];
+		// this.missionDefaultCompletions = [];
 		this.missionDefaultFunctions = [];
 		this.missionDefaultSignatures = [];
 		this.missionMastModules = [];
@@ -131,8 +127,9 @@ export class MissionCache {
 			// debug("Loaded SBS, starting to parse.");
 			if (p !== null) {
 				this.missionPyModules.push(p);
+				debug("addding " + p.uri);
 				this.missionClasses = this.missionClasses.concat(p.classes);
-				this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.defaultFunctionCompletionItems);
+				// this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.getDefaultMethodCompletionItems());
 				for (const s of p.defaultFunctions) {
 					this.missionDefaultSignatures.push(s.signatureInformation);
 				}
@@ -313,7 +310,7 @@ export class MissionCache {
 				}
 			}
 			this.missionClasses = this.missionClasses.concat(p.classes);
-			this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.defaultFunctionCompletionItems);
+			// this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.getDefaultMethodCompletionItems());
 			this.missionDefaultFunctions = this.missionDefaultFunctions.concat(p.defaultFunctions);
 			for (const s of p.defaultFunctions) {
 				this.missionDefaultSignatures.push(s.signatureInformation);
@@ -447,7 +444,10 @@ export class MissionCache {
 		// Don't need to do this, but will be slightly faster than iterating over missionClasses and then returning the defaults
 		if (_class === "") {
 			//debug(ci.length);
-			ci = ci.concat(this.missionDefaultCompletions);
+			// ci = ci.concat(this.missionDefaultCompletions);
+			for (const f of this.missionDefaultFunctions) {
+				ci.push(f.buildCompletionItem());
+			}
 			for (const c of this.missionClasses) {
 				ci.push(c.completionItem);
 			}
@@ -456,18 +456,17 @@ export class MissionCache {
 					ci.push(f.completionItem);
 				}
 			}
-			// TODO: Add variables in scope
 			return ci;
 		}
-		debug(this.missionDefaultCompletions.length);
+		// I don't think this is ever used.
 		for (const c of this.missionClasses) {
 			if (c.name === _class) {
 				debug(c.name + " is the class we're looking for.")
-				debug(c.methodCompletionItems);
-				return c.methodCompletionItems;
+				debug(c.getMethodCompletionItems());
+				return c.getMethodCompletionItems();
 			}
 		}
-		return this.missionDefaultCompletions;
+		return [];//this.missionDefaultCompletions;
 	}
 
 	getMethodSignatures(name: string) {
@@ -790,7 +789,7 @@ async function loadTypings(): Promise<void> {
 			//sourceFiles.push(parseWholeFile(textData, files[page]));
 			sourceFiles.push(new PyFile(url));
 		}
-		prepCompletions(sourceFiles);
+		// prepCompletions(sourceFiles);
 		prepSignatures(sourceFiles);
 	} catch (err) {
 		debug("\nFailed to load\n"+err as string);

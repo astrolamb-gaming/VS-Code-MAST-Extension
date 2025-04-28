@@ -317,7 +317,7 @@ sleep(100).then(()=>{
 
 
 export function getGlobals() {
-	if (globals === null) {
+	if (globals === null || globals === undefined) {
 		try {
 			globals = new Globals();
 		} catch (e) {

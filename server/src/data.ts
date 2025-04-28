@@ -16,7 +16,7 @@ import { parseVariables, Variable } from './tokens/variables';
  * This accounts for classes that use a different name as a global than the class name. 
  * E.g. the sim global variable refers to the simulation class. Instead of simulation.functionName(), use sim.functionName().
  */
-const replaceNames = [
+export const replaceNames = [
 	['simulation','sim']
 ]
 /**
@@ -147,8 +147,8 @@ export class MastFile extends FileCache {
 
 export class PyFile extends FileCache {
 	defaultFunctions: Function[] = [];
-	defaultFunctionCompletionItems: CompletionItem[] = [];
-	classes: IClassObject[] = [];
+	// defaultFunctionCompletionItems: CompletionItem[] = [];
+	classes: ClassObject[] = [];
 	constructor(uri: string, fileContents:string = "") {
 		uri = fixFileName(uri);
 		super(uri);
@@ -176,7 +176,7 @@ export class PyFile extends FileCache {
 
 	parseWholeFile(text: string, source: string) {
 		// Gotta clear old data
-		this.defaultFunctionCompletionItems = [];
+		// this.defaultFunctionCompletionItems = [];
 		this.classes = [];
 		this.defaultFunctions = [];
 		this.variableNames = [];
@@ -246,7 +246,7 @@ export class PyFile extends FileCache {
 								end: doc.positionAt(m.startIndex + m.name.length)
 							}
 						}
-						this.defaultFunctionCompletionItems.push(m.completionItem);
+						// this.defaultFunctionCompletionItems.push(m.completionItem);
 					}
 				} else {
 					// Only add to class list if it's actually a class (or sbs)
@@ -275,25 +275,25 @@ export class PyFile extends FileCache {
 					}
 				}
 				this.defaultFunctions.push(m);
-				this.defaultFunctionCompletionItems.push(m.completionItem);
+				// this.defaultFunctionCompletionItems.push(m.completionItem);
 				//debug(f);
 			}
 		}
 		
 		for (const o of asClasses) {
 			if (path.basename(this.uri).replace(".py","") === o) {
-				const c = new ClassObject("", o);
+				const c = new ClassObject("", path.basename(this.uri));
 				c.name = o;
 				// c.name = o.replace(".py","");
 				c.completionItem = c.buildCompletionItem();
 				c.methods = this.defaultFunctions;
-				c.methodCompletionItems = this.defaultFunctionCompletionItems;
+				// c.methodCompletionItems = this.defaultFunctionCompletionItems;
 				for (const f of c.methods) {
 					c.methodSignatureInformation.push(f.signatureInformation);
 				}
 				this.classes.push(c);
 				if (c.name !== "scatter") {
-					this.defaultFunctionCompletionItems = [];
+					// this.defaultFunctionCompletionItems = [];
 					this.defaultFunctions = [];
 				}
 			}
@@ -307,13 +307,21 @@ export class PyFile extends FileCache {
 				for (const m of this.defaultFunctions) {
 					m.name = prefix + m.name;
 				}
-				for (const c of this.defaultFunctionCompletionItems) {
-					c.label = prefix + c.label;
-					c.insertText = prefix + c.insertText;
-				}
+				// for (const c of this.defaultFunctionCompletionItems) {
+				// 	c.label = prefix + c.label;
+				// 	c.insertText = prefix + c.insertText;
+				// }
 			}
 		}
 		
+	}
+
+	getDefaultMethodCompletionItems(): CompletionItem[] {
+		let ci:CompletionItem[] = [];
+		for (const f of this.defaultFunctions) {
+			ci.push(f.buildCompletionItem());
+		}
+		return ci;
 	}
 }
 
@@ -329,7 +337,7 @@ export interface IClassObject {
 	name: string,
 	parent?: string,
 	methods: Function[],
-	methodCompletionItems: CompletionItem[],
+	// methodCompletionItems: CompletionItem[],
 	methodSignatureInformation: SignatureInformation[],
 	constructorFunction?: Function,
 	documentation: string | MarkupContent,
@@ -377,7 +385,7 @@ export class ClassObject implements IClassObject {
 	name: string;
 	parent?: string;
 	methods: Function[] = [];
-	methodCompletionItems: CompletionItem[] = [];
+	// methodCompletionItems: CompletionItem[] = [];
 	methodSignatureInformation: SignatureInformation[] = [];
 	constructorFunction?: Function;
 	documentation: string | MarkupContent;
@@ -418,11 +426,27 @@ export class ClassObject implements IClassObject {
 			if (this.methods[i].functionType === "constructor") {
 				this.constructorFunction = this.methods[i];
 			}
-			this.methodCompletionItems.push(this.methods[i].completionItem);
+			// this.methodCompletionItems.push(this.methods[i].completionItem);
 			this.methodSignatureInformation.push(this.methods[i].signatureInformation)//.buildSignatureInformation());
 		}
 		this.completionItem = this.buildCompletionItem();
 		return this;
+	}
+
+	getMethodCompletionItems(): CompletionItem[] {
+		let ci: CompletionItem[] = []
+		for (const m of this.methods) {
+			ci.push(m.buildCompletionItem());
+		}
+		return ci;
+	}
+
+	getSignatures(): SignatureInformation[] {
+		let si: SignatureInformation[] = [];
+		for (const m of this.methods) {
+			si.push(m.buildSignatureInformation());
+		}
+		return si;
 	}
 	
 
@@ -668,8 +692,8 @@ export class Function implements IFunction {
 	}
 
 	/**
-	 * Helper function, should only be called by constructor.
-	 * @returns 
+	 * Using this instead of saving multiple copies of the same data. Also reduces load time.
+	 * @returns The {@link CompletionItem CompletionItem} that represents this function.
 	 */
 	buildCompletionItem(): CompletionItem {
 		//const ci: CompletionItem;

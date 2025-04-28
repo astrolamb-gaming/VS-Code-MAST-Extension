@@ -2,7 +2,7 @@ import { debug } from 'console';
 import { CompletionItem, CompletionItemKind, CompletionItemTag, integer, MarkupContent, SignatureInformation, TextDocumentPositionParams } from 'vscode-languageserver';
 import { buildLabelDocs, getMainLabelAtPos } from './tokens/labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { asClasses, IClassObject, PyFile } from './data';
+import { asClasses, IClassObject, PyFile, replaceNames } from './data';
 import { getRouteLabelVars } from './tokens/routeLabels';
 import { isInComment, isInString, isInYaml, isTextInBracket } from './tokens/comments';
 import { getCache } from './cache';
@@ -17,24 +17,24 @@ import { getVariableNamesInDoc, getVariablesAsCompletionItem } from './tokens/va
 import { buildFaction } from './factions';
 
 let classes: IClassObject[] = [];
-let defaultFunctionCompletionItems: CompletionItem[] = [];
+// let defaultFunctionCompletionItems: CompletionItem[] = [];
 
-/**
- * // TODO: This needs implemented I think???? Check the pyfile parsing and see if this is done already
- * Does setup for all of the autocompletion stuff. Only should run once.
- * @param files 
- */
-export function prepCompletions(files: PyFile[]) {
-	/// This gets all the default options. Should this be a const variable?
+// /**
+//  * // TODO: This needs implemented I think???? Check the pyfile parsing and see if this is done already
+//  * Does setup for all of the autocompletion stuff. Only should run once.
+//  * @param files 
+//  */
+// export function prepCompletions(files: PyFile[]) {
+// 	/// This gets all the default options. Should this be a const variable?
 	
-	for (const i in files) {
-		const pyFile = files[i];
-		defaultFunctionCompletionItems = defaultFunctionCompletionItems.concat(pyFile.defaultFunctionCompletionItems);
-		classes = classes.concat(pyFile.classes);
-	}
-	//debug(defaultFunctionCompletionItems);
-	// TODO: Send message to user if classes or defaultFunctionCompletionItems have a length of 0
-}
+// 	for (const i in files) {
+// 		const pyFile = files[i];
+// 		// defaultFunctionCompletionItems = defaultFunctionCompletionItems.concat(pyFile.getDefaultMethodCompletionItems());
+// 		classes = classes.concat(pyFile.classes);
+// 	}
+// 	//debug(defaultFunctionCompletionItems);
+// 	// TODO: Send message to user if classes or defaultFunctionCompletionItems have a length of 0
+// }
 
 let currentLine = 0;
 
@@ -353,35 +353,42 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// Check if this is a class
 	if (iStr.endsWith(".")) {
 		debug("Getting Classes...");
+		debug(iStr);
 		// First we check if a class is being referenced.
 		for (const c of cache.missionClasses) {
 			if (c.name === "sbs") {
 				debug("THIS IS SBS");
 			}
+			debug(c);
 			if (iStr.endsWith(c.name + ".")) {
 				debug(iStr + " contains" + c.name);
 				// TODO: Only use labels with isClassMethod = true
 				// c.methods[0].completionItem.kind == CompletionItemKind.Method;
-				return c.methodCompletionItems;
+				return c.getMethodCompletionItems();
 			}
 			if (iStr.endsWith("EVENT.") && c.name === "event") {
-				return c.methodCompletionItems;
+				return c.getMethodCompletionItems();
 			}
 		}
 		// Then we assume it's an object, but we can't determine the type, so we iterate over all the classes.
 		for (const c of cache.missionClasses) {
 			debug(c.name);
 			if (asClasses.includes(c.name)) continue;
+			if (c.name.includes("Route")) continue;
+			if (c.name === "event") continue;
 			for (const m of c.methods) {
 				// Don't want to include constructors, this is for properties
 				if (m.functionType === "constructor") continue;
 				const mc: CompletionItem = m.buildCompletionItem();
-				const mci: CompletionItem = {
-					label: m.name,
-					labelDetails: { detail: c.name, description: "desc"},
-					detail: "Detail: " + c.name
-				}
 				mc.label = "(" + c.name + ")." + m.name;
+				// mc.label = c.name + "." + m.name;
+
+				// If it's sim, convert back to simulation for this.
+				let className = c.name;
+				for (const cn of replaceNames) {
+					if (className === cn[1]) className = cn[0];
+				}
+				// (mc.documentation as MarkupContent).value = "_Method of class: " + className + "_\n" + (mc.documentation as MarkupContent).value;
 				ci.push(mc);
 			}
 		}

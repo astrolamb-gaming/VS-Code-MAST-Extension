@@ -1,6 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.prepCompletions = prepCompletions;
 exports.onCompletion = onCompletion;
 const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
@@ -15,22 +14,22 @@ const globals_1 = require("./globals");
 const signatureHelp_1 = require("./signatureHelp");
 const roles_1 = require("./roles");
 let classes = [];
-let defaultFunctionCompletionItems = [];
-/**
- * // TODO: This needs implemented I think???? Check the pyfile parsing and see if this is done already
- * Does setup for all of the autocompletion stuff. Only should run once.
- * @param files
- */
-function prepCompletions(files) {
-    /// This gets all the default options. Should this be a const variable?
-    for (const i in files) {
-        const pyFile = files[i];
-        defaultFunctionCompletionItems = defaultFunctionCompletionItems.concat(pyFile.defaultFunctionCompletionItems);
-        classes = classes.concat(pyFile.classes);
-    }
-    //debug(defaultFunctionCompletionItems);
-    // TODO: Send message to user if classes or defaultFunctionCompletionItems have a length of 0
-}
+// let defaultFunctionCompletionItems: CompletionItem[] = [];
+// /**
+//  * // TODO: This needs implemented I think???? Check the pyfile parsing and see if this is done already
+//  * Does setup for all of the autocompletion stuff. Only should run once.
+//  * @param files 
+//  */
+// export function prepCompletions(files: PyFile[]) {
+// 	/// This gets all the default options. Should this be a const variable?
+// 	for (const i in files) {
+// 		const pyFile = files[i];
+// 		// defaultFunctionCompletionItems = defaultFunctionCompletionItems.concat(pyFile.getDefaultMethodCompletionItems());
+// 		classes = classes.concat(pyFile.classes);
+// 	}
+// 	//debug(defaultFunctionCompletionItems);
+// 	// TODO: Send message to user if classes or defaultFunctionCompletionItems have a length of 0
+// }
 let currentLine = 0;
 function onCompletion(_textDocumentPosition, text) {
     // return buildFaction("kra","Kralien_Set");
@@ -316,19 +315,21 @@ function onCompletion(_textDocumentPosition, text) {
     // Check if this is a class
     if (iStr.endsWith(".")) {
         (0, console_1.debug)("Getting Classes...");
+        (0, console_1.debug)(iStr);
         // First we check if a class is being referenced.
         for (const c of cache.missionClasses) {
             if (c.name === "sbs") {
                 (0, console_1.debug)("THIS IS SBS");
             }
+            (0, console_1.debug)(c);
             if (iStr.endsWith(c.name + ".")) {
                 (0, console_1.debug)(iStr + " contains" + c.name);
                 // TODO: Only use labels with isClassMethod = true
                 // c.methods[0].completionItem.kind == CompletionItemKind.Method;
-                return c.methodCompletionItems;
+                return c.getMethodCompletionItems();
             }
             if (iStr.endsWith("EVENT.") && c.name === "event") {
-                return c.methodCompletionItems;
+                return c.getMethodCompletionItems();
             }
         }
         // Then we assume it's an object, but we can't determine the type, so we iterate over all the classes.
@@ -336,17 +337,24 @@ function onCompletion(_textDocumentPosition, text) {
             (0, console_1.debug)(c.name);
             if (data_1.asClasses.includes(c.name))
                 continue;
+            if (c.name.includes("Route"))
+                continue;
+            if (c.name === "event")
+                continue;
             for (const m of c.methods) {
                 // Don't want to include constructors, this is for properties
                 if (m.functionType === "constructor")
                     continue;
                 const mc = m.buildCompletionItem();
-                const mci = {
-                    label: m.name,
-                    labelDetails: { detail: c.name, description: "desc" },
-                    detail: "Detail: " + c.name
-                };
                 mc.label = "(" + c.name + ")." + m.name;
+                // mc.label = c.name + "." + m.name;
+                // If it's sim, convert back to simulation for this.
+                let className = c.name;
+                for (const cn of data_1.replaceNames) {
+                    if (className === cn[1])
+                        className = cn[0];
+                }
+                // (mc.documentation as MarkupContent).value = "_Method of class: " + className + "_\n" + (mc.documentation as MarkupContent).value;
                 ci.push(mc);
             }
         }
