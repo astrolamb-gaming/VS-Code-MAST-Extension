@@ -330,6 +330,9 @@ function onCompletion(_textDocumentPosition, text) {
             }
         }
     }
+    // const cm = getCurrentMethodName(iStr) {
+    // 	for ()
+    // }
     //debug(ci.length);
     ci = ci.concat(cache.getCompletions());
     let keywords = [
@@ -392,6 +395,47 @@ function onCompletion(_textDocumentPosition, text) {
     //ci = ci.concat(defaultFunctionCompletionItems);
     // TODO: Account for text that's already present?? I don't think that's necessary
     // - Remove the text from the start of the completion item label
+    return ci;
+}
+function getCompletionsForMethodParameters(iStr, paramName, doc) {
+    let ci = [];
+    const func = (0, signatureHelp_1.getCurrentMethodName)(iStr);
+    const sig = (0, cache_1.getCache)(doc.uri).getSignatureOfMethod(func);
+    const fstart = iStr.lastIndexOf(func);
+    const wholeFunc = iStr.substring(fstart, iStr.length);
+    const arr = wholeFunc.split(",");
+    if (sig !== undefined) {
+        if (sig.parameters !== undefined) {
+            for (const i in sig.parameters) {
+                if (i !== "" + (arr.length - 1))
+                    continue;
+                if (sig.parameters[i].label === "style") {
+                    for (const s of (0, globals_1.getGlobals)().widget_stylestrings) {
+                        if (func === s.function) {
+                            const c = {
+                                label: s.name,
+                                //labelDetails: {detail: s.docs},
+                                documentation: s.docs,
+                                kind: vscode_languageserver_1.CompletionItemKind.Text,
+                                insertText: s.name + ": "
+                            };
+                            if (c.label === "color") {
+                                c.insertText = c.insertText + "#";
+                            }
+                            ci.push(c);
+                        }
+                    }
+                }
+                else if (sig.parameters[i].label === "art_id") {
+                    // Get all possible art files
+                    return (0, globals_1.getGlobals)().artFiles;
+                }
+                else if (sig.parameters[i].label === 'art') {
+                    return (0, globals_1.getGlobals)().artFiles;
+                }
+            }
+        }
+    }
     return ci;
 }
 //# sourceMappingURL=autocompletion.js.map

@@ -368,6 +368,12 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			}
 		}
 	}
+
+	// const cm = getCurrentMethodName(iStr) {
+	// 	for ()
+	// }
+
+
 	//debug(ci.length);
 	ci = ci.concat(cache.getCompletions());
 	let keywords : string[] = [
@@ -437,3 +443,41 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 }
 
 
+function getCompletionsForMethodParameters(iStr:string, paramName: string, doc:TextDocument): CompletionItem[] {
+	let ci:CompletionItem[] = [];
+	const func = getCurrentMethodName(iStr);
+	const sig: SignatureInformation|undefined = getCache(doc.uri).getSignatureOfMethod(func);
+	const fstart = iStr.lastIndexOf(func);
+	const wholeFunc = iStr.substring(fstart,iStr.length);
+	const arr = wholeFunc.split(",");
+	if (sig !== undefined) {
+		if (sig.parameters !== undefined) {
+			for (const i in sig.parameters) {
+				if (i !== ""+(arr.length-1)) continue;
+				if (sig.parameters[i].label === "style") {
+					for (const s of getGlobals().widget_stylestrings) {
+						if (func === s.function) {
+							const c = {
+								label: s.name,
+								//labelDetails: {detail: s.docs},
+								documentation: s.docs,
+								kind: CompletionItemKind.Text,
+								insertText: s.name + ": "
+							}
+							if (c.label === "color") {
+								c.insertText = c.insertText + "#"
+							}
+							ci.push(c)
+						}
+					}
+				} else if (sig.parameters[i].label === "art_id") {
+					// Get all possible art files
+					return getGlobals().artFiles;
+				} else if (sig.parameters[i].label === 'art') {
+					return getGlobals().artFiles;
+				}
+			}
+		}
+	}
+	return ci;
+}
