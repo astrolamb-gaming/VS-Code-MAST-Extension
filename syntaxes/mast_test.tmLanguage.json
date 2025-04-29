@@ -5224,6 +5224,10 @@
         }
       ]
     },
+    "yaml-label-ref":{
+      "name": "label.brain",
+      "match": "(?m)-[\\t ]*[a-zA-Z_].*(\n|$)"
+    },
     "key-value-pair":{
       "name":"meta.injection.yaml.key-value-pair",
       "match":"(?m)^[ \\t]*([\\w ]+:)(.*$)",
@@ -5248,7 +5252,8 @@
       "end": "```",
       "patterns": [
         {"include":"#key-value-pair"},
-        {"include":"#comment"}
+        {"include":"#comment"},
+        {"include":"#yaml-label-ref"}
       ]
     },
     "regex": {

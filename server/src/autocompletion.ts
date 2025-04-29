@@ -381,7 +381,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				// Don't want to include constructors, this is for properties
 				if (m.functionType === "constructor") continue;
 				const mc: CompletionItem = m.buildCompletionItem();
-				mc.label = "(" + c.name + ")." + m.name;
+				mc.label = "[" + c.name + "]." + m.name;
 				// mc.label = c.name + "." + m.name;
 
 				// If it's sim, convert back to simulation for this.

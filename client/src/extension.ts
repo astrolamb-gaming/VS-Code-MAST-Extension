@@ -143,7 +143,7 @@ export function activate(context: ExtensionContext) {
 
 
 	// create a new status bar item that we can now manage
-	myStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
+	myStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 200);
 	// myStatusBarItem.command = myCommandId;
 	context.subscriptions.push(myStatusBarItem);
 

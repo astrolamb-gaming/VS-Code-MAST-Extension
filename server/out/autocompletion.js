@@ -348,7 +348,7 @@ function onCompletion(_textDocumentPosition, text) {
                 if (m.functionType === "constructor")
                     continue;
                 const mc = m.buildCompletionItem();
-                mc.label = "(" + c.name + ")." + m.name;
+                mc.label = "[" + c.name + "]." + m.name;
                 // mc.label = c.name + "." + m.name;
                 // If it's sim, convert back to simulation for this.
                 let className = c.name;

@@ -107,7 +107,7 @@ function activate(context) {
     // Create the language client and start the client.
     client = new node_1.LanguageClient('MAST-Language-Server', 'MAST Language Server', serverOptions, clientOptions);
     // create a new status bar item that we can now manage
-    myStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
+    myStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 200);
     // myStatusBarItem.command = myCommandId;
     context.subscriptions.push(myStatusBarItem);
     //window.showQuickPick([{label:"One"},{label:"Two"}]);
