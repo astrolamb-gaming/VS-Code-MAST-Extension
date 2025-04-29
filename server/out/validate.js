@@ -30,9 +30,7 @@ async function validateTextDocument(textDocument) {
             }
         });
     }
-    (0, console_1.debug)("Starting file update");
     cache.updateFileInfo(textDocument);
-    (0, console_1.debug)("Validating document");
     // In this simple example we get the settings for every validate run.
     let maxNumberOfProblems = 100;
     const settings = await (0, server_1.getDocumentSettings)(textDocument.uri);

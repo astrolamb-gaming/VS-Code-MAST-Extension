@@ -16,6 +16,15 @@ import * as os from 'os';
 import { Variable } from './tokens/variables';
 
 
+const includeNonProcedurals = [
+	"scatter",
+	"faces",
+	"names",
+	"vec.py",
+	"spaceobject.py",
+	"agent"
+]
+
 export function loadCache(dir: string) {
 	// TODO: Need a list of caches, in case there are files from more than one mission folder open
 let cache = getCache(dir);
@@ -303,10 +312,13 @@ export class MissionCache {
 			this.missionPyModules.push(p);
 			if (file.includes("sbs_utils") && !file.includes("procedural")) {
 				// Don't wanat anything not procedural included???
-				if (file.includes("scatter") || file.includes("faces") || file.includes("names") || file.includes("vec.py")) {
-					//don't return
-				} else {
-					return;
+				for (const special of includeNonProcedurals) {
+					if (file.includes(special)) {
+						//don't return
+						debug("Adding " + special);
+						break;
+					} else {
+					}
 				}
 			}
 			this.missionClasses = this.missionClasses.concat(p.classes);

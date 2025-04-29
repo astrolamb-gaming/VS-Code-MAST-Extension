@@ -341,6 +341,8 @@ function onCompletion(_textDocumentPosition, text) {
                 continue;
             if (c.name === "event")
                 continue;
+            if (c.name === "sim")
+                continue;
             for (const m of c.methods) {
                 // Don't want to include constructors, this is for properties
                 if (m.functionType === "constructor")
