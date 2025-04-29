@@ -33,7 +33,9 @@ import {
 	integer,
 	DocumentRangeFormattingRequest,
 	Disposable,
-	TextEdit
+	TextEdit,
+	DocumentOnTypeFormattingParams,
+	DocumentRangeFormattingParams
 
 } from 'vscode-languageserver/node';
 import { URI } from 'vscode-uri';
@@ -539,6 +541,12 @@ connection.onNotification("custom/storyJsonResponse",(response)=>{
 });
 
 
+// connection.onDocumentOnTypeFormatting((params:DocumentOnTypeFormattingParams,token:CancellationToken): HandlerResult<TextEdit[] | null | undefined, void> =>{
+// 	const te: TextEdit[] = [];
+// 	params.
+// 	return te;
+// })
+
 
 // connection.onDefinition((textDocumentIdentifier: TextDocumentIdentifier): Definition => {
 // 	return Location.create(textDocumentIdentifier.uri, {
@@ -561,8 +569,10 @@ export async function showProgressBar(visible: boolean) {
 	sendToClient("progressNotif",visible);
 }
 
-// connection.onDocumentRangeFormatting((params: DocumentRangeFormattingRequest, edits: TextEdit[] | undefined | null, n: never, v: void) : Disposable {
-	
+// connection.onDocumentRangeFormatting((params: DocumentRangeFormattingParams,token:CancellationToken,workDoneProgress:WorkDoneProgressReporter,resultProgress:ResultProgressReporter<never>|undefined): HandlerResult<TextEdit[] | null | undefined, void>=> {
+// 	let te:TextEdit[] = [];
+// 	params.options.
+// 	return te;
 // });
 
 // Make the text document manager listen on the connection

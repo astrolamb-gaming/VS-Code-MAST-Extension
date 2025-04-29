@@ -413,6 +413,11 @@ exports.connection.onNotification("custom/storyJsonResponse", (response) => {
             break;
     }
 });
+// connection.onDocumentOnTypeFormatting((params:DocumentOnTypeFormattingParams,token:CancellationToken): HandlerResult<TextEdit[] | null | undefined, void> =>{
+// 	const te: TextEdit[] = [];
+// 	params.
+// 	return te;
+// })
 // connection.onDefinition((textDocumentIdentifier: TextDocumentIdentifier): Definition => {
 // 	return Location.create(textDocumentIdentifier.uri, {
 // 	  start: { line: 2, character: 5 },
@@ -431,7 +436,10 @@ exports.connection.onDefinition((params, token, workDoneProgress, resultProgress
 async function showProgressBar(visible) {
     sendToClient("progressNotif", visible);
 }
-// connection.onDocumentRangeFormatting((params: DocumentRangeFormattingRequest, edits: TextEdit[] | undefined | null, n: never, v: void) : Disposable {
+// connection.onDocumentRangeFormatting((params: DocumentRangeFormattingParams,token:CancellationToken,workDoneProgress:WorkDoneProgressReporter,resultProgress:ResultProgressReporter<never>|undefined): HandlerResult<TextEdit[] | null | undefined, void>=> {
+// 	let te:TextEdit[] = [];
+// 	params.options.
+// 	return te;
 // });
 // Make the text document manager listen on the connection
 // for open, change and close text document events
