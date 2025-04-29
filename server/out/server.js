@@ -436,6 +436,27 @@ exports.connection.onDefinition((params, token, workDoneProgress, resultProgress
 async function showProgressBar(visible) {
     sendToClient("progressNotif", visible);
 }
+// connection.onDocumentSymbol((params:DocumentSymbolParams,token:CancellationToken,workDoneProgress:WorkDoneProgressReporter,resultProgress:ResultProgressReporter<SymbolInformation[]|DocumentSymbol[]>|undefined,): HandlerResult<SymbolInformation[] | DocumentSymbol[] | null | undefined, void>=>{
+// 	const uri = params.textDocument.uri;
+// 	const td = documents.get(uri);
+// 	if (!td) return;
+// 	let sis:SymbolInformation[] = [];
+// 	let r: Range = {
+// 		start:td.positionAt(1),
+// 		end:td.positionAt(50)
+// 	}
+// 	let loc: Location = {
+// 		uri: uri,
+// 		range: r
+// 	}
+// 	let si:SymbolInformation = {
+// 		location: loc,
+// 		name: '',
+// 		kind: 1
+// 	}
+// 	sis.push(si);
+// 	return sis;
+// });
 // connection.onDocumentRangeFormatting((params: DocumentRangeFormattingParams,token:CancellationToken,workDoneProgress:WorkDoneProgressReporter,resultProgress:ResultProgressReporter<never>|undefined): HandlerResult<TextEdit[] | null | undefined, void>=> {
 // 	let te:TextEdit[] = [];
 // 	params.options.

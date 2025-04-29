@@ -35,7 +35,10 @@ import {
 	Disposable,
 	TextEdit,
 	DocumentOnTypeFormattingParams,
-	DocumentRangeFormattingParams
+	DocumentRangeFormattingParams,
+	DocumentSymbolParams,
+	SymbolInformation,
+	DocumentSymbol
 
 } from 'vscode-languageserver/node';
 import { URI } from 'vscode-uri';
@@ -568,6 +571,28 @@ connection.onDefinition((params: DefinitionParams,token: CancellationToken,workD
 export async function showProgressBar(visible: boolean) {
 	sendToClient("progressNotif",visible);
 }
+
+// connection.onDocumentSymbol((params:DocumentSymbolParams,token:CancellationToken,workDoneProgress:WorkDoneProgressReporter,resultProgress:ResultProgressReporter<SymbolInformation[]|DocumentSymbol[]>|undefined,): HandlerResult<SymbolInformation[] | DocumentSymbol[] | null | undefined, void>=>{
+// 	const uri = params.textDocument.uri;
+// 	const td = documents.get(uri);
+// 	if (!td) return;
+// 	let sis:SymbolInformation[] = [];
+// 	let r: Range = {
+// 		start:td.positionAt(1),
+// 		end:td.positionAt(50)
+// 	}
+// 	let loc: Location = {
+// 		uri: uri,
+// 		range: r
+// 	}
+// 	let si:SymbolInformation = {
+// 		location: loc,
+// 		name: '',
+// 		kind: 1
+// 	}
+// 	sis.push(si);
+// 	return sis;
+// });
 
 // connection.onDocumentRangeFormatting((params: DocumentRangeFormattingParams,token:CancellationToken,workDoneProgress:WorkDoneProgressReporter,resultProgress:ResultProgressReporter<never>|undefined): HandlerResult<TextEdit[] | null | undefined, void>=> {
 // 	let te:TextEdit[] = [];
