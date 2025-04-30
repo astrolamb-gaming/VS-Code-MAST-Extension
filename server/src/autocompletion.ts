@@ -187,6 +187,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 					}
 				}
 			}
+			// getCompletionsForMethodParameters(iStr,"style",text,pos);
 
 			debug("Is in string");
 			return ci;
@@ -470,7 +471,73 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 }
 
 
-function getCompletionsForMethodParameters(iStr:string, paramName: string, doc:TextDocument): CompletionItem[] {
+function getCompletionsForMethodParameters(iStr:string, paramName: string, doc:TextDocument, pos:integer): CompletionItem[] {
+	let ci:CompletionItem[] = [];
+	const func = getCurrentMethodName(iStr);
+	const fstart = iStr.lastIndexOf(func);
+	const wholeFunc = iStr.substring(fstart,iStr.length);
+	const arr = wholeFunc.split(",");
+	const paramNumber = arr.length-1;
+	const method = getCache(doc.uri).getMethod(func);
+	if (method !== undefined) {
+		let p = method.parameters[paramNumber];
+			if (paramName === p.name) {
+				// Now we iterate over all the possible optiosn
+				if (paramName === "style") {
+					for (const s of getGlobals().widget_stylestrings) {
+						if (func === s.function) {
+							const c = {
+								label: s.name,
+								//labelDetails: {detail: s.docs},
+								documentation: s.docs,
+								kind: CompletionItemKind.Text,
+								insertText: s.name + ": "
+							}
+							if (c.label === "color") {
+								c.insertText = c.insertText + "#"
+							}
+							ci.push(c)
+						}
+					}
+				} else if (paramName === "art_id") {
+					// Get all possible art files
+					return getGlobals().artFiles;
+				} else if (paramName === 'art') {
+					return getGlobals().artFiles;
+				} else if (paramName === "label") {
+					const cache = getCache(doc.uri);
+					let labels = cache.getMastFile(doc.uri).labelNames;
+					const main = getMainLabelAtPos(pos,labels);
+					labels = cache.getLabels(doc);
+					const subs = main.subLabels;
+					for (const l of subs) {
+						ci.push({
+							documentation: buildLabelDocs(l),
+							label: l.name, 
+							kind: CompletionItemKind.Event, 
+							labelDetails: {
+								description: "Sub-label of: " + main.name
+							}
+						});
+					}
+					for (const l of labels) {
+						ci.push({
+							documentation: buildLabelDocs(l),
+							label: l.name, 
+							kind: CompletionItemKind.Event, 
+							labelDetails: {
+								description: path.basename(l.srcFile)
+							}
+						});
+					}
+				}
+			}
+	}
+	return ci;
+}
+
+
+function getCompletionsForMethodParams(iStr:string, paramName: string, doc:TextDocument): CompletionItem[] {
 	let ci:CompletionItem[] = [];
 	const func = getCurrentMethodName(iStr);
 	const sig: SignatureInformation|undefined = getCache(doc.uri).getSignatureOfMethod(func);
@@ -502,6 +569,8 @@ function getCompletionsForMethodParameters(iStr:string, paramName: string, doc:T
 					return getGlobals().artFiles;
 				} else if (sig.parameters[i].label === 'art') {
 					return getGlobals().artFiles;
+				} else if (sig.parameters[i].label === "label") {
+
 				}
 			}
 		}

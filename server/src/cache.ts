@@ -1,8 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { CompletionItem, integer, SignatureInformation } from 'vscode-languageserver';
+import { CompletionItem, integer, Position, SignatureInformation } from 'vscode-languageserver';
 import { MastFile, PyFile, Function, ClassObject } from './data';
-import { parseLabelsInFile, LabelInfo } from './tokens/labels';
+import { parseLabelsInFile, LabelInfo, getMainLabelAtPos } from './tokens/labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
 import { prepSignatures } from './signatureHelp';
@@ -369,6 +369,32 @@ export class MissionCache {
 	}
 
 	/**
+	 * Get all methods in scope for this cache
+	 * @returns List of {@link Function Function}
+	 */
+	getMethods(): Function[] {
+		let methods: Function[] = [];
+		for (const py of this.pyFileCache) {
+			methods = methods.concat(py.defaultFunctions);
+		}
+		return methods;
+	}
+
+	/**
+	 * Get the method with the given name, if it exists in scope for this cache.
+	 * @param name Name of the {@link Function Function}
+	 * @returns The function with the given name.
+	 */
+	getMethod(name:string): Function | undefined {
+		for (const m of this.getMethods()) {
+			if (m.name === name) {
+				return m;
+			}
+		}
+		return undefined;
+	}
+
+	/**
 	 * TODO: This should only return variables that are in scope
 	 * @returns 
 	 */
@@ -430,6 +456,21 @@ export class MissionCache {
 		// Could also include labels that exist in another file
 		const arrUniq = [...new Map(li.map(v => [v.name, v])).values()]
 		return li;
+	}
+
+	/**
+	 * Get all labels, including sublabels, that are within the current scope at the specified position within the document.
+	 * @param doc 
+	 * @param pos 
+	 */
+	getLabelsAtPos(doc:TextDocument, pos:integer): LabelInfo[] {
+		// const labels: LabelInfo[] = this.getLabels(doc);
+		if (doc.languageId !== "mast") return [];
+		const labels = this.getMastFile(doc.uri).labelNames;
+		const main = getMainLabelAtPos(pos,labels);
+		const subs = main.subLabels;
+		const ret = this.getLabels(doc).concat(subs);
+		return ret;
 	}
 
 	/**
