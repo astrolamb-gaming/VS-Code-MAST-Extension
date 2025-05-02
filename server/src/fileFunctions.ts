@@ -22,12 +22,9 @@ import {
 	InsertTextFormat,
 	WorkspaceFolder
 } from 'vscode-languageserver/node';
-import { myDebug } from './server';
 import { debug } from 'console';
 import AdmZip = require("adm-zip");
-import { StoryJson } from './cache';
 import { URI } from 'vscode-uri';
-import { getGlobals } from './globals';
 
 export function findSubfolderByName(dir: string, folderName: string): string | null {
 	const files = fs.readdirSync(dir, { withFileTypes: true });

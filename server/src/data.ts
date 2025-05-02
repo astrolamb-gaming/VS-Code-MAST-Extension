@@ -329,25 +329,6 @@ export class PyFile extends FileCache {
 	}
 }
 
-export interface ClassTypings {
-	name: string,
-	classCompItem: CompletionItem,
-	completionItems: CompletionItem[], // This will be converted into methods: Function[]
-	documentation: string | MarkupContent, // https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/creating-and-highlighting-code-blocks#syntax-highlighting
-	methods?: Function[]
-}
-
-
-
-
-
-
-
-export interface LabelDescInfo {
-	description: string,
-	startPos: integer,
-	endPos: integer
-}
 
 /**
  * 
