@@ -1,11 +1,11 @@
 import { Options, PythonShell } from 'python-shell';
-import { findSubfolderByName, fixFileName, getArtemisDirFromChild, getMissionFolder, getParentFolder } from './fileFunctions';
+import { findSubfolderByName, fixFileName, getArtemisDirFromChild, getMissionFolder, getParentFolder } from '../fileFunctions';
 import { debug } from 'console';
 import path = require('path');
 import * as fs from 'fs';
-import { getCache } from './cache';
+import { getCache } from '../cache';
 import { integer } from 'vscode-languageserver';
-import { getGlobals } from './globals';
+import { getGlobals } from '../globals';
 
 let pyPath = "";
 let scriptPath = "";
