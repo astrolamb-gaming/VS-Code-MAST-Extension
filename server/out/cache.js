@@ -344,6 +344,30 @@ class MissionCache {
         return ci;
     }
     /**
+     * Get all methods in scope for this cache
+     * @returns List of {@link Function Function}
+     */
+    getMethods() {
+        let methods = [];
+        for (const py of this.pyFileCache) {
+            methods = methods.concat(py.defaultFunctions);
+        }
+        return methods;
+    }
+    /**
+     * Get the method with the given name, if it exists in scope for this cache.
+     * @param name Name of the {@link Function Function}
+     * @returns The function with the given name.
+     */
+    getMethod(name) {
+        for (const m of this.getMethods()) {
+            if (m.name === name) {
+                return m;
+            }
+        }
+        return undefined;
+    }
+    /**
      * TODO: This should only return variables that are in scope
      * @returns
      */
@@ -400,6 +424,21 @@ class MissionCache {
         // Could also include labels that exist in another file
         const arrUniq = [...new Map(li.map(v => [v.name, v])).values()];
         return li;
+    }
+    /**
+     * Get all labels, including sublabels, that are within the current scope at the specified position within the document.
+     * @param doc
+     * @param pos
+     */
+    getLabelsAtPos(doc, pos) {
+        // const labels: LabelInfo[] = this.getLabels(doc);
+        if (doc.languageId !== "mast")
+            return [];
+        const labels = this.getMastFile(doc.uri).labelNames;
+        const main = (0, labels_1.getMainLabelAtPos)(pos, labels);
+        const subs = main.subLabels;
+        const ret = this.getLabels(doc).concat(subs);
+        return ret;
     }
     /**
      * Call when the contents of a file changes

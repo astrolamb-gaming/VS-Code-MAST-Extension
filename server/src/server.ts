@@ -47,7 +47,7 @@ import { LabelInfo } from './tokens/labels';
 import { onCompletion } from './autocompletion';
 import { debug} from 'console';
 import { onHover } from './hover';
-import { onSignatureHelp } from './signatureHelp';
+import { getCurrentMethodName, onSignatureHelp } from './signatureHelp';
 import fs = require("fs");
 import { getCache, loadCache } from './cache';
 import { getVariableNamesInDoc } from './tokens/variables';
@@ -150,9 +150,9 @@ connection.onInitialize((params: InitializeParams) => {
 			}
 		};
 	}
-
+	// showProgressBar(true);
 	if (params.workspaceFolders) {
-		showProgressBar(true);
+		
 		// debug("Loading cache");
 		// for (const workspaceFolder of params.workspaceFolders) {
 		// 	// const workspaceFolder = params.workspaceFolders[0];
@@ -207,6 +207,8 @@ connection.onInitialize((params: InitializeParams) => {
 	} else {
 		debug("No Workspace folders");
 	}
+	let current = getCurrentMethodName("hi('one',two('yes'), ");
+	debug(current);
 	return result;
 });
 

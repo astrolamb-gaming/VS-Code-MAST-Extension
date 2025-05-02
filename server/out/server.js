@@ -63,7 +63,7 @@ exports.connection.onInitialize((params) => {
             completionProvider: {
                 resolveProvider: false, // FOR NOW - MAY USE LATER
                 // TODO: The /, >, and especially the space are hopefully temporary workarounds.
-                triggerCharacters: [".", "/", ">", "<", " ", "\"", "\'", "@"]
+                triggerCharacters: [".", "/", ">", "<", " ", "\"", "\'", "@", "="]
             },
             diagnosticProvider: {
                 interFileDependencies: false,
@@ -97,8 +97,8 @@ exports.connection.onInitialize((params) => {
             }
         };
     }
+    // showProgressBar(true);
     if (params.workspaceFolders) {
-        showProgressBar(true);
         // debug("Loading cache");
         // for (const workspaceFolder of params.workspaceFolders) {
         // 	// const workspaceFolder = params.workspaceFolders[0];
@@ -151,6 +151,8 @@ exports.connection.onInitialize((params) => {
     else {
         (0, console_1.debug)("No Workspace folders");
     }
+    let current = (0, signatureHelp_1.getCurrentMethodName)("hi('one',two('yes'), ");
+    (0, console_1.debug)(current);
     return result;
 });
 exports.connection.onInitialized(() => {

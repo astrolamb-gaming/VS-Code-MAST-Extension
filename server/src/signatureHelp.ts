@@ -3,6 +3,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { PyFile } from './data';
 import { debug } from 'console';
 import { getCache } from './cache';
+import { join } from 'path';
 
 let functionSigs: SignatureInformation[] = [];
 
@@ -99,6 +100,10 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 
 export function getCurrentMethodName(iStr: string): string {
 	const last = iStr.lastIndexOf("(");
+	const lastClose = iStr.lastIndexOf(")");
+	if (lastClose > last) {
+
+	}
 	const priorCheck = iStr.substring(0,last-1);
 	let prior = priorCheck.lastIndexOf("(");
 	if (prior === -1) {
@@ -111,4 +116,45 @@ export function getCurrentMethodName(iStr: string): string {
 		prior = 0;
 	}
 	return iStr.substring(prior,last).replace(/\.|\(| |\"|\'/g,"");
+}
+
+const test = "testing(a(),function(1,5, 10)";
+export function getMethodName(iStr: string): string {
+	iStr = test;
+	let ret = "";
+	let token = "";
+	let tokens = [];
+	let last = "";
+	let level = 0;
+	let t: RegExpMatchArray | null;
+
+	while (t = test.match(/\w+\(/)) {
+		if (t === null) break;
+		if (t.index !== undefined) break;
+		// const line = iStr.substring()
+	}
+
+	for (const char of iStr) {
+		// We can just ignore spaces
+		if (char.match(/\w/)) {
+			token += char;
+			last = "char";
+			continue;
+		}
+		if (char === "(") {
+			level += 1;
+			last = "functionOpen"
+			continue;
+		}
+		if (char === (")")) {
+			level -= 1;
+			last = "functionClose"
+			continue;
+		}
+		if (char !== "") {
+
+		}
+	}
+
+	return ret;
 }

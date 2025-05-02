@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.prepSignatures = prepSignatures;
 exports.onSignatureHelp = onSignatureHelp;
 exports.getCurrentMethodName = getCurrentMethodName;
+exports.getMethodName = getMethodName;
 const console_1 = require("console");
 const cache_1 = require("./cache");
 let functionSigs = [];
@@ -89,6 +90,9 @@ function onSignatureHelp(_textDocPos, text) {
 }
 function getCurrentMethodName(iStr) {
     const last = iStr.lastIndexOf("(");
+    const lastClose = iStr.lastIndexOf(")");
+    if (lastClose > last) {
+    }
     const priorCheck = iStr.substring(0, last - 1);
     let prior = priorCheck.lastIndexOf("(");
     if (prior === -1) {
@@ -101,5 +105,43 @@ function getCurrentMethodName(iStr) {
         prior = 0;
     }
     return iStr.substring(prior, last).replace(/\.|\(| |\"|\'/g, "");
+}
+const test = "testing(a(),function(1,5, 10)";
+function getMethodName(iStr) {
+    iStr = test;
+    let ret = "";
+    let token = "";
+    let tokens = [];
+    let last = "";
+    let level = 0;
+    let t;
+    while (t = test.match(/\w+\(/)) {
+        if (t === null)
+            break;
+        if (t.index !== undefined)
+            break;
+        // const line = iStr.substring()
+    }
+    for (const char of iStr) {
+        // We can just ignore spaces
+        if (char.match(/\w/)) {
+            token += char;
+            last = "char";
+            continue;
+        }
+        if (char === "(") {
+            level += 1;
+            last = "functionOpen";
+            continue;
+        }
+        if (char === (")")) {
+            level -= 1;
+            last = "functionClose";
+            continue;
+        }
+        if (char !== "") {
+        }
+    }
+    return ret;
 }
 //# sourceMappingURL=signatureHelp.js.map

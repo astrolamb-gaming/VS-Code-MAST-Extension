@@ -168,6 +168,7 @@ function onCompletion(_textDocumentPosition, text) {
                     }
                 }
             }
+            // getCompletionsForMethodParameters(iStr,"style",text,pos);
             (0, console_1.debug)("Is in string");
             return ci;
         }
@@ -429,7 +430,74 @@ function onCompletion(_textDocumentPosition, text) {
     // - Remove the text from the start of the completion item label
     return ci;
 }
-function getCompletionsForMethodParameters(iStr, paramName, doc) {
+function getCompletionsForMethodParameters(iStr, paramName, doc, pos) {
+    let ci = [];
+    const func = (0, signatureHelp_1.getCurrentMethodName)(iStr);
+    const fstart = iStr.lastIndexOf(func);
+    const wholeFunc = iStr.substring(fstart, iStr.length);
+    const arr = wholeFunc.split(",");
+    const paramNumber = arr.length - 1;
+    const method = (0, cache_1.getCache)(doc.uri).getMethod(func);
+    if (method !== undefined) {
+        let p = method.parameters[paramNumber];
+        if (paramName === p.name) {
+            // Now we iterate over all the possible optiosn
+            if (paramName === "style") {
+                for (const s of (0, globals_1.getGlobals)().widget_stylestrings) {
+                    if (func === s.function) {
+                        const c = {
+                            label: s.name,
+                            //labelDetails: {detail: s.docs},
+                            documentation: s.docs,
+                            kind: vscode_languageserver_1.CompletionItemKind.Text,
+                            insertText: s.name + ": "
+                        };
+                        if (c.label === "color") {
+                            c.insertText = c.insertText + "#";
+                        }
+                        ci.push(c);
+                    }
+                }
+            }
+            else if (paramName === "art_id") {
+                // Get all possible art files
+                return (0, globals_1.getGlobals)().artFiles;
+            }
+            else if (paramName === 'art') {
+                return (0, globals_1.getGlobals)().artFiles;
+            }
+            else if (paramName === "label") {
+                const cache = (0, cache_1.getCache)(doc.uri);
+                let labels = cache.getMastFile(doc.uri).labelNames;
+                const main = (0, labels_1.getMainLabelAtPos)(pos, labels);
+                labels = cache.getLabels(doc);
+                const subs = main.subLabels;
+                for (const l of subs) {
+                    ci.push({
+                        documentation: (0, labels_1.buildLabelDocs)(l),
+                        label: l.name,
+                        kind: vscode_languageserver_1.CompletionItemKind.Event,
+                        labelDetails: {
+                            description: "Sub-label of: " + main.name
+                        }
+                    });
+                }
+                for (const l of labels) {
+                    ci.push({
+                        documentation: (0, labels_1.buildLabelDocs)(l),
+                        label: l.name,
+                        kind: vscode_languageserver_1.CompletionItemKind.Event,
+                        labelDetails: {
+                            description: path.basename(l.srcFile)
+                        }
+                    });
+                }
+            }
+        }
+    }
+    return ci;
+}
+function getCompletionsForMethodParams(iStr, paramName, doc) {
     let ci = [];
     const func = (0, signatureHelp_1.getCurrentMethodName)(iStr);
     const sig = (0, cache_1.getCache)(doc.uri).getSignatureOfMethod(func);
@@ -464,6 +532,8 @@ function getCompletionsForMethodParameters(iStr, paramName, doc) {
                 }
                 else if (sig.parameters[i].label === 'art') {
                     return (0, globals_1.getGlobals)().artFiles;
+                }
+                else if (sig.parameters[i].label === "label") {
                 }
             }
         }
