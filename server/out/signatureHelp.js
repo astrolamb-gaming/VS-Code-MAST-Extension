@@ -1,27 +1,26 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.prepSignatures = prepSignatures;
 exports.onSignatureHelp = onSignatureHelp;
 exports.getCurrentMethodName = getCurrentMethodName;
 exports.getMethodName = getMethodName;
 const console_1 = require("console");
 const cache_1 = require("./cache");
-let functionSigs = [];
+// let functionSigs: SignatureInformation[] = [];
 // With new system, this function will be depracated
-function prepSignatures(files) {
-    (0, console_1.debug)("Prepping signatures");
-    for (const i in files) {
-        const pyFile = files[i];
-        for (const f in pyFile.defaultFunctions) {
-            const func = pyFile.defaultFunctions[f];
-            let si = func.buildSignatureInformation();
-            functionSigs.push(si);
-        }
-        for (const c in pyFile.classes) {
-            functionSigs = functionSigs.concat(pyFile.classes[c].methodSignatureInformation);
-        }
-    }
-}
+// export function prepSignatures(files: PyFile[]) {
+// 	debug("Prepping signatures");
+// 	for (const i in files) {
+// 		const pyFile = files[i];
+// 		for (const f in pyFile.defaultFunctions) {
+// 			const func = pyFile.defaultFunctions[f];
+// 			let si:SignatureInformation = func.buildSignatureInformation();
+// 			functionSigs.push(si);
+// 		}
+// 		for (const c in pyFile.classes) {
+// 			functionSigs = functionSigs.concat(pyFile.classes[c].methodSignatureInformation);
+// 		}
+// 	}
+// }
 function onSignatureHelp(_textDocPos, text) {
     let sh = {
         signatures: []

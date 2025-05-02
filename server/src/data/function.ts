@@ -53,7 +53,7 @@ export class Function implements IFunction {
 	location: Location;
 
 	completionItem: CompletionItem;
-	signatureInformation: SignatureInformation;
+	// signatureInformation: SignatureInformation;
 
 	constructor(raw: string, className: string, sourceFile: string) {
 		this.location = {uri:sourceFile,range: {start: {line:0,character:0},end: {line:0,character:1}}}
@@ -132,7 +132,7 @@ export class Function implements IFunction {
 		// TODO: Only use these when really needed
 		this.parameters = this.buildParams(params);
 		this.completionItem = this.buildCompletionItem();
-		this.signatureInformation = this.buildSignatureInformation();
+		// this.signatureInformation = this.buildSignatureInformation();
 		//debug(this);
 		return this;
 	}

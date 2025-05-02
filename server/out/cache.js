@@ -9,7 +9,6 @@ const path = require("path");
 const data_1 = require("./data");
 const labels_1 = require("./tokens/labels");
 const console_1 = require("console");
-const signatureHelp_1 = require("./signatureHelp");
 const rx_1 = require("./rx");
 const routeLabels_1 = require("./tokens/routeLabels");
 const fileFunctions_1 = require("./fileFunctions");
@@ -63,7 +62,7 @@ class MissionCache {
         this.missionPyModules = [];
         this.missionMastModules = [];
         // missionDefaultCompletions: CompletionItem[] = [];
-        this.missionDefaultSignatures = [];
+        // missionDefaultSignatures: SignatureInformation[] = [];
         this.missionClasses = [];
         this.missionDefaultFunctions = [];
         // These are for the files specific to this mission.
@@ -96,7 +95,7 @@ class MissionCache {
         this.missionClasses = [];
         // this.missionDefaultCompletions = [];
         this.missionDefaultFunctions = [];
-        this.missionDefaultSignatures = [];
+        // this.missionDefaultSignatures = [];
         this.missionMastModules = [];
         this.missionPyModules = [];
         this.pyFileCache = [];
@@ -121,9 +120,9 @@ class MissionCache {
                 this.missionClasses = this.missionClasses.concat(p.classes);
                 // this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.getDefaultMethodCompletionItems());
                 // TODO: This is not doing anything anymore pretty sure
-                for (const s of p.defaultFunctions) {
-                    this.missionDefaultSignatures.push(s.signatureInformation);
-                }
+                // for (const s of p.defaultFunctions) {
+                // 	this.missionDefaultSignatures.push(s.signatureInformation);
+                // }
             }
             (0, console_1.debug)("Finished loading sbs_utils for " + this.missionName);
             (0, server_1.showProgressBar)(false);
@@ -304,9 +303,9 @@ class MissionCache {
             this.missionClasses = this.missionClasses.concat(p.classes);
             // this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.getDefaultMethodCompletionItems());
             this.missionDefaultFunctions = this.missionDefaultFunctions.concat(p.defaultFunctions);
-            for (const s of p.defaultFunctions) {
-                this.missionDefaultSignatures.push(s.signatureInformation);
-            }
+            // for (const s of p.defaultFunctions) {
+            // 	this.missionDefaultSignatures.push(s.signatureInformation);
+            // }
         }
         else if (file.endsWith(".mast")) {
             //debug("Building file: " + file);
@@ -492,14 +491,6 @@ class MissionCache {
         }
         return []; //this.missionDefaultCompletions;
     }
-    getMethodSignatures(name) {
-        let si = this.missionDefaultSignatures;
-        // .filter((sig, index, arr)=>{
-        // 	sig.label === name;
-        // });
-        // TODO: Add functions from py files in local directory
-        return si;
-    }
     /**
      * Gets a single method signature for the specified function.
      * @param name Name of the method or function
@@ -532,25 +523,13 @@ class MissionCache {
                 }
             }
         }
-        (0, console_1.debug)("The right way failed...");
-        // for (const s of this.missionDefaultSignatures) {
-        // 	if (s.label === name) {
-        // 		return s;
-        // 	}
-        // }
-        // for (const c of this.missionClasses) {
-        // 	for (const m of c.methodSignatureInformation) {
-        // 		if (m.label === name) {
-        // 			return m;
-        // 		}
-        // 	}
-        // }
+        (0, console_1.debug)("The right signatures the right way failed...");
         return undefined;
     }
     /**
      *
      * @param folder The folder the current file is in.
-     * @returns
+     * @returns an array of strings
      */
     getRoles(folder) {
         folder = (0, fileFunctions_1.fixFileName)(folder);
@@ -566,6 +545,7 @@ class MissionCache {
         return roles;
     }
     /**
+     * Gets the {@link MastFile MastFile} associated with the given uri, or makes one if it doesn't exist
      * Must actually be a mast file, so check before using!
      * @param uri The uri of the file
      */
@@ -612,7 +592,7 @@ async function loadTypings() {
             sourceFiles.push(new data_1.PyFile(url));
         }
         // prepCompletions(sourceFiles);
-        (0, signatureHelp_1.prepSignatures)(sourceFiles);
+        // prepSignatures(sourceFiles);
     }
     catch (err) {
         (0, console_1.debug)("\nFailed to load\n" + err);

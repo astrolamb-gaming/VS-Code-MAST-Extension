@@ -5,7 +5,6 @@ import { MastFile, PyFile } from './data';
 import { parseLabelsInFile, LabelInfo, getMainLabelAtPos } from './tokens/labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
-import { prepSignatures } from './signatureHelp';
 import { parse, RX } from './rx';
 import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } from './tokens/routeLabels';
 import { fixFileName, getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readZipArchive } from './fileFunctions';
@@ -76,7 +75,7 @@ export class MissionCache {
 	missionPyModules: PyFile[] = [];
 	missionMastModules: MastFile[] = [];
 	// missionDefaultCompletions: CompletionItem[] = [];
-	missionDefaultSignatures: SignatureInformation[] = [];
+	// missionDefaultSignatures: SignatureInformation[] = [];
 	missionClasses: ClassObject[] = [];
 	missionDefaultFunctions: Function[] = [];
 
@@ -119,7 +118,7 @@ export class MissionCache {
 		this.missionClasses = [];
 		// this.missionDefaultCompletions = [];
 		this.missionDefaultFunctions = [];
-		this.missionDefaultSignatures = [];
+		// this.missionDefaultSignatures = [];
 		this.missionMastModules = [];
 		this.missionPyModules = [];
 		this.pyFileCache = [];
@@ -144,9 +143,9 @@ export class MissionCache {
 				this.missionClasses = this.missionClasses.concat(p.classes);
 				// this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.getDefaultMethodCompletionItems());
 				// TODO: This is not doing anything anymore pretty sure
-				for (const s of p.defaultFunctions) {
-					this.missionDefaultSignatures.push(s.signatureInformation);
-				}
+				// for (const s of p.defaultFunctions) {
+				// 	this.missionDefaultSignatures.push(s.signatureInformation);
+				// }
 			}
 			debug("Finished loading sbs_utils for " + this.missionName);
 			showProgressBar(false);
@@ -329,9 +328,9 @@ export class MissionCache {
 			this.missionClasses = this.missionClasses.concat(p.classes);
 			// this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.getDefaultMethodCompletionItems());
 			this.missionDefaultFunctions = this.missionDefaultFunctions.concat(p.defaultFunctions);
-			for (const s of p.defaultFunctions) {
-				this.missionDefaultSignatures.push(s.signatureInformation);
-			}
+			// for (const s of p.defaultFunctions) {
+			// 	this.missionDefaultSignatures.push(s.signatureInformation);
+			// }
 		} else if (file.endsWith(".mast")) {
 			//debug("Building file: " + file);
 			const m = new MastFile(file, data);
@@ -531,15 +530,6 @@ export class MissionCache {
 		return [];//this.missionDefaultCompletions;
 	}
 
-	getMethodSignatures(name: string) {
-		let si: SignatureInformation[] = this.missionDefaultSignatures;
-		// .filter((sig, index, arr)=>{
-		// 	sig.label === name;
-		// });
-		// TODO: Add functions from py files in local directory
-		return si;
-	}
-
 	/**
 	 * Gets a single method signature for the specified function.
 	 * @param name Name of the method or function
@@ -572,29 +562,14 @@ export class MissionCache {
 				}
 			}
 		}
-		
-
-		debug("The right way failed...");
-
-		// for (const s of this.missionDefaultSignatures) {
-		// 	if (s.label === name) {
-		// 		return s;
-		// 	}
-		// }
-		// for (const c of this.missionClasses) {
-		// 	for (const m of c.methodSignatureInformation) {
-		// 		if (m.label === name) {
-		// 			return m;
-		// 		}
-		// 	}
-		// }
+		debug("The right signatures the right way failed...");
 		return undefined;
 	}
 
 	/**
 	 * 
 	 * @param folder The folder the current file is in.
-	 * @returns 
+	 * @returns an array of strings
 	 */
 	getRoles(folder: string): string[] {
 		folder = fixFileName(folder);
@@ -611,6 +586,7 @@ export class MissionCache {
 	}
 
 	/**
+	 * Gets the {@link MastFile MastFile} associated with the given uri, or makes one if it doesn't exist
 	 * Must actually be a mast file, so check before using!
 	 * @param uri The uri of the file
 	 */
@@ -661,7 +637,7 @@ async function loadTypings(): Promise<void> {
 			sourceFiles.push(new PyFile(url));
 		}
 		// prepCompletions(sourceFiles);
-		prepSignatures(sourceFiles);
+		// prepSignatures(sourceFiles);
 	} catch (err) {
 		debug("\nFailed to load\n"+err as string);
 	}

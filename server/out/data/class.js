@@ -9,8 +9,6 @@ const function_1 = require("./function");
 class ClassObject {
     constructor(raw, sourceFile) {
         this.methods = [];
-        // methodCompletionItems: CompletionItem[] = [];
-        this.methodSignatureInformation = [];
         this.startPos = 0;
         this.location = { uri: sourceFile, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } } };
         let className = /^class .+?:/gm; // Look for "class ClassName:" to parse class names.
@@ -40,7 +38,7 @@ class ClassObject {
                 this.constructorFunction = this.methods[i];
             }
             // this.methodCompletionItems.push(this.methods[i].completionItem);
-            this.methodSignatureInformation.push(this.methods[i].signatureInformation); //.buildSignatureInformation());
+            // this.methodSignatureInformation.push(this.methods[i].signatureInformation)//.buildSignatureInformation());
         }
         this.completionItem = this.buildCompletionItem();
         if (this.sourceFile.includes("sbs.py")) {
@@ -57,13 +55,6 @@ class ClassObject {
             ci.push(m.buildCompletionItem());
         }
         return ci;
-    }
-    getSignatures() {
-        let si = [];
-        for (const m of this.methods) {
-            si.push(m.buildSignatureInformation());
-        }
-        return si;
     }
     /**
      * Helper function, should only be called by constructor.

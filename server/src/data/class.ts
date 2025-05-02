@@ -8,7 +8,7 @@ export class ClassObject {
 	parent?: string;
 	methods: Function[] = [];
 	// methodCompletionItems: CompletionItem[] = [];
-	methodSignatureInformation: SignatureInformation[] = [];
+	// methodSignatureInformation: SignatureInformation[] = [];
 	constructorFunction?: Function;
 	documentation: string | MarkupContent;
 	completionItem: CompletionItem;
@@ -50,7 +50,7 @@ export class ClassObject {
 				this.constructorFunction = this.methods[i];
 			}
 			// this.methodCompletionItems.push(this.methods[i].completionItem);
-			this.methodSignatureInformation.push(this.methods[i].signatureInformation)//.buildSignatureInformation());
+			// this.methodSignatureInformation.push(this.methods[i].signatureInformation)//.buildSignatureInformation());
 		}
 		this.completionItem = this.buildCompletionItem();
 		if (this.sourceFile.includes("sbs.py")) {
@@ -69,15 +69,6 @@ export class ClassObject {
 		}
 		return ci;
 	}
-
-	getSignatures(): SignatureInformation[] {
-		let si: SignatureInformation[] = [];
-		for (const m of this.methods) {
-			si.push(m.buildSignatureInformation());
-		}
-		return si;
-	}
-	
 
 	/**
 	 * Helper function, should only be called by constructor.

@@ -281,9 +281,9 @@ class PyFile extends FileCache {
                 (0, console_1.debug)("Class methods: " + c.name);
                 (0, console_1.debug)(c.methods);
                 // c.methodCompletionItems = this.defaultFunctionCompletionItems;
-                for (const f of c.methods) {
-                    c.methodSignatureInformation.push(f.signatureInformation);
-                }
+                // for (const f of c.methods) {
+                // 	c.methodSignatureInformation.push(f.signatureInformation);
+                // }
                 this.classes.push(c);
                 if (c.name !== "scatter") {
                     // this.defaultFunctionCompletionItems = [];

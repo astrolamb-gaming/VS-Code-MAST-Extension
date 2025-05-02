@@ -5,23 +5,23 @@ import { debug } from 'console';
 import { getCache } from './cache';
 import { join } from 'path';
 
-let functionSigs: SignatureInformation[] = [];
+// let functionSigs: SignatureInformation[] = [];
 
 // With new system, this function will be depracated
-export function prepSignatures(files: PyFile[]) {
-	debug("Prepping signatures");
-	for (const i in files) {
-		const pyFile = files[i];
-		for (const f in pyFile.defaultFunctions) {
-			const func = pyFile.defaultFunctions[f];
-			let si:SignatureInformation = func.buildSignatureInformation();
-			functionSigs.push(si);
-		}
-		for (const c in pyFile.classes) {
-			functionSigs = functionSigs.concat(pyFile.classes[c].methodSignatureInformation);
-		}
-	}
-}
+// export function prepSignatures(files: PyFile[]) {
+// 	debug("Prepping signatures");
+// 	for (const i in files) {
+// 		const pyFile = files[i];
+// 		for (const f in pyFile.defaultFunctions) {
+// 			const func = pyFile.defaultFunctions[f];
+// 			let si:SignatureInformation = func.buildSignatureInformation();
+// 			functionSigs.push(si);
+// 		}
+// 		for (const c in pyFile.classes) {
+// 			functionSigs = functionSigs.concat(pyFile.classes[c].methodSignatureInformation);
+// 		}
+// 	}
+// }
 
 export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocument): SignatureHelp | undefined {
 	let sh : SignatureHelp = {
