@@ -138,11 +138,7 @@ export class MissionCache {
 			// .finally(()=>{debug("Finished loading modules")});
 		loadSbs().then((p)=>{
 			showProgressBar(true);
-			// debug("Loaded SBS, starting to parse.");
 			if (p !== null) {
-				debug(p.defaultFunctions);
-				debug(p.classes);
-				// This shows 102 sbs functions, which is right.
 				this.missionPyModules.push(p);
 				debug("addding " + p.uri);
 				this.missionClasses = this.missionClasses.concat(p.classes);
@@ -151,12 +147,6 @@ export class MissionCache {
 				for (const s of p.defaultFunctions) {
 					this.missionDefaultSignatures.push(s.signatureInformation);
 				}
-				sleep(10000).then(()=>{
-					debug(p.classes);
-					sleep(10000).then(()=>{
-						debug(p.classes);
-					})
-				})
 			}
 			debug("Finished loading sbs_utils for " + this.missionName);
 			showProgressBar(false);
@@ -317,7 +307,7 @@ export class MissionCache {
 	 * @returns 
 	 */
 	handleZipData(data:string, file:string = "") {
-		if (file.endsWith("__init__.mast") || file.endsWith("__init__.py")) {
+		if (file.endsWith("__init__.mast") || file.endsWith("__init__.py") || file.includes("mock")) {
 			// Do nothing
 		} else if (file.endsWith(".py")) {
 			this.routeLabels = this.routeLabels.concat(loadRouteLabels(data));
@@ -556,6 +546,21 @@ export class MissionCache {
 	 * @returns Associated {@link SignatureInformation}
 	 */
 	getSignatureOfMethod(name: string): SignatureInformation | undefined {
+		for (const f of this.missionDefaultFunctions) {
+			if (f.name === name) {
+				return f.buildSignatureInformation();
+			}
+		}
+		for (const c of this.missionClasses) {
+			for (const m of c.methods) {
+				if (m.name === name) {
+					return m.buildSignatureInformation();
+				}
+			}
+		}
+
+		debug("The right way failed...");
+
 		for (const s of this.missionDefaultSignatures) {
 			if (s.label === name) {
 				return s;

@@ -35,6 +35,7 @@ class ClassObject {
         // debug(this.sourceFile)
         this.methods = parseFunctions(raw, functionSource, this.sourceFile);
         for (const i in this.methods) {
+            (0, console_1.debug)(this.methods[i]);
             if (this.methods[i].functionType === "constructor") {
                 this.constructorFunction = this.methods[i];
             }
@@ -108,7 +109,7 @@ function getRegExMatch(sourceString, pattern) {
  */
 function parseFunctions(raw, source, sourceFile) {
     let m;
-    const fList = [];
+    let fList = [];
     let testStr = 'def add_client_tag() -> None:\n    """stub; does nothing yet."""';
     let wholeFunction = /((@property|\.setter|@classmethod)?([\n\t\r ]*?)(def)(.+?)([\.]{3,3}|((\"){3,3}(.*?)(\"){3,3})))/gms;
     let functionName = /((def\s)(.+?)\()/gm; // Look for "def functionName(" to parse function names.
@@ -123,6 +124,7 @@ function parseFunctions(raw, source, sourceFile) {
         const f = new function_1.Function(m[0], source, sourceFile);
         fList.push(f);
     }
+    fList = [...new Map(fList.map(v => [v.startIndex, v])).values()];
     return fList;
 }
 //# sourceMappingURL=class.js.map

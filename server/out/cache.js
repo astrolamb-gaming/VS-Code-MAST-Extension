@@ -19,7 +19,6 @@ const globals_1 = require("./globals");
 const os = require("os");
 const audioFiles_1 = require("./resources/audioFiles");
 const storyJson_1 = require("./data/storyJson");
-const python_1 = require("./python/python");
 const includeNonProcedurals = [
     "scatter",
     "faces",
@@ -116,11 +115,7 @@ class MissionCache {
         // .finally(()=>{debug("Finished loading modules")});
         loadSbs().then((p) => {
             (0, server_1.showProgressBar)(true);
-            // debug("Loaded SBS, starting to parse.");
             if (p !== null) {
-                (0, console_1.debug)(p.defaultFunctions);
-                (0, console_1.debug)(p.classes);
-                // This shows 102 sbs functions, which is right.
                 this.missionPyModules.push(p);
                 (0, console_1.debug)("addding " + p.uri);
                 this.missionClasses = this.missionClasses.concat(p.classes);
@@ -129,12 +124,6 @@ class MissionCache {
                 for (const s of p.defaultFunctions) {
                     this.missionDefaultSignatures.push(s.signatureInformation);
                 }
-                (0, python_1.sleep)(10000).then(() => {
-                    (0, console_1.debug)(p.classes);
-                    (0, python_1.sleep)(10000).then(() => {
-                        (0, console_1.debug)(p.classes);
-                    });
-                });
             }
             (0, console_1.debug)("Finished loading sbs_utils for " + this.missionName);
             (0, server_1.showProgressBar)(false);
@@ -291,7 +280,7 @@ class MissionCache {
      * @returns
      */
     handleZipData(data, file = "") {
-        if (file.endsWith("__init__.mast") || file.endsWith("__init__.py")) {
+        if (file.endsWith("__init__.mast") || file.endsWith("__init__.py") || file.includes("mock")) {
             // Do nothing
         }
         else if (file.endsWith(".py")) {
@@ -517,6 +506,19 @@ class MissionCache {
      * @returns Associated {@link SignatureInformation}
      */
     getSignatureOfMethod(name) {
+        for (const f of this.missionDefaultFunctions) {
+            if (f.name === name) {
+                return f.buildSignatureInformation();
+            }
+        }
+        for (const c of this.missionClasses) {
+            for (const m of c.methods) {
+                if (m.name === name) {
+                    return m.buildSignatureInformation();
+                }
+            }
+        }
+        (0, console_1.debug)("The right way failed...");
         for (const s of this.missionDefaultSignatures) {
             if (s.label === name) {
                 return s;

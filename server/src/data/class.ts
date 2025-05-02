@@ -45,6 +45,7 @@ export class ClassObject {
 		// debug(this.sourceFile)
 		this.methods = parseFunctions(raw, functionSource, this.sourceFile);
 		for (const i in this.methods) {
+			debug(this.methods[i]);
 			if (this.methods[i].functionType === "constructor") {
 				this.constructorFunction = this.methods[i];
 			}
@@ -130,7 +131,7 @@ export function getRegExMatch(sourceString : string, pattern : RegExp) : string 
 function parseFunctions(raw: string, source: string, sourceFile: string) {
 	let m: RegExpExecArray | null;
 
-	const fList : Function[] = [];
+	let fList : Function[] = [];
 
 	let testStr = 'def add_client_tag() -> None:\n    """stub; does nothing yet."""';
 
@@ -149,5 +150,6 @@ function parseFunctions(raw: string, source: string, sourceFile: string) {
 		const f: Function = new Function(m[0], source, sourceFile);
 		fList.push(f);
 	}
+	fList = [...new Map(fList.map(v => [v.startIndex, v])).values()]
 	return fList;
 }
