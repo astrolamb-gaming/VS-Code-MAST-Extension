@@ -7,7 +7,6 @@ import { getGlobals } from './globals';
 import { getClassOfMethod, isClassMethod, isFunction } from './tokens/tokens';
 import { variableModifiers } from './tokens/variables';
 import { buildLabelDocs, getMainLabelAtPos } from './tokens/labels';
-import { fileFromUri } from './fileFunctions';
 
 export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : Hover | undefined {
 	if (text.languageId !== "mast") {

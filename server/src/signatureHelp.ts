@@ -2,6 +2,8 @@ import { SignatureHelpParams, SignatureHelp, integer, SignatureInformation, Para
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
 import { getCache } from './cache';
+import { CRange, replaceRegexMatchWithUnderscore } from './tokens/comments';
+import { getHoveredSymbol } from './hover';
 
 export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocument): SignatureHelp | undefined {
 	let sh : SignatureHelp = {
@@ -62,62 +64,45 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 }
 
 export function getCurrentMethodName(iStr: string): string {
-	const last = iStr.lastIndexOf("(");
-	const lastClose = iStr.lastIndexOf(")");
-	if (lastClose > last) {
+// 	const last = iStr.lastIndexOf("(");
+// 	const lastClose = iStr.lastIndexOf(")");
+// 	if (lastClose > last) {
 
-	}
-	const priorCheck = iStr.substring(0,last-1);
-	let prior = priorCheck.lastIndexOf("(");
-	if (prior === -1) {
-		prior = priorCheck.lastIndexOf(".");
-	}
-	if (prior === -1) {
-		prior = priorCheck.lastIndexOf(" ");
-	}
-	if (prior === -1) {
-		prior = 0;
-	}
-	return iStr.substring(prior,last).replace(/\.|\(| |\"|\'/g,"");
-}
+// 	}
+// 	const priorCheck = iStr.substring(0,last-1);
+// 	let prior = priorCheck.lastIndexOf("(");
+// 	if (prior === -1) {
+// 		prior = priorCheck.lastIndexOf(".");
+// 	}
+// 	if (prior === -1) {
+// 		prior = priorCheck.lastIndexOf(" ");
+// 	}
+// 	if (prior === -1) {
+// 		prior = 0;
+// 	}
+// 	return iStr.substring(prior,last).replace(/\.|\(| |\"|\'/g,"");
+// }
 
-const test = "testing(a(),function(1,5, 10)";
-export function getMethodName(iStr: string): string {
-	iStr = test;
-	let ret = "";
-	let token = "";
-	let tokens = [];
-	let last = "";
-	let level = 0;
+// const test = "testing(a(),function(1,5, 10";
+// export function getMethodName(iStr: string): string {
+	// iStr = test;
 	let t: RegExpMatchArray | null;
-
-	while (t = test.match(/\w+\(/)) {
-		if (t === null) break;
-		if (t.index !== undefined) break;
+	t = iStr.match(/\w+\(([^\(\)])*\)/g);
+	// debug(t);
+	while (t) {
+		let s = iStr.indexOf(t[0])
+		let r: CRange = {
+			start: s,
+			end: t[0].length + s
+		}
+		// debug(r);
+		iStr = replaceRegexMatchWithUnderscore(iStr,r);
+		// debug(iStr);
 		// const line = iStr.substring()
+		t = iStr.match(/\w+\(([^\(\)])*\)/g);
 	}
-
-	for (const char of iStr) {
-		// We can just ignore spaces
-		if (char.match(/\w/)) {
-			token += char;
-			last = "char";
-			continue;
-		}
-		if (char === "(") {
-			level += 1;
-			last = "functionOpen"
-			continue;
-		}
-		if (char === (")")) {
-			level -= 1;
-			last = "functionClose"
-			continue;
-		}
-		if (char !== "") {
-
-		}
-	}
-
-	return ret;
+	let last = iStr.lastIndexOf("(");
+	let symbol = getHoveredSymbol(iStr,last);
+	debug(symbol);
+	return symbol;
 }

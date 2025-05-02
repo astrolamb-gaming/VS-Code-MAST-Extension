@@ -2,9 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.onSignatureHelp = onSignatureHelp;
 exports.getCurrentMethodName = getCurrentMethodName;
-exports.getMethodName = getMethodName;
 const console_1 = require("console");
 const cache_1 = require("./cache");
+const comments_1 = require("./tokens/comments");
+const hover_1 = require("./hover");
 function onSignatureHelp(_textDocPos, text) {
     let sh = {
         signatures: []
@@ -57,59 +58,44 @@ function onSignatureHelp(_textDocPos, text) {
     return sh;
 }
 function getCurrentMethodName(iStr) {
-    const last = iStr.lastIndexOf("(");
-    const lastClose = iStr.lastIndexOf(")");
-    if (lastClose > last) {
-    }
-    const priorCheck = iStr.substring(0, last - 1);
-    let prior = priorCheck.lastIndexOf("(");
-    if (prior === -1) {
-        prior = priorCheck.lastIndexOf(".");
-    }
-    if (prior === -1) {
-        prior = priorCheck.lastIndexOf(" ");
-    }
-    if (prior === -1) {
-        prior = 0;
-    }
-    return iStr.substring(prior, last).replace(/\.|\(| |\"|\'/g, "");
-}
-const test = "testing(a(),function(1,5, 10)";
-function getMethodName(iStr) {
-    iStr = test;
-    let ret = "";
-    let token = "";
-    let tokens = [];
-    let last = "";
-    let level = 0;
+    // 	const last = iStr.lastIndexOf("(");
+    // 	const lastClose = iStr.lastIndexOf(")");
+    // 	if (lastClose > last) {
+    // 	}
+    // 	const priorCheck = iStr.substring(0,last-1);
+    // 	let prior = priorCheck.lastIndexOf("(");
+    // 	if (prior === -1) {
+    // 		prior = priorCheck.lastIndexOf(".");
+    // 	}
+    // 	if (prior === -1) {
+    // 		prior = priorCheck.lastIndexOf(" ");
+    // 	}
+    // 	if (prior === -1) {
+    // 		prior = 0;
+    // 	}
+    // 	return iStr.substring(prior,last).replace(/\.|\(| |\"|\'/g,"");
+    // }
+    // const test = "testing(a(),function(1,5, 10";
+    // export function getMethodName(iStr: string): string {
+    // iStr = test;
     let t;
-    while (t = test.match(/\w+\(/)) {
-        if (t === null)
-            break;
-        if (t.index !== undefined)
-            break;
+    t = iStr.match(/\w+\(([^\(\)])*\)/g);
+    // debug(t);
+    while (t) {
+        let s = iStr.indexOf(t[0]);
+        let r = {
+            start: s,
+            end: t[0].length + s
+        };
+        // debug(r);
+        iStr = (0, comments_1.replaceRegexMatchWithUnderscore)(iStr, r);
+        // debug(iStr);
         // const line = iStr.substring()
+        t = iStr.match(/\w+\(([^\(\)])*\)/g);
     }
-    for (const char of iStr) {
-        // We can just ignore spaces
-        if (char.match(/\w/)) {
-            token += char;
-            last = "char";
-            continue;
-        }
-        if (char === "(") {
-            level += 1;
-            last = "functionOpen";
-            continue;
-        }
-        if (char === (")")) {
-            level -= 1;
-            last = "functionClose";
-            continue;
-        }
-        if (char !== "") {
-        }
-    }
-    return ret;
+    let last = iStr.lastIndexOf("(");
+    let symbol = (0, hover_1.getHoveredSymbol)(iStr, last);
+    (0, console_1.debug)(symbol);
+    return symbol;
 }
 //# sourceMappingURL=signatureHelp.js.map
