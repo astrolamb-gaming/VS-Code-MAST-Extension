@@ -148,7 +148,7 @@ class PyFile extends FileCache {
         if (path.extname(uri) === ".py") {
             // If file contents are included, we don't need to read, just go straight to parsing
             if (fileContents !== "") {
-                this.parseWholeFile(fileContents, uri);
+                this.parseWholeFile(fileContents);
             }
             else {
                 //debug("File contents empty, so we need to load it.");
@@ -157,7 +157,7 @@ class PyFile extends FileCache {
                         (0, console_1.debug)("error reading file: " + uri + "\n" + err);
                     }
                     else {
-                        this.parseWholeFile(data, uri);
+                        this.parseWholeFile(data);
                     }
                 });
             }
@@ -167,9 +167,8 @@ class PyFile extends FileCache {
             // Shouldn't do anything, Py files are very different from mast
         }
     }
-    parseWholeFile(text, source) {
+    parseWholeFile(text) {
         // Gotta clear old data
-        // this.defaultFunctionCompletionItems = [];
         this.classes = [];
         this.defaultFunctions = [];
         this.variableNames = [];
@@ -182,7 +181,7 @@ class PyFile extends FileCache {
         let checkText;
         let blockIndices = [];
         let m;
-        const doc = vscode_languageserver_textdocument_1.TextDocument.create(source, "py", 1, text);
+        const doc = vscode_languageserver_textdocument_1.TextDocument.create(this.uri, "py", 1, text);
         // Iterate over all classes to get their indices
         //classIndices.push(0);
         while (m = blockStart.exec(text)) {
@@ -191,12 +190,6 @@ class PyFile extends FileCache {
         }
         blockIndices.push(text.length - 1);
         let len = blockIndices.length; // How many indices there are - NOT the same as number of classes (should be # of classes - 1)
-        // const file: PyFile = {
-        // 	uri: source,
-        // 	defaultFunctions: [],
-        // 	defaultFunctionCompletionItems: [],
-        // 	classes: []
-        // }
         // Here we go over all the indices and get all functions between the last index (or 0) and the current index.
         // So if the file doesn't start with a class definition, all function prior to a class definition are added to the default functions
         // while class functions are addded to a ClassObject object.
@@ -211,14 +204,14 @@ class PyFile extends FileCache {
                 t = text.substring(start, blockIndices[i]);
             }
             if (t.startsWith("class")) {
-                const co = new class_1.ClassObject(t, source);
+                const co = new class_1.ClassObject(t, this.uri);
                 co.startPos = start + t.indexOf(co.name);
                 const r = {
                     start: doc.positionAt(co.startPos),
                     end: doc.positionAt(co.startPos + co.name.length)
                 };
                 co.location = {
-                    uri: source,
+                    uri: this.uri,
                     range: r
                 };
                 // Since sbs functions aren't part of a class, but do need a "sbs." prefix, we pretend sbs is its own class. 
@@ -228,7 +221,7 @@ class PyFile extends FileCache {
                     for (const m of co.methods) {
                         m.startIndex = start + t.indexOf("def " + m.name) + 4;
                         m.location = {
-                            uri: source,
+                            uri: this.uri,
                             range: {
                                 start: doc.positionAt(m.startIndex),
                                 end: doc.positionAt(m.startIndex + m.name.length)
@@ -244,7 +237,7 @@ class PyFile extends FileCache {
                     for (const m of co.methods) {
                         m.startIndex = start + t.indexOf("def " + m.name) + 4;
                         m.location = {
-                            uri: source,
+                            uri: this.uri,
                             range: {
                                 start: doc.positionAt(m.startIndex),
                                 end: doc.positionAt(m.startIndex + m.name.length)
@@ -256,10 +249,10 @@ class PyFile extends FileCache {
             }
             else if (t.startsWith("def")) {
                 // if (source.includes("sbs.py")) debug("TYRING ANOTHER SBS FUNCTION"); debug(source);
-                const m = new function_1.Function(t, "", source);
+                const m = new function_1.Function(t, "", this.uri);
                 m.startIndex = start + t.indexOf("def " + m.name) + 4;
                 m.location = {
-                    uri: source,
+                    uri: this.uri,
                     range: {
                         start: doc.positionAt(m.startIndex),
                         end: doc.positionAt(m.startIndex + m.name.length)
@@ -280,13 +273,8 @@ class PyFile extends FileCache {
                 // Good here
                 (0, console_1.debug)("Class methods: " + c.name);
                 (0, console_1.debug)(c.methods);
-                // c.methodCompletionItems = this.defaultFunctionCompletionItems;
-                // for (const f of c.methods) {
-                // 	c.methodSignatureInformation.push(f.signatureInformation);
-                // }
                 this.classes.push(c);
                 if (c.name !== "scatter") {
-                    // this.defaultFunctionCompletionItems = [];
                     this.defaultFunctions = [];
                 }
             }
@@ -299,10 +287,6 @@ class PyFile extends FileCache {
                 for (const m of this.defaultFunctions) {
                     m.name = prefix + m.name;
                 }
-                // for (const c of this.defaultFunctionCompletionItems) {
-                // 	c.label = prefix + c.label;
-                // 	c.insertText = prefix + c.insertText;
-                // }
             }
         }
     }

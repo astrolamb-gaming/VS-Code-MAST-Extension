@@ -7,8 +7,6 @@ export class ClassObject {
 	name: string;
 	parent?: string;
 	methods: Function[] = [];
-	// methodCompletionItems: CompletionItem[] = [];
-	// methodSignatureInformation: SignatureInformation[] = [];
 	constructorFunction?: Function;
 	documentation: string | MarkupContent;
 	completionItem: CompletionItem;
@@ -32,9 +30,6 @@ export class ClassObject {
 			}
 		}
 
-		// if (this.name === "" && sourceFile.endsWith("sbs.py")) {
-		// 	this.name = "sbs";
-		// }
 		this.parent = getRegExMatch(raw,parentClass).replace(/.*\(/,"").replace(/\):?/,"");
 		this.sourceFile = sourceFile;
 		// Should just get the first set of comments, which would be the ones for the class itself
@@ -42,15 +37,12 @@ export class ClassObject {
 
 		// Parse functions
 		let functionSource = (this.name === "") ? sourceFile : this.name;
-		// debug(this.sourceFile)
 		this.methods = parseFunctions(raw, functionSource, this.sourceFile);
 		for (const i in this.methods) {
 			debug(this.methods[i]);
 			if (this.methods[i].functionType === "constructor") {
 				this.constructorFunction = this.methods[i];
 			}
-			// this.methodCompletionItems.push(this.methods[i].completionItem);
-			// this.methodSignatureInformation.push(this.methods[i].signatureInformation)//.buildSignatureInformation());
 		}
 		this.completionItem = this.buildCompletionItem();
 		if (this.sourceFile.includes("sbs.py")) {

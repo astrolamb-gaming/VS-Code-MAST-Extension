@@ -13,25 +13,6 @@ import { getCurrentMethodName } from './signatureHelp';
 import { getRolesAsCompletionItem, getRolesForFile } from './roles';
 
 
-// let defaultFunctionCompletionItems: CompletionItem[] = [];
-
-// /**
-//  * // TODO: This needs implemented I think???? Check the pyfile parsing and see if this is done already
-//  * Does setup for all of the autocompletion stuff. Only should run once.
-//  * @param files 
-//  */
-// export function prepCompletions(files: PyFile[]) {
-// 	/// This gets all the default options. Should this be a const variable?
-	
-// 	for (const i in files) {
-// 		const pyFile = files[i];
-// 		// defaultFunctionCompletionItems = defaultFunctionCompletionItems.concat(pyFile.getDefaultMethodCompletionItems());
-// 		classes = classes.concat(pyFile.classes);
-// 	}
-// 	//debug(defaultFunctionCompletionItems);
-// 	// TODO: Send message to user if classes or defaultFunctionCompletionItems have a length of 0
-// }
-
 let currentLine = 0;
 
 export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, text: TextDocument): CompletionItem[] {
@@ -325,24 +306,6 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// 	return ci;
 	// }
 
-
-	/**  
-	 	All of this is now done by MissionCache#getCompletions()
-		// First we check if it should be just stuff from a particular class
-		for (const i in classes) {
-			if (iStr.endsWith(classes[i].name + ".")) {
-				return ci.concat(classes[i].methodCompletionItems);
-			}
-		}
-		// If it doesn't belong to a particular class, add class constructor to the list of completion items
-		for (const i in classes) {
-			//if (classes[i].constructorFunction !== undefined) {
-				ci.push(classes[i].completionItem);
-			//}
-		}
-	*/
-
-	
 
 
 	debug("Checking getCompletions");

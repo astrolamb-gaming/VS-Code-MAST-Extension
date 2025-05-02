@@ -21,24 +21,18 @@ class ClassObject {
                 this.name = n[1];
             }
         }
-        // if (this.name === "" && sourceFile.endsWith("sbs.py")) {
-        // 	this.name = "sbs";
-        // }
         this.parent = getRegExMatch(raw, parentClass).replace(/.*\(/, "").replace(/\):?/, "");
         this.sourceFile = sourceFile;
         // Should just get the first set of comments, which would be the ones for the class itself
         this.documentation = getRegExMatch(raw, comment).replace(/\"\"\"/g, "");
         // Parse functions
         let functionSource = (this.name === "") ? sourceFile : this.name;
-        // debug(this.sourceFile)
         this.methods = parseFunctions(raw, functionSource, this.sourceFile);
         for (const i in this.methods) {
             (0, console_1.debug)(this.methods[i]);
             if (this.methods[i].functionType === "constructor") {
                 this.constructorFunction = this.methods[i];
             }
-            // this.methodCompletionItems.push(this.methods[i].completionItem);
-            // this.methodSignatureInformation.push(this.methods[i].signatureInformation)//.buildSignatureInformation());
         }
         this.completionItem = this.buildCompletionItem();
         if (this.sourceFile.includes("sbs.py")) {

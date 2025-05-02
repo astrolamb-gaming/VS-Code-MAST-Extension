@@ -1,27 +1,6 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import {
-	createConnection,
-	TextDocuments,
-	Diagnostic,
-	DiagnosticSeverity,
-	ProposedFeatures,
-	InitializeParams,
-	DidChangeConfigurationNotification,
-	CompletionItem,
-	CompletionItemKind,
-	TextDocumentPositionParams,
-	TextDocumentSyncKind,
-	InitializeResult,
-	DocumentDiagnosticReportKind,
-	type DocumentDiagnosticReport,
-	integer,
-	SignatureInformation,
-	ParameterInformation,
-	CompletionItemLabelDetails,
-	InsertTextFormat,
-	WorkspaceFolder
-} from 'vscode-languageserver/node';
+import { WorkspaceFolder } from 'vscode-languageserver/node';
 import { debug } from 'console';
 import AdmZip = require("adm-zip");
 import { URI } from 'vscode-uri';

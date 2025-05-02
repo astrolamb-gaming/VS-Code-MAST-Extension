@@ -49,12 +49,10 @@ import { debug} from 'console';
 import { onHover } from './hover';
 import { getCurrentMethodName, onSignatureHelp } from './signatureHelp';
 import fs = require("fs");
-import { getCache, loadCache } from './cache';
 import { getVariableNamesInDoc } from './tokens/variables';
 import { getGlobals } from './globals';
 import { validateTextDocument } from './validate';
 import path = require('path');
-import { getGlobalFunctions, sleep } from './python/python';
 import { getTokenInfo } from './python/python';
 import { onDefinition } from './goToDefinition';
 

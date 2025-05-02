@@ -13,22 +13,6 @@ const fileFunctions_1 = require("./fileFunctions");
 const globals_1 = require("./globals");
 const signatureHelp_1 = require("./signatureHelp");
 const roles_1 = require("./roles");
-// let defaultFunctionCompletionItems: CompletionItem[] = [];
-// /**
-//  * // TODO: This needs implemented I think???? Check the pyfile parsing and see if this is done already
-//  * Does setup for all of the autocompletion stuff. Only should run once.
-//  * @param files 
-//  */
-// export function prepCompletions(files: PyFile[]) {
-// 	/// This gets all the default options. Should this be a const variable?
-// 	for (const i in files) {
-// 		const pyFile = files[i];
-// 		// defaultFunctionCompletionItems = defaultFunctionCompletionItems.concat(pyFile.getDefaultMethodCompletionItems());
-// 		classes = classes.concat(pyFile.classes);
-// 	}
-// 	//debug(defaultFunctionCompletionItems);
-// 	// TODO: Send message to user if classes or defaultFunctionCompletionItems have a length of 0
-// }
 let currentLine = 0;
 function onCompletion(_textDocumentPosition, text) {
     // return buildFaction("kra","Kralien_Set");
@@ -297,21 +281,6 @@ function onCompletion(_textDocumentPosition, text) {
     // 	// }
     // 	return ci;
     // }
-    /**
-        All of this is now done by MissionCache#getCompletions()
-        // First we check if it should be just stuff from a particular class
-        for (const i in classes) {
-            if (iStr.endsWith(classes[i].name + ".")) {
-                return ci.concat(classes[i].methodCompletionItems);
-            }
-        }
-        // If it doesn't belong to a particular class, add class constructor to the list of completion items
-        for (const i in classes) {
-            //if (classes[i].constructorFunction !== undefined) {
-                ci.push(classes[i].completionItem);
-            //}
-        }
-    */
     (0, console_1.debug)("Checking getCompletions");
     //debug(text.uri);
     //debug(ci);

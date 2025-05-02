@@ -1,27 +1,7 @@
 import { SignatureHelpParams, SignatureHelp, integer, SignatureInformation, ParameterInformation } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { PyFile } from './data';
 import { debug } from 'console';
 import { getCache } from './cache';
-import { join } from 'path';
-
-// let functionSigs: SignatureInformation[] = [];
-
-// With new system, this function will be depracated
-// export function prepSignatures(files: PyFile[]) {
-// 	debug("Prepping signatures");
-// 	for (const i in files) {
-// 		const pyFile = files[i];
-// 		for (const f in pyFile.defaultFunctions) {
-// 			const func = pyFile.defaultFunctions[f];
-// 			let si:SignatureInformation = func.buildSignatureInformation();
-// 			functionSigs.push(si);
-// 		}
-// 		for (const c in pyFile.classes) {
-// 			functionSigs = functionSigs.concat(pyFile.classes[c].methodSignatureInformation);
-// 		}
-// 	}
-// }
 
 export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocument): SignatureHelp | undefined {
 	let sh : SignatureHelp = {
@@ -54,25 +34,12 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 
 	let f: string = getCurrentMethodName(iStr);
 	debug(f);
-	// let sigs = getCache(text.uri).getMethodSignatures(f);
-	// debug(sigs);
-	// for (const sig of sigs) {
-	// 	if (sig.label === f) {
-	// 		debug(sig);
-	// 		sh.signatures.push(sig);
-	// 	}
-	// }
 
 	let sig = getCache(text.uri).getSignatureOfMethod(f);
 	debug(sig);
 	if (sig !== undefined) {
 		sh.signatures.push(sig);
 	}
-	// for (const i in functionSigs) {
-	// 	if (functionSigs[i].label === f) {
-	// 		sh.signatures.push(functionSigs[i]);
-	// 	}
-	// }
 
 	// This is just for testing
 	let p: ParameterInformation = {
@@ -90,12 +57,8 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 	}
 	si.parameters?.push(p);
 	si.parameters?.push(p2);
-	//sh.signatures.push(si);
-
-
 
 	return sh;
-	// debug(JSON.stringify(sh));
 }
 
 export function getCurrentMethodName(iStr: string): string {

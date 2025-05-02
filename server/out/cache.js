@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MissionCache = void 0;
-exports.loadCache = loadCache;
 exports.getSourceFiles = getSourceFiles;
 exports.getCache = getCache;
 const fs = require("fs");
@@ -26,30 +25,6 @@ const includeNonProcedurals = [
     "spaceobject.py",
     "agent"
 ];
-function loadCache(dir) {
-    // TODO: Need a list of caches, in case there are files from more than one mission folder open
-    let cache = getCache(dir);
-    (0, fileFunctions_1.getMissionFolder)(dir);
-    // if (cache === undefined) {
-    // 	cache = new MissionCache(dir);
-    // 	caches.push(cache);
-    // }
-    // const defSource = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/mast.py";
-    // const defSource2 = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast/maststory.py";
-    //loadTypings().then(()=>{ debug("Typings Loaded" )});
-    //loadRouteLabels().then(()=>{ debug("Routes Loaded") });
-    // getRexEx(defSource).then(()=>{ debug("Regular Expressions gotten")});
-    // getRexEx(defSource2).then(()=>{ debug("Regular Expressions 2 gotten")
-    // 	debug("Label?: ");
-    // 	debug(exp.get("Label"));
-    // });
-    //debug(getStoryJson(dir));
-}
-class MissionSubFolder {
-    constructor(uri) {
-        this.uri = uri;
-    }
-}
 class MissionCache {
     constructor(workspaceUri) {
         //debug(workspaceUri);
@@ -61,8 +36,6 @@ class MissionCache {
         // They apply to ALL files in the mission folder.
         this.missionPyModules = [];
         this.missionMastModules = [];
-        // missionDefaultCompletions: CompletionItem[] = [];
-        // missionDefaultSignatures: SignatureInformation[] = [];
         this.missionClasses = [];
         this.missionDefaultFunctions = [];
         // These are for the files specific to this mission.
@@ -93,9 +66,7 @@ class MissionCache {
         (0, server_1.showProgressBar)(true);
         // (re)set all the arrays before (re)populating them.
         this.missionClasses = [];
-        // this.missionDefaultCompletions = [];
         this.missionDefaultFunctions = [];
-        // this.missionDefaultSignatures = [];
         this.missionMastModules = [];
         this.missionPyModules = [];
         this.pyFileCache = [];
@@ -111,18 +82,12 @@ class MissionCache {
                 (0, server_1.showProgressBar)(false);
             });
         });
-        // .finally(()=>{debug("Finished loading modules")});
         loadSbs().then((p) => {
             (0, server_1.showProgressBar)(true);
             if (p !== null) {
                 this.missionPyModules.push(p);
                 (0, console_1.debug)("addding " + p.uri);
                 this.missionClasses = this.missionClasses.concat(p.classes);
-                // this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.getDefaultMethodCompletionItems());
-                // TODO: This is not doing anything anymore pretty sure
-                // for (const s of p.defaultFunctions) {
-                // 	this.missionDefaultSignatures.push(s.signatureInformation);
-                // }
             }
             (0, console_1.debug)("Finished loading sbs_utils for " + this.missionName);
             (0, server_1.showProgressBar)(false);
@@ -222,10 +187,10 @@ class MissionCache {
             const libErrs = [];
             //debug(this.missionLibFolder);
             const lib = this.storyJson.mastlib.concat(this.storyJson.sbslib);
-            let complete = 0;
             (0, console_1.debug)("Beginning to load modules");
             const total = lib.length;
             for (const zip of lib) {
+                (0, server_1.showProgressBar)(true);
                 let found = false;
                 for (const m of (0, globals_1.getGlobals)().getAllMissions()) {
                     if (this.storyJson.getModuleBaseName(zip).toLowerCase().includes(m.toLowerCase())) {
@@ -236,8 +201,6 @@ class MissionCache {
                         for (const f of files) {
                             const data = (0, fileFunctions_1.readFile)(f).then((data) => {
                                 this.handleZipData(data, f);
-                                complete += 1;
-                                // progressUpdate(complete/total*100);
                             });
                         }
                     }
@@ -254,8 +217,6 @@ class MissionCache {
                             }
                             file = saveZipTempFile(file, data);
                             this.handleZipData(data, file);
-                            complete += 1;
-                            // progressUpdate(complete/total*100);
                         });
                     }).catch(err => {
                         (0, console_1.debug)("Error unzipping. \n  " + err);
@@ -301,11 +262,7 @@ class MissionCache {
                 }
             }
             this.missionClasses = this.missionClasses.concat(p.classes);
-            // this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.getDefaultMethodCompletionItems());
             this.missionDefaultFunctions = this.missionDefaultFunctions.concat(p.defaultFunctions);
-            // for (const s of p.defaultFunctions) {
-            // 	this.missionDefaultSignatures.push(s.signatureInformation);
-            // }
         }
         else if (file.endsWith(".mast")) {
             //debug("Building file: " + file);
@@ -313,15 +270,24 @@ class MissionCache {
             this.missionMastModules.push(m);
         }
     }
+    /**
+     * Triggers an update to the {@link MastFile MastFile} or {@link PyFile PyFile} associated with the specified {@link TextDocument TextDocument}.
+     * @param doc The {@link TextDocument TextDocument}
+     */
     updateFileInfo(doc) {
         if (doc.languageId === "mast") {
-            (0, console_1.debug)("Updating mast file");
+            (0, console_1.debug)("Updating " + doc.uri);
             this.getMastFile(doc.uri).parse(doc.getText());
         }
         else if (doc.languageId === "py") {
-            // this.getPyFile(doc.getText())
+            (0, console_1.debug)("Updating " + doc.uri);
+            this.getPyFile(doc.uri).parseWholeFile(doc.getText());
         }
     }
+    /**
+     * Gets all route labels in scope for the given cache.
+     * @returns A list of {@link CompletionItem CompletionItem}s
+     */
     getRouteLabels() {
         let ci = [];
         for (const r of this.routeLabels) {
@@ -330,6 +296,10 @@ class MissionCache {
         (0, console_1.debug)(ci);
         return ci;
     }
+    /**
+     * Gets all media labels in scope for the given cache.
+     * @returns A list of {@link CompletionItem CompletionItem}s
+     */
     getMediaLabels() {
         let ci = [];
         for (const r of this.mediaLabels) {
@@ -337,6 +307,10 @@ class MissionCache {
         }
         return ci;
     }
+    /**
+     * Gets all resource labels in scope for the given cache.
+     * @returns A list of {@link CompletionItem CompletionItem}s
+     */
     getResourceLabels() {
         let ci = [];
         for (const r of this.resourceLabels) {
@@ -344,6 +318,10 @@ class MissionCache {
         }
         return ci;
     }
+    /**
+     * Gets all music files in scope for the given cache.
+     * @returns A list of {@link CompletionItem CompletionItem}s
+     */
     getMusicFiles() {
         return (0, audioFiles_1.getMusicFiles)(this.missionLibFolder);
     }

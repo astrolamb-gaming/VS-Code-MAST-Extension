@@ -5,22 +5,6 @@ exports.getCurrentMethodName = getCurrentMethodName;
 exports.getMethodName = getMethodName;
 const console_1 = require("console");
 const cache_1 = require("./cache");
-// let functionSigs: SignatureInformation[] = [];
-// With new system, this function will be depracated
-// export function prepSignatures(files: PyFile[]) {
-// 	debug("Prepping signatures");
-// 	for (const i in files) {
-// 		const pyFile = files[i];
-// 		for (const f in pyFile.defaultFunctions) {
-// 			const func = pyFile.defaultFunctions[f];
-// 			let si:SignatureInformation = func.buildSignatureInformation();
-// 			functionSigs.push(si);
-// 		}
-// 		for (const c in pyFile.classes) {
-// 			functionSigs = functionSigs.concat(pyFile.classes[c].methodSignatureInformation);
-// 		}
-// 	}
-// }
 function onSignatureHelp(_textDocPos, text) {
     let sh = {
         signatures: []
@@ -49,24 +33,11 @@ function onSignatureHelp(_textDocPos, text) {
     // Check for the current function name and get SignatureInformation for that function.
     let f = getCurrentMethodName(iStr);
     (0, console_1.debug)(f);
-    // let sigs = getCache(text.uri).getMethodSignatures(f);
-    // debug(sigs);
-    // for (const sig of sigs) {
-    // 	if (sig.label === f) {
-    // 		debug(sig);
-    // 		sh.signatures.push(sig);
-    // 	}
-    // }
     let sig = (0, cache_1.getCache)(text.uri).getSignatureOfMethod(f);
     (0, console_1.debug)(sig);
     if (sig !== undefined) {
         sh.signatures.push(sig);
     }
-    // for (const i in functionSigs) {
-    // 	if (functionSigs[i].label === f) {
-    // 		sh.signatures.push(functionSigs[i]);
-    // 	}
-    // }
     // This is just for testing
     let p = {
         label: "Parameter 1",
@@ -83,9 +54,7 @@ function onSignatureHelp(_textDocPos, text) {
     };
     si.parameters?.push(p);
     si.parameters?.push(p2);
-    //sh.signatures.push(si);
     return sh;
-    // debug(JSON.stringify(sh));
 }
 function getCurrentMethodName(iStr) {
     const last = iStr.lastIndexOf("(");
