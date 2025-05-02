@@ -518,19 +518,33 @@ class MissionCache {
                 }
             }
         }
-        (0, console_1.debug)("The right way failed...");
-        for (const s of this.missionDefaultSignatures) {
-            if (s.label === name) {
-                return s;
+        for (const m of this.pyFileCache) {
+            for (const f of m.defaultFunctions) {
+                if (f.name === name) {
+                    return f.buildSignatureInformation();
+                }
             }
-        }
-        for (const c of this.missionClasses) {
-            for (const m of c.methodSignatureInformation) {
-                if (m.label === name) {
-                    return m;
+            for (const c of m.classes) {
+                for (const f of c.methods) {
+                    if (f.name === name) {
+                        return f.buildSignatureInformation();
+                    }
                 }
             }
         }
+        (0, console_1.debug)("The right way failed...");
+        // for (const s of this.missionDefaultSignatures) {
+        // 	if (s.label === name) {
+        // 		return s;
+        // 	}
+        // }
+        // for (const c of this.missionClasses) {
+        // 	for (const m of c.methodSignatureInformation) {
+        // 		if (m.label === name) {
+        // 			return m;
+        // 		}
+        // 	}
+        // }
         return undefined;
     }
     /**
