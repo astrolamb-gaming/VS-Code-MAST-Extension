@@ -79,7 +79,7 @@ class MissionCache {
             (0, server_1.showProgressBar)(true);
             this.modulesLoaded().then(() => {
                 (0, console_1.debug)("Modules loaded for " + this.missionName);
-                (0, server_1.showProgressBar)(false);
+                // showProgressBar(false);
             });
         });
         loadSbs().then((p) => {

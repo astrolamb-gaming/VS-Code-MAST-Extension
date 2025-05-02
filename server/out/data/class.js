@@ -35,9 +35,9 @@ class ClassObject {
             }
         }
         this.completionItem = this.buildCompletionItem();
-        if (this.sourceFile.includes("sbs.py")) {
-            (0, console_1.debug)(this.methods);
-        }
+        // if (this.sourceFile.includes("sbs.py")) {
+        // 	debug(this.methods);
+        // }
         return this;
     }
     getMethodCompletionItems() {

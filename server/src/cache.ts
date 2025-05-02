@@ -17,6 +17,7 @@ import { getMusicFiles } from './resources/audioFiles';
 import { Function } from "./data/function";
 import { ClassObject } from './data/class';
 import { StoryJson } from './data/storyJson';
+import { sleep } from './python/python';
 
 
 const includeNonProcedurals = [
@@ -92,7 +93,7 @@ export class MissionCache {
 				showProgressBar(true);
 				this.modulesLoaded().then(()=>{
 					debug("Modules loaded for " + this.missionName);
-					showProgressBar(false);
+					// showProgressBar(false);
 				})
 			});
 		loadSbs().then((p)=>{

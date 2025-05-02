@@ -45,9 +45,9 @@ export class ClassObject {
 			}
 		}
 		this.completionItem = this.buildCompletionItem();
-		if (this.sourceFile.includes("sbs.py")) {
-			debug(this.methods);
-		}
+		// if (this.sourceFile.includes("sbs.py")) {
+		// 	debug(this.methods);
+		// }
 		return this;
 	}
 

@@ -58,22 +58,12 @@ class FileCache {
     }
 }
 exports.FileCache = FileCache;
-// export interface Variable {
-// 	name: string,
-// 	/**
-// 	 * Given that MAST and Python are not stronly typed, there are lots of possible types the variable could have.
-// 	 */
-// 	possibleTypes: string[],
-// 	/**
-// 	 * variable modifiers like "shared"
-// 	 */
-// 	modifiers: string[]
-// }
+/**
+ * Represents a mast file.
+ * Contains all the information about that specific file, including its referenced
+ * labels, variables, roles, and prefabs.
+ */
 class MastFile extends FileCache {
-    // strings: CRange[] = [];
-    // comments: CRange[] = [];
-    // yamls: CRange[] = [];
-    // squareBrackets: CRange[] = [];
     constructor(uri, fileContents = "") {
         //debug("building mast file");
         super(uri);
@@ -142,7 +132,6 @@ class PyFile extends FileCache {
         uri = (0, fileFunctions_1.fixFileName)(uri);
         super(uri);
         this.defaultFunctions = [];
-        // defaultFunctionCompletionItems: CompletionItem[] = [];
         this.classes = [];
         // If fileContents is NOT an empty string (e.g. if it's from a zipped folder), then all we do is parse the contents
         if (path.extname(uri) === ".py") {
@@ -227,7 +216,6 @@ class PyFile extends FileCache {
                                 end: doc.positionAt(m.startIndex + m.name.length)
                             }
                         };
-                        // this.defaultFunctionCompletionItems.push(m.completionItem);
                     }
                 }
                 else {
@@ -259,7 +247,6 @@ class PyFile extends FileCache {
                     }
                 };
                 this.defaultFunctions.push(m);
-                // this.defaultFunctionCompletionItems.push(m.completionItem);
                 //debug(f);
             }
         }
@@ -267,12 +254,8 @@ class PyFile extends FileCache {
             if (path.basename(this.uri).replace(".py", "") === o) {
                 const c = new class_1.ClassObject("", path.basename(this.uri));
                 c.name = o;
-                // c.name = o.replace(".py","");
                 c.completionItem = c.buildCompletionItem();
                 c.methods = this.defaultFunctions;
-                // Good here
-                (0, console_1.debug)("Class methods: " + c.name);
-                (0, console_1.debug)(c.methods);
                 this.classes.push(c);
                 if (c.name !== "scatter") {
                     this.defaultFunctions = [];
