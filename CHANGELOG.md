@@ -9,6 +9,16 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * Determine variable types based on function return values, etc
 * Fix for weighted strings not being recognized as strings in certain situations
 * Show label autocompletions for functions that take a label as an argument
+* Add python built-in module information
+
+### 0.10.0
+
+* Add autocompletion for objects
+* Major overhaul to cut down on computational and memory resource usage
+* Add spaceobject.py and agent.py files
+* By default, tabs will be used instead of spaces for indentation
+* More thorough fix for sbs module to fix [#3](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues/3)
+* Fix autocompletion and signature information issue when using nested functions [#4](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues/4)
 
 ### 0.9.1
 

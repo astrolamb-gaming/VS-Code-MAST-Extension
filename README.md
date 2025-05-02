@@ -3,6 +3,11 @@
 An extension for developing missions for [Artemis Cosmos](https://www.artemisspaceshipbridge.com/#/).
 It is intended to facilitate developing mission scripts using the [MAST language](https://artemis-sbs.github.io/sbs_utils/mast/).
 
+MAST references:
+[sbs_utils repository](https://github.com/artemis-sbs/sbs_utils)
+[LegendaryMissions repository](https://github.com/artemis-sbs/LegendaryMissions)
+[Artemis Cosmos bug reporting](https://github.com/artemis-sbs/LegendaryMissions/issues)
+
 ## Features
 
 Includes:
@@ -18,6 +23,8 @@ Includes:
 	* faces package
 	* sbs_utils/procedural
 * Autocompletion for variables etc in current file and files in scope
+	- NOTE: It's virtually impossible to determine the type of a variable programmatically. The extension can't really do it, so you'll have to keep track of what each variable represents.
+	The extension will give you options that show the object type associated with that option.
 * Autocompletion for labels in current file and files in scope
 * Function signature information (i.e. notes on argument types)
 * Go To Definition functionality
