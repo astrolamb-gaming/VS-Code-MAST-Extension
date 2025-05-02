@@ -54,8 +54,8 @@ import { getVariableNamesInDoc } from './tokens/variables';
 import { getGlobals } from './globals';
 import { validateTextDocument } from './validate';
 import path = require('path');
-import { getGlobalFunctions, sleep } from './python';
-import { getTokenInfo } from './python';
+import { getGlobalFunctions, sleep } from './python/python';
+import { getTokenInfo } from './python/python';
 import { onDefinition } from './goToDefinition';
 
 // Create a connection for the server, using Node's IPC as a transport.

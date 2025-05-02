@@ -7,7 +7,7 @@ import sharp = require('sharp');
 import { CompletionItem, CompletionItemLabelDetails, CompletionItemKind, SignatureInformation, MarkupContent } from 'vscode-languageserver';
 import { connection, notifyClient, showProgressBar } from './server';
 import { ShipData } from './shipData';
-import { sleep } from './python';
+import { sleep } from './python/python';
 
 interface DataSetItem {
 	name: string,

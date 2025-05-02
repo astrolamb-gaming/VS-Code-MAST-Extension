@@ -10,7 +10,6 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { checkEnableRoutes } from './tokens/routeLabels';
 import { URI } from 'vscode-uri';
 import { fixFileName } from './fileFunctions';
-import { compileMission } from './python';
 
 let debugStrs : string = "";//Debug: ${workspaceFolder}\n";
 

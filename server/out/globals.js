@@ -11,7 +11,7 @@ const sharp = require("sharp");
 const vscode_languageserver_1 = require("vscode-languageserver");
 const server_1 = require("./server");
 const shipData_1 = require("./shipData");
-const python_1 = require("./python");
+const python_1 = require("./python/python");
 class Globals {
     constructor() {
         this.currentFile = "";
