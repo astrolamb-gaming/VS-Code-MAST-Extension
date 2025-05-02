@@ -290,6 +290,7 @@ export class PyFile extends FileCache {
 				c.completionItem = c.buildCompletionItem();
 				c.methods = this.defaultFunctions;
 				// Good here
+				debug("Class methods: " + c.name);
 				debug(c.methods);
 				// c.methodCompletionItems = this.defaultFunctionCompletionItems;
 				for (const f of c.methods) {

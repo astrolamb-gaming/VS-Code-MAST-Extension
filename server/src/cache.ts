@@ -18,6 +18,7 @@ import { getMusicFiles } from './resources/audioFiles';
 import { Function } from "./data/function";
 import { ClassObject } from './data/class';
 import { StoryJson } from './data/storyJson';
+import { sleep } from './python/python';
 
 
 const includeNonProcedurals = [
@@ -141,6 +142,7 @@ export class MissionCache {
 			if (p !== null) {
 				debug(p.defaultFunctions);
 				debug(p.classes);
+				// This shows 102 sbs functions, which is right.
 				this.missionPyModules.push(p);
 				debug("addding " + p.uri);
 				this.missionClasses = this.missionClasses.concat(p.classes);
@@ -149,6 +151,12 @@ export class MissionCache {
 				for (const s of p.defaultFunctions) {
 					this.missionDefaultSignatures.push(s.signatureInformation);
 				}
+				sleep(10000).then(()=>{
+					debug(p.classes);
+					sleep(10000).then(()=>{
+						debug(p.classes);
+					})
+				})
 			}
 			debug("Finished loading sbs_utils for " + this.missionName);
 			showProgressBar(false);

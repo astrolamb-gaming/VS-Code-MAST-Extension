@@ -278,6 +278,7 @@ class PyFile extends FileCache {
                 c.completionItem = c.buildCompletionItem();
                 c.methods = this.defaultFunctions;
                 // Good here
+                (0, console_1.debug)("Class methods: " + c.name);
                 (0, console_1.debug)(c.methods);
                 // c.methodCompletionItems = this.defaultFunctionCompletionItems;
                 for (const f of c.methods) {

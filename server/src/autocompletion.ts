@@ -358,8 +358,9 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		for (const c of cache.missionClasses) {
 			if (c.name === "sbs") {
 				debug("THIS IS SBS");
+				debug(c);
 			}
-			debug(c);
+			// debug(c);
 			if (iStr.endsWith(c.name + ".")) {
 				debug(iStr + " contains" + c.name);
 				// TODO: Only use labels with isClassMethod = true

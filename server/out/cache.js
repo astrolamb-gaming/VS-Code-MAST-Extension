@@ -19,6 +19,7 @@ const globals_1 = require("./globals");
 const os = require("os");
 const audioFiles_1 = require("./resources/audioFiles");
 const storyJson_1 = require("./data/storyJson");
+const python_1 = require("./python/python");
 const includeNonProcedurals = [
     "scatter",
     "faces",
@@ -119,6 +120,7 @@ class MissionCache {
             if (p !== null) {
                 (0, console_1.debug)(p.defaultFunctions);
                 (0, console_1.debug)(p.classes);
+                // This shows 102 sbs functions, which is right.
                 this.missionPyModules.push(p);
                 (0, console_1.debug)("addding " + p.uri);
                 this.missionClasses = this.missionClasses.concat(p.classes);
@@ -127,6 +129,12 @@ class MissionCache {
                 for (const s of p.defaultFunctions) {
                     this.missionDefaultSignatures.push(s.signatureInformation);
                 }
+                (0, python_1.sleep)(10000).then(() => {
+                    (0, console_1.debug)(p.classes);
+                    (0, python_1.sleep)(10000).then(() => {
+                        (0, console_1.debug)(p.classes);
+                    });
+                });
             }
             (0, console_1.debug)("Finished loading sbs_utils for " + this.missionName);
             (0, server_1.showProgressBar)(false);
