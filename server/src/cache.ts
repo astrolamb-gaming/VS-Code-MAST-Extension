@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { CompletionItem, integer, Position, SignatureInformation } from 'vscode-languageserver';
-import { MastFile, PyFile, Function, ClassObject } from './data';
+import { MastFile, PyFile } from './data';
 import { parseLabelsInFile, LabelInfo, getMainLabelAtPos } from './tokens/labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
@@ -14,6 +14,9 @@ import { URI } from 'vscode-uri';
 import { getGlobals } from './globals';
 import * as os from 'os';
 import { Variable } from './tokens/variables';
+import { getMusicFiles } from './resources/audioFiles';
+import { Function } from "./data/function";
+import { ClassObject } from './data/class';
 
 
 const includeNonProcedurals = [
@@ -135,10 +138,13 @@ export class MissionCache {
 			showProgressBar(true);
 			// debug("Loaded SBS, starting to parse.");
 			if (p !== null) {
+				debug(p.defaultFunctions);
+				debug(p.classes);
 				this.missionPyModules.push(p);
 				debug("addding " + p.uri);
 				this.missionClasses = this.missionClasses.concat(p.classes);
 				// this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.getDefaultMethodCompletionItems());
+				// TODO: This is not doing anything anymore pretty sure
 				for (const s of p.defaultFunctions) {
 					this.missionDefaultSignatures.push(s.signatureInformation);
 				}
@@ -366,6 +372,10 @@ export class MissionCache {
 			ci.push(r.completionItem);
 		}
 		return ci;
+	}
+
+	getMusicFiles(): CompletionItem[] {
+		return getMusicFiles(this.missionLibFolder);
 	}
 
 	/**
@@ -856,13 +866,17 @@ async function loadSbs(): Promise<PyFile|null>{
 		const data = await fetch(gh);
 		text = await data.text();
 		gh = saveZipTempFile("sbs.py",text);
-		return new PyFile(gh, text);
+		const p = new PyFile(gh, text);
+		return p;
 	} catch (e) {
 		debug("Can't find sbs.py on github");
 		try {
 			gh = path.join(__dirname, "sbs.py");
 			text = await readFile(gh);
-			return new PyFile(gh, text);
+			const p = new PyFile(gh, text);
+			debug("SBS py file generated")
+			// debug(p.defaultFunctions);
+			return p;
 		} catch (ex) {
 			debug("Can't find sbs.py locally either.");
 		}

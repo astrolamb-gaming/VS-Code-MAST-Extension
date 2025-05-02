@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Parameter = exports.Function = exports.ClassObject = exports.PyFile = exports.MastFile = exports.FileCache = exports.prepend = exports.asClasses = exports.replaceNames = void 0;
-exports.getRegExMatch = getRegExMatch;
+exports.PyFile = exports.MastFile = exports.FileCache = exports.prepend = exports.asClasses = exports.replaceNames = void 0;
 exports.getLabelDescription = getLabelDescription;
 const path = require("path");
 const fs = require("fs");
@@ -11,10 +10,11 @@ const labels_1 = require("./tokens/labels");
 const vscode_languageserver_textdocument_1 = require("vscode-languageserver-textdocument");
 const fileFunctions_1 = require("./fileFunctions");
 const cache_1 = require("./cache");
-const globals_1 = require("./globals");
 const roles_1 = require("./roles");
 const prefabs_1 = require("./tokens/prefabs");
 const variables_1 = require("./tokens/variables");
+const function_1 = require("./data/function");
+const class_1 = require("./data/class");
 /**
  * This accounts for classes that use a different name as a global than the class name.
  * E.g. the sim global variable refers to the simulation class. Instead of simulation.functionName(), use sim.functionName().
@@ -211,7 +211,7 @@ class PyFile extends FileCache {
                 t = text.substring(start, blockIndices[i]);
             }
             if (t.startsWith("class")) {
-                const co = new ClassObject(t, source);
+                const co = new class_1.ClassObject(t, source);
                 co.startPos = start + t.indexOf(co.name);
                 const r = {
                     start: doc.positionAt(co.startPos),
@@ -256,7 +256,7 @@ class PyFile extends FileCache {
             }
             else if (t.startsWith("def")) {
                 // if (source.includes("sbs.py")) debug("TYRING ANOTHER SBS FUNCTION"); debug(source);
-                const m = new Function(t, "", source);
+                const m = new function_1.Function(t, "", source);
                 m.startIndex = start + t.indexOf("def " + m.name) + 4;
                 m.location = {
                     uri: source,
@@ -272,11 +272,13 @@ class PyFile extends FileCache {
         }
         for (const o of exports.asClasses) {
             if (path.basename(this.uri).replace(".py", "") === o) {
-                const c = new ClassObject("", path.basename(this.uri));
+                const c = new class_1.ClassObject("", path.basename(this.uri));
                 c.name = o;
                 // c.name = o.replace(".py","");
                 c.completionItem = c.buildCompletionItem();
                 c.methods = this.defaultFunctions;
+                // Good here
+                (0, console_1.debug)(c.methods);
                 // c.methodCompletionItems = this.defaultFunctionCompletionItems;
                 for (const f of c.methods) {
                     c.methodSignatureInformation.push(f.signatureInformation);
@@ -312,412 +314,6 @@ class PyFile extends FileCache {
     }
 }
 exports.PyFile = PyFile;
-class ClassObject {
-    constructor(raw, sourceFile) {
-        this.methods = [];
-        // methodCompletionItems: CompletionItem[] = [];
-        this.methodSignatureInformation = [];
-        this.startPos = 0;
-        this.location = { uri: sourceFile, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } } };
-        let className = /^class .+?:/gm; // Look for "class ClassName:" to parse class names.
-        const parentClass = /\(\w*?\):/;
-        let comment = /((\"){3,3}(.*?)(\"){3,3})|(\.\.\.)/m;
-        // TODO: Could pull the class parent and interfaces (if any). Would this be useful?
-        this.name = getRegExMatch(raw, className).replace("class ", "").replace(/(\(.*?\))?:/, "");
-        for (const n of exports.replaceNames) {
-            if (this.name === n[0]) {
-                this.name = n[1];
-            }
-        }
-        // if (this.name === "" && sourceFile.endsWith("sbs.py")) {
-        // 	this.name = "sbs";
-        // }
-        this.parent = getRegExMatch(raw, parentClass).replace(/.*\(/, "").replace(/\):?/, "");
-        this.sourceFile = sourceFile;
-        // Should just get the first set of comments, which would be the ones for the class itself
-        this.documentation = getRegExMatch(raw, comment).replace(/\"\"\"/g, "");
-        // Parse functions
-        let functionSource = (this.name === "") ? sourceFile : this.name;
-        // debug(this.sourceFile)
-        this.methods = parseFunctions(raw, functionSource, this.sourceFile);
-        for (const i in this.methods) {
-            if (this.methods[i].functionType === "constructor") {
-                this.constructorFunction = this.methods[i];
-            }
-            // this.methodCompletionItems.push(this.methods[i].completionItem);
-            this.methodSignatureInformation.push(this.methods[i].signatureInformation); //.buildSignatureInformation());
-        }
-        this.completionItem = this.buildCompletionItem();
-        return this;
-    }
-    getMethodCompletionItems() {
-        let ci = [];
-        for (const m of this.methods) {
-            ci.push(m.buildCompletionItem());
-        }
-        return ci;
-    }
-    getSignatures() {
-        let si = [];
-        for (const m of this.methods) {
-            si.push(m.buildSignatureInformation());
-        }
-        return si;
-    }
-    /**
-     * Helper function, should only be called by constructor.
-     * @returns A {@link CompletionItem CompletionItem} object representing the class object.
-     */
-    buildCompletionItem() {
-        //const ci: CompletionItem;
-        let labelDetails = {
-            // Decided that this clutters up the UI too much. Same information is displayed in the CompletionItem details.
-            //detail: "(" + params + ")",
-            description: this.name
-        };
-        let cik = vscode_languageserver_1.CompletionItemKind.Class;
-        let ci_details = this.name + "(" + ((this.constructorFunction === undefined) ? "" : this.constructorFunction?.rawParams) + "): " + this.name;
-        let ci = {
-            label: this.name,
-            kind: cik,
-            //command: { command: 'editor.action.triggerSuggest', title: 'Re-trigger completions...' },
-            documentation: this.documentation,
-            detail: ci_details, //(this.constructorFunction) ? this.constructorFunction.documentation : this.documentation, //this.documentation as string,
-            labelDetails: labelDetails,
-            insertText: this.name
-        };
-        return ci;
-    }
-}
-exports.ClassObject = ClassObject;
-class Function {
-    constructor(raw, className, sourceFile) {
-        this.name = "";
-        this.startIndex = 0;
-        this.location = { uri: sourceFile, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } } };
-        this.className = className;
-        this.sourceFile = sourceFile;
-        this.parameters = [];
-        const functionName = /(?:def\s)(.+?)(?:\()/gm; ///((def\s)(.+?)\()/gm; // Look for "def functionName(" to parse function names.
-        //let className : RegExp = /class (.+?):/gm; // Look for "class ClassName:" to parse class names.
-        const functionParam = /\((.*?)\)/m; // Find parameters of function, if any.
-        // Could replace functionParam regex with : (?:def\s.+?\()(.*?)(?:\)(:|\s*->))
-        const returnValue = /->(.+?):/gm; // Get the return value (None, boolean, int, etc)
-        const comment = /((\"){3,3}(.*?)(\"){3,3})|(\.\.\.)/gms;
-        const isProperty = /(@property)/;
-        const isClassMethod = /(@classmethod)|(@staticmethod)/;
-        const isSetter = /\.setter/;
-        this.name = getRegExMatch(raw, functionName).replace("def ", "").replace("(", "").trim();
-        let params = getRegExMatch(raw, functionParam).replace(/\(|\)/g, "").replace(/self(.*?,|.*?$)/m, "").trim();
-        this.rawParams = params;
-        let comments = getRegExMatch(raw, comment).replace("\"\"\"", "").replace("\"\"\"", "");
-        this.documentation = comments;
-        let retVal = getRegExMatch(raw, returnValue).replace(/(:|->)/g, "").trim();
-        if (retVal === "") {
-            let cLines = comments.split("\n");
-            for (let i = 0; i < cLines.length; i++) {
-                if (cLines[i].includes("Return")) {
-                    let retLine = cLines[i + 1].trim().replace("(", "");
-                    if (retLine.startsWith("bool")) {
-                        this.returnType = "boolean";
-                    }
-                    else if (retLine.startsWith("id") || retLine.startsWith("agent id")) {
-                        this.returnType = "int";
-                    }
-                    else if (retLine.startsWith("list")) {
-                        this.returnType = "list";
-                    }
-                    else if (retLine.startsWith("str")) {
-                        this.returnType = "string";
-                    }
-                    else {
-                        // We potentially modified retLine by replacing open parentheses, so we just use the source
-                        this.returnType = cLines[i + 1].trim();
-                    }
-                    break;
-                }
-            }
-        }
-        this.returnType = retVal;
-        let cik = vscode_languageserver_1.CompletionItemKind.Function;
-        let cikStr = "function";
-        if (isProperty.test(raw)) {
-            cik = vscode_languageserver_1.CompletionItemKind.Property;
-            cikStr = "property";
-        }
-        if (isClassMethod.test(raw)) {
-            cik = vscode_languageserver_1.CompletionItemKind.Method;
-            cikStr = "classmethod";
-        }
-        if (isSetter.test(raw)) {
-            cik = vscode_languageserver_1.CompletionItemKind.Unit;
-            cikStr = "setter";
-        }
-        if (this.name === "__init__") {
-            cik = vscode_languageserver_1.CompletionItemKind.Constructor;
-            cikStr = "constructor";
-            this.name = className;
-        }
-        this.functionType = cikStr;
-        // if (params.includes('art')) {
-        // 	debug("NEW ART")
-        // 	debug(params)
-        // 	debug(this.className + "." + this.name)
-        // }
-        // TODO: Only use these when really needed
-        this.parameters = this.buildParams(params);
-        this.completionItem = this.buildCompletionItem();
-        this.signatureInformation = this.buildSignatureInformation();
-        //debug(this);
-        return this;
-    }
-    convertFunctionTypeToCompletionItemKind(type) {
-        let cik = vscode_languageserver_1.CompletionItemKind.Function;
-        if (type === "setter")
-            return vscode_languageserver_1.CompletionItemKind.Unit;
-        if (type === "property")
-            return vscode_languageserver_1.CompletionItemKind.Property;
-        if (type === "constructor")
-            return vscode_languageserver_1.CompletionItemKind.Constructor;
-        if (type === "classmethod")
-            return vscode_languageserver_1.CompletionItemKind.Method;
-        return cik;
-    }
-    /**
-     * Helper function, should only be called by constructor.
-     * @param raw
-     * @returns
-     */
-    buildParams(raw) {
-        //debug("buildParams: " + this.name + "\n" + raw);
-        const paramList = [];
-        switch (raw) {
-            case "":
-                return paramList;
-            case "self":
-                return paramList;
-        }
-        const arr = raw.split(",");
-        let parameterCounter = 0;
-        for (const i in arr) {
-            if (arr[i].trim().startsWith("self")) {
-                continue;
-            }
-            const param = new Parameter(arr[i], 0);
-            parameterCounter += 1;
-            paramList.push(param);
-        }
-        //debug(paramList);
-        return paramList;
-    }
-    /**
-     * Helper function, returns information about the function in the format of
-     * "(function) ClassName.functionName(params): returnType"
-     * @returns
-     */
-    buildFunctionDetails() {
-        let classRef = ((this.className === "") ? "" : this.className + ".");
-        if (this.functionType === 'constructor') {
-            classRef = "";
-        }
-        let paramList = "";
-        if (this.functionType !== 'property')
-            paramList = "(" + this.rawParams + ")" + paramList;
-        let retType = "";
-        if (this.returnType !== "")
-            retType = " -> " + this.returnType;
-        let ci_details = "(" + this.functionType + ") " + classRef + this.name + paramList + retType;
-        return ci_details;
-    }
-    /**
-     *
-     * @returns a new {@link MarkupContent MarkupContent} representing the function and its documentation.
-     */
-    buildMarkUpContent(docs = "") {
-        if (this.sourceFile.includes("sbs.py"))
-            (0, console_1.debug)("Generating an SBS function");
-        (0, console_1.debug)(this.sourceFile);
-        /**
-         * TODO: Fix this for CompletionItem in {@link buildCompletionItem buildCompletionItem}
-         */
-        if (docs === "") {
-            docs = this.documentation.toString();
-        }
-        const functionDetails = "```javascript\n" + this.buildFunctionDetails() + "\n```";
-        const documentation = "```text\n\n" + this.documentation + "```";
-        // const documentation = (this.documentation as string).replace(/\t/g,"&emsp;").replace(/    /g,"&emsp;").replace(/\n/g,"\\\n");
-        //                    artemis-sbs.LegendaryMissions.upgrades.v1.0.4.mastlib/upgrade.py
-        // https://github.com/artemis-sbs/LegendaryMissions/blob/main/upgrades/upgrade.py
-        //                  artemis-sbs.sbs_utils.v1.0.4.sbslib/sbs_utils/procedural/roles.py
-        // https://github.com/artemis-sbs/sbs_utils/blob/master/sbs_utils/procedural/roles.py
-        // https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/mock/sbs.py
-        // https://github.com/artemis-sbs/sbs_utils/blob/master/mock/sbs.py
-        let source = ""; //this.determineSource(this.sourceFile);
-        source = ''; //"\nSource:  \n  " + source;
-        if (docs !== "") {
-            docs = "\n\n```text\n\n" + docs + "\n```";
-        }
-        const ret = {
-            kind: "markdown",
-            value: "```javascript\n" + this.buildFunctionDetails() + "\n```" + docs + source
-            // value: functionDetails + "\n" + documentation + "\n\n" + source
-        };
-        return ret;
-    }
-    determineSource(source) {
-        // if (this.sourceFile.includes("sbs.py")) debug("Generating an SBS MarkupContent");
-        let url = "";
-        // Convert the source to reference the applicable sbs_utils or legendarymissions github page
-        const regex = /\.v((\d+)\.(\d+)\.(\d+))\.(\d+\.)*(((mast|sbs)lib)|(zip))/;
-        // debug(source)
-        if (source.includes("LegendaryMissions")) {
-            source = "https://github.com/" + source.replace(regex, "").replace("LegendaryMissions.", "LegendaryMissions/blob/main/");
-        }
-        else if (source.includes("githubusercontent")) {
-            // debug("Githubusercontent foudn");
-            source = source.replace("raw.githubusercontent", "github").replace("/master", "/blob/master");
-        }
-        else if (source.includes("sbs_utils")) {
-            source = "https://github.com/" + source.replace(regex, "/blob/master").replace(".", "/");
-        }
-        return source;
-    }
-    /**
-     * Using this instead of saving multiple copies of the same data. Also reduces load time.
-     * @returns The {@link CompletionItem CompletionItem} that represents this function.
-     */
-    buildCompletionItem() {
-        //const ci: CompletionItem;
-        const labelDetails = {
-            // Decided that this clutters up the UI too much. Same information is displayed in the CompletionItem details.
-            //detail: "(" + params + ")",
-            description: this.returnType
-        };
-        let label = this.name;
-        let retType = this.returnType;
-        let funcType = this.functionType;
-        let cik = this.convertFunctionTypeToCompletionItemKind(this.functionType);
-        let classRef = ((this.className === "") ? "" : this.className + ".");
-        // For constructor functions, we don't want something like vec2.vec2(args). We just want vec2(args).
-        if (cik === vscode_languageserver_1.CompletionItemKind.Constructor) {
-            classRef = "";
-        }
-        // let ci_details: string = "(" + this.functionType + ") " + classRef + this.name + "(" + this.rawParams + "): " + this.returnType;
-        const functionDetails = "```javascript\n" + this.buildFunctionDetails() + "\n```";
-        // const documentation = "```text\n\n" + this.documentation + "```";
-        const documentation = this.documentation.replace(/\t/g, "&emsp;").replace(/    /g, "&emsp;").replace(/\n/g, "\\\n");
-        // debug(documentation)
-        const source = "Source: " + this.determineSource(this.sourceFile);
-        let docs = {
-            kind: 'markdown',
-            value: functionDetails + "  \n  " + documentation // + "  \n  " + source
-        };
-        // let docs = this.buildMarkUpContent(documentation);
-        // docs.value = docs.value.replace(/\t/g,"&emsp;").replace(/    /g,"&emsp;").replace(/\n/g,"\\\n");
-        let insert = this.name;
-        if (this.parameters.length === 0 && this.functionType !== "property") {
-            insert = this.name + "()";
-        }
-        let ci = {
-            label: this.name,
-            kind: cik,
-            //command: { command: 'editor.action.triggerSuggest', title: 'Re-trigger completions...' },
-            documentation: docs, // this.documentation,
-            // detail: ci_details,
-            labelDetails: labelDetails,
-            insertText: insert
-        };
-        return ci;
-    }
-    buildSignatureInformation() {
-        let ci_details = "(" + this.functionType + ") " + ((this.className === "") ? "" : this.className + ".") + this.name + "(" + this.rawParams + "): " + (this.functionType === "constructor") ? this.className : this.name;
-        //debug(ci_details)
-        const params = [];
-        // const markup: MarkupContent = {
-        // 	kind: "markdown",
-        // 	value: "```javascript\n" + ci_details + "\n```\n```text\n" + this.documentation + "\n```\n"
-        // }
-        //debug(markup)
-        const si = {
-            label: this.name,
-            documentation: ci_details + "\n" + this.documentation,
-            // TODO: Make this more Markup style instead of just text
-            parameters: []
-        };
-        for (const i in this.parameters) {
-            const pi = {
-                label: this.parameters[i].name,
-                documentation: this.parameters[i].name + "\nType: " + this.parameters[i].type
-            };
-            if (pi.label === "style") {
-                pi.documentation = pi.documentation + "\n\nStyle information:";
-                for (const s of (0, globals_1.getGlobals)().widget_stylestrings) {
-                    if (s.function === this.name) {
-                        let doc = s.name + ":\n";
-                        doc = doc + "    " + s.docs;
-                        pi.documentation = pi.documentation + "\n" + doc;
-                    }
-                }
-            }
-            params.push(pi);
-        }
-        si.parameters = params;
-        //debug(si);
-        return si;
-    }
-}
-exports.Function = Function;
-class Parameter {
-    constructor(raw, pos, docs) {
-        this.name = "";
-        this.documentation = (docs === undefined) ? "" : docs;
-        const pDef = raw.split(":");
-        this.name = pDef[0].trim();
-        if (pDef.length === 1) {
-            this.type = "any?";
-        }
-        else {
-            this.type = pDef[1].trim();
-        }
-        return this;
-    }
-}
-exports.Parameter = Parameter;
-function getRegExMatch(sourceString, pattern) {
-    let ret = "";
-    let m;
-    let count = 0;
-    while ((m = pattern.exec(sourceString)) && count < 1) {
-        ret += m[0];
-        count++;
-    }
-    return ret;
-}
-/**
- * Gets all functions within a particular module or class.
- * Really it's all functions defined within the provided text, so you need to be careful that only what you want is in here.
- * @param raw The raw text contents, as a string
- * @returns List of {@link Function Function} items
- */
-function parseFunctions(raw, source, sourceFile) {
-    let m;
-    const fList = [];
-    let testStr = 'def add_client_tag() -> None:\n    """stub; does nothing yet."""';
-    let wholeFunction = /((@property|\.setter|@classmethod)?([\n\t\r ]*?)(def)(.+?)([\.]{3,3}|((\"){3,3}(.*?)(\"){3,3})))/gms;
-    let functionName = /((def\s)(.+?)\()/gm; // Look for "def functionName(" to parse function names.
-    //let className : RegExp = /class (.+?):/gm; // Look for "class ClassName:" to parse class names.
-    let functionParam = /\((.*?)\)/m; // Find parameters of function, if any.
-    let returnValue = /->(.+?):/gm; // Get the return value (None, boolean, int, etc)
-    let comment = /((\"){3,3}(.*?)(\"){3,3})|(\.\.\.)/gms;
-    let isProperty = /(@property)/;
-    let isClassMethod = /@classmethod/;
-    let isSetter = /\.setter/;
-    while ((m = wholeFunction.exec(raw))) {
-        const f = new Function(m[0], source, sourceFile);
-        fList.push(f);
-    }
-    return fList;
-}
 /**
  *
  * @param text

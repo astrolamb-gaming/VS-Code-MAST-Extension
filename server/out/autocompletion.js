@@ -13,7 +13,6 @@ const fileFunctions_1 = require("./fileFunctions");
 const globals_1 = require("./globals");
 const signatureHelp_1 = require("./signatureHelp");
 const roles_1 = require("./roles");
-let classes = [];
 // let defaultFunctionCompletionItems: CompletionItem[] = [];
 // /**
 //  * // TODO: This needs implemented I think???? Check the pyfile parsing and see if this is done already
@@ -185,6 +184,9 @@ function onCompletion(_textDocumentPosition, text) {
     }
     else if (iStr.endsWith("@media/music/")) {
         return (0, globals_1.getGlobals)().music;
+    }
+    if (iStr.trim().match(/sbs\.play_audio_file\([ \d\w]+\, */)) {
+        return cache.getMusicFiles();
     }
     // Route Label autocompletion
     if (iStr.trim().startsWith("//")) {

@@ -1,22 +1,18 @@
 import { debug } from 'console';
-import { CompletionItem, CompletionItemKind, CompletionItemTag, integer, MarkupContent, SignatureInformation, TextDocumentPositionParams } from 'vscode-languageserver';
+import { CompletionItem, CompletionItemKind, integer, SignatureInformation, TextDocumentPositionParams } from 'vscode-languageserver';
 import { buildLabelDocs, getMainLabelAtPos } from './tokens/labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { asClasses, IClassObject, PyFile, replaceNames } from './data';
+import { asClasses, replaceNames } from './data';
 import { getRouteLabelVars } from './tokens/routeLabels';
 import { isInComment, isInString, isInYaml, isTextInBracket } from './tokens/comments';
 import { getCache } from './cache';
 import path = require('path');
-import fs = require("fs");
 import { fixFileName, getFilesInDir } from './fileFunctions';
-import { updateTokensForLine } from './tokens/tokens';
 import { getGlobals } from './globals';
 import { getCurrentMethodName } from './signatureHelp';
 import { getRolesAsCompletionItem, getRolesForFile } from './roles';
-import { getVariableNamesInDoc, getVariablesAsCompletionItem } from './tokens/variables';
-import { buildFaction } from './factions';
 
-let classes: IClassObject[] = [];
+
 // let defaultFunctionCompletionItems: CompletionItem[] = [];
 
 // /**
@@ -207,6 +203,9 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// Get Music Options (default vs Artemis2)
 	} else if (iStr.endsWith("@media/music/")) {
 		return getGlobals().music;
+	}
+	if (iStr.trim().match(/sbs\.play_audio_file\([ \d\w]+\, */)) {
+		return cache.getMusicFiles();
 	}
 
 	// Route Label autocompletion

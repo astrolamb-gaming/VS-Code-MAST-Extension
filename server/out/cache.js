@@ -17,6 +17,7 @@ const server_1 = require("./server");
 const vscode_uri_1 = require("vscode-uri");
 const globals_1 = require("./globals");
 const os = require("os");
+const audioFiles_1 = require("./resources/audioFiles");
 const includeNonProcedurals = [
     "scatter",
     "faces",
@@ -115,10 +116,13 @@ class MissionCache {
             (0, server_1.showProgressBar)(true);
             // debug("Loaded SBS, starting to parse.");
             if (p !== null) {
+                (0, console_1.debug)(p.defaultFunctions);
+                (0, console_1.debug)(p.classes);
                 this.missionPyModules.push(p);
                 (0, console_1.debug)("addding " + p.uri);
                 this.missionClasses = this.missionClasses.concat(p.classes);
                 // this.missionDefaultCompletions = this.missionDefaultCompletions.concat(p.getDefaultMethodCompletionItems());
+                // TODO: This is not doing anything anymore pretty sure
                 for (const s of p.defaultFunctions) {
                     this.missionDefaultSignatures.push(s.signatureInformation);
                 }
@@ -342,6 +346,9 @@ class MissionCache {
             ci.push(r.completionItem);
         }
         return ci;
+    }
+    getMusicFiles() {
+        return (0, audioFiles_1.getMusicFiles)(this.missionLibFolder);
     }
     /**
      * Get all methods in scope for this cache
@@ -804,14 +811,18 @@ async function loadSbs() {
         const data = await fetch(gh);
         text = await data.text();
         gh = saveZipTempFile("sbs.py", text);
-        return new data_1.PyFile(gh, text);
+        const p = new data_1.PyFile(gh, text);
+        return p;
     }
     catch (e) {
         (0, console_1.debug)("Can't find sbs.py on github");
         try {
             gh = path.join(__dirname, "sbs.py");
             text = await (0, fileFunctions_1.readFile)(gh);
-            return new data_1.PyFile(gh, text);
+            const p = new data_1.PyFile(gh, text);
+            (0, console_1.debug)("SBS py file generated");
+            // debug(p.defaultFunctions);
+            return p;
         }
         catch (ex) {
             (0, console_1.debug)("Can't find sbs.py locally either.");

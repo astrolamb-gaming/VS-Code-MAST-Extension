@@ -10,6 +10,7 @@ import { documents, sendToClient } from './server';
 import { URI } from 'vscode-uri';
 import { getMainLabelAtPos } from './tokens/labels';
 import { getVariableNamesInDoc, parseVariables } from './tokens/variables';
+import { Function } from './data/function';
 
 export async function onDefinition(doc:TextDocument,pos:Position): Promise<Location | undefined> {
 	// parseVariables(doc);
