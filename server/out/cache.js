@@ -450,7 +450,7 @@ class MissionCache {
                 ci.push(f.buildCompletionItem());
             }
             for (const c of this.missionClasses) {
-                ci.push(c.completionItem);
+                ci.push(c.buildCompletionItem());
             }
             for (const p of this.pyFileCache) {
                 for (const f of p.defaultFunctions) {

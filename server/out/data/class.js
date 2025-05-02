@@ -34,18 +34,11 @@ class ClassObject {
                 this.constructorFunction = this.methods[i];
             }
         }
-        this.completionItem = this.buildCompletionItem();
-        // if (this.sourceFile.includes("sbs.py")) {
-        // 	debug(this.methods);
-        // }
         return this;
     }
     getMethodCompletionItems() {
         let ci = [];
-        // Here it's gone.
-        (0, console_1.debug)(this.methods);
         for (const m of this.methods) {
-            (0, console_1.debug)(m.name);
             ci.push(m.buildCompletionItem());
         }
         return ci;

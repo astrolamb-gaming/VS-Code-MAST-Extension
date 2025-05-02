@@ -1,5 +1,5 @@
 import { debug } from 'console';
-import { SignatureInformation, MarkupContent, CompletionItem, integer, Location, CompletionItemLabelDetails, CompletionItemKind } from 'vscode-languageserver';
+import { MarkupContent, CompletionItem, integer, Location, CompletionItemLabelDetails, CompletionItemKind } from 'vscode-languageserver';
 import { replaceNames } from '../data';
 import { Function } from './function';
 
@@ -9,7 +9,6 @@ export class ClassObject {
 	methods: Function[] = [];
 	constructorFunction?: Function;
 	documentation: string | MarkupContent;
-	completionItem: CompletionItem;
 	sourceFile: string;
 	startPos: integer;
 	location: Location;
@@ -44,19 +43,12 @@ export class ClassObject {
 				this.constructorFunction = this.methods[i];
 			}
 		}
-		this.completionItem = this.buildCompletionItem();
-		// if (this.sourceFile.includes("sbs.py")) {
-		// 	debug(this.methods);
-		// }
 		return this;
 	}
 
 	getMethodCompletionItems(): CompletionItem[] {
-		let ci: CompletionItem[] = []
-		// Here it's gone.
-		debug(this.methods);
+		let ci: CompletionItem[] = [];
 		for (const m of this.methods) {
-			debug(m.name);
 			ci.push(m.buildCompletionItem());
 		}
 		return ci;

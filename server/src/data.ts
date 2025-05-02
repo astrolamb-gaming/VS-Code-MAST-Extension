@@ -262,7 +262,6 @@ export class PyFile extends FileCache {
 			if (path.basename(this.uri).replace(".py","") === o) {
 				const c = new ClassObject("", path.basename(this.uri));
 				c.name = o;
-				c.completionItem = c.buildCompletionItem();
 				c.methods = this.defaultFunctions;
 				this.classes.push(c);
 				if (c.name !== "scatter") {

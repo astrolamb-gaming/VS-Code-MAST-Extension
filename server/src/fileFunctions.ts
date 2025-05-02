@@ -9,18 +9,17 @@ export function findSubfolderByName(dir: string, folderName: string): string | n
 	const files = fs.readdirSync(dir, { withFileTypes: true });
   
 	for (const file of files) {
-	  if (file.isDirectory()) {
-		if (file.name === folderName) {
-		  return path.join(dir, file.name);
-		} else {
-		  const subfolderPath = findSubfolderByName(path.join(dir, file.name), folderName);
-		  if (subfolderPath) {
-			return subfolderPath;
-		  }
+		if (file.isDirectory()) {
+			if (file.name === folderName) {
+				return path.join(dir, file.name);
+			} else {
+				const subfolderPath = findSubfolderByName(path.join(dir, file.name), folderName);
+				if (subfolderPath) {
+					return subfolderPath;
+				}
+			}
 		}
-	  }
 	}
-  
 	return null;
 }
 
