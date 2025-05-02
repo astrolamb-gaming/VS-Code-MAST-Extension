@@ -8,7 +8,7 @@ import { fixFileName, getParentFolder } from './fileFunctions';
 import exp = require('constants');
 import { getCache } from './cache';
 import { getGlobals } from './globals';
-import { getRolesForFile } from './roles';
+import { getRolesForFile } from './tokens/roles';
 import { parsePrefabs } from './tokens/prefabs';
 import { parseVariables, Variable } from './tokens/variables';
 import { Function } from "./data/function";

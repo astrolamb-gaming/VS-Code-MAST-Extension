@@ -38,7 +38,7 @@ export class ClassObject {
 		let functionSource = (this.name === "") ? sourceFile : this.name;
 		this.methods = parseFunctions(raw, functionSource, this.sourceFile);
 		for (const i in this.methods) {
-			debug(this.methods[i]);
+			// debug(this.methods[i]);
 			if (this.methods[i].functionType === "constructor") {
 				this.constructorFunction = this.methods[i];
 			}

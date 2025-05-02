@@ -12,7 +12,7 @@ const path = require("path");
 const fileFunctions_1 = require("./fileFunctions");
 const globals_1 = require("./globals");
 const signatureHelp_1 = require("./signatureHelp");
-const roles_1 = require("./roles");
+const roles_1 = require("./tokens/roles");
 let currentLine = 0;
 function onCompletion(_textDocumentPosition, text) {
     // return buildFaction("kra","Kralien_Set");

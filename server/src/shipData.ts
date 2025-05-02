@@ -2,7 +2,7 @@ import { debug } from 'console';
 import path = require('path');
 import { getFilesInDir, getFileContents, readFile } from './fileFunctions';
 import { CompletionItem, CompletionItemKind } from 'vscode-languageserver';
-import { getRolesAsCompletionItem } from './roles';
+import { getRolesAsCompletionItem } from './tokens/roles';
 import { connection, sendToClient } from './server';
 import Hjson = require('hjson');
 

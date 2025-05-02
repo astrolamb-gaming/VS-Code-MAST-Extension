@@ -1,9 +1,9 @@
 import { debug } from 'console';
 import { CompletionItem, CompletionItemKind } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { getGlobals } from './globals';
+import { getGlobals } from '../globals';
 import path = require('path');
-import { getFileContents, getFilesInDir } from './fileFunctions';
+import { getFileContents, getFilesInDir } from '../fileFunctions';
 
 export function getRolesForFile(text: string): string[] {
 	let roles: string[] = [];

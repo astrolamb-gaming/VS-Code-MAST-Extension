@@ -10,7 +10,7 @@ import path = require('path');
 import { fixFileName, getFilesInDir } from './fileFunctions';
 import { getGlobals } from './globals';
 import { getCurrentMethodName } from './signatureHelp';
-import { getRolesAsCompletionItem, getRolesForFile } from './roles';
+import { getRolesAsCompletionItem, getRolesForFile } from './tokens/roles';
 
 
 let currentLine = 0;

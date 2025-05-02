@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ClassObject = void 0;
 exports.getRegExMatch = getRegExMatch;
-const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
 const data_1 = require("../data");
 const function_1 = require("./function");
@@ -29,7 +28,7 @@ class ClassObject {
         let functionSource = (this.name === "") ? sourceFile : this.name;
         this.methods = parseFunctions(raw, functionSource, this.sourceFile);
         for (const i in this.methods) {
-            (0, console_1.debug)(this.methods[i]);
+            // debug(this.methods[i]);
             if (this.methods[i].functionType === "constructor") {
                 this.constructorFunction = this.methods[i];
             }
