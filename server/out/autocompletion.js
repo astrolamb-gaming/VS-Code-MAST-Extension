@@ -367,6 +367,12 @@ function onCompletion(_textDocumentPosition, text) {
         };
         ci.push(i);
     }
+    const metadata = {
+        label: "metadata",
+        kind: vscode_languageserver_1.CompletionItemKind.Variable,
+        insertText: "metadata: ```\n\n```"
+    };
+    ci.push(metadata);
     // Add Route-specific variables, e.g. COLLISION_ID or SCIENCE_TARGET
     const lbl = (0, labels_1.getMainLabelAtPos)(pos, cache.getMastFile(text.uri).labelNames);
     (0, console_1.debug)("Main label at pos: ");

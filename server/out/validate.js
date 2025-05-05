@@ -115,8 +115,10 @@ async function validateTextDocument(textDocument) {
     // debug(functionSigs);
     // diagnostics = diagnostics.concat(functionSigs);
     // Checking string errors
-    let fstring = /\".*\{.*\}.*\"/g;
+    let fstring = /[^"]".*\{.*\}.*"[^"]/g;
     let interior = /{.*\".*\".*}/g;
+    // This still doesn't work, because for some reason it prioritizes one double quote over three
+    // let fstring = /(?<name>(\"\"\"|\"|')).*\{(\k<name>).*(\k<name>)\}.*(\k<name>)/g;
     while (m = fstring.exec(text)) {
         let ints = (0, comments_1.getMatchesForRegex)(interior, m[0]);
         for (const i of ints) {

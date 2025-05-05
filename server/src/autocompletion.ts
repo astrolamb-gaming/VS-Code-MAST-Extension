@@ -394,6 +394,12 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		}
 		ci.push(i);
 	}
+	const metadata:CompletionItem = {
+		label: "metadata",
+		kind: CompletionItemKind.Variable,
+		insertText: "metadata: ```\n\n```"
+	}
+	ci.push(metadata);
 
 	// Add Route-specific variables, e.g. COLLISION_ID or SCIENCE_TARGET
 	const lbl = getMainLabelAtPos(pos,cache.getMastFile(text.uri).labelNames);

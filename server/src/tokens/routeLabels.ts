@@ -479,7 +479,7 @@ export function checkEnableRoutes(textDocument:TextDocument) : Diagnostic[] {
 	for (const l of labels) {
 		if (l.type === "route") {
 			for (const ne in needsEnable) {
-				if (l.name.includes(needsEnable[ne]) && !l.name.includes("enable")) {
+				if (l.name.includes(needsEnable[ne]) && !l.name.includes("enable") &&!l.name.includes("focus")) {
 					if (!isEnabled[ne]) {
 						const s = textDocument.positionAt(l.start);
 						const e = textDocument.positionAt(l.start + l.length);

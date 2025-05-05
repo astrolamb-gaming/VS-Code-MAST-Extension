@@ -124,9 +124,12 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	// diagnostics = diagnostics.concat(functionSigs);
 
 	// Checking string errors
-	let fstring = /\".*\{.*\}.*\"/g;
+	let fstring = /[^"]".*\{.*\}.*"[^"]/g;
 	let interior = /{.*\".*\".*}/g;
+	// This still doesn't work, because for some reason it prioritizes one double quote over three
+	// let fstring = /(?<name>(\"\"\"|\"|')).*\{(\k<name>).*(\k<name>)\}.*(\k<name>)/g;
 	while (m = fstring.exec(text)) {
+		
 		let ints = getMatchesForRegex(interior,m[0]);
 		for (const i of ints) {
 			let str = text.substring(m.index + i.start,m.index + i.end);

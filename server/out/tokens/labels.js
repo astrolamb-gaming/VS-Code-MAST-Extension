@@ -372,7 +372,7 @@ function checkLabels(textDocument) {
                     end: textDocument.positionAt(m.index + m[0].length)
                 },
                 severity: vscode_languageserver_1.DiagnosticSeverity.Warning,
-                message: "Specified label does not exist in this file. Make sure that this label is defined before use.",
+                message: "Label defnition not found. Make sure that this label is defined before use.",
                 source: "mast"
             };
             //d.relatedInformation = relatedMessage(textDocument, d.range, "Labels must be defined in a format beginning (and optionally ending) with two or more = or - signs. They may use A-Z, a-z, 0-9, and _ in their names. Other characters are not allowed.");
