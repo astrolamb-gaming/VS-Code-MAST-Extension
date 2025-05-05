@@ -125,6 +125,10 @@ function parseFunctions(raw: string, source: string, sourceFile: string) {
 		const f: Function = new Function(m[0], source, sourceFile);
 		fList.push(f);
 	}
-	fList = [...new Map(fList.map(v => [v.startIndex, v])).values()]
+	debug(source);
+	// TODO: Doing this seems to cause some issues.....
+	// But there do seem to be multiple copies of some functions. Might need to check if these are just getters and setters
+	// fList = [...new Map(fList.map(v => [v.startIndex, v])).values()]
+	if (fList.length >= 0) debug(fList);
 	return fList;
 }

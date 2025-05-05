@@ -481,7 +481,8 @@ function checkEnableRoutes(textDocument) {
                         const d = {
                             range: { start: s, end: e },
                             message: 'Must use "//enable/' + l.name.replace(/\//g, "") + "\" before using this route.",
-                            severity: vscode_languageserver_1.DiagnosticSeverity.Warning
+                            severity: vscode_languageserver_1.DiagnosticSeverity.Warning,
+                            data: "enable"
                         };
                         diagnostics.push(d);
                     }

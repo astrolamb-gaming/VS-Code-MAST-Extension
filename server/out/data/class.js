@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ClassObject = void 0;
 exports.getRegExMatch = getRegExMatch;
+const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
 const data_1 = require("../data");
 const function_1 = require("./function");
@@ -101,7 +102,12 @@ function parseFunctions(raw, source, sourceFile) {
         const f = new function_1.Function(m[0], source, sourceFile);
         fList.push(f);
     }
-    fList = [...new Map(fList.map(v => [v.startIndex, v])).values()];
+    (0, console_1.debug)(source);
+    // TODO: Doing this seems to cause some issues.....
+    // But there do seem to be multiple copies of some functions. Might need to check if these are just getters and setters
+    // fList = [...new Map(fList.map(v => [v.startIndex, v])).values()]
+    if (fList.length >= 0)
+        (0, console_1.debug)(fList);
     return fList;
 }
 //# sourceMappingURL=class.js.map

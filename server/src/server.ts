@@ -38,7 +38,10 @@ import {
 	DocumentRangeFormattingParams,
 	DocumentSymbolParams,
 	SymbolInformation,
-	DocumentSymbol
+	DocumentSymbol,
+	CodeAction,
+	CodeActionKind,
+	Command
 
 } from 'vscode-languageserver/node';
 import { URI } from 'vscode-uri';
@@ -126,6 +129,7 @@ connection.onInitialize((params: InitializeParams) => {
 				commands: [
 					// TODO: Here we add the command names - for QuickFix
 					//'labels.fix'
+					'labels.route.enable'
 				]
 			},
 			signatureHelpProvider: {
@@ -236,10 +240,13 @@ connection.onCodeAction((params) => {
 	if (textDocument === undefined) {
 		return undefined;
 	}
-	const title = 'With User Input';
+	// params.range
+	const title = 'Update label with enable';
 	return [
 		// TODO: Here we add CodeActions (i.e. commands) for QuickFixes
 		//CodeAction.create(title, Command.create(title, 'sample.fixMe', textDocument.uri), CodeActionKind.QuickFix)
+		// CodeAction.create("Add enable line",CodeActionKind.QuickFix),
+		CodeAction.create(title, Command.create(title, 'labels.route.enable', textDocument.uri), CodeActionKind.QuickFix)
 	];
 });
 connection.onExecuteCommand(async (params) => {

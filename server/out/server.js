@@ -73,8 +73,9 @@ exports.connection.onInitialize((params) => {
             codeActionProvider: true,
             executeCommandProvider: {
                 commands: [
-                // TODO: Here we add the command names - for QuickFix
-                //'labels.fix'
+                    // TODO: Here we add the command names - for QuickFix
+                    //'labels.fix'
+                    'labels.route.enable'
                 ]
             },
             signatureHelpProvider: {
@@ -176,10 +177,13 @@ exports.connection.onCodeAction((params) => {
     if (textDocument === undefined) {
         return undefined;
     }
-    const title = 'With User Input';
+    // params.range
+    const title = 'Update label with enable';
     return [
-    // TODO: Here we add CodeActions (i.e. commands) for QuickFixes
-    //CodeAction.create(title, Command.create(title, 'sample.fixMe', textDocument.uri), CodeActionKind.QuickFix)
+        // TODO: Here we add CodeActions (i.e. commands) for QuickFixes
+        //CodeAction.create(title, Command.create(title, 'sample.fixMe', textDocument.uri), CodeActionKind.QuickFix)
+        // CodeAction.create("Add enable line",CodeActionKind.QuickFix),
+        node_1.CodeAction.create(title, node_1.Command.create(title, 'labels.route.enable', textDocument.uri), node_1.CodeActionKind.QuickFix)
     ];
 });
 exports.connection.onExecuteCommand(async (params) => {

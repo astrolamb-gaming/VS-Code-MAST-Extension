@@ -487,7 +487,8 @@ export function checkEnableRoutes(textDocument:TextDocument) : Diagnostic[] {
 						const d:Diagnostic = {
 							range: {start: s, end: e},
 							message: 'Must use "//enable/' + l.name.replace(/\//g,"") + "\" before using this route.",
-							severity: DiagnosticSeverity.Warning
+							severity: DiagnosticSeverity.Warning,
+							data: "enable"
 						}
 						diagnostics.push(d);
 					}
