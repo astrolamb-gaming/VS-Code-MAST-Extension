@@ -483,7 +483,7 @@ export class MissionCache {
 			}
 			for (const p of this.pyFileCache) {
 				for (const f of p.defaultFunctions) {
-					ci.push(f.completionItem);
+					ci.push(f.buildCompletionItem());
 				}
 			}
 			return ci;

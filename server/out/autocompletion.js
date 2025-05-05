@@ -296,7 +296,7 @@ function onCompletion(_textDocumentPosition, text) {
             }
             // debug(c);
             if (iStr.endsWith(c.name + ".")) {
-                (0, console_1.debug)(iStr + " contains" + c.name);
+                (0, console_1.debug)(iStr + " contains " + c.name);
                 // TODO: Only use labels with isClassMethod = true
                 // c.methods[0].completionItem.kind == CompletionItemKind.Method;
                 return c.getMethodCompletionItems();

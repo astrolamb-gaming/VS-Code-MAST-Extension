@@ -6,6 +6,21 @@ const vscode_languageserver_1 = require("vscode-languageserver");
 const class_1 = require("./class");
 const globals_1 = require("../globals");
 class Function {
+    copy() {
+        const f = new Function("", "", "");
+        f.name = this.name;
+        f.documentation = this.documentation;
+        f.functionType = this.functionType;
+        f.className = this.className;
+        f.rawParams = this.rawParams;
+        f.parameters = this.parameters;
+        f.returnType = this.returnType;
+        f.sourceFile = this.sourceFile;
+        f.startIndex = this.startIndex;
+        f.location = this.location;
+        return f;
+    }
+    // completionItem: CompletionItem;
     // signatureInformation: SignatureInformation;
     constructor(raw, className, sourceFile) {
         this.name = "";
@@ -82,7 +97,7 @@ class Function {
         // }
         // TODO: Only use these when really needed
         this.parameters = this.buildParams(params);
-        this.completionItem = this.buildCompletionItem();
+        // this.completionItem = this.buildCompletionItem();
         // this.signatureInformation = this.buildSignatureInformation();
         //debug(this);
         return this;

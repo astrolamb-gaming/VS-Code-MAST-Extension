@@ -124,14 +124,15 @@ connection.onInitialize((params: InitializeParams) => {
 				workspaceDiagnostics: false
 			},
 			definitionProvider: true,
-			codeActionProvider: true,
-			executeCommandProvider: {
-				commands: [
-					// TODO: Here we add the command names - for QuickFix
-					//'labels.fix'
-					'labels.route.enable'
-				]
-			},
+			// TODO: Implement code actions and command providers
+			// codeActionProvider: true,
+			// executeCommandProvider: {
+			// 	commands: [
+			// 		// TODO: Here we add the command names - for QuickFix
+			// 		//'labels.fix'
+			// 		'labels.route.enable'
+			// 	]
+			// },
 			signatureHelpProvider: {
 				triggerCharacters: ['(',',']
 			},
@@ -209,8 +210,6 @@ connection.onInitialize((params: InitializeParams) => {
 	} else {
 		debug("No Workspace folders");
 	}
-	let current = getCurrentMethodName("hi('one',two('yes'), ");
-	debug(current);
 	return result;
 });
 
@@ -235,20 +234,20 @@ connection.onInitialized(() => {
 	// })
 	
 });
-connection.onCodeAction((params) => {
-	const textDocument = documents.get(params.textDocument.uri);
-	if (textDocument === undefined) {
-		return undefined;
-	}
-	// params.range
-	const title = 'Update label with enable';
-	return [
-		// TODO: Here we add CodeActions (i.e. commands) for QuickFixes
-		//CodeAction.create(title, Command.create(title, 'sample.fixMe', textDocument.uri), CodeActionKind.QuickFix)
-		// CodeAction.create("Add enable line",CodeActionKind.QuickFix),
-		CodeAction.create(title, Command.create(title, 'labels.route.enable', textDocument.uri), CodeActionKind.QuickFix)
-	];
-});
+// connection.onCodeAction((params) => {
+// 	const textDocument = documents.get(params.textDocument.uri);
+// 	if (textDocument === undefined) {
+// 		return undefined;
+// 	}
+// 	// params.range
+// 	const title = 'Update label with enable';
+// 	return [
+// 		// TODO: Here we add CodeActions (i.e. commands) for QuickFixes
+// 		//CodeAction.create(title, Command.create(title, 'sample.fixMe', textDocument.uri), CodeActionKind.QuickFix)
+// 		// CodeAction.create("Add enable line",CodeActionKind.QuickFix),
+// 		CodeAction.create(title, Command.create(title, 'labels.route.enable', textDocument.uri), CodeActionKind.QuickFix)
+// 	];
+// });
 connection.onExecuteCommand(async (params) => {
 	//TODO: Here we execute the commands
 	if (params.command !== 'labels.fix' || params.arguments === undefined) {

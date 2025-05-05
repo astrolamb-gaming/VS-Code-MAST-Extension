@@ -70,14 +70,15 @@ exports.connection.onInitialize((params) => {
                 workspaceDiagnostics: false
             },
             definitionProvider: true,
-            codeActionProvider: true,
-            executeCommandProvider: {
-                commands: [
-                    // TODO: Here we add the command names - for QuickFix
-                    //'labels.fix'
-                    'labels.route.enable'
-                ]
-            },
+            // TODO: Implement code actions and command providers
+            // codeActionProvider: true,
+            // executeCommandProvider: {
+            // 	commands: [
+            // 		// TODO: Here we add the command names - for QuickFix
+            // 		//'labels.fix'
+            // 		'labels.route.enable'
+            // 	]
+            // },
             signatureHelpProvider: {
                 triggerCharacters: ['(', ',']
             },
@@ -152,8 +153,6 @@ exports.connection.onInitialize((params) => {
     else {
         (0, console_1.debug)("No Workspace folders");
     }
-    let current = (0, signatureHelp_1.getCurrentMethodName)("hi('one',two('yes'), ");
-    (0, console_1.debug)(current);
     return result;
 });
 exports.connection.onInitialized(() => {
@@ -172,20 +171,20 @@ exports.connection.onInitialized(() => {
     // 	// progressUpdate(100);
     // })
 });
-exports.connection.onCodeAction((params) => {
-    const textDocument = exports.documents.get(params.textDocument.uri);
-    if (textDocument === undefined) {
-        return undefined;
-    }
-    // params.range
-    const title = 'Update label with enable';
-    return [
-        // TODO: Here we add CodeActions (i.e. commands) for QuickFixes
-        //CodeAction.create(title, Command.create(title, 'sample.fixMe', textDocument.uri), CodeActionKind.QuickFix)
-        // CodeAction.create("Add enable line",CodeActionKind.QuickFix),
-        node_1.CodeAction.create(title, node_1.Command.create(title, 'labels.route.enable', textDocument.uri), node_1.CodeActionKind.QuickFix)
-    ];
-});
+// connection.onCodeAction((params) => {
+// 	const textDocument = documents.get(params.textDocument.uri);
+// 	if (textDocument === undefined) {
+// 		return undefined;
+// 	}
+// 	// params.range
+// 	const title = 'Update label with enable';
+// 	return [
+// 		// TODO: Here we add CodeActions (i.e. commands) for QuickFixes
+// 		//CodeAction.create(title, Command.create(title, 'sample.fixMe', textDocument.uri), CodeActionKind.QuickFix)
+// 		// CodeAction.create("Add enable line",CodeActionKind.QuickFix),
+// 		CodeAction.create(title, Command.create(title, 'labels.route.enable', textDocument.uri), CodeActionKind.QuickFix)
+// 	];
+// });
 exports.connection.onExecuteCommand(async (params) => {
     //TODO: Here we execute the commands
     if (params.command !== 'labels.fix' || params.arguments === undefined) {

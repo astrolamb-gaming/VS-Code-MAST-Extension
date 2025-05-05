@@ -2,6 +2,7 @@ import { debug } from 'console';
 import { CompletionItem, CompletionItemKind, CompletionItemLabelDetails, integer, Location, MarkupContent, ParameterInformation, SignatureInformation } from 'vscode-languageserver';
 import { getRegExMatch } from './class';
 import { getGlobals } from '../globals';
+import { Func } from 'mocha';
 
 
 /**
@@ -52,7 +53,22 @@ export class Function implements IFunction {
 	startIndex: integer = 0;
 	location: Location;
 
-	completionItem: CompletionItem;
+	copy(): Function {
+		const f: Function = new Function("","","");
+		f.name = this.name;
+		f.documentation = this.documentation;
+		f.functionType = this.functionType;
+		f.className = this.className;
+		f.rawParams = this.rawParams;
+		f.parameters = this.parameters;
+		f.returnType = this.returnType;
+		f.sourceFile = this.sourceFile;
+		f.startIndex = this.startIndex;
+		f.location = this.location;
+		return f;
+	}
+
+	// completionItem: CompletionItem;
 	// signatureInformation: SignatureInformation;
 
 	constructor(raw: string, className: string, sourceFile: string) {
@@ -131,7 +147,7 @@ export class Function implements IFunction {
 		// }
 		// TODO: Only use these when really needed
 		this.parameters = this.buildParams(params);
-		this.completionItem = this.buildCompletionItem();
+		// this.completionItem = this.buildCompletionItem();
 		// this.signatureInformation = this.buildSignatureInformation();
 		//debug(this);
 		return this;

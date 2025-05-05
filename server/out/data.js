@@ -247,6 +247,9 @@ class PyFile extends FileCache {
                     }
                 };
                 this.defaultFunctions.push(m);
+                if (this.uri.includes("scatter")) {
+                    (0, console_1.debug)(m);
+                }
                 //debug(f);
             }
         }
@@ -259,6 +262,10 @@ class PyFile extends FileCache {
                 if (c.name !== "scatter") {
                     this.defaultFunctions = [];
                 }
+                else {
+                    (0, console_1.debug)(this.defaultFunctions);
+                    (0, console_1.debug)(c.methods);
+                }
             }
         }
         // This checks if the module name should be prepended to the function names in this module
@@ -266,8 +273,16 @@ class PyFile extends FileCache {
         for (const o of exports.prepend) {
             if (path.basename(this.uri).replace(".py", "") === o) {
                 prefix = o + "_"; //o.replace(".py","_");
+                const newDefaults = [];
                 for (const m of this.defaultFunctions) {
-                    m.name = prefix + m.name;
+                    // const n = Object.assign({},m);
+                    const n = m.copy();
+                    n.name = prefix + n.name;
+                    newDefaults.push(n);
+                }
+                this.defaultFunctions = newDefaults;
+                if (o === "scatter") {
+                    (0, console_1.debug)(this.defaultFunctions);
                 }
             }
         }

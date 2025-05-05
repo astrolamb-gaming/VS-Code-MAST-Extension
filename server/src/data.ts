@@ -254,6 +254,9 @@ export class PyFile extends FileCache {
 					}
 				}
 				this.defaultFunctions.push(m);
+				if (this.uri.includes("scatter")) {
+					debug(m);
+				}
 				//debug(f);
 			}
 		}
@@ -266,6 +269,9 @@ export class PyFile extends FileCache {
 				this.classes.push(c);
 				if (c.name !== "scatter") {
 					this.defaultFunctions = [];
+				} else {
+					debug(this.defaultFunctions);
+					debug(c.methods);
 				}
 			}
 		}
@@ -275,10 +281,19 @@ export class PyFile extends FileCache {
 		for (const o of prepend) {
 			if (path.basename(this.uri).replace(".py","") === o) {
 				prefix = o + "_";//o.replace(".py","_");
+				const newDefaults: Function[] = [];
 				for (const m of this.defaultFunctions) {
-					m.name = prefix + m.name;
+					// const n = Object.assign({},m);
+					const n = m.copy();
+					n.name = prefix + n.name;
+					newDefaults.push(n);
+				}
+				this.defaultFunctions = newDefaults;
+				if (o === "scatter") {
+					debug(this.defaultFunctions);
 				}
 			}
+			
 		}
 		
 	}

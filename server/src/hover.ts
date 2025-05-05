@@ -71,7 +71,7 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 				debug(c);
 				for (const m of co.methods) {
 					if(m.name === symbol) {
-						hoverText = m.completionItem.detail;// + "\n\n" + m.completionItem.documentation;
+						hoverText = m.buildCompletionItem().detail;// + "\n\n" + m.completionItem.documentation;
 						debug(m.documentation as string);
 						// let mc: MarkupContent = {
 						// 	kind: "markdown",
@@ -100,7 +100,7 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 		// hoverText += "\nFunction"
 		for (const m of cache.missionDefaultFunctions) {
 			if(m.name === symbol) {
-				hoverText = m.completionItem.detail;// + "\n\n" + m.completionItem.documentation;
+				hoverText = m.buildCompletionItem().detail;// + "\n\n" + m.completionItem.documentation;
 				// debug(m.documentation.toString())
 				// let mc: MarkupContent = {
 				// 	kind: "markdown",

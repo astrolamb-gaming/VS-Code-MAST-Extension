@@ -63,42 +63,21 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 	return sh;
 }
 
+/**
+ * Given a string, this function will return the name of the function which is having parameters added to it.
+ * @param iStr The string
+ * @returns A string representing the name of the function.
+ */
 export function getCurrentMethodName(iStr: string): string {
-// 	const last = iStr.lastIndexOf("(");
-// 	const lastClose = iStr.lastIndexOf(")");
-// 	if (lastClose > last) {
-
-// 	}
-// 	const priorCheck = iStr.substring(0,last-1);
-// 	let prior = priorCheck.lastIndexOf("(");
-// 	if (prior === -1) {
-// 		prior = priorCheck.lastIndexOf(".");
-// 	}
-// 	if (prior === -1) {
-// 		prior = priorCheck.lastIndexOf(" ");
-// 	}
-// 	if (prior === -1) {
-// 		prior = 0;
-// 	}
-// 	return iStr.substring(prior,last).replace(/\.|\(| |\"|\'/g,"");
-// }
-
-// const test = "testing(a(),function(1,5, 10";
-// export function getMethodName(iStr: string): string {
-	// iStr = test;
 	let t: RegExpMatchArray | null;
 	t = iStr.match(/\w+\(([^\(\)])*\)/g);
-	// debug(t);
 	while (t) {
 		let s = iStr.indexOf(t[0])
 		let r: CRange = {
 			start: s,
 			end: t[0].length + s
 		}
-		// debug(r);
 		iStr = replaceRegexMatchWithUnderscore(iStr,r);
-		// debug(iStr);
-		// const line = iStr.substring()
 		t = iStr.match(/\w+\(([^\(\)])*\)/g);
 	}
 	let last = iStr.lastIndexOf("(");
