@@ -61,6 +61,27 @@ function onCompletion(_textDocumentPosition, text) {
     else {
         // debug("NOT an init file");
     }
+    if (iStr.trim().startsWith("yield")) {
+        const yieldRes = [
+            // TODO: Add usage descriptions as second parameter of these arrays
+            ["success"],
+            ["idle"],
+            ["fail"],
+            ["result"],
+            ["end"]
+        ];
+        for (const r of yieldRes) {
+            const c = {
+                label: r[0],
+                kind: vscode_languageserver_1.CompletionItemKind.Constant
+            };
+            if (r[1] !== undefined) {
+                c.detail = r[1];
+            }
+            ci.push(c);
+        }
+        return ci;
+    }
     // if (currentLine != _textDocumentPosition.position.line) {
     // 	currentLine = _textDocumentPosition.position.line;
     // 	// Here we can do any logic that doesn't need to be done every character change

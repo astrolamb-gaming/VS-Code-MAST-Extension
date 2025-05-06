@@ -61,6 +61,29 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	} else {
 		// debug("NOT an init file");
 	}
+
+	if (iStr.trim().startsWith("yield")) {
+		const yieldRes = [
+			// TODO: Add usage descriptions as second parameter of these arrays
+			["success"],
+			["idle"],
+			["fail"],
+			["result"],
+			["end"]
+		];
+		for (const r of yieldRes) {
+			const c: CompletionItem = {
+				label: r[0],
+				kind: CompletionItemKind.Constant
+			}
+			if (r[1] !== undefined) {
+				c.detail = r[1];
+			}
+			ci.push(c);
+		}
+		return ci;
+	}
+	
 	
 	// if (currentLine != _textDocumentPosition.position.line) {
 	// 	currentLine = _textDocumentPosition.position.line;

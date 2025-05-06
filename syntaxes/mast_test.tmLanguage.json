@@ -72,11 +72,13 @@
     "yield-result": {
       "patterns": [
         {
-          "match": "(?<=yield )((success|SUCCESS)|(fail|FAIL)|(idle|IDLE))",
+          "match": "(?<=yield )((FAIL|fail)|(SUCCESS|success)|(END|end)|(IDLE|idle)|(RESULT|result))",
           "captures":{
-            "2":{"name": "success.yield.result"},
-            "3":{"name": "fail.yield.result"},
-            "4":{"name": "idle.yield.result"}
+            "2":{"name": "fail.yield.result"},
+            "3":{"name": "success.yield.result"},
+            "4":{"name": "end.yield.result"},
+            "5":{"name": "idle.yield.result"},
+            "6":{"name": "result.yield.result"}
           }
           
         }
@@ -4403,7 +4405,7 @@
           "include": "#qstring-double-start-only"
         },
         {
-          "include": "#qstring-button-definition"
+          "include": "#button-definition"
         },
         {
           "include": "#comms-message-target"
@@ -5033,6 +5035,32 @@
           "include": "#expression"
         }
       ]
+    },
+    "button-definition": {
+      "name": "comms.button.build",
+      "match": "(?m)^\\s*(\\*|\\+)(?<priority>([ \\t]*(!\\d+)[ \\t]*))?(?<weight>([ \\t]*(\\^\\d+)[ \\t]*))?([ \\t]*\\[(?<format>([\\$\\#]?\\w+[ \\t]*(,[ \\t]*\\#?\\w+)?))\\])?[ \\t]*((?<q>[\"'])(?<message>[ \\t\\S]+?)(\\k<q>))([ \\t]*(?<path>([\\w\\/]+)))?(?<data>([ \\t]*\\{[^\\n\\r\\f]+\\}))?",
+      "captures":{
+        "4": {
+          "name": "string.weighted.percent.start"
+        },
+        "7": {
+          "name": "string.weighted.percent.weight-value"
+        },
+        "10": {
+          "name": "style.definition.params"
+        },
+        "12": {
+          "name": "comms.button.text"
+        },
+        "18": {
+          "name": "label.jump.to.mast"
+        },
+        "20": {
+          "patterns":[
+            {"include": "#expression"}
+          ]
+        }
+      }
     },
     "string-character-escape": {
       "name": "constant.character.escape.ts",

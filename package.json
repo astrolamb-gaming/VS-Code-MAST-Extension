@@ -119,6 +119,18 @@
 						}
 					},
 					{
+						"scope": "end.yield.result",
+						"settings": {
+							"foreground": "#d0661f"
+						}
+					},
+					{
+						"scope": "result.yield.result",
+						"settings": {
+							"foreground": "#3836aa"
+						}
+					},
+					{
 						"scope": "constant.language.mast",
 						"settings": {
 							"foreground": "#569CD6"
