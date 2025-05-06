@@ -583,13 +583,12 @@ async function loadSbs() {
     let text = "";
     try {
         const data = await fetch(gh);
-        if (data.ok)
-            (0, console_1.debug)("NOT OK");
         text = await data.text();
         (0, console_1.debug)(text);
         if (text === "404: Not Found") {
             (0, console_1.debug)("Using local copy, if it exists");
             text = await loadTempFile("sbs.py");
+            // debug(text)
             gh = path.join(os.tmpdir(), "cosmosModules", "sbs.py");
             // text = await readFile(gh);
             const p = new data_1.PyFile(gh, text);
