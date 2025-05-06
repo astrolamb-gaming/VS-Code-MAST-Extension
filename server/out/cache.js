@@ -579,7 +579,7 @@ async function loadTypings() {
 async function loadSbs() {
     let gh = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/typings/sbs/__init__.pyi";
     // Testing fake bad url
-    gh = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/typings/sbs/__iniit__.pyi";
+    // gh = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/typings/sbs/__iniit__.pyi";
     let text = "";
     try {
         const data = await fetch(gh);
