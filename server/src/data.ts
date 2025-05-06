@@ -254,10 +254,6 @@ export class PyFile extends FileCache {
 					}
 				}
 				this.defaultFunctions.push(m);
-				if (this.uri.includes("scatter")) {
-					debug(m);
-				}
-				//debug(f);
 			}
 		}
 		

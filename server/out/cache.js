@@ -578,20 +578,41 @@ async function loadTypings() {
 }
 async function loadSbs() {
     let gh = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/typings/sbs/__init__.pyi";
+    // Testing fake bad url
+    gh = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/typings/sbs/__iniit__.pyi";
     let text = "";
     try {
         const data = await fetch(gh);
+        if (data.ok)
+            (0, console_1.debug)("NOT OK");
         text = await data.text();
-        gh = saveZipTempFile("sbs.py", text);
-        const p = new data_1.PyFile(gh, text);
-        return p;
+        (0, console_1.debug)(text);
+        if (text === "404: Not Found") {
+            (0, console_1.debug)("Using local copy, if it exists");
+            text = await loadTempFile("sbs.py");
+            gh = path.join(os.tmpdir(), "cosmosModules", "sbs.py");
+            // text = await readFile(gh);
+            const p = new data_1.PyFile(gh, text);
+            return p;
+        }
+        else {
+            gh = saveZipTempFile("sbs.py", text);
+            const p = new data_1.PyFile(gh, text);
+            return p;
+        }
     }
     catch (e) {
+        // TODO: This section is probably unnecessary and obsolete.
+        // I did delete the sbs zip file as part of this repo, so it's doubly obsolete.
+        // But I kinda want a backup...
+        // What if I want to code without access to the internet?
         (0, console_1.debug)("Can't find sbs.py on github");
         try {
-            gh = path.join(__dirname, "sbs.py");
-            text = await (0, fileFunctions_1.readFile)(gh);
+            text = await loadTempFile("sbs.py");
+            gh = path.join(os.tmpdir(), "cosmosModules", "sbs.py");
+            // text = await readFile(gh);
             const p = new data_1.PyFile(gh, text);
+            (0, console_1.debug)(p);
             (0, console_1.debug)("SBS py file generated");
             // debug(p.defaultFunctions);
             return p;
@@ -711,5 +732,13 @@ function saveZipTempFile(uri, contents) {
     (0, console_1.debug)(tempPath);
     fs.writeFileSync(tempPath, contents);
     return tempPath;
+}
+async function loadTempFile(uri) {
+    const temPath = path.join(os.tmpdir(), "cosmosModules", uri);
+    if (fs.existsSync(path.dirname(temPath))) {
+        const text = await (0, fileFunctions_1.readFile)(temPath);
+        return text;
+    }
+    return "";
 }
 //# sourceMappingURL=cache.js.map

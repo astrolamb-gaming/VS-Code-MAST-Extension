@@ -71,7 +71,7 @@ export class MissionCache {
 		this.missionLibFolder = path.join(parent, "__lib__");
 		this.missionName = path.basename(this.missionURI);
 		this.storyJson = new StoryJson(path.join(this.missionURI,"story.json"));
-		
+
 		this.load();
 	}
 
@@ -614,19 +614,38 @@ async function loadTypings(): Promise<void> {
 
 async function loadSbs(): Promise<PyFile|null>{
 	let gh: string = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/typings/sbs/__init__.pyi";
+	// Testing fake bad url
+	gh = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/typings/sbs/__iniit__.pyi";
 	let text = "";
 	try {
 		const data = await fetch(gh);
+		if (data.ok) debug("NOT OK")
 		text = await data.text();
-		gh = saveZipTempFile("sbs.py",text);
-		const p = new PyFile(gh, text);
-		return p;
+		debug(text);
+		if (text === "404: Not Found") {
+			debug("Using local copy, if it exists")
+			text = await loadTempFile("sbs.py")
+			gh = path.join(os.tmpdir(), "cosmosModules", "sbs.py");
+			// text = await readFile(gh);
+			const p = new PyFile(gh, text);
+			return p;
+		} else {
+			gh = saveZipTempFile("sbs.py",text);
+			const p = new PyFile(gh, text);
+			return p;
+		}
 	} catch (e) {
+		// TODO: This section is probably unnecessary and obsolete.
+		// I did delete the sbs zip file as part of this repo, so it's doubly obsolete.
+		// But I kinda want a backup...
+		// What if I want to code without access to the internet?
 		debug("Can't find sbs.py on github");
 		try {
-			gh = path.join(__dirname, "sbs.py");
-			text = await readFile(gh);
+			text = await loadTempFile("sbs.py")
+			gh = path.join(os.tmpdir(), "cosmosModules", "sbs.py");
+			// text = await readFile(gh);
 			const p = new PyFile(gh, text);
+			debug(p);
 			debug("SBS py file generated")
 			// debug(p.defaultFunctions);
 			return p;
@@ -751,4 +770,13 @@ function saveZipTempFile(uri:string, contents:string) : string{
 	debug(tempPath);
 	fs.writeFileSync(tempPath,contents);
 	return tempPath;
+}
+
+async function loadTempFile(uri:string) {
+	const temPath = path.join(os.tmpdir(),"cosmosModules",uri);
+	if (fs.existsSync(path.dirname(temPath))) {
+		const text = await readFile(temPath);
+		return text;
+	}
+	return "";
 }
