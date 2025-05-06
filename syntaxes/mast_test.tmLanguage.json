@@ -184,6 +184,10 @@
           }
         },
         {
+          "name": "label.state.mast",
+          "match": "&{3}[ \\t]*(?<path>[\\/\\w]+)([ \\t]+)?"
+        },
+        {
           "name": "label.media.mast",
           "match": "@[\\w-]+(/[\\w-]+)*"
         },
