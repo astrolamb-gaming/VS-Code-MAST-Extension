@@ -523,6 +523,24 @@ class MissionCache {
         return roles;
     }
     /**
+     *
+     * @param folder The folder the current file is in.
+     * @returns an array of strings representing all the inventory keys in scope
+     */
+    getKeys(folder) {
+        folder = (0, fileFunctions_1.fixFileName)(folder);
+        let keys = [];
+        const ini = (0, fileFunctions_1.getInitContents)(folder);
+        (0, console_1.debug)(ini);
+        for (const m of this.mastFileCache) {
+            (0, console_1.debug)(folder);
+            if (ini.includes(path.basename(m.uri))) {
+                keys = keys.concat(m.keys);
+            }
+        }
+        return keys;
+    }
+    /**
      * Gets the {@link MastFile MastFile} associated with the given uri, or makes one if it doesn't exist
      * Must actually be a mast file, so check before using!
      * @param uri The uri of the file

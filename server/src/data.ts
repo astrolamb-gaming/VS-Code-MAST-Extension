@@ -8,7 +8,7 @@ import { fixFileName, getParentFolder } from './fileFunctions';
 import exp = require('constants');
 import { getCache } from './cache';
 import { getGlobals } from './globals';
-import { getRolesForFile } from './tokens/roles';
+import { getInventoryKeysForFile, getRolesForFile } from './tokens/roles';
 import { parsePrefabs } from './tokens/prefabs';
 import { parseVariables, Variable } from './tokens/variables';
 import { Function } from "./data/function";
@@ -74,6 +74,7 @@ export class MastFile extends FileCache {
 	// TODO: Add system for tracking variables in a mast file
 	variables: Variable[] = [];
 	roles: string[] = [];
+	keys: string[] = [];
 	prefabs: LabelInfo[] = [];
 	
 	constructor(uri: string, fileContents:string = "") {
@@ -113,6 +114,7 @@ export class MastFile extends FileCache {
 		//this.variables = getVariableNamesInDoc(textDocument);
 		this.variables = parseVariables(textDocument);//
 		this.roles = getRolesForFile(text);		
+		this.keys = getInventoryKeysForFile(text);
 	}
 
 	getVariableNames() {

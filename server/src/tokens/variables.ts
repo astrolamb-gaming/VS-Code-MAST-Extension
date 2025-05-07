@@ -6,7 +6,7 @@ import { getCache } from '../cache';
 
 // TODO: Add these to autocomplete and hover
 export const variableModifiers: string[][] = [
-	["default", "`Default` means that if the variable is not already defined, define it. Otherwise, skip. So it does not overwrite if it exists."],
+	["default", "`default` means that if the variable is not already defined, define it. Otherwise, skip. So it does not overwrite if it exists."],
 	["shared","Variables with this modifier are used by the server and all clients"],
 	// TODO: what do assigned and temp do to variables?
 	["assigned",""],

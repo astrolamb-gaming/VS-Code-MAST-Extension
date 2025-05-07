@@ -136,6 +136,11 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 				return {contents: buildLabelDocs(main)}
 			}
 		}
+		for (const key of variableModifiers) {
+			if (key[0] === symbol) {
+				return {contents: key[1]}
+			}
+		}
 	}
 
 

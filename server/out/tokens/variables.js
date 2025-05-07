@@ -9,7 +9,7 @@ const vscode_languageserver_1 = require("vscode-languageserver");
 const hover_1 = require("../hover");
 // TODO: Add these to autocomplete and hover
 exports.variableModifiers = [
-    ["default", "`Default` means that if the variable is not already defined, define it. Otherwise, skip. So it does not overwrite if it exists."],
+    ["default", "`default` means that if the variable is not already defined, define it. Otherwise, skip. So it does not overwrite if it exists."],
     ["shared", "Variables with this modifier are used by the server and all clients"],
     // TODO: what do assigned and temp do to variables?
     ["assigned", ""],

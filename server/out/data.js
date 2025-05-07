@@ -72,6 +72,7 @@ class MastFile extends FileCache {
         // TODO: Add system for tracking variables in a mast file
         this.variables = [];
         this.roles = [];
+        this.keys = [];
         this.prefabs = [];
         if (path.extname(uri) === ".mast") {
             // If the contents are aleady read, we parse and move on. Don't need to read or parse again.
@@ -108,6 +109,7 @@ class MastFile extends FileCache {
         //this.variables = getVariableNamesInDoc(textDocument);
         this.variables = (0, variables_1.parseVariables)(textDocument); //
         this.roles = (0, roles_1.getRolesForFile)(text);
+        this.keys = (0, roles_1.getInventoryKeysForFile)(text);
     }
     getVariableNames() {
         let arr = [];

@@ -10,7 +10,8 @@ import path = require('path');
 import { fixFileName, getFilesInDir } from './fileFunctions';
 import { getGlobals } from './globals';
 import { getCurrentMethodName } from './signatureHelp';
-import { getRolesAsCompletionItem, getRolesForFile } from './tokens/roles';
+import { getKeysAsCompletionItem, getRolesAsCompletionItem, getRolesForFile } from './tokens/roles';
+import { variableModifiers } from './tokens/variables';
 
 
 let currentLine = 0;
@@ -148,6 +149,13 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				roles = roles.concat(cache.getRoles(text.uri));
 				roles = roles.concat(getGlobals().shipData.roles);
 				ci = getRolesAsCompletionItem(roles);
+				return ci;
+			}
+
+			// Now for inventory keys
+			if (getCurrentMethodName(iStr).includes("inventory")) {
+				let keys = cache.getKeys(text.uri);
+				ci = getKeysAsCompletionItem(keys);
 				return ci;
 			}
 
@@ -395,11 +403,6 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		"async",
 		"on change",
 		"await",
-		"default",
-		"shared",
-		"assigned",
-		"client",
-		"temp",
 		"import",
 		"if",
 		"else",
@@ -414,6 +417,14 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		let i: CompletionItem = {
 			label: key,
 			kind: CompletionItemKind.Keyword
+		}
+		ci.push(i);
+	}
+	for (const key of variableModifiers) {
+		let i: CompletionItem = {
+			label: key[0],
+			kind: CompletionItemKind.Keyword,
+			detail: key[1]
 		}
 		ci.push(i);
 	}

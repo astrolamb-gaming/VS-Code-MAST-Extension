@@ -52,3 +52,30 @@ export function getRolesAsCompletionItem(roles: string[]) {
 	}
 	return ci;
 }
+
+export function getInventoryKeysForFile(text:string) {
+	let regex:RegExp = /inventory_value\(\w+,(?<val>([\"\']))([^\"\']*)\k<val>(,.*)?\)/g;
+	let m: RegExpExecArray | null;
+	let keys: string[]=[];
+	while (m = regex.exec(text)) {
+		if (m[3]!== undefined) {
+			keys.push(m[3]);
+		}
+	}
+	keys = [...new Set(keys)];
+	return keys;
+}
+
+export function getKeysAsCompletionItem(keys: string[]) {
+	keys = [...new Set(keys)];
+	const ci: CompletionItem[] = [];
+	for (const r of keys) {
+		const c: CompletionItem = {
+			label: r,
+			kind: CompletionItemKind.Text,
+			labelDetails: {description: "Inventory Key"}
+		}
+		ci.push(c);
+	}
+	return ci;
+}

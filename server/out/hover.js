@@ -136,6 +136,11 @@ function onHover(_pos, text) {
                 return { contents: (0, labels_1.buildLabelDocs)(main) };
             }
         }
+        for (const key of variables_1.variableModifiers) {
+            if (key[0] === symbol) {
+                return { contents: key[1] };
+            }
+        }
     }
     // Now we'll check for variables
     // for (const file of getCache(text.uri).mastFileCache) {

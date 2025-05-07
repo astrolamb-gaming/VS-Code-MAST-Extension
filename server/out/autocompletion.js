@@ -13,6 +13,7 @@ const fileFunctions_1 = require("./fileFunctions");
 const globals_1 = require("./globals");
 const signatureHelp_1 = require("./signatureHelp");
 const roles_1 = require("./tokens/roles");
+const variables_1 = require("./tokens/variables");
 let currentLine = 0;
 function onCompletion(_textDocumentPosition, text) {
     // return buildFaction("kra","Kralien_Set");
@@ -132,6 +133,12 @@ function onCompletion(_textDocumentPosition, text) {
                 roles = roles.concat(cache.getRoles(text.uri));
                 roles = roles.concat((0, globals_1.getGlobals)().shipData.roles);
                 ci = (0, roles_1.getRolesAsCompletionItem)(roles);
+                return ci;
+            }
+            // Now for inventory keys
+            if ((0, signatureHelp_1.getCurrentMethodName)(iStr).includes("inventory")) {
+                let keys = cache.getKeys(text.uri);
+                ci = (0, roles_1.getKeysAsCompletionItem)(keys);
                 return ci;
             }
             // Here we check for stylestrings, art_ids, etc.
@@ -366,11 +373,6 @@ function onCompletion(_textDocumentPosition, text) {
         "async",
         "on change",
         "await",
-        "default",
-        "shared",
-        "assigned",
-        "client",
-        "temp",
         "import",
         "if",
         "else",
@@ -385,6 +387,14 @@ function onCompletion(_textDocumentPosition, text) {
         let i = {
             label: key,
             kind: vscode_languageserver_1.CompletionItemKind.Keyword
+        };
+        ci.push(i);
+    }
+    for (const key of variables_1.variableModifiers) {
+        let i = {
+            label: key[0],
+            kind: vscode_languageserver_1.CompletionItemKind.Keyword,
+            detail: key[1]
         };
         ci.push(i);
     }
