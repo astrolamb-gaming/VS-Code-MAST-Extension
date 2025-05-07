@@ -26,6 +26,7 @@ Includes:
 	- NOTE: It's virtually impossible to determine the type of a variable programmatically. The extension can't really do it, so you'll have to keep track of what each variable represents.
 	The extension will give you options that show the object type associated with that option.
 * Autocompletion for labels in current file and files in scope
+* Autocompletion for roles and inventory keys
 * Function signature information (i.e. notes on argument types)
 * Go To Definition functionality
 * Checks for module versions
@@ -33,6 +34,7 @@ Includes:
 * In mission folders, checks for `__init__.mast` in the folder you're working in. If it doesn't exist, will promt with an option to auto-generate the file, with all .mast and .py files included automatically.
 * Autocompletion of filenames for `__init__.mast`
 * Checks or root artemis directory existence - most functionality requires the opened folder to be in the artemis mission directory
+* Go To Definition funcionality for functions and labels in scope
 
 ## Requirements
 

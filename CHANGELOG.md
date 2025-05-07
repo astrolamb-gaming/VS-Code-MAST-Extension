@@ -10,15 +10,24 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * Fix for weighted strings not being recognized as strings in certain situations
 * Show label autocompletions for functions that take a label as an argument
 * Add python built-in module information
+* Add autocompletion for prefab data
 
 ### 0.10.0
 
+* Add autocompletion for keys used in set/get_inventory_value() and related functions
 * Add autocompletion for objects
-* Major overhaul to cut down on computational and memory resource usage
+* Major overhaul to drastically cut down on computational and memory resource usage
 * Add spaceobject.py and agent.py files
 * By default, tabs will be used instead of spaces for indentation
 * More thorough fix for sbs module to fix [#3](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues/3)
+* Add Go To Definition for sbs module
 * Fix autocompletion and signature information issue when using nested functions [#4](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues/4)
+* Fix scatter module
+* Fix for various minor error messages and fstring checks
+* Update formatting for yield and button definitions
+* Add StateLabel formatting
+* Allow use of sbs module if offline, assuming that it has been loaded previously
+
 
 ### 0.9.1
 
