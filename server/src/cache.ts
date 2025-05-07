@@ -537,7 +537,7 @@ export class MissionCache {
 
 	/**
 	 * 
-	 * @param folder The folder the current file is in.
+	 * @param folder The folder the current file is in, or just the file uri
 	 * @returns an array of strings
 	 */
 	getRoles(folder: string): string[] {
@@ -556,7 +556,7 @@ export class MissionCache {
 
 	/**
 	 * 
-	 * @param folder The folder the current file is in.
+	 * @param folder The folder the current file is in, or just the file uri
 	 * @returns an array of strings representing all the inventory keys in scope
 	 */
 	getKeys(folder: string): string[] {
@@ -639,20 +639,20 @@ async function loadSbs(): Promise<PyFile|null>{
 	try {
 		const data = await fetch(gh);
 		text = await data.text();
-		debug(text);
+
+		// If the url isn't valid or not connected to internet
 		if (text === "404: Not Found") {
 			debug("Using local copy, if it exists")
 			text = await loadTempFile("sbs.py")
-			// debug(text)
 			gh = path.join(os.tmpdir(), "cosmosModules", "sbs.py");
-			// text = await readFile(gh);
-			const p = new PyFile(gh, text);
-			return p;
-		} else {
-			gh = saveZipTempFile("sbs.py",text);
 			const p = new PyFile(gh, text);
 			return p;
 		}
+		// If able to find the url
+		gh = saveZipTempFile("sbs.py",text);
+		const p = new PyFile(gh, text);
+		return p;
+
 	} catch (e) {
 		// TODO: This section is probably unnecessary and obsolete.
 		// I did delete the sbs zip file as part of this repo, so it's doubly obsolete.
@@ -664,9 +664,7 @@ async function loadSbs(): Promise<PyFile|null>{
 			gh = path.join(os.tmpdir(), "cosmosModules", "sbs.py");
 			// text = await readFile(gh);
 			const p = new PyFile(gh, text);
-			debug(p);
 			debug("SBS py file generated")
-			// debug(p.defaultFunctions);
 			return p;
 		} catch (ex) {
 			debug("Can't find sbs.py locally either.");

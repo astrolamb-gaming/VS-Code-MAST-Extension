@@ -62,19 +62,19 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 					}
 				}
 			}
-			// for (const p of getCache(doc.uri).missionPyModules) {
-			// 	for (const c of p.classes) {
-			// 		if (c.name === className) {
-			// 			for (const f of c.methods) {
-			// 				if (f.name === symbol) {
-			// 					const loc:Location = f.location;
-			// 					loc.uri = "file:///" + loc.uri;
-			// 					return loc;
-			// 				}
-			// 			}
-			// 		}
-			// 	}
-			// }
+			for (const p of getCache(doc.uri).missionPyModules) {
+				for (const c of p.classes) {
+					if (c.name === className) {
+						for (const f of c.methods) {
+							if (f.name === symbol) {
+								const loc:Location = f.location;
+								loc.uri = fileFromUri(loc.uri);
+								return loc;
+							}
+						}
+					}
+				}
+			}
 		}
 		if (isFunc) {
 			// Check if this is a function in a .py file within the current mission.

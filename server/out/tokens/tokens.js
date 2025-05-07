@@ -9,7 +9,6 @@ exports.isFunction = isFunction;
 exports.isClassMethod = isClassMethod;
 exports.getClassOfMethod = getClassOfMethod;
 exports.getWordRangeAtPosition = getWordRangeAtPosition;
-const console_1 = require("console");
 const comments_1 = require("../tokens/comments");
 var TokenType;
 (function (TokenType) {
@@ -98,7 +97,7 @@ function tokenizeDoc(doc) {
 function isFunction(line, token) {
     const start = line.indexOf(token);
     const end = start + token.length;
-    (0, console_1.debug)(line.substring(end).trim());
+    // debug(line.substring(end).trim());
     if (line.substring(end).trim().startsWith("(")) {
         // debug("TRUE")
         return true;

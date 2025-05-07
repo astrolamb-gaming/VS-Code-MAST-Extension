@@ -57,19 +57,19 @@ async function onDefinition(doc, pos) {
                     }
                 }
             }
-            // for (const p of getCache(doc.uri).missionPyModules) {
-            // 	for (const c of p.classes) {
-            // 		if (c.name === className) {
-            // 			for (const f of c.methods) {
-            // 				if (f.name === symbol) {
-            // 					const loc:Location = f.location;
-            // 					loc.uri = "file:///" + loc.uri;
-            // 					return loc;
-            // 				}
-            // 			}
-            // 		}
-            // 	}
-            // }
+            for (const p of (0, cache_1.getCache)(doc.uri).missionPyModules) {
+                for (const c of p.classes) {
+                    if (c.name === className) {
+                        for (const f of c.methods) {
+                            if (f.name === symbol) {
+                                const loc = f.location;
+                                loc.uri = (0, fileFunctions_1.fileFromUri)(loc.uri);
+                                return loc;
+                            }
+                        }
+                    }
+                }
+            }
         }
         if (isFunc) {
             // Check if this is a function in a .py file within the current mission.

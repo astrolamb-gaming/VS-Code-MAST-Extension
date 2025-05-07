@@ -506,7 +506,7 @@ class MissionCache {
     }
     /**
      *
-     * @param folder The folder the current file is in.
+     * @param folder The folder the current file is in, or just the file uri
      * @returns an array of strings
      */
     getRoles(folder) {
@@ -524,7 +524,7 @@ class MissionCache {
     }
     /**
      *
-     * @param folder The folder the current file is in.
+     * @param folder The folder the current file is in, or just the file uri
      * @returns an array of strings representing all the inventory keys in scope
      */
     getKeys(folder) {
@@ -602,21 +602,18 @@ async function loadSbs() {
     try {
         const data = await fetch(gh);
         text = await data.text();
-        (0, console_1.debug)(text);
+        // If the url isn't valid or not connected to internet
         if (text === "404: Not Found") {
             (0, console_1.debug)("Using local copy, if it exists");
             text = await loadTempFile("sbs.py");
-            // debug(text)
             gh = path.join(os.tmpdir(), "cosmosModules", "sbs.py");
-            // text = await readFile(gh);
             const p = new data_1.PyFile(gh, text);
             return p;
         }
-        else {
-            gh = saveZipTempFile("sbs.py", text);
-            const p = new data_1.PyFile(gh, text);
-            return p;
-        }
+        // If able to find the url
+        gh = saveZipTempFile("sbs.py", text);
+        const p = new data_1.PyFile(gh, text);
+        return p;
     }
     catch (e) {
         // TODO: This section is probably unnecessary and obsolete.
@@ -629,9 +626,7 @@ async function loadSbs() {
             gh = path.join(os.tmpdir(), "cosmosModules", "sbs.py");
             // text = await readFile(gh);
             const p = new data_1.PyFile(gh, text);
-            (0, console_1.debug)(p);
             (0, console_1.debug)("SBS py file generated");
-            // debug(p.defaultFunctions);
             return p;
         }
         catch (ex) {
