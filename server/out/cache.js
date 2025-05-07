@@ -334,10 +334,14 @@ class MissionCache {
         for (const py of this.pyFileCache) {
             methods = methods.concat(py.defaultFunctions);
         }
+        for (const py of this.missionPyModules) {
+            methods = methods.concat(py.defaultFunctions);
+        }
         return methods;
     }
     /**
      * Get the method with the given name, if it exists in scope for this cache.
+     * If it's not a default function, it'll check classes too
      * @param name Name of the {@link Function Function}
      * @returns The function with the given name.
      */
@@ -348,6 +352,22 @@ class MissionCache {
             }
         }
         return undefined;
+    }
+    /**
+     * Checks over all {@link Function Function}s that are class methods and finds the ones with the given name.
+     * @param name The name of the function
+     * @returns A list of all {@link Function Function}s with that name
+     */
+    getPossibleMethods(name) {
+        let list = [];
+        for (const c of this.missionClasses) {
+            for (const m of c.methods) {
+                if (m.name === name) {
+                    list.push(m);
+                }
+            }
+        }
+        return list;
     }
     /**
      * TODO: This should only return variables that are in scope

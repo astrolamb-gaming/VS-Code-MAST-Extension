@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.onCompletion = onCompletion;
+exports.getCurrentArgumentNames = getCurrentArgumentNames;
 const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
 const labels_1 = require("./tokens/labels");
@@ -14,6 +15,7 @@ const globals_1 = require("./globals");
 const signatureHelp_1 = require("./signatureHelp");
 const roles_1 = require("./tokens/roles");
 const variables_1 = require("./tokens/variables");
+const tokens_1 = require("./tokens/tokens");
 let currentLine = 0;
 function onCompletion(_textDocumentPosition, text) {
     // return buildFaction("kra","Kralien_Set");
@@ -39,6 +41,11 @@ function onCompletion(_textDocumentPosition, text) {
     const pos = text.offsetAt(_textDocumentPosition.position);
     const startOfLine = pos - _textDocumentPosition.position.character;
     const iStr = t.substring(startOfLine, pos);
+    (0, console_1.debug)(iStr);
+    if (iStr.includes("(")) {
+        let arg = getCurrentArgumentNames(iStr, text);
+        (0, console_1.debug)(arg);
+    }
     if ((0, fileFunctions_1.fixFileName)(text.uri).endsWith("__init__.mast")) {
         if (iStr.trim() === "") {
             return [{ label: "import", kind: vscode_languageserver_1.CompletionItemKind.Keyword }];
@@ -97,7 +104,6 @@ function onCompletion(_textDocumentPosition, text) {
     // return ci;
     //debug("" + startOfLine as string);
     //
-    (0, console_1.debug)(iStr);
     // If we're inside a comment or a string, we don't want autocompletion.
     if ((0, comments_1.isInComment)(text, pos)) {
         (0, console_1.debug)("Is in Comment");
@@ -438,6 +444,29 @@ function onCompletion(_textDocumentPosition, text) {
     // TODO: Account for text that's already present?? I don't think that's necessary
     // - Remove the text from the start of the completion item label
     return ci;
+}
+function getCurrentArgumentNames(iStr, doc) {
+    let ret = [];
+    const func = (0, signatureHelp_1.getCurrentMethodName)(iStr);
+    const fstart = iStr.lastIndexOf(func);
+    const wholeFunc = iStr.substring(fstart, iStr.length);
+    const arr = wholeFunc.split(",");
+    const paramNumber = arr.length - 1;
+    let methods = [];
+    if ((0, tokens_1.isClassMethod)(iStr, func)) {
+        methods = (0, cache_1.getCache)(doc.uri).getPossibleMethods(func);
+    }
+    else {
+        let f = (0, cache_1.getCache)(doc.uri).getMethod(func);
+        if (f !== undefined)
+            methods.push(f);
+    }
+    for (const m of methods) {
+        let p = m.parameters[paramNumber];
+        (0, console_1.debug)(p);
+        ret.push(p.name);
+    }
+    return ret;
 }
 function getCompletionsForMethodParameters(iStr, paramName, doc, pos) {
     let ci = [];

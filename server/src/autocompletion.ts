@@ -12,6 +12,8 @@ import { getGlobals } from './globals';
 import { getCurrentMethodName } from './signatureHelp';
 import { getKeysAsCompletionItem, getRolesAsCompletionItem, getRolesForFile } from './tokens/roles';
 import { variableModifiers } from './tokens/variables';
+import { isClassMethod } from './tokens/tokens';
+import { Function } from './data/function';
 
 
 let currentLine = 0;
@@ -40,6 +42,13 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	const pos : integer = text.offsetAt(_textDocumentPosition.position);
 	const startOfLine : integer = pos - _textDocumentPosition.position.character;
 	const iStr : string = t.substring(startOfLine,pos);
+
+	debug(iStr);
+	if (iStr.includes("(")) {
+		let arg = getCurrentArgumentNames(iStr,text);
+		debug(arg);
+	}
+	
 
 	if (fixFileName(text.uri).endsWith("__init__.mast")) {
 		if (iStr.trim() === "") {
@@ -104,7 +113,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	
 	//debug("" + startOfLine as string);
 	//
-	debug(iStr);
+	
 
 	// If we're inside a comment or a string, we don't want autocompletion.
 	if (isInComment(text,pos)) {
@@ -473,6 +482,27 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	return ci;
 }
 
+export function getCurrentArgumentNames(iStr:string, doc:TextDocument): string[] {
+	let ret: string[] = [];
+	const func = getCurrentMethodName(iStr);
+	const fstart = iStr.lastIndexOf(func);
+	const wholeFunc = iStr.substring(fstart,iStr.length);
+	const arr = wholeFunc.split(",");
+	const paramNumber = arr.length-1;
+	let methods:Function[]=[];
+	if (isClassMethod(iStr,func)) {
+		methods = getCache(doc.uri).getPossibleMethods(func);
+	} else {
+		let f = getCache(doc.uri).getMethod(func);
+		if (f !== undefined) methods.push(f);
+	}
+	for (const m of methods) {
+		let p = m.parameters[paramNumber];
+		debug(p);
+		ret.push(p.name);
+	}
+	return ret;
+}
 
 function getCompletionsForMethodParameters(iStr:string, paramName: string, doc:TextDocument, pos:integer): CompletionItem[] {
 	let ci:CompletionItem[] = [];
