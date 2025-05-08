@@ -19,6 +19,7 @@ import { ClassObject } from './data/class';
 import { StoryJson } from './data/storyJson';
 import { sleep } from './python/python';
 import { Func } from 'mocha';
+import { loadStyleDefs } from './data/styles';
 
 
 const includeNonProcedurals = [
@@ -59,6 +60,7 @@ export class MissionCache {
 	 * TODO: See about parsing all python classes that derive from Label
 	 */
 	resourceLabels: IRouteLabel[] = [];
+	styleDefinitions: string[] = [];
 
 	constructor(workspaceUri: string) {
 		//debug(workspaceUri);
@@ -263,6 +265,7 @@ export class MissionCache {
 			// Do nothing
 		} else if (file.endsWith(".py")) {
 			this.routeLabels = this.routeLabels.concat(loadRouteLabels(data));
+			this.styleDefinitions = this.styleDefinitions.concat(loadStyleDefs(file,data))
 			// this.mediaLabels = this.mediaLabels.concat(loadMediaLabels(data));
 			// this.resourceLabels = this.resourceLabels.concat(loadResourceLabels(data));
 			const p = new PyFile(file, data);

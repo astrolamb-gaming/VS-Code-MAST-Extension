@@ -17,6 +17,7 @@ const globals_1 = require("./globals");
 const os = require("os");
 const audioFiles_1 = require("./resources/audioFiles");
 const storyJson_1 = require("./data/storyJson");
+const styles_1 = require("./data/styles");
 const includeNonProcedurals = [
     "scatter",
     "faces",
@@ -51,6 +52,7 @@ class MissionCache {
          * TODO: See about parsing all python classes that derive from Label
          */
         this.resourceLabels = [];
+        this.styleDefinitions = [];
         this.resourceLabels = (0, routeLabels_1.loadResourceLabels)();
         this.mediaLabels = this.mediaLabels.concat((0, routeLabels_1.loadMediaLabels)());
         this.missionURI = (0, fileFunctions_1.getMissionFolder)(workspaceUri);
@@ -245,6 +247,7 @@ class MissionCache {
         }
         else if (file.endsWith(".py")) {
             this.routeLabels = this.routeLabels.concat((0, routeLabels_1.loadRouteLabels)(data));
+            this.styleDefinitions = this.styleDefinitions.concat((0, styles_1.loadStyleDefs)(file, data));
             // this.mediaLabels = this.mediaLabels.concat(loadMediaLabels(data));
             // this.resourceLabels = this.resourceLabels.concat(loadResourceLabels(data));
             const p = new data_1.PyFile(file, data);
