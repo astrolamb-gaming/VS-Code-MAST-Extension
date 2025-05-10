@@ -417,6 +417,7 @@ connection.onSignatureHelp((_textDocPos: SignatureHelpParams): SignatureHelp | u
 	// if (!_textDocPos.textDocument.uri.endsWith("mast")) {
 	// 	return;
 	// }
+	if (_textDocPos.textDocument.uri.endsWith(".py")) return undefined;
 	const text = documents.get(_textDocPos.textDocument.uri);
 	if (text === undefined) {
 		return undefined;
@@ -434,6 +435,7 @@ connection.onCompletion(
 		if (_textDocumentPosition.textDocument.uri.endsWith("__init__.mast")) {
 			debug("Can't get completions from __init__.mast file");
 		}
+		if (_textDocumentPosition.textDocument.uri.endsWith(".py")) return undefined;
 		const text = documents.get(_textDocumentPosition.textDocument.uri);
 		if (text === undefined) {
 			return [];

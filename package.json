@@ -15,7 +15,8 @@
 	],
 	"main": "./client/out/extension",
 	"activationEvents": [
-		"onLanguage:json"
+		"onLanguage:json",
+		"onLanguage:py"
 	],
 	"capabilities": {
 		"workspaceSymbolProvider": "true"

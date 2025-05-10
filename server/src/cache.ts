@@ -143,6 +143,7 @@ export class MissionCache {
 
 	async checkForInitFolder(folder:string) : Promise<boolean> {
 		// if (this.ingoreInitFileMissing) return;
+		if (folder.endsWith(this.missionName)) return false;
 		if (getInitFileInFolder(folder) === undefined) {
 			debug("No __init__.mast file for this folder.");
 			debug(folder);

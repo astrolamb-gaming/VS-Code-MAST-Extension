@@ -16,6 +16,10 @@ let debugStrs : string = "";//Debug: ${workspaceFolder}\n";
 let exclude: string[] = [];
 
 export async function validateTextDocument(textDocument: TextDocument): Promise<Diagnostic[]> {
+	if (textDocument.languageId === "py") {
+		getCache(textDocument.uri).updateFileInfo(textDocument);
+		return [];
+	}
 
 	if (textDocument.languageId === "json") {
 		debug("THIS IS A JSON FILE");

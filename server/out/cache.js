@@ -126,6 +126,8 @@ class MissionCache {
     }
     async checkForInitFolder(folder) {
         // if (this.ingoreInitFileMissing) return;
+        if (folder.endsWith(this.missionName))
+            return false;
         if ((0, fileFunctions_1.getInitFileInFolder)(folder) === undefined) {
             (0, console_1.debug)("No __init__.mast file for this folder.");
             (0, console_1.debug)(folder);

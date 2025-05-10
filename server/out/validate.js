@@ -15,6 +15,10 @@ const fileFunctions_1 = require("./fileFunctions");
 let debugStrs = ""; //Debug: ${workspaceFolder}\n";
 let exclude = [];
 async function validateTextDocument(textDocument) {
+    if (textDocument.languageId === "py") {
+        (0, cache_1.getCache)(textDocument.uri).updateFileInfo(textDocument);
+        return [];
+    }
     if (textDocument.languageId === "json") {
         (0, console_1.debug)("THIS IS A JSON FILE");
         return [];
