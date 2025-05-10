@@ -169,7 +169,7 @@ class Function {
             (0, console_1.debug)("Generating an SBS function");
         (0, console_1.debug)(this.sourceFile);
         /**
-         * TODO: Fix this for CompletionItem in {@link buildCompletionItem buildCompletionItem}
+         * TODO: Fix this for CompletionItem in {@link buildCompletionItem buil6dCompletionItem}
          */
         if (docs === "") {
             docs = this.documentation.toString();
@@ -239,11 +239,11 @@ class Function {
         const documentation = this.documentation.replace(/\t/g, "&emsp;").replace(/    /g, "&emsp;").replace(/\n/g, "\\\n");
         // debug(documentation)
         const source = "Source: " + this.determineSource(this.sourceFile);
-        let docs = {
-            kind: 'markdown',
-            value: functionDetails + "  \n  " + documentation // + "  \n  " + source
-        };
-        // let docs = this.buildMarkUpContent(documentation);
+        // let docs: MarkupContent = {
+        // 	kind: 'markdown',
+        // 	value: functionDetails + "  \n  " + documentation// + "  \n  " + source
+        // }
+        let docs = this.buildMarkUpContent(this.documentation);
         // docs.value = docs.value.replace(/\t/g,"&emsp;").replace(/    /g,"&emsp;").replace(/\n/g,"\\\n");
         let insert = this.name;
         if (this.parameters.length === 0 && this.functionType !== "property") {
@@ -254,7 +254,7 @@ class Function {
             kind: cik,
             //command: { command: 'editor.action.triggerSuggest', title: 'Re-trigger completions...' },
             documentation: docs, // this.documentation,
-            // detail: ci_details,
+            detail: this.name,
             labelDetails: labelDetails,
             insertText: insert
         };

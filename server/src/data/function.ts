@@ -213,7 +213,7 @@ export class Function implements IFunction {
 	buildMarkUpContent(docs: string = ""): MarkupContent {
 		if (this.sourceFile.includes("sbs.py")) debug("Generating an SBS function"); debug(this.sourceFile);
 		/** 
-		 * TODO: Fix this for CompletionItem in {@link buildCompletionItem buildCompletionItem}
+		 * TODO: Fix this for CompletionItem in {@link buildCompletionItem buil6dCompletionItem}
 		 */ 
 
 		if (docs === "") {
@@ -294,11 +294,11 @@ export class Function implements IFunction {
 		const documentation = (this.documentation as string).replace(/\t/g,"&emsp;").replace(/    /g,"&emsp;").replace(/\n/g,"\\\n");
 		// debug(documentation)
 		const source = "Source: " + this.determineSource(this.sourceFile);
-		let docs: MarkupContent = {
-			kind: 'markdown',
-			value: functionDetails + "  \n  " + documentation// + "  \n  " + source
-		}
-		// let docs = this.buildMarkUpContent(documentation);
+		// let docs: MarkupContent = {
+		// 	kind: 'markdown',
+		// 	value: functionDetails + "  \n  " + documentation// + "  \n  " + source
+		// }
+		let docs = this.buildMarkUpContent(this.documentation as string);
 		// docs.value = docs.value.replace(/\t/g,"&emsp;").replace(/    /g,"&emsp;").replace(/\n/g,"\\\n");
 		let insert = this.name;
 		if (this.parameters.length === 0 && this.functionType !== "property") {
@@ -310,7 +310,7 @@ export class Function implements IFunction {
 			kind: cik,
 			//command: { command: 'editor.action.triggerSuggest', title: 'Re-trigger completions...' },
 			documentation: docs,// this.documentation,
-			// detail: ci_details,
+			detail: this.name,
 			labelDetails: labelDetails,
 			insertText: insert
 		}
