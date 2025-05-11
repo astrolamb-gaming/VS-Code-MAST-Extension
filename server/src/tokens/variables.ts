@@ -61,6 +61,22 @@ export function parseVariables(doc: TextDocument): Variable[] {
 		// we're instead going to parse just the applicable variable.
 		ret.push(var1);
 	}
+	const randomTxtGen = /<var[ \t]+(\w+)>/g;
+	while (m = randomTxtGen.exec(text)) {
+		const v = m[1];
+		const start = m.index + m[0].indexOf(v);
+		const end = v.length + start;
+		const range: Range = { start: doc.positionAt(start), end: doc.positionAt(end)}
+		// const line = getCurrentLineFromTextDocument(range.start,doc);
+		let var1: Variable = {
+			name: v,
+			range: range,
+			doc: '',
+			equals: "Random Text Option",
+			types: ["string"]
+		}
+		ret.push(var1);
+	}
 	ret = [...new Map(ret.map(v => [v.range, v])).values()];
 	// debug(ret);
 	return ret;

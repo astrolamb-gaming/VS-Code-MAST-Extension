@@ -119,56 +119,53 @@ async function validateTextDocument(textDocument) {
     // debug(functionSigs);
     // diagnostics = diagnostics.concat(functionSigs);
     // Checking string errors
-    let fstring = /[^"]".*\{.*\}.*"[^"]/g;
-    let interior = /{.*\".*\".*}/g;
-    // This still doesn't work, because for some reason it prioritizes one double quote over three
-    // let fstring = /(?<name>(\"\"\"|\"|')).*\{(\k<name>).*(\k<name>)\}.*(\k<name>)/g;
-    while (m = fstring.exec(text)) {
-        let ints = (0, comments_1.getMatchesForRegex)(interior, m[0]);
-        for (const i of ints) {
-            let str = text.substring(m.index + i.start, m.index + i.end);
-            let start = str.indexOf("\"");
-            let end = str.indexOf("\"", start + 1) + 1;
-            if (end === 0) {
-                end = start + 1;
-            }
-            let r = {
-                start: textDocument.positionAt(m.index + i.start + start),
-                end: textDocument.positionAt(m.index + i.start + end)
-            };
-            let d = {
-                range: r,
-                message: "Cannot use double quotes inside of an f-string that is encompassed by double quotes",
-                severity: vscode_languageserver_1.DiagnosticSeverity.Error,
-                source: "mast extension"
-            };
-            diagnostics.push(d);
-        }
-    }
-    fstring = /\'.*?\{.*?\}.*?\'/g;
-    interior = /\{.*?\'.*?\'.*?\}/g;
-    while (m = fstring.exec(text)) {
-        let ints = (0, comments_1.getMatchesForRegex)(interior, m[0]);
-        for (const i of ints) {
-            let str = text.substring(m.index + i.start, m.index + i.end);
-            let start = str.indexOf("\'");
-            let end = str.indexOf("\'", start + 1) + 1;
-            if (end === 0) {
-                end = start + 1;
-            }
-            let r = {
-                start: textDocument.positionAt(m.index + i.start + start),
-                end: textDocument.positionAt(m.index + i.start + end)
-            };
-            let d = {
-                range: r,
-                message: "Cannot use single quotes inside of an f-string that is encompassed by single quotes",
-                severity: vscode_languageserver_1.DiagnosticSeverity.Error,
-                source: "mast extension"
-            };
-            diagnostics.push(d);
-        }
-    }
+    ///////////////////////////////////////////////////////     Not sure if this is even applicable
+    // let fstring = /[^"]".*\{.*\}.*"[^"]/g;
+    // let interior = /{.*\".*\".*}/g;
+    // // This still doesn't work, because for some reason it prioritizes one double quote over three
+    // // let fstring = /(?<name>(\"\"\"|\"|')).*\{(\k<name>).*(\k<name>)\}.*(\k<name>)/g;
+    // while (m = fstring.exec(text)) {
+    // 	let ints = getMatchesForRegex(interior,m[0]);
+    // 	for (const i of ints) {
+    // 		let str = text.substring(m.index + i.start,m.index + i.end);
+    // 		let start = str.indexOf("\"");
+    // 		let end = str.indexOf("\"",start+1)+1;
+    // 		if (end === 0) { end = start+1 }
+    // 		let r: Range = {
+    // 			start: textDocument.positionAt(m.index + i.start + start),
+    // 			end: textDocument.positionAt(m.index + i.start + end)
+    // 		}
+    // 		let d: Diagnostic = {
+    // 			range: r,
+    // 			message: "Cannot use double quotes inside of an f-string that is encompassed by double quotes",
+    // 			severity: DiagnosticSeverity.Error,
+    // 			source: "mast extension"
+    // 		}
+    // 		diagnostics.push(d);
+    // 	}
+    // }
+    // fstring = /\'.*?\{.*?\}.*?\'/g;
+    // interior = /\{.*?\'.*?\'.*?\}/g;
+    // while (m = fstring.exec(text)) {
+    // 	let ints = getMatchesForRegex(interior,m[0]);
+    // 	for (const i of ints) {
+    // 		let str = text.substring(m.index + i.start,m.index + i.end);
+    // 		let start = str.indexOf("\'");
+    // 		let end = str.indexOf("\'",start+1)+1;
+    // 		if (end === 0) { end = start+1 }
+    // 		let r: Range = {
+    // 			start: textDocument.positionAt(m.index + i.start + start),
+    // 			end: textDocument.positionAt(m.index + i.start + end)
+    // 		}
+    // 		let d: Diagnostic = {
+    // 			range: r,
+    // 			message: "Cannot use single quotes inside of an f-string that is encompassed by single quotes",
+    // 			severity: DiagnosticSeverity.Error,
+    // 			source: "mast extension"
+    // 		}
+    // 		diagnostics.push(d);
+    // 	}
+    // }
     //checkForDuplicateLabelsInFile(textDocument);
     // For applicable diagnostics, check if they, or parts of them, are inside of a string or comment.
     // Some things should be checked after this. Other things should be checked before.

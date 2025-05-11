@@ -164,6 +164,12 @@
 						}
 					},
 					{
+						"scope": "string.random",
+						"settings": {
+							"foreground": "#00960f"
+						}
+					},
+					{
 						"scope": "comms.button",
 						"settings": {
 							"foreground": "#4558c5",
