@@ -493,23 +493,23 @@ function findBadLabels(t) {
             d.relatedInformation = (0, errorChecking_1.relatedMessage)(t, d.range, "See https://artemis-sbs.github.io/sbs_utils/mast/routes/ for more details on routes.");
             diagnostics.push(d);
         }
-        if (!formatCheck.test(m[0])) {
-            let message = "Route label format is incorrect. Proper formats include: \n//comms\n//spawn/grid\n//enable/science if has_roles(COMMS_SELECTED_ID, \"raider\")";
-            if (m[0].endsWith("/")) {
-                message = "Route labels cannot end with a slash. ";
-            }
-            const d = {
-                range: {
-                    start: t.positionAt(m.index),
-                    end: t.positionAt(m.index + m[0].length)
-                },
-                severity: vscode_languageserver_1.DiagnosticSeverity.Error,
-                message: message,
-                source: "mast"
-            };
-            d.relatedInformation = (0, errorChecking_1.relatedMessage)(t, d.range, "See https://artemis-sbs.github.io/sbs_utils/mast/routes/ for more details on routes.");
-            diagnostics.push(d);
-        }
+        // if (!formatCheck.test(m[0])) {
+        // 	let message = "Route label format is incorrect. Proper formats include: \n//comms\n//spawn/grid\n//enable/science if has_roles(COMMS_SELECTED_ID, \"raider\")";
+        // 	if (m[0].endsWith("/")) {
+        // 		message = "Route labels cannot end with a slash. "
+        // 	}
+        // 	const d: Diagnostic = {
+        // 		range: {
+        // 			start: t.positionAt(m.index),
+        // 			end: t.positionAt(m.index + m[0].length)
+        // 		},
+        // 		severity: DiagnosticSeverity.Error,
+        // 		message: message,
+        // 		source: "mast"
+        // 	}
+        // 	d.relatedInformation = relatedMessage(t, d.range, "See https://artemis-sbs.github.io/sbs_utils/mast/routes/ for more details on routes.");
+        // 	diagnostics.push(d);
+        // }
         // TODO: Add this later. Need to account for things like:
         /**
          * comms_navigate("//comms/taunt/raider")
