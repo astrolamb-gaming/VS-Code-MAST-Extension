@@ -7,6 +7,7 @@ exports.parseLabelsInFile = parseLabelsInFile;
 exports.checkForDuplicateLabelsInList = checkForDuplicateLabelsInList;
 exports.checkLabels = checkLabels;
 exports.getMainLabelAtPos = getMainLabelAtPos;
+exports.getLabelMetadataKeys = getLabelMetadataKeys;
 const vscode_languageserver_1 = require("vscode-languageserver");
 const vscode_languageserver_textdocument_1 = require("vscode-languageserver-textdocument");
 const errorChecking_1 = require("../errorChecking");
@@ -551,5 +552,17 @@ function getMainLabelAtPos(pos, labels) {
         }
     }
     return closestLabel;
+}
+function getLabelMetadataKeys(label) {
+    const meta = label.metadata;
+    const re = /^[ \t]+(\w+):(.*)/gm;
+    let m;
+    let keys = [];
+    while (m = re.exec(meta)) {
+        let key = m[1];
+        let def = m[2].trim();
+        keys.push([key, def]);
+    }
+    return keys;
 }
 //# sourceMappingURL=labels.js.map

@@ -592,3 +592,16 @@ export function getMainLabelAtPos(pos: integer, labels: LabelInfo[]): LabelInfo 
 	}
 	return closestLabel;
 }
+
+export function getLabelMetadataKeys(label:LabelInfo) {
+	const meta = label.metadata;
+	const re: RegExp = /^[ \t]+(\w+):(.*)/gm;
+	let m: RegExpExecArray | null;
+	let keys = [];
+	while (m = re.exec(meta)) {
+		let key = m[1];
+		let def = m[2].trim();
+		keys.push([key,def]);
+	}
+	return keys;
+}

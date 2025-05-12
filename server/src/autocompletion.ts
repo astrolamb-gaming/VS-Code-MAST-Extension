@@ -1,6 +1,6 @@
 import { debug } from 'console';
 import { CompletionItem, CompletionItemKind, integer, SignatureInformation, TextDocumentPositionParams } from 'vscode-languageserver';
-import { buildLabelDocs, getMainLabelAtPos } from './tokens/labels';
+import { buildLabelDocs, getLabelMetadataKeys, getMainLabelAtPos } from './tokens/labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { asClasses, replaceNames } from './data';
 import { getRouteLabelVars } from './tokens/routeLabels';
@@ -445,7 +445,8 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	if (isFunction(iStr, cm)) {
 		const args = getCurrentArgumentNames(iStr,text);
 		for (const a of args) {
-			if (a === "label") {
+			let arg = a.replace(/=\w+/,"");
+			if (arg === "label") {
 				let labelNames = cache.getLabels(text);
 				// Iterate over parent label info objects
 				for (const i in labelNames) {
@@ -469,6 +470,29 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 						}
 					}
 					return ci;
+				}
+			}
+			if (arg === "data") {
+				debug("Data argument found.")
+				const func = getCurrentMethodName(iStr);
+				let labelStr = iStr.substring(iStr.indexOf(func));
+				const labels = cache.getLabels(text);
+				for (const label of labels) {
+					if (labelStr.includes(label.name)) {
+						const keys =  getLabelMetadataKeys(label);
+						for (const k of keys) {
+							const c: CompletionItem = {
+								label: k[0],
+								kind: CompletionItemKind.Text,
+								insertText: "\"" + k + "\""
+							}
+							if (k[1] !== "") {
+								c.documentation = "Default value: " + k[1];
+							}
+							ci.push(c);
+						}
+						return ci;
+					}
 				}
 			}
 		}
