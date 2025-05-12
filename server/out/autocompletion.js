@@ -404,9 +404,44 @@ function onCompletion(_textDocumentPosition, text) {
         }
         return ci;
     }
-    // const cm = getCurrentMethodName(iStr) {
+    const cm = (0, signatureHelp_1.getCurrentMethodName)(iStr);
     // 	for ()
     // }
+    if ((0, tokens_1.isFunction)(iStr, cm)) {
+        const args = getCurrentArgumentNames(iStr, text);
+        for (const a of args) {
+            if (a === "label") {
+                let labelNames = cache.getLabels(text);
+                // Iterate over parent label info objects
+                for (const i in labelNames) {
+                    if (labelNames[i].name === "main")
+                        continue;
+                    if (labelNames[i].name.startsWith("//"))
+                        continue;
+                    if ((0, fileFunctions_1.fixFileName)(labelNames[i].srcFile) !== (0, fileFunctions_1.fixFileName)(text.uri) && labelNames[i].name === "END")
+                        continue;
+                    ci.push({ documentation: (0, labels_1.buildLabelDocs)(labelNames[i]), label: labelNames[i].name, kind: vscode_languageserver_1.CompletionItemKind.Event, labelDetails: { description: path.basename(labelNames[i].srcFile) } });
+                }
+                const lbl = (0, labels_1.getMainLabelAtPos)(startOfLine, labelNames);
+                if (lbl === undefined) {
+                    return ci;
+                }
+                else {
+                    // Check for the parent label at this point (to get sublabels within the same parent)
+                    if (lbl.srcFile === (0, fileFunctions_1.fixFileName)(text.uri)) {
+                        (0, console_1.debug)("same file name!");
+                        let subs = lbl.subLabels;
+                        (0, console_1.debug)(lbl.name);
+                        (0, console_1.debug)(subs);
+                        for (const i in subs) {
+                            ci.push({ documentation: (0, labels_1.buildLabelDocs)(subs[i]), label: subs[i].name, kind: vscode_languageserver_1.CompletionItemKind.Event, labelDetails: { description: "Sub-label of: " + lbl.name } });
+                        }
+                    }
+                    return ci;
+                }
+            }
+        }
+    }
     //debug(ci.length);
     ci = ci.concat(cache.getCompletions());
     let keywords = [
