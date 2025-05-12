@@ -286,6 +286,7 @@ export class MissionCache {
 			this.missionDefaultFunctions = this.missionDefaultFunctions.concat(p.defaultFunctions);
 		} else if (file.endsWith(".mast")) {
 			//debug("Building file: " + file);
+			if (file.includes("sbs_utils")) return;
 			const m = new MastFile(file, data);
 			this.missionMastModules.push(m);
 		}

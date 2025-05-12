@@ -271,6 +271,8 @@ class MissionCache {
         }
         else if (file.endsWith(".mast")) {
             //debug("Building file: " + file);
+            if (file.includes("sbs_utils"))
+                return;
             const m = new data_1.MastFile(file, data);
             this.missionMastModules.push(m);
         }
