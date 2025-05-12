@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Parameter = exports.Function = void 0;
-const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
 const class_1 = require("./class");
 const globals_1 = require("../globals");
@@ -165,9 +164,7 @@ class Function {
      * @returns a new {@link MarkupContent MarkupContent} representing the function and its documentation.
      */
     buildMarkUpContent(docs = "") {
-        if (this.sourceFile.includes("sbs.py"))
-            (0, console_1.debug)("Generating an SBS function");
-        (0, console_1.debug)(this.sourceFile);
+        // if (this.sourceFile.includes("sbs.py")) debug("Generating an SBS function"); debug(this.sourceFile);
         /**
          * TODO: Fix this for CompletionItem in {@link buildCompletionItem buil6dCompletionItem}
          */

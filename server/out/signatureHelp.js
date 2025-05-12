@@ -33,9 +33,9 @@ function onSignatureHelp(_textDocPos, text) {
     sh.activeParameter = arr.length - 1;
     // Check for the current function name and get SignatureInformation for that function.
     let f = getCurrentMethodName(iStr);
-    (0, console_1.debug)(f);
+    // debug(f);
     let sig = (0, cache_1.getCache)(text.uri).getSignatureOfMethod(f);
-    (0, console_1.debug)(sig);
+    // debug(sig);
     if (sig !== undefined) {
         sh.signatures.push(sig);
     }
@@ -76,7 +76,7 @@ function getCurrentMethodName(iStr) {
     }
     let last = iStr.lastIndexOf("(");
     let symbol = (0, hover_1.getHoveredSymbol)(iStr, last);
-    (0, console_1.debug)(symbol);
+    // debug(symbol);
     return symbol;
 }
 //# sourceMappingURL=signatureHelp.js.map

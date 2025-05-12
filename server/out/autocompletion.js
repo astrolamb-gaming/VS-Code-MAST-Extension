@@ -124,7 +124,7 @@ function onCompletion(_textDocumentPosition, text) {
     // }
     // This is to get rid of " or ' at end so we don't have to check for both
     const blobStr = iStr.substring(0, iStr.length - 1);
-    (0, console_1.debug)(blobStr);
+    // debug(blobStr)
     if ((0, comments_1.isInString)(text, pos)) {
         if (!(0, comments_1.isTextInBracket)(iStr, pos)) {
             // Here we check for blob info
@@ -153,38 +153,73 @@ function onCompletion(_textDocumentPosition, text) {
             const fstart = iStr.lastIndexOf(func);
             const wholeFunc = iStr.substring(fstart, iStr.length);
             const arr = wholeFunc.split(",");
-            if (sig !== undefined) {
-                if (sig.parameters !== undefined) {
-                    for (const i in sig.parameters) {
-                        if (i !== "" + (arr.length - 1))
-                            continue;
-                        if (sig.parameters[i].label === "style") {
-                            for (const s of (0, globals_1.getGlobals)().widget_stylestrings) {
-                                if (func === s.function) {
-                                    const c = {
-                                        label: s.name,
-                                        //labelDetails: {detail: s.docs},
-                                        documentation: s.docs,
-                                        kind: vscode_languageserver_1.CompletionItemKind.Text,
-                                        insertText: s.name + ": "
-                                    };
-                                    if (c.label === "color") {
-                                        c.insertText = c.insertText + "#";
-                                    }
-                                    ci.push(c);
-                                }
+            const args = getCurrentArgumentNames(iStr, text);
+            for (const a of args) {
+                if (a === "style") {
+                    (0, console_1.debug)("Style found; iterating over widget stylestrings");
+                    for (const s of (0, globals_1.getGlobals)().widget_stylestrings) {
+                        if (func === s.function) {
+                            const c = {
+                                label: s.name,
+                                //labelDetails: {detail: s.docs},
+                                documentation: s.docs,
+                                kind: vscode_languageserver_1.CompletionItemKind.Text,
+                                insertText: s.name + ": "
+                            };
+                            if (c.label === "color") {
+                                c.insertText = c.insertText + "#";
                             }
-                        }
-                        else if (sig.parameters[i].label === "art_id") {
-                            // Get all possible art files
-                            return (0, globals_1.getGlobals)().artFiles;
-                        }
-                        else if (sig.parameters[i].label === 'art') {
-                            return (0, globals_1.getGlobals)().artFiles;
+                            ci.push(c);
                         }
                     }
+                    if (ci.length > 0)
+                        return ci;
+                    for (const s of cache.styleDefinitions) {
+                        const c = {
+                            label: s,
+                            kind: vscode_languageserver_1.CompletionItemKind.Text,
+                            insertText: s + ": "
+                        };
+                        if (c.label.includes("color")) {
+                            c.insertText = c.insertText + "#";
+                        }
+                        ci.push(c);
+                    }
+                    return ci;
+                }
+                if (a === "art_id" || a === "art") {
+                    return (0, globals_1.getGlobals)().artFiles;
                 }
             }
+            // if (sig !== undefined) {
+            // 	if (sig.parameters !== undefined) {
+            // 		for (const i in sig.parameters) {
+            // 			if (i !== ""+(arr.length-1)) continue;
+            // 			if (sig.parameters[i].label === "style") {
+            // 				for (const s of getGlobals().widget_stylestrings) {
+            // 					if (func === s.function) {
+            // 						const c = {
+            // 							label: s.name,
+            // 							//labelDetails: {detail: s.docs},
+            // 							documentation: s.docs,
+            // 							kind: CompletionItemKind.Text,
+            // 							insertText: s.name + ": "
+            // 						}
+            // 						if (c.label === "color") {
+            // 							c.insertText = c.insertText + "#"
+            // 						}
+            // 						ci.push(c)
+            // 					}
+            // 				}
+            // 			} else if (sig.parameters[i].label === "art_id") {
+            // 				// Get all possible art files
+            // 				return getGlobals().artFiles;
+            // 			} else if (sig.parameters[i].label === 'art') {
+            // 				return getGlobals().artFiles;
+            // 			}
+            // 		}
+            // 	}
+            // }
             // getCompletionsForMethodParameters(iStr,"style",text,pos);
             (0, console_1.debug)("Is in string");
             return ci;
@@ -463,8 +498,9 @@ function getCurrentArgumentNames(iStr, doc) {
     }
     for (const m of methods) {
         let p = m.parameters[paramNumber];
-        (0, console_1.debug)(p);
-        ret.push(p.name);
+        let name = p.name.replace(/=.*/, "").trim();
+        (0, console_1.debug)(name);
+        ret.push(name);
     }
     return ret;
 }

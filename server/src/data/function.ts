@@ -211,7 +211,7 @@ export class Function implements IFunction {
 	 * @returns a new {@link MarkupContent MarkupContent} representing the function and its documentation.
 	 */
 	buildMarkUpContent(docs: string = ""): MarkupContent {
-		if (this.sourceFile.includes("sbs.py")) debug("Generating an SBS function"); debug(this.sourceFile);
+		// if (this.sourceFile.includes("sbs.py")) debug("Generating an SBS function"); debug(this.sourceFile);
 		/** 
 		 * TODO: Fix this for CompletionItem in {@link buildCompletionItem buil6dCompletionItem}
 		 */ 

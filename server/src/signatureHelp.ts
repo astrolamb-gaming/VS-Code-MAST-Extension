@@ -35,10 +35,10 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 	// Check for the current function name and get SignatureInformation for that function.
 
 	let f: string = getCurrentMethodName(iStr);
-	debug(f);
+	// debug(f);
 
 	let sig = getCache(text.uri).getSignatureOfMethod(f);
-	debug(sig);
+	// debug(sig);
 	if (sig !== undefined) {
 		sh.signatures.push(sig);
 	}
@@ -82,6 +82,6 @@ export function getCurrentMethodName(iStr: string): string {
 	}
 	let last = iStr.lastIndexOf("(");
 	let symbol = getHoveredSymbol(iStr,last);
-	debug(symbol);
+	// debug(symbol);
 	return symbol;
 }

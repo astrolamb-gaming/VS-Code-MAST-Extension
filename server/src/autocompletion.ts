@@ -142,7 +142,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 
 	// This is to get rid of " or ' at end so we don't have to check for both
 	const blobStr = iStr.substring(0,iStr.length-1);
-	debug(blobStr)
+	// debug(blobStr)
 	if (isInString(text,pos)) {
 		if (!isTextInBracket(iStr,pos)) {
 			// Here we check for blob info
@@ -175,35 +175,73 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			const fstart = iStr.lastIndexOf(func);
 			const wholeFunc = iStr.substring(fstart,iStr.length);
 			const arr = wholeFunc.split(",");
-			if (sig !== undefined) {
-				if (sig.parameters !== undefined) {
-					for (const i in sig.parameters) {
-						if (i !== ""+(arr.length-1)) continue;
-						if (sig.parameters[i].label === "style") {
-							for (const s of getGlobals().widget_stylestrings) {
-								if (func === s.function) {
-									const c = {
-										label: s.name,
-										//labelDetails: {detail: s.docs},
-										documentation: s.docs,
-										kind: CompletionItemKind.Text,
-										insertText: s.name + ": "
-									}
-									if (c.label === "color") {
-										c.insertText = c.insertText + "#"
-									}
-									ci.push(c)
-								}
+			const args = getCurrentArgumentNames(iStr,text);
+			for (const a of args) {
+				if (a === "style") {
+					debug("Style found; iterating over widget stylestrings");
+					for (const s of getGlobals().widget_stylestrings) {
+						if (func === s.function) {
+							const c = {
+								label: s.name,
+								//labelDetails: {detail: s.docs},
+								documentation: s.docs,
+								kind: CompletionItemKind.Text,
+								insertText: s.name + ": "
 							}
-						} else if (sig.parameters[i].label === "art_id") {
-							// Get all possible art files
-							return getGlobals().artFiles;
-						} else if (sig.parameters[i].label === 'art') {
-							return getGlobals().artFiles;
+							if (c.label === "color") {
+								c.insertText = c.insertText + "#"
+							}
+							ci.push(c)
 						}
 					}
+					if (ci.length > 0) return ci;
+					for (const s of cache.styleDefinitions) {
+						const c: CompletionItem = {
+							label: s,
+							kind: CompletionItemKind.Text,
+							insertText: s + ": "
+						}
+						if (c.label.includes("color")) {
+							c.insertText = c.insertText + "#"
+						}
+						ci.push(c);
+					}
+					return ci;
+				}
+				if (a === "art_id" || a === "art") {
+					return getGlobals().artFiles;
 				}
 			}
+
+			// if (sig !== undefined) {
+			// 	if (sig.parameters !== undefined) {
+			// 		for (const i in sig.parameters) {
+			// 			if (i !== ""+(arr.length-1)) continue;
+			// 			if (sig.parameters[i].label === "style") {
+			// 				for (const s of getGlobals().widget_stylestrings) {
+			// 					if (func === s.function) {
+			// 						const c = {
+			// 							label: s.name,
+			// 							//labelDetails: {detail: s.docs},
+			// 							documentation: s.docs,
+			// 							kind: CompletionItemKind.Text,
+			// 							insertText: s.name + ": "
+			// 						}
+			// 						if (c.label === "color") {
+			// 							c.insertText = c.insertText + "#"
+			// 						}
+			// 						ci.push(c)
+			// 					}
+			// 				}
+			// 			} else if (sig.parameters[i].label === "art_id") {
+			// 				// Get all possible art files
+			// 				return getGlobals().artFiles;
+			// 			} else if (sig.parameters[i].label === 'art') {
+			// 				return getGlobals().artFiles;
+			// 			}
+			// 		}
+			// 	}
+			// }
 			// getCompletionsForMethodParameters(iStr,"style",text,pos);
 
 			debug("Is in string");
@@ -498,8 +536,9 @@ export function getCurrentArgumentNames(iStr:string, doc:TextDocument): string[]
 	}
 	for (const m of methods) {
 		let p = m.parameters[paramNumber];
-		debug(p);
-		ret.push(p.name);
+		let name = p.name.replace(/=.*/,"").trim();
+		debug(name);
+		ret.push(name);
 	}
 	return ret;
 }
