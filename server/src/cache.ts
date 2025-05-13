@@ -439,7 +439,6 @@ export class MissionCache {
 		return list;
 	}
 
-
 	/**
 	 * TODO: This should only return variables that are in scope
 	 * @returns A list of {@link CompletionItem CompletionItem}
@@ -449,18 +448,10 @@ export class MissionCache {
 		// const inits = getInitContents(fixFileName(doc?.uri));
 		let ci: CompletionItem[] = [];
 		for (const m of this.mastFileCache) {
-			// if (m.parentFolder === parent) {
-			// 	// Check if the file is included in the init file
-			// 	for (const i of inits) {
-			// 		if (i === path.basename(m.uri)) {
 			ci = ci.concat(m.getVariableNames());
-			// 		}
-			// 	}
-				
-			// }
-			// for (const v of m.variables) {
-				
-			// }
+		}
+		for (const m of this.missionMastModules) {
+			ci = ci.concat(m.getVariableNames());
 		}
 		//const arrUniq = [...new Map(ci.map(v => [v.label, v])).values()]
 		return ci;

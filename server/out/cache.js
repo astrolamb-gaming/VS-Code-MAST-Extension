@@ -434,16 +434,10 @@ class MissionCache {
         // const inits = getInitContents(fixFileName(doc?.uri));
         let ci = [];
         for (const m of this.mastFileCache) {
-            // if (m.parentFolder === parent) {
-            // 	// Check if the file is included in the init file
-            // 	for (const i of inits) {
-            // 		if (i === path.basename(m.uri)) {
             ci = ci.concat(m.getVariableNames());
-            // 		}
-            // 	}
-            // }
-            // for (const v of m.variables) {
-            // }
+        }
+        for (const m of this.missionMastModules) {
+            ci = ci.concat(m.getVariableNames());
         }
         //const arrUniq = [...new Map(ci.map(v => [v.label, v])).values()]
         return ci;
