@@ -8,9 +8,19 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 * Determine variable types based on function return values, etc
 * Fix for weighted strings not being recognized as strings in certain situations
-* Show label autocompletions for functions that take a label as an argument
 * Add python built-in module information
 * Add autocompletion for prefab data
+
+### 0.10.1
+* Add style string autocompletions for non-sbs functions (e.g. color, area, etc.), anytime a function has a parameter named "style"
+* Fix for giving `__init__.mast` missing errors for mast files in root mission folder [#10](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues/10)
+* Update autocomplete documentation display
+* Removed some extraneous error checking for labels that caused false positive errors
+* Add formatting support for random text generator syntax
+* Fix [#8](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues/8)
+* Fix [#9](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues/9), which caused incorrect errors for some labels
+* Add label autocompletions for all functions that use have an argument called 'label'
+
 
 ### 0.10.0
 

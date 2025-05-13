@@ -2,7 +2,7 @@
 	"name": "mast",
 	"displayName": "MAST",
 	"description": "%description%",
-	"version": "0.10.0",
+	"version": "0.10.1",
 	"publisher": "astrolamb",
 	"license": "MIT",
 	"icon": "mast.png",
