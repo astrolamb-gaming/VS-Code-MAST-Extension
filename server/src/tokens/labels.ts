@@ -595,7 +595,7 @@ export function getMainLabelAtPos(pos: integer, labels: LabelInfo[]): LabelInfo 
 
 export function getLabelMetadataKeys(label:LabelInfo) {
 	const meta = label.metadata;
-	const re: RegExp = /^[ \t]+(\w+):(.*)/gm;
+	const re: RegExp = /^[ \t]*(\w+):(.*)/gm;
 	let m: RegExpExecArray | null;
 	let keys = [];
 	while (m = re.exec(meta)) {

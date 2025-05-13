@@ -555,7 +555,7 @@ function getMainLabelAtPos(pos, labels) {
 }
 function getLabelMetadataKeys(label) {
     const meta = label.metadata;
-    const re = /^[ \t]+(\w+):(.*)/gm;
+    const re = /^[ \t]*(\w+):(.*)/gm;
     let m;
     let keys = [];
     while (m = re.exec(meta)) {

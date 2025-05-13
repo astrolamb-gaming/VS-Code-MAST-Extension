@@ -444,17 +444,24 @@ function onCompletion(_textDocumentPosition, text) {
             }
             if (arg === "data") {
                 (0, console_1.debug)("Data argument found.");
-                const func = (0, signatureHelp_1.getCurrentMethodName)(iStr);
-                let labelStr = iStr.substring(iStr.indexOf(func));
-                const labels = cache.getLabels(text);
+                let labelStr = iStr.substring(iStr.lastIndexOf(cm) + cm.length);
+                if (!labelStr.includes("{"))
+                    continue;
+                labelStr = labelStr.replace(/{.*?(}|$)/m, "");
+                // Get all labels, including sublabels of the current main label
+                let labels = cache.getLabels(text);
+                let main = (0, labels_1.getMainLabelAtPos)(pos, labels);
+                labels = labels.concat(main.subLabels);
+                // Iterate over all the labels.
                 for (const label of labels) {
+                    // If the name matches, return the metadata for that label, if any.
                     if (labelStr.includes(label.name)) {
                         const keys = (0, labels_1.getLabelMetadataKeys)(label);
                         for (const k of keys) {
                             const c = {
                                 label: k[0],
                                 kind: vscode_languageserver_1.CompletionItemKind.Text,
-                                insertText: "\"" + k + "\""
+                                insertText: "\"" + k[0] + "\": "
                             };
                             if (k[1] !== "") {
                                 c.documentation = "Default value: " + k[1];

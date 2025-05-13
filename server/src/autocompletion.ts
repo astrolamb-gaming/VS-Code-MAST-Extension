@@ -475,17 +475,24 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			}
 			if (arg === "data") {
 				debug("Data argument found.")
-				const func = getCurrentMethodName(iStr);
-				let labelStr = iStr.substring(iStr.indexOf(func));
-				const labels = cache.getLabels(text);
+				let labelStr = iStr.substring(iStr.lastIndexOf(cm)+cm.length);
+				if (!labelStr.includes("{")) continue;
+				labelStr = labelStr.replace(/{.*?(}|$)/m,"");
+				// Get all labels, including sublabels of the current main label
+				let labels = cache.getLabels(text);
+				let main = getMainLabelAtPos(pos,labels);
+				labels = labels.concat(main.subLabels);
+
+				// Iterate over all the labels.
 				for (const label of labels) {
+					// If the name matches, return the metadata for that label, if any.
 					if (labelStr.includes(label.name)) {
-						const keys =  getLabelMetadataKeys(label);
+						const keys = getLabelMetadataKeys(label);
 						for (const k of keys) {
 							const c: CompletionItem = {
 								label: k[0],
 								kind: CompletionItemKind.Text,
-								insertText: "\"" + k + "\""
+								insertText: "\"" + k[0] + "\": "
 							}
 							if (k[1] !== "") {
 								c.documentation = "Default value: " + k[1];
