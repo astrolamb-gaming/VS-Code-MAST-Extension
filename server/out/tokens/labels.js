@@ -225,8 +225,8 @@ function checkForDuplicateLabelsInList(textDocument, labels = [], subLabels = fa
                     source: "mast",
                 };
                 const s = textDocument.positionAt(labels[j].start);
-                let message = (subLabels) ? "The inline label \"" + labels[i].name + "\" is used elsewhere inside this parent label." : "The label \"" + labels[i].name + "\" is used elsewhere in this file.";
-                message += "\nIt is used on Line " + s.line + ", Character " + s.character;
+                let message = (subLabels) ? "The inline label \"" + labels[i].name + "\" is already used inside this parent label" : "The label \"" + labels[i].name + "\" is already used in this file";
+                message += " at Line " + s.line + ", Character " + s.character;
                 if (!subLabels) {
                     let f;
                     if (labels[j].srcFile !== textDocument.uri) {
@@ -235,7 +235,7 @@ function checkForDuplicateLabelsInList(textDocument, labels = [], subLabels = fa
                     else {
                         f = "this file.";
                     }
-                    message = "The label \"" + labels[j].name + "\" is already defined in " + f + ".\nIt is also defined at Line " + s.line + ", Character " + s.character;
+                    message = "The label \"" + labels[j].name + "\" is already defined in " + f + " at Line " + s.line + ", Character " + s.character;
                 }
                 d.relatedInformation = (0, errorChecking_1.relatedMessage)(textDocument, d.range, message);
                 diagnostics.push(d);
