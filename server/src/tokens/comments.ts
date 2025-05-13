@@ -301,7 +301,7 @@ export function parseStrings(textDocument: TextDocument) {
 	// let strDoubleStartOnly = /(^\\s*?(\")[^\"]*?(\\n|$))/gm;
 	let caretDouble = /(\^{3,}.*?\^{3,})/gs;
 	let multiDouble = /([\"\']{3,}.*?[\"\']{3,})/gs;
-	let weighted = /(\%\d*|\")([^\n\r\f]*)/gs;
+	let weighted = /(?:^[ \t]*)(\%\d*|\"[^\"])([^\n\r\f]*)/gms;
 
 	let comment = /^\s*#.*($|\n)/gm;
 	let comments = getMatchesForRegex(comment,text);
@@ -327,6 +327,12 @@ export function parseStrings(textDocument: TextDocument) {
 	}
 
 // These are all good I think. Commented out the concats for testing
+	test = getMatchesForRegex(weighted,text);
+	localStringRanges = localStringRanges.concat(test);
+	for (const t of test) {
+		text = replaceRegexMatchWithUnderscore(text, t);
+	}
+
 	test = getMatchesForRegex(multiDouble,text);
 	localStringRanges = localStringRanges.concat(test);
 	for (const t of test) {
@@ -340,24 +346,10 @@ export function parseStrings(textDocument: TextDocument) {
 	
 	test = getMatchesForRegex(strDouble,text);
 	localStringRanges = localStringRanges.concat(test);
-	for (const t of test) {
-		text = replaceRegexMatchWithUnderscore(text, t);
-	}
-
-	test = getMatchesForRegex(weighted,text);
-	for (const t of test) {
-		let found = false;
-		for (const s of localStringRanges) {
-			if (s.start > t.start && t.end > s.end) {
-				found = true;
-				break;
-			}
-		}
-		if (!found) {
-			localStringRanges.push(t);
-		}
-		//text = replaceRegexMatchWithUnderscore(text, t);
-	}
+	// Probably don't need this.
+	// for (const t of test) {
+	// 	text = replaceRegexMatchWithUnderscore(text, t);
+	// }
 
 	text = textDocument.getText();
 	
