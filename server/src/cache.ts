@@ -109,34 +109,23 @@ export class MissionCache {
 			debug("Finished loading sbs_utils for " + this.missionName);
 			showProgressBar(false);
 		});
-		let files: string[] = getFilesInDir(this.missionURI);
-		//debug(files);
-		for (const file of files) {
-			//debug(path.extname(file));
-			if (path.extname(file) === ".mast") {
-				//debug(file);
-				if (path.basename(file).includes("__init__")) {
-					//debug("INIT file found");
-				} else {
-					// Parse MAST File
-					const m: MastFile = new MastFile(file);
-					this.mastFileCache.push(m);
+		this.checkForCacheUpdates();
+		debug(this.missionURI)
+		fs.watch(this.missionURI, {"recursive": true}, (eventType, filename) => {
+			debug("fs.watch() EVENT: ")
+			debug(eventType);
+			// could be either 'rename' or 'change'. new file event and delete
+			// also generally emit 'rename'
+			debug(filename);
+			if (eventType === "rename") {
+				if (filename?.endsWith(".py")) {
+					this.removePyFile(path.join(this.missionURI,filename));
 				}
-				
-
-				
-			}
-			if (path.extname(file) === ".py") {
-				//debug(file);
-				if (path.basename(file).includes("__init__")) {
-					//debug("INIT file found");
-				} else {
-					// Parse Python File
-					const p: PyFile = new PyFile(file);
-					this.pyFileCache.push(p);
+				if (filename?.endsWith(".mast")) {
+					this.removeMastFile(path.join(this.missionURI,filename));
 				}
 			}
-		}
+		});
 		//this.checkForInitFolder(this.missionURI);
 		debug("Number of py files: "+this.pyFileCache.length);
 	}
@@ -304,6 +293,58 @@ export class MissionCache {
 			debug("Updating " + doc.uri);
 			this.getPyFile(doc.uri).parseWholeFile(doc.getText());
 		}
+	}
+
+	/**
+	 * Triggers an update to any files that do or don't exist anymore
+	 * Files that no longer exist should be removed by the filesystem watcher
+	 * The only real use for this now is when loading the initial cache info.
+	 */
+	checkForCacheUpdates() {
+		// First check for any files that have been deleted
+		const files = getFilesInDir(this.missionURI);
+		let found = false;
+		for (const m of this.mastFileCache) {
+			for (const f of files) {
+				if (f === fixFileName(m.uri)) found = true; break;
+			}
+			if (found) break;
+		}
+		if (!found) {
+			for (const p of this.pyFileCache) {
+				let isP = false;
+				for (const f of files) {
+					if (f === fixFileName(p.uri)) found = true; break;
+				}
+				if (found) break;
+			}
+		}
+		if (found) return;
+
+		// Check for any files that should be included, but are not.
+		for (const file of files) {
+			showProgressBar(true);
+			//debug(path.extname(file));
+			if (path.extname(file) === ".mast") {
+				//debug(file);
+				if (path.basename(file).includes("__init__")) {
+					//debug("INIT file found");
+				} else {
+					// Parse MAST File
+					this.getMastFile(file);
+				}
+			}
+			if (path.extname(file) === ".py") {
+				//debug(file);
+				if (path.basename(file).includes("__init__")) {
+					//debug("INIT file found");
+				} else {
+					// Parse Python File
+					this.getPyFile(file);
+				}
+			}
+		}
+		showProgressBar(false);
 	}
 
 	/**
@@ -614,7 +655,39 @@ export class MissionCache {
 			}
 		}
 		const m: MastFile = new MastFile(uri);
+		this.mastFileCache.push(m);
 		return m;
+	}
+
+	/**
+	 * Gets rid of a Mast file from the cache
+	 * @param uri Uri of the file to remove
+	 */
+	removeMastFile(uri:string) {
+		uri = fixFileName(uri);
+		let newCache: MastFile[] = [];
+		for (const m of this.mastFileCache) {
+			if (m.uri !== uri) {
+				newCache.push(m);
+			}
+		}
+		this.mastFileCache = newCache;
+	}
+
+	/**
+	 * Gets rid of a Python file from the cache
+	 * @param uri Uri of the file to remove
+	 */
+	removePyFile(uri:string) {
+		uri = fixFileName(uri);
+		debug("Removing " + uri);
+		let newCache: PyFile[] = [];
+		for (const m of this.pyFileCache) {
+			if (m.uri !== uri) {
+				newCache.push(m);
+			}
+		}
+		this.pyFileCache = newCache;
 	}
 
 	/**
@@ -629,6 +702,7 @@ export class MissionCache {
 			}
 		}
 		const p: PyFile = new PyFile(uri);
+		this.pyFileCache.push(p);
 		return p;
 	}
 }

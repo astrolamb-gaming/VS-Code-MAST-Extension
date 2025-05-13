@@ -94,33 +94,23 @@ class MissionCache {
             (0, console_1.debug)("Finished loading sbs_utils for " + this.missionName);
             (0, server_1.showProgressBar)(false);
         });
-        let files = (0, fileFunctions_1.getFilesInDir)(this.missionURI);
-        //debug(files);
-        for (const file of files) {
-            //debug(path.extname(file));
-            if (path.extname(file) === ".mast") {
-                //debug(file);
-                if (path.basename(file).includes("__init__")) {
-                    //debug("INIT file found");
+        this.checkForCacheUpdates();
+        (0, console_1.debug)(this.missionURI);
+        fs.watch(this.missionURI, { "recursive": true }, (eventType, filename) => {
+            (0, console_1.debug)("fs.watch() EVENT: ");
+            (0, console_1.debug)(eventType);
+            // could be either 'rename' or 'change'. new file event and delete
+            // also generally emit 'rename'
+            (0, console_1.debug)(filename);
+            if (eventType === "rename") {
+                if (filename?.endsWith(".py")) {
+                    this.removePyFile(path.join(this.missionURI, filename));
                 }
-                else {
-                    // Parse MAST File
-                    const m = new data_1.MastFile(file);
-                    this.mastFileCache.push(m);
-                }
-            }
-            if (path.extname(file) === ".py") {
-                //debug(file);
-                if (path.basename(file).includes("__init__")) {
-                    //debug("INIT file found");
-                }
-                else {
-                    // Parse Python File
-                    const p = new data_1.PyFile(file);
-                    this.pyFileCache.push(p);
+                if (filename?.endsWith(".mast")) {
+                    this.removeMastFile(path.join(this.missionURI, filename));
                 }
             }
-        }
+        });
         //this.checkForInitFolder(this.missionURI);
         (0, console_1.debug)("Number of py files: " + this.pyFileCache.length);
     }
@@ -290,6 +280,65 @@ class MissionCache {
             (0, console_1.debug)("Updating " + doc.uri);
             this.getPyFile(doc.uri).parseWholeFile(doc.getText());
         }
+    }
+    /**
+     * Triggers an update to any files that do or don't exist anymore
+     * Files that no longer exist should be removed by the filesystem watcher
+     * The only real use for this now is when loading the initial cache info.
+     */
+    checkForCacheUpdates() {
+        // First check for any files that have been deleted
+        const files = (0, fileFunctions_1.getFilesInDir)(this.missionURI);
+        let found = false;
+        for (const m of this.mastFileCache) {
+            for (const f of files) {
+                if (f === (0, fileFunctions_1.fixFileName)(m.uri))
+                    found = true;
+                break;
+            }
+            if (found)
+                break;
+        }
+        if (!found) {
+            for (const p of this.pyFileCache) {
+                let isP = false;
+                for (const f of files) {
+                    if (f === (0, fileFunctions_1.fixFileName)(p.uri))
+                        found = true;
+                    break;
+                }
+                if (found)
+                    break;
+            }
+        }
+        if (found)
+            return;
+        // Check for any files that should be included, but are not.
+        for (const file of files) {
+            (0, server_1.showProgressBar)(true);
+            //debug(path.extname(file));
+            if (path.extname(file) === ".mast") {
+                //debug(file);
+                if (path.basename(file).includes("__init__")) {
+                    //debug("INIT file found");
+                }
+                else {
+                    // Parse MAST File
+                    this.getMastFile(file);
+                }
+            }
+            if (path.extname(file) === ".py") {
+                //debug(file);
+                if (path.basename(file).includes("__init__")) {
+                    //debug("INIT file found");
+                }
+                else {
+                    // Parse Python File
+                    this.getPyFile(file);
+                }
+            }
+        }
+        (0, server_1.showProgressBar)(false);
     }
     /**
      * Gets all route labels in scope for the given cache.
@@ -580,7 +629,37 @@ class MissionCache {
             }
         }
         const m = new data_1.MastFile(uri);
+        this.mastFileCache.push(m);
         return m;
+    }
+    /**
+     * Gets rid of a Mast file from the cache
+     * @param uri Uri of the file to remove
+     */
+    removeMastFile(uri) {
+        uri = (0, fileFunctions_1.fixFileName)(uri);
+        let newCache = [];
+        for (const m of this.mastFileCache) {
+            if (m.uri !== uri) {
+                newCache.push(m);
+            }
+        }
+        this.mastFileCache = newCache;
+    }
+    /**
+     * Gets rid of a Python file from the cache
+     * @param uri Uri of the file to remove
+     */
+    removePyFile(uri) {
+        uri = (0, fileFunctions_1.fixFileName)(uri);
+        (0, console_1.debug)("Removing " + uri);
+        let newCache = [];
+        for (const m of this.pyFileCache) {
+            if (m.uri !== uri) {
+                newCache.push(m);
+            }
+        }
+        this.pyFileCache = newCache;
     }
     /**
      * Must actually be a python file, so check before using!
@@ -594,6 +673,7 @@ class MissionCache {
             }
         }
         const p = new data_1.PyFile(uri);
+        this.pyFileCache.push(p);
         return p;
     }
 }

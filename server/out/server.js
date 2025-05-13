@@ -239,6 +239,12 @@ function getDocumentSettings(resource) {
 }
 // Only keep settings for open documents
 exports.documents.onDidClose(e => {
+    // This would break things, because it's only CLOSING, not DELETING
+    // if (e.document.uri.endsWith(".py")) {
+    // 	getCache(e.document.uri).removePyFile(e.document.uri)
+    // } else if (e.document.uri.endsWith(".mast")) {
+    // 	getCache(e.document.uri).removeMastFile(e.document.uri)
+    // }
     documentSettings.delete(e.document.uri);
 });
 exports.connection.languages.diagnostics.on(async (params) => {

@@ -58,6 +58,7 @@ import { validateTextDocument } from './validate';
 import path = require('path');
 import { getTokenInfo } from './python/python';
 import { onDefinition } from './goToDefinition';
+import { getCache } from './cache';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -314,9 +315,14 @@ export function getDocumentSettings(resource: string): Thenable<ExampleSettings>
 
 // Only keep settings for open documents
 documents.onDidClose(e => {
+	// This would break things, because it's only CLOSING, not DELETING
+	// if (e.document.uri.endsWith(".py")) {
+	// 	getCache(e.document.uri).removePyFile(e.document.uri)
+	// } else if (e.document.uri.endsWith(".mast")) {
+	// 	getCache(e.document.uri).removeMastFile(e.document.uri)
+	// }
 	documentSettings.delete(e.document.uri);
 });
-
 
 connection.languages.diagnostics.on(async (params) => {
 	//TODO: get info from other files in same directory
