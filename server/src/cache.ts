@@ -254,23 +254,32 @@ export class MissionCache {
 		if (file.endsWith("__init__.mast") || file.endsWith("__init__.py") || file.includes("mock")) {
 			// Do nothing
 		} else if (file.endsWith(".py")) {
+			debug(file)
 			this.routeLabels = this.routeLabels.concat(loadRouteLabels(data));
 			this.styleDefinitions = this.styleDefinitions.concat(loadStyleDefs(file,data))
 			// this.mediaLabels = this.mediaLabels.concat(loadMediaLabels(data));
 			// this.resourceLabels = this.resourceLabels.concat(loadResourceLabels(data));
-			const p = new PyFile(file, data);
-			this.missionPyModules.push(p);
+			if (file.includes("sbs_utils\\mast")) return;
 			if (file.includes("sbs_utils") && !file.includes("procedural")) {
 				// Don't wanat anything not procedural included???
+				let found = false;
 				for (const special of includeNonProcedurals) {
 					if (file.includes(special)) {
+						found = true;
 						//don't return
 						debug("Adding " + special);
+						// const p = new PyFile(file, data);
+						// this.missionPyModules.push(p);
+						// this.missionClasses = this.missionClasses.concat(p.classes);
+						// this.missionDefaultFunctions = this.missionDefaultFunctions.concat(p.defaultFunctions);
 						break;
-					} else {
 					}
 				}
+				// TODO: Uncomment this to remove all the extra stuff like Gui that most mission writers probably don't need...
+				// if (!found) return;
 			}
+			const p = new PyFile(file, data);
+			this.missionPyModules.push(p);
 			this.missionClasses = this.missionClasses.concat(p.classes);
 			this.missionDefaultFunctions = this.missionDefaultFunctions.concat(p.defaultFunctions);
 		} else if (file.endsWith(".mast")) {
