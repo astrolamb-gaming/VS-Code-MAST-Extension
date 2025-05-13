@@ -427,7 +427,7 @@ class MissionCache {
     }
     /**
      * TODO: This should only return variables that are in scope
-     * @returns
+     * @returns A list of {@link CompletionItem CompletionItem}
      */
     getVariableCompletionItems(doc) {
         // const parent = getParentFolder(URI.parse(file).fsPath);
@@ -448,6 +448,11 @@ class MissionCache {
         //const arrUniq = [...new Map(ci.map(v => [v.label, v])).values()]
         return ci;
     }
+    /**
+     * Get {@link Variable Variable}s in scope
+     * @param doc The {@link TextDocument TextDocument}
+     * @returns List of {@link Variable Variable}
+     */
     getVariables(doc) {
         let vars = [];
         for (const m of this.mastFileCache) {

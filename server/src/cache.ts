@@ -442,7 +442,7 @@ export class MissionCache {
 
 	/**
 	 * TODO: This should only return variables that are in scope
-	 * @returns 
+	 * @returns A list of {@link CompletionItem CompletionItem}
 	 */
 	getVariableCompletionItems(doc:TextDocument|undefined): CompletionItem[] {
 		// const parent = getParentFolder(URI.parse(file).fsPath);
@@ -466,6 +466,11 @@ export class MissionCache {
 		return ci;
 	}
 
+	/**
+	 * Get {@link Variable Variable}s in scope
+	 * @param doc The {@link TextDocument TextDocument}
+	 * @returns List of {@link Variable Variable}
+	 */
 	getVariables(doc:TextDocument|undefined) {
 		let vars: Variable[] = [];
 		for (const m of this.mastFileCache) {

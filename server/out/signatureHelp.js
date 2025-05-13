@@ -26,6 +26,8 @@ function onSignatureHelp(_textDocPos, text) {
     const iStr = t.substring(startOfLine, pos);
     // Calculate which parameter is the active one
     const func = getCurrentMethodName(iStr);
+    if (func === "")
+        return;
     const fstart = iStr.lastIndexOf(func);
     let wholeFunc = iStr.substring(fstart, iStr.length);
     let obj = /{.*?(}|$)/gm;

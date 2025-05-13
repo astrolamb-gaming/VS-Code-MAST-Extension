@@ -230,19 +230,20 @@ function onCompletion(_textDocumentPosition, text) {
     if (iStr.trim().startsWith("--") || iStr.trim().startsWith("==") || iStr.trim().startsWith("++")) {
         return ci;
     }
+    let trimmed = iStr.trim();
     // Media labels only get the skybox names
-    else if (iStr.endsWith("@media/skybox/")) {
+    if (iStr.endsWith("@media/skybox/")) {
         return (0, globals_1.getGlobals)().skyboxes;
         // Get Music Options (default vs Artemis2)
     }
     else if (iStr.endsWith("@media/music/")) {
         return (0, globals_1.getGlobals)().music;
     }
-    if (iStr.trim().match(/sbs\.play_audio_file\([ \d\w]+\, */)) {
+    if (trimmed.match(/sbs\.play_audio_file\([ \d\w]+\, */)) {
         return cache.getMusicFiles();
     }
     // Route Label autocompletion
-    if (iStr.trim().startsWith("//")) {
+    if (trimmed.startsWith("//")) {
         // If this is a route label, but NOT anything after it, then we only return route labels
         if (!iStr.trim().includes(" ")) {
             (0, console_1.debug)("Getting regular route labels");
@@ -264,12 +265,12 @@ function onCompletion(_textDocumentPosition, text) {
         }
         // TODO: Add media, map, gui/tab, and console autocompletion items
     }
-    else if (iStr.trim().startsWith("@")) {
+    else if (trimmed.startsWith("@")) {
         ci = cache.getMediaLabels();
         return ci;
     }
     /**
- * 		□ All
+    * 	□ All
         □ Scan
         □ Client
         □ Ship
@@ -309,6 +310,33 @@ function onCompletion(_textDocumentPosition, text) {
         };
         ci.push(c);
         return ci;
+    }
+    // Check if there is a label at the end of these, which could include optional data
+    if ((trimmed.startsWith("+") || trimmed.startsWith("*") || trimmed.startsWith("jump") || trimmed.startsWith("->")) && !trimmed.endsWith(":")) {
+        let lbl = iStr.replace(/{.*?}/, "");
+        if (lbl.includes("{")) {
+            lbl = iStr.replace(/{.*?(}|$)/gm, "").trim();
+            (0, console_1.debug)(lbl);
+            let labels = cache.getLabels(text);
+            labels = labels.concat((0, labels_1.getMainLabelAtPos)(pos, labels).subLabels);
+            for (const l of labels) {
+                if (lbl.endsWith(l.name)) {
+                    const keys = (0, labels_1.getLabelMetadataKeys)(l);
+                    for (const k of keys) {
+                        const c = {
+                            label: k[0],
+                            kind: vscode_languageserver_1.CompletionItemKind.Text,
+                            insertText: "\"" + k[0] + "\": "
+                        };
+                        if (k[1] !== "") {
+                            c.documentation = "Default value: " + k[1];
+                        }
+                        ci.push(c);
+                    }
+                    return ci;
+                }
+            }
+        }
     }
     // Handle label autocompletion
     let jump = /(->|jump)[ \t]*?/;
@@ -406,8 +434,6 @@ function onCompletion(_textDocumentPosition, text) {
         return ci;
     }
     const cm = (0, signatureHelp_1.getCurrentMethodName)(iStr);
-    // 	for ()
-    // }
     if ((0, tokens_1.isFunction)(iStr, cm)) {
         const args = getCurrentArgumentNames(iStr, text);
         for (const a of args) {
@@ -461,7 +487,7 @@ function onCompletion(_textDocumentPosition, text) {
                             const c = {
                                 label: k[0],
                                 kind: vscode_languageserver_1.CompletionItemKind.Text,
-                                insertText: "\"" + k[0] + "\": "
+                                insertText: "\"" + k[0] + "\":"
                             };
                             if (k[1] !== "") {
                                 c.documentation = "Default value: " + k[1];

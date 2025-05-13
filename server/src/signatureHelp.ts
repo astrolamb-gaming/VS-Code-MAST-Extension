@@ -26,6 +26,7 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 
 	// Calculate which parameter is the active one
 	const func = getCurrentMethodName(iStr);
+	if (func === "") return;
 	const fstart = iStr.lastIndexOf(func);
 	let wholeFunc = iStr.substring(fstart,iStr.length);
 	let obj = /{.*?(}|$)/gm;
