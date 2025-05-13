@@ -346,7 +346,8 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 
 	// Handle label autocompletion
 	let jump: RegExp = /(->|jump)[ \t]*?/;
-	if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (") || iStr.endsWith("objective_add(") || iStr.endsWith("brain_add(")) {
+	// if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (") || iStr.endsWith("objective_add(") || iStr.endsWith("brain_add(")) {
+	if (jump.test(iStr)) {
 		let labelNames = cache.getLabels(text);
 		//debug(labelNames);
 		// Iterate over parent label info objects
