@@ -544,7 +544,9 @@ function getCurrentArgumentNames(iStr, doc) {
     let ret = [];
     const func = (0, signatureHelp_1.getCurrentMethodName)(iStr);
     const fstart = iStr.lastIndexOf(func);
-    const wholeFunc = iStr.substring(fstart, iStr.length);
+    let wholeFunc = iStr.substring(fstart, iStr.length);
+    let obj = /{.*?(}|$)/gm;
+    wholeFunc = wholeFunc.replace(obj, "_");
     const arr = wholeFunc.split(",");
     const paramNumber = arr.length - 1;
     let methods = [];

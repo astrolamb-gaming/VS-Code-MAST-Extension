@@ -4,7 +4,7 @@ import { buildLabelDocs, getLabelMetadataKeys, getMainLabelAtPos } from './token
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { asClasses, replaceNames } from './data';
 import { getRouteLabelVars } from './tokens/routeLabels';
-import { isInComment, isInString, isInYaml, isTextInBracket } from './tokens/comments';
+import { isInComment, isInString, isInYaml, isTextInBracket, replaceRegexMatchWithUnderscore } from './tokens/comments';
 import { getCache } from './cache';
 import path = require('path');
 import { fixFileName, getFilesInDir } from './fileFunctions';
@@ -581,7 +581,9 @@ export function getCurrentArgumentNames(iStr:string, doc:TextDocument): string[]
 	let ret: string[] = [];
 	const func = getCurrentMethodName(iStr);
 	const fstart = iStr.lastIndexOf(func);
-	const wholeFunc = iStr.substring(fstart,iStr.length);
+	let wholeFunc = iStr.substring(fstart,iStr.length);
+	let obj = /{.*?(}|$)/gm;
+	wholeFunc = wholeFunc.replace(obj, "_")
 	const arr = wholeFunc.split(",");
 	const paramNumber = arr.length-1;
 	let methods:Function[]=[];
