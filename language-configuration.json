@@ -257,7 +257,7 @@
     },
     "onEnterRules": [
       {
-        "beforeText": "^\\s*(?:def|class|for|if|elif|else|while|try|with|finally|except|async|([=-+/]{2,})).*?:\\s*$",
+        "beforeText": "^(([\\/\\=\\-\\+<]{2,}).*)|([ \\t]*(if|while|for|with|\\+).*:)$",
         "action": {
           "indent": "indent"
         }
