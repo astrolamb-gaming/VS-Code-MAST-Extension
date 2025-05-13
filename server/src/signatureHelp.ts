@@ -25,20 +25,16 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 	const iStr : string = t.substring(startOfLine,pos);
 
 	// Calculate which parameter is the active one
-	let m: RegExpExecArray | null;
-	let last = iStr.lastIndexOf("(");
-	let sub = iStr.substring(last+1, pos).replace(/ /g,"");
-	let arr = sub.split(",");
-	//debug(arr);
+	const func = getCurrentMethodName(iStr);
+	const fstart = iStr.lastIndexOf(func);
+	let wholeFunc = iStr.substring(fstart,iStr.length);
+	let obj = /{.*?(}|$)/gm;
+	wholeFunc = wholeFunc.replace(obj, "_")
+	const arr = wholeFunc.split(",");
 	sh.activeParameter = arr.length - 1;
 
 	// Check for the current function name and get SignatureInformation for that function.
-
-	let f: string = getCurrentMethodName(iStr);
-	// debug(f);
-
-	let sig = getCache(text.uri).getSignatureOfMethod(f);
-	// debug(sig);
+	let sig = getCache(text.uri).getSignatureOfMethod(func);
 	if (sig !== undefined) {
 		sh.signatures.push(sig);
 	}
