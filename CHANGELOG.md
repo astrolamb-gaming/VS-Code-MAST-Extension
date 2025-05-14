@@ -7,11 +7,22 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ### To-DO and WIP
 
 * Determine variable types based on function return values, etc
-* Fix for weighted strings not being recognized as strings in certain situations
 * Add python built-in module information
-* Add autocompletion for prefab data
+
+### 0.10.2
+
+* Fix for weighted strings not being recognized as strings in certain situations
+* Add autocompletion for label data keys
+* Fix bug in determining what argument is the current one
+* Fix issue where strings weren't being parsed correctly
+* Fix for info if a file is deleted
+* Add variables from modules to autocompletion
+* Add proper auto-indentation!
+* Remove unnecessary info for mast nodes
+
 
 ### 0.10.1
+
 * Add style string autocompletions for non-sbs functions (e.g. color, area, etc.), anytime a function has a parameter named "style"
 * Fix for giving `__init__.mast` missing errors for mast files in root mission folder [#10](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues/10)
 * Update autocomplete documentation display

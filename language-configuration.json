@@ -257,7 +257,7 @@
     },
     "onEnterRules": [
       {
-        "beforeText": "^(([\\/\\=\\-\\+<]{2,}).*)|([ \\t]*(if|while|for|with|\\+).*:)$",
+        "beforeText": "^(([\\/\\=\\-\\+<]{2,})|<.*)|([ \\t]*(if|while|for|with|\\+).*:)$",
         "action": {
           "indent": "indent"
         }
