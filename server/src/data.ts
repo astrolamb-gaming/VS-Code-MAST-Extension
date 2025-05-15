@@ -13,6 +13,7 @@ import { parsePrefabs } from './tokens/prefabs';
 import { parseVariables, Variable } from './tokens/variables';
 import { Function } from "./data/function";
 import { ClassObject } from './data/class';
+import { parseWords, Word } from './tokens/words';
 
 /**
  * This accounts for classes that use a different name as a global than the class name. 
@@ -76,6 +77,7 @@ export class MastFile extends FileCache {
 	roles: string[] = [];
 	keys: string[] = [];
 	prefabs: LabelInfo[] = [];
+	words: Word[] = [];
 	
 	constructor(uri: string, fileContents:string = "") {
 		//debug("building mast file");
@@ -115,6 +117,7 @@ export class MastFile extends FileCache {
 		this.variables = parseVariables(textDocument);//
 		this.roles = getRolesForFile(text);		
 		this.keys = getInventoryKeysForFile(text);
+		this.words = parseWords(textDocument);
 	}
 
 	getVariableNames() {
@@ -139,6 +142,7 @@ export class MastFile extends FileCache {
 export class PyFile extends FileCache {
 	defaultFunctions: Function[] = [];
 	classes: ClassObject[] = [];
+	words: Word[] = [];
 	constructor(uri: string, fileContents:string = "") {
 		uri = fixFileName(uri);
 		super(uri);
@@ -180,7 +184,7 @@ export class PyFile extends FileCache {
 		let m: RegExpExecArray | null;
 
 		const doc: TextDocument = TextDocument.create(this.uri, "py", 1, text);
-	
+		this.words = parseWords(doc);
 		// Iterate over all classes to get their indices
 		//classIndices.push(0);
 		while(m = blockStart.exec(text)) {

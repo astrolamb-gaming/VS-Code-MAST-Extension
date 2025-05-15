@@ -15,6 +15,7 @@ const prefabs_1 = require("./tokens/prefabs");
 const variables_1 = require("./tokens/variables");
 const function_1 = require("./data/function");
 const class_1 = require("./data/class");
+const words_1 = require("./tokens/words");
 /**
  * This accounts for classes that use a different name as a global than the class name.
  * E.g. the sim global variable refers to the simulation class. Instead of simulation.functionName(), use sim.functionName().
@@ -74,6 +75,7 @@ class MastFile extends FileCache {
         this.roles = [];
         this.keys = [];
         this.prefabs = [];
+        this.words = [];
         if (path.extname(uri) === ".mast") {
             // If the contents are aleady read, we parse and move on. Don't need to read or parse again.
             if (fileContents !== "") {
@@ -110,6 +112,7 @@ class MastFile extends FileCache {
         this.variables = (0, variables_1.parseVariables)(textDocument); //
         this.roles = (0, roles_1.getRolesForFile)(text);
         this.keys = (0, roles_1.getInventoryKeysForFile)(text);
+        this.words = (0, words_1.parseWords)(textDocument);
     }
     getVariableNames() {
         let arr = [];
@@ -135,6 +138,7 @@ class PyFile extends FileCache {
         super(uri);
         this.defaultFunctions = [];
         this.classes = [];
+        this.words = [];
         // If fileContents is NOT an empty string (e.g. if it's from a zipped folder), then all we do is parse the contents
         if (path.extname(uri) === ".py") {
             // If file contents are included, we don't need to read, just go straight to parsing
@@ -173,6 +177,7 @@ class PyFile extends FileCache {
         let blockIndices = [];
         let m;
         const doc = vscode_languageserver_textdocument_1.TextDocument.create(this.uri, "py", 1, text);
+        this.words = (0, words_1.parseWords)(doc);
         // Iterate over all classes to get their indices
         //classIndices.push(0);
         while (m = blockStart.exec(text)) {

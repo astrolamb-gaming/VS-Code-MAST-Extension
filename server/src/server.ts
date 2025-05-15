@@ -41,7 +41,8 @@ import {
 	DocumentSymbol,
 	CodeAction,
 	CodeActionKind,
-	Command
+	Command,
+	ReferenceParams
 
 } from 'vscode-languageserver/node';
 import { URI } from 'vscode-uri';
@@ -59,6 +60,7 @@ import path = require('path');
 import { getTokenInfo } from './python/python';
 import { onDefinition } from './goToDefinition';
 import { getCache } from './cache';
+import { onReferences } from './references';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -145,6 +147,7 @@ connection.onInitialize((params: InitializeParams) => {
             //         tokenModifiers: ['declaration','documentation']
             //     }
             // }
+			referencesProvider: true
 		}
 	};
 	if (hasWorkspaceFolderCapability) {
@@ -581,6 +584,11 @@ connection.onDefinition((params: DefinitionParams,token: CancellationToken,workD
 	}
 	return def;
 });
+
+connection.onReferences((params:ReferenceParams): Location[] | undefined => {
+	return onReferences(params);
+});
+
 
 export async function showProgressBar(visible: boolean) {
 	sendToClient("progressNotif",visible);

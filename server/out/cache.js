@@ -193,7 +193,9 @@ class MissionCache {
                         const missionFolder = path.join((0, globals_1.getGlobals)().artemisDir, "data", "missions", m);
                         const files = (0, fileFunctions_1.getFilesInDir)(missionFolder, true);
                         for (const f of files) {
+                            (0, server_1.showProgressBar)(true);
                             const data = (0, fileFunctions_1.readFile)(f).then((data) => {
+                                (0, server_1.showProgressBar)(true);
                                 this.handleZipData(data, f);
                             });
                         }
@@ -205,6 +207,7 @@ class MissionCache {
                     (0, fileFunctions_1.readZipArchive)(zipPath).then((data) => {
                         (0, console_1.debug)("Loading " + zip);
                         data.forEach((data, file) => {
+                            (0, server_1.showProgressBar)(true);
                             (0, console_1.debug)(file);
                             if (zip !== "") {
                                 file = path.join(zip, file);
@@ -238,7 +241,7 @@ class MissionCache {
             // Do nothing
         }
         else if (file.endsWith(".py")) {
-            (0, console_1.debug)(file);
+            // debug(file)
             this.routeLabels = this.routeLabels.concat((0, routeLabels_1.loadRouteLabels)(data));
             this.styleDefinitions = this.styleDefinitions.concat((0, styles_1.loadStyleDefs)(file, data));
             // this.mediaLabels = this.mediaLabels.concat(loadMediaLabels(data));
@@ -469,6 +472,26 @@ class MissionCache {
             }
         }
         return vars;
+    }
+    /**
+     * Get all the words in scope
+     * @returns a list of {@link Word Word}
+     */
+    getWords() {
+        let words = [];
+        for (const m of this.mastFileCache) {
+            words = words.concat(m.words);
+        }
+        for (const m of this.missionMastModules) {
+            words = words.concat(m.words);
+        }
+        for (const p of this.pyFileCache) {
+            words = words.concat(p.words);
+        }
+        for (const p of this.missionPyModules) {
+            words = words.concat(p.words);
+        }
+        return words;
     }
     /**
      * @param fileUri The uri of the file.

@@ -4,7 +4,7 @@ import { getComments, isInComment, isInString, isInYaml } from './tokens/comment
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
 import { getCurrentLineFromTextDocument, getHoveredSymbol } from './hover';
-import { getWordRangeAtPosition, isClassMethod, isFunction } from './tokens/tokens';
+import { isClassMethod, isFunction } from './tokens/tokens';
 import { getCache } from './cache';
 import { documents, sendToClient } from './server';
 import { URI } from 'vscode-uri';

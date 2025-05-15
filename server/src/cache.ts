@@ -20,6 +20,7 @@ import { StoryJson } from './data/storyJson';
 import { sleep } from './python/python';
 import { Func } from 'mocha';
 import { loadStyleDefs } from './data/styles';
+import { Word } from './tokens/words';
 
 
 const includeNonProcedurals = [
@@ -210,7 +211,9 @@ export class MissionCache {
 						const missionFolder = path.join(getGlobals().artemisDir,"data","missions",m);
 						const files = getFilesInDir(missionFolder,true);
 						for (const f of files) {
+							showProgressBar(true);
 							const data = readFile(f).then((data)=>{
+								showProgressBar(true);
 								this.handleZipData(data, f);
 							});
 						}
@@ -222,6 +225,7 @@ export class MissionCache {
 					readZipArchive(zipPath).then((data)=>{
 						debug("Loading " + zip);
 						data.forEach((data,file)=>{
+							showProgressBar(true);
 							debug(file)
 							if (zip !== "") {
 								file = path.join(zip,file);
@@ -254,7 +258,7 @@ export class MissionCache {
 		if (file.endsWith("__init__.mast") || file.endsWith("__init__.py") || file.includes("mock")) {
 			// Do nothing
 		} else if (file.endsWith(".py")) {
-			debug(file)
+			// debug(file)
 			this.routeLabels = this.routeLabels.concat(loadRouteLabels(data));
 			this.styleDefinitions = this.styleDefinitions.concat(loadStyleDefs(file,data))
 			// this.mediaLabels = this.mediaLabels.concat(loadMediaLabels(data));
@@ -485,6 +489,26 @@ export class MissionCache {
 		return vars;
 	}
 
+	/**
+	 * Get all the words in scope
+	 * @returns a list of {@link Word Word}
+	 */
+	getWords() : Word[] {
+		let words: Word[] = [];
+		for (const m of this.mastFileCache) {
+			words = words.concat(m.words);
+		}
+		for (const m of this.missionMastModules) {
+			words = words.concat(m.words);
+		}
+		for (const p of this.pyFileCache) {
+			words = words.concat(p.words);
+		}
+		for (const p of this.missionPyModules) {
+			words = words.concat(p.words);
+		}
+		return words;
+	}
 	
 	/**
 	 * @param fileUri The uri of the file. 

@@ -23,6 +23,7 @@ const variables_1 = require("./tokens/variables");
 const globals_1 = require("./globals");
 const validate_1 = require("./validate");
 const goToDefinition_1 = require("./goToDefinition");
+const references_1 = require("./references");
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 exports.connection = (0, node_1.createConnection)(node_1.ProposedFeatures.all);
@@ -90,6 +91,7 @@ exports.connection.onInitialize((params) => {
             //         tokenModifiers: ['declaration','documentation']
             //     }
             // }
+            referencesProvider: true
         }
     };
     if (hasWorkspaceFolderCapability) {
@@ -447,6 +449,9 @@ exports.connection.onDefinition((params, token, workDoneProgress, resultProgress
         def.then((loc) => { (0, console_1.debug)(loc); });
     }
     return def;
+});
+exports.connection.onReferences((params) => {
+    return (0, references_1.onReferences)(params);
 });
 async function showProgressBar(visible) {
     sendToClient("progressNotif", visible);
