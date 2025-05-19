@@ -5,6 +5,7 @@ import { CompletionItem, CompletionItemKind } from 'vscode-languageserver';
 import { getRolesAsCompletionItem } from './tokens/roles';
 import { connection, sendToClient } from './server';
 import Hjson = require('hjson');
+import { getGlobals } from './globals';
 
 
 export class ShipData {
@@ -101,7 +102,36 @@ export class ShipData {
 		debug(ships);
 		return ships;
 	}
-
+	parseArtJSON(): string[] {
+		let art: string[] = [];
+		for (const ship of this.data) {
+			let key = ship["key"];
+			if (key !== undefined && key !== null) art.push(key);
+		}
+		return art;
+	}
+	getShipInfoFromKey(key:string): string | undefined {
+		for (const ship of this.data) {
+			if (ship["key"] === key) {
+				return ship;
+			}
+		}
+		return undefined;
+	}
+	buildCompletionItemForShip(ship: any) {
+		let ci: CompletionItem = {
+			label: ship["key"],
+			kind: CompletionItemKind.Text,
+			insertText: ship["key"]
+		};
+		
+		return ci;
+	}
+	getCompletionItemsForShips(): CompletionItem[] {
+		let ci: CompletionItem[] = getGlobals().artFiles;
+		
+		return ci;
+	}
 	parseRolesJSON(): string[] {
 		let roles: string[] = [];
 		for (const ship of this.data) {

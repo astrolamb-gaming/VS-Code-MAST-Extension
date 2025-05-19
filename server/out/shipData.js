@@ -4,8 +4,10 @@ exports.ShipData = void 0;
 const console_1 = require("console");
 const path = require("path");
 const fileFunctions_1 = require("./fileFunctions");
+const vscode_languageserver_1 = require("vscode-languageserver");
 const server_1 = require("./server");
 const Hjson = require("hjson");
+const globals_1 = require("./globals");
 class ShipData {
     constructor(artemisDir) {
         this.roles = [];
@@ -97,6 +99,35 @@ class ShipData {
         }
         (0, console_1.debug)(ships);
         return ships;
+    }
+    parseArtJSON() {
+        let art = [];
+        for (const ship of this.data) {
+            let key = ship["key"];
+            if (key !== undefined && key !== null)
+                art.push(key);
+        }
+        return art;
+    }
+    getShipInfoFromKey(key) {
+        for (const ship of this.data) {
+            if (ship["key"] === key) {
+                return ship;
+            }
+        }
+        return undefined;
+    }
+    buildCompletionItemForShip(ship) {
+        let ci = {
+            label: ship["key"],
+            kind: vscode_languageserver_1.CompletionItemKind.Text,
+            insertText: ship["key"]
+        };
+        return ci;
+    }
+    getCompletionItemsForShips() {
+        let ci = (0, globals_1.getGlobals)().artFiles;
+        return ci;
     }
     parseRolesJSON() {
         let roles = [];
