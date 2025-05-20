@@ -6,7 +6,7 @@ import { getCache } from '../cache';
 import { URI } from 'vscode-uri';
 import path = require('path');
 import { fixFileName } from '../fileFunctions';
-import { isInYaml } from './comments';
+import { isInComment, isInYaml } from './comments';
 import { start } from 'repl';
 import { getCurrentLineFromTextDocument } from '../hover';
 
@@ -442,7 +442,7 @@ function findBadLabels(t: TextDocument) : Diagnostic[] {
 		if (lbl.startsWith("->")) {
 			continue;
 		}
-		if (isInYaml(t,m.index)) {
+		if (isInYaml(t,m.index) || isInComment(t,m.index)) {
 			continue;
 		}
 		//debug("Testing " + m[0]);

@@ -416,7 +416,7 @@ function findBadLabels(t) {
         if (lbl.startsWith("->")) {
             continue;
         }
-        if ((0, comments_1.isInYaml)(t, m.index)) {
+        if ((0, comments_1.isInYaml)(t, m.index) || (0, comments_1.isInComment)(t, m.index)) {
             continue;
         }
         //debug("Testing " + m[0]);
