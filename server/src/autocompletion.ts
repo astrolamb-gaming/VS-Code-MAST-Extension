@@ -157,6 +157,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				let roles = getRolesForFile(t);
 				roles = roles.concat(cache.getRoles(text.uri));
 				roles = roles.concat(getGlobals().shipData.roles);
+				roles.push("__player__");
 				ci = getRolesAsCompletionItem(roles);
 				return ci;
 			}

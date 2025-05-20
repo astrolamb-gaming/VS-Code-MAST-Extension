@@ -138,6 +138,7 @@ function onCompletion(_textDocumentPosition, text) {
                 let roles = (0, roles_1.getRolesForFile)(t);
                 roles = roles.concat(cache.getRoles(text.uri));
                 roles = roles.concat((0, globals_1.getGlobals)().shipData.roles);
+                roles.push("__player__");
                 ci = (0, roles_1.getRolesAsCompletionItem)(roles);
                 return ci;
             }
