@@ -210,7 +210,13 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 					return ci;
 				}
 				if (a === "art_id" || a === "art") {
-					return getGlobals().artFiles;
+					// ci = getGlobals().shipData.getCompletionItemsForShips();
+					ci = [];
+					const ships = getGlobals().shipData.ships;
+					for (const ship of ships) {
+						ci.push(ship.completionItem);
+					}
+					return ci;
 				}
 			}
 

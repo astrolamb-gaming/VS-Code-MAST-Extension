@@ -189,7 +189,13 @@ function onCompletion(_textDocumentPosition, text) {
                     return ci;
                 }
                 if (a === "art_id" || a === "art") {
-                    return (0, globals_1.getGlobals)().artFiles;
+                    // ci = getGlobals().shipData.getCompletionItemsForShips();
+                    ci = [];
+                    const ships = (0, globals_1.getGlobals)().shipData.ships;
+                    for (const ship of ships) {
+                        ci.push(ship.completionItem);
+                    }
+                    return ci;
                 }
             }
             // if (sig !== undefined) {

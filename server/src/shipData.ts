@@ -1,11 +1,14 @@
 import { debug } from 'console';
 import path = require('path');
+import fs = require('fs');
+import os = require('os');
 import { getFilesInDir, getFileContents, readFile } from './fileFunctions';
-import { CompletionItem, CompletionItemKind } from 'vscode-languageserver';
+import { CompletionItem, CompletionItemKind, MarkupContent } from 'vscode-languageserver';
 import { getRolesAsCompletionItem } from './tokens/roles';
 import { connection, sendToClient } from './server';
 import Hjson = require('hjson');
 import { getGlobals } from './globals';
+import sharp = require('sharp');
 
 
 export class ShipData {
@@ -15,6 +18,7 @@ export class ShipData {
 	validJSON = true;
 	filePath: string = "";
 	artemisDir: string;
+	ships: Ship[] = [];
 	constructor(artemisDir: string) {
 		this.artemisDir = artemisDir;
 		try {
@@ -34,7 +38,7 @@ export class ShipData {
 					this.data = Hjson.parse(contents)["#ship-list"];
 					
 					this.validJSON = true;
-					// this.parseShips();
+					this.ships = this.parseShips();
 					this.roles = this.parseRolesJSON();
 				} catch (e) {
 					const err = e as Error;
@@ -76,10 +80,14 @@ export class ShipData {
 				name: "",
 				side: "",
 				artFileRoot: "",
-				roles: []
+				roles: [],
+				completionItem: {
+					label: "",
+					kind: CompletionItemKind.Text
+				}
 			}
 			let key = d["key"];
-			if (key) ship.key = key;
+			if (key) ship.key = key; ship.completionItem.label = key;
 			let name = d["name"];
 			if (name) ship.name = name;
 			let side = d["side"];
@@ -98,10 +106,72 @@ export class ShipData {
 			if (ship.key !== "") {
 				ships.push(ship);
 			}
+			ship.completionItem.filterText = [
+				key,
+				name,
+				side,
+				roles
+			].join(" ");
+			// TODO: Add additional information about the shipdata entry
+			const documentation: MarkupContent = {
+				kind: 'markdown',
+				value: this.findArtFile(art)
+			}
+			ship.completionItem.documentation = documentation;
 		}
 		debug(ships);
 		return ships;
 	}
+
+	private findArtFile(artfileroot: string): string {
+		const tempPath = path.join(os.tmpdir(),"cosmosImages");
+		if (!fs.existsSync(tempPath)) {
+			fs.mkdirSync(tempPath, {recursive: true});
+		}
+		let tempFile = path.join(tempPath,artfileroot+"_150.png");
+		let tempDiffuse = path.join(tempPath, artfileroot + "_diffuse_150.png");
+		// Check if the 150p file exists
+		if (!fs.existsSync(tempFile) || !fs.existsSync(tempDiffuse)) {
+			// If it doesn't exist, we need to create the new file
+			let artDir = path.join(this.artemisDir, "data", "graphics", "ships");
+
+			// This should always exist
+			let diffuse = path.join(artDir, artfileroot + "_diffuse.png");
+
+			// At least one of these should exist...
+			let png = path.join(artDir, artfileroot + ".png");
+			if (!fs.existsSync(png)) {
+				png = path.join(artDir, artfileroot + "256.png");
+				if (!fs.existsSync(png)) {
+					png = path.join(artDir, artfileroot + "1024.png")
+					debug("PNG MAY NOT EXIST FOR " + png) 
+					
+				}
+			}
+			if (!fs.existsSync(png) || !fs.existsSync(diffuse)) {
+				debug("WARNING, file not found: " + png);
+			} else {
+				// File definitely exists
+				try {
+					debug(tempFile)
+					debug(tempDiffuse)
+					sharp(png).resize(150,150).toFile(tempFile);
+					sharp(diffuse).resize(150,150).toFile(tempDiffuse);
+				} catch (e) {
+					debug(tempFile);
+					debug(tempDiffuse);
+					debug(e);
+					return "";
+				}
+			}
+		}
+
+		// Now that we know the 150p files exist, we can get them
+		let ret = "!["+ artfileroot +"](/"+ tempFile +")\n![diffuse](/" + tempDiffuse + ")";
+		// debug(ret);
+		return ret;
+	}
+
 	parseArtJSON(): string[] {
 		let art: string[] = [];
 		for (const ship of this.data) {
@@ -129,7 +199,12 @@ export class ShipData {
 	}
 	getCompletionItemsForShips(): CompletionItem[] {
 		let ci: CompletionItem[] = getGlobals().artFiles;
-		
+		for (const c of ci) {
+			const ship: any = this.getShipInfoFromKey(c.label);
+			debug(ship);
+			if (ship === undefined || ship["key"] == undefined) continue;
+			c.label = ship["key"];
+		}
 		return ci;
 	}
 	parseRolesJSON(): string[] {
@@ -177,5 +252,6 @@ export interface Ship {
 	name: string,
 	side: string,
 	artFileRoot: string,
-	roles: string[]
+	roles: string[],
+	completionItem: CompletionItem
 }

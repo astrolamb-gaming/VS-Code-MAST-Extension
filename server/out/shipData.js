@@ -3,11 +3,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ShipData = void 0;
 const console_1 = require("console");
 const path = require("path");
+const fs = require("fs");
+const os = require("os");
 const fileFunctions_1 = require("./fileFunctions");
 const vscode_languageserver_1 = require("vscode-languageserver");
 const server_1 = require("./server");
 const Hjson = require("hjson");
 const globals_1 = require("./globals");
+const sharp = require("sharp");
 class ShipData {
     constructor(artemisDir) {
         this.roles = [];
@@ -15,6 +18,7 @@ class ShipData {
         this.fileExists = false;
         this.validJSON = true;
         this.filePath = "";
+        this.ships = [];
         this.artemisDir = artemisDir;
         try {
             this.load();
@@ -32,7 +36,7 @@ class ShipData {
                 try {
                     this.data = Hjson.parse(contents)["#ship-list"];
                     this.validJSON = true;
-                    // this.parseShips();
+                    this.ships = this.parseShips();
                     this.roles = this.parseRolesJSON();
                 }
                 catch (e) {
@@ -70,11 +74,16 @@ class ShipData {
                 name: "",
                 side: "",
                 artFileRoot: "",
-                roles: []
+                roles: [],
+                completionItem: {
+                    label: "",
+                    kind: vscode_languageserver_1.CompletionItemKind.Text
+                }
             };
             let key = d["key"];
             if (key)
                 ship.key = key;
+            ship.completionItem.label = key;
             let name = d["name"];
             if (name)
                 ship.name = name;
@@ -96,9 +105,67 @@ class ShipData {
             if (ship.key !== "") {
                 ships.push(ship);
             }
+            ship.completionItem.filterText = [
+                key,
+                name,
+                side,
+                roles
+            ].join(" ");
+            // TODO: Add additional information about the shipdata entry
+            const documentation = {
+                kind: 'markdown',
+                value: this.findArtFile(art)
+            };
+            ship.completionItem.documentation = documentation;
         }
         (0, console_1.debug)(ships);
         return ships;
+    }
+    findArtFile(artfileroot) {
+        const tempPath = path.join(os.tmpdir(), "cosmosImages");
+        if (!fs.existsSync(tempPath)) {
+            fs.mkdirSync(tempPath, { recursive: true });
+        }
+        let tempFile = path.join(tempPath, artfileroot + "_150.png");
+        let tempDiffuse = path.join(tempPath, artfileroot + "_diffuse_150.png");
+        // Check if the 150p file exists
+        if (!fs.existsSync(tempFile) || !fs.existsSync(tempDiffuse)) {
+            // If it doesn't exist, we need to create the new file
+            let artDir = path.join(this.artemisDir, "data", "graphics", "ships");
+            // This should always exist
+            let diffuse = path.join(artDir, artfileroot + "_diffuse.png");
+            // At least one of these should exist...
+            let png = path.join(artDir, artfileroot + ".png");
+            if (!fs.existsSync(png)) {
+                png = path.join(artDir, artfileroot + "256.png");
+                if (!fs.existsSync(png)) {
+                    png = path.join(artDir, artfileroot + "1024.png");
+                    (0, console_1.debug)("PNG MAY NOT EXIST FOR " + png);
+                }
+            }
+            if (!fs.existsSync(png) || !fs.existsSync(diffuse)) {
+                (0, console_1.debug)("WARNING, file not found: " + png);
+            }
+            else {
+                // File definitely exists
+                try {
+                    (0, console_1.debug)(tempFile);
+                    (0, console_1.debug)(tempDiffuse);
+                    sharp(png).resize(150, 150).toFile(tempFile);
+                    sharp(diffuse).resize(150, 150).toFile(tempDiffuse);
+                }
+                catch (e) {
+                    (0, console_1.debug)(tempFile);
+                    (0, console_1.debug)(tempDiffuse);
+                    (0, console_1.debug)(e);
+                    return "";
+                }
+            }
+        }
+        // Now that we know the 150p files exist, we can get them
+        let ret = "![" + artfileroot + "](/" + tempFile + ")\n![diffuse](/" + tempDiffuse + ")";
+        // debug(ret);
+        return ret;
     }
     parseArtJSON() {
         let art = [];
@@ -127,6 +194,13 @@ class ShipData {
     }
     getCompletionItemsForShips() {
         let ci = (0, globals_1.getGlobals)().artFiles;
+        for (const c of ci) {
+            const ship = this.getShipInfoFromKey(c.label);
+            (0, console_1.debug)(ship);
+            if (ship === undefined || ship["key"] == undefined)
+                continue;
+            c.label = ship["key"];
+        }
         return ci;
     }
     parseRolesJSON() {
