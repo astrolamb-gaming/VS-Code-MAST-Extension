@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Globals = void 0;
+exports.initializeGlobals = initializeGlobals;
 exports.getGlobals = getGlobals;
 const console_1 = require("console");
 const fileFunctions_1 = require("./fileFunctions");
@@ -294,13 +295,18 @@ class Globals {
 }
 exports.Globals = Globals;
 let globals;
-(0, python_1.sleep)(100).then(() => {
+// sleep(100).then(()=>{
+// 	globals = new Globals();
+// })
+async function initializeGlobals() {
     globals = new Globals();
-});
+}
 function getGlobals() {
     if (globals === null || globals === undefined) {
         try {
-            globals = new Globals();
+            // globals = new Globals();
+            (0, python_1.sleep)(100);
+            return getGlobals();
         }
         catch (e) {
             (0, console_1.debug)(e);

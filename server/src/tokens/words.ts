@@ -80,11 +80,14 @@ export function getWordRangeAtPosition(doc:TextDocument, _pos:Position): string 
 	const end : integer = doc.offsetAt(endPosition);
 	const sub = doc.getText().substring(startOfLine,end-1);
 	let m: RegExpExecArray | null;
+	let w = "";
+	debug("Starting regex exec");
 	while (m = wordRE.exec(sub)) {
-		let w = m[1];
+		w = m[1];
+		debug(w);
 		if (m.index <= _pos.character && m.index + w.length >= _pos.character) {
-			return w;
+			break;
 		}
 	}
-	return "";
+	return w;
 }

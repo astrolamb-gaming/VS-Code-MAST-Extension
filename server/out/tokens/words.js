@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.parseWords = parseWords;
 exports.getWordRangeAtPosition = getWordRangeAtPosition;
+const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
 const comments_1 = require("./comments");
 const fileFunctions_1 = require("../fileFunctions");
@@ -64,12 +65,15 @@ function getWordRangeAtPosition(doc, _pos) {
     const end = doc.offsetAt(endPosition);
     const sub = doc.getText().substring(startOfLine, end - 1);
     let m;
+    let w = "";
+    (0, console_1.debug)("Starting regex exec");
     while (m = wordRE.exec(sub)) {
-        let w = m[1];
+        w = m[1];
+        (0, console_1.debug)(w);
         if (m.index <= _pos.character && m.index + w.length >= _pos.character) {
-            return w;
+            break;
         }
     }
-    return "";
+    return w;
 }
 //# sourceMappingURL=words.js.map

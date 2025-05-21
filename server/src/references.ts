@@ -4,17 +4,20 @@ import { getWordRangeAtPosition } from './tokens/words';
 import { documents } from './server';
 import { fileFromUri } from './fileFunctions';
 import { debug } from 'console';
+import { getCurrentLineFromTextDocument, getHoveredSymbol } from './hover';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 
-export async function onReferences(params:ReferenceParams): Promise<Location[] | undefined> {
+export async function onReferences(doc: TextDocument, params:ReferenceParams): Promise<Location[] | undefined> {
 	debug("Trying to find word...");
 	let locs: Location[] = [];
 	const pos: Position = params.position;
-	const doc = documents.get(params.textDocument.uri);
+	debug(doc);
 	if (doc === undefined) {
 		debug("Undefined doc..."); 
 		return [];
 	}
-	const word = getWordRangeAtPosition(doc,pos);
+	debug("getWOrdRange")
+	const word = getHoveredSymbol(getCurrentLineFromTextDocument(pos, doc),pos.character);  //getWordRangeAtPosition(doc,pos);
 	debug("Finding: " + word);
 	const wordLocs = getCache(params.textDocument.uri).getWordLocations(word);
 	for (const loc of wordLocs) {

@@ -54,7 +54,7 @@ import { onHover } from './hover';
 import { getCurrentMethodName, onSignatureHelp } from './signatureHelp';
 import fs = require("fs");
 import { getVariableNamesInDoc } from './tokens/variables';
-import { getGlobals } from './globals';
+import { getGlobals, initializeGlobals } from './globals';
 import { validateTextDocument } from './validate';
 import path = require('path');
 import { getTokenInfo } from './python/python';
@@ -210,7 +210,9 @@ connection.onInitialize((params: InitializeParams) => {
 		// } catch (e) {
 		// 	debug(e)
 		// }
-		
+		initializeGlobals().then(()=>{
+			
+		})
 	} else {
 		debug("No Workspace folders");
 	}
@@ -590,7 +592,7 @@ connection.onReferences((params:ReferenceParams): Promise<Location[] | undefined
 	const document = documents.get(params.textDocument.uri);
 	let def = undefined;
 	if (document !== undefined) {
-		def = onReferences(params);
+		def = onReferences(document, params);
 		def.then((locs)=>{debug(locs)});
 	}
 	return def;

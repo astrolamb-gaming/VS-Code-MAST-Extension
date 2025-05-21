@@ -311,15 +311,21 @@ export class Globals {
 	}
 }
 let globals: Globals;
-sleep(100).then(()=>{
+// sleep(100).then(()=>{
+// 	globals = new Globals();
+// })
+
+export async function initializeGlobals() {
 	globals = new Globals();
-})
+}
 
 
 export function getGlobals() {
 	if (globals === null || globals === undefined) {
 		try {
-			globals = new Globals();
+			// globals = new Globals();
+			sleep(100);
+			return getGlobals();
 		} catch (e) {
 			debug(e);
 			debug("Error getting Globals information");

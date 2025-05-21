@@ -151,6 +151,8 @@ exports.connection.onInitialize((params) => {
         // } catch (e) {
         // 	debug(e)
         // }
+        (0, globals_1.initializeGlobals)().then(() => {
+        });
     }
     else {
         (0, console_1.debug)("No Workspace folders");
@@ -455,7 +457,7 @@ exports.connection.onReferences((params) => {
     const document = exports.documents.get(params.textDocument.uri);
     let def = undefined;
     if (document !== undefined) {
-        def = (0, references_1.onReferences)(params);
+        def = (0, references_1.onReferences)(document, params);
         def.then((locs) => { (0, console_1.debug)(locs); });
     }
     return def;

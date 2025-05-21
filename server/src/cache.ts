@@ -191,6 +191,7 @@ export class MissionCache {
 
 	async modulesLoaded() {
 		const uri = this.missionURI;
+		const globals = getGlobals();
 		debug(uri);
 		if (uri.includes("sbs_utils")) {
 			debug("sbs nope");
@@ -204,7 +205,8 @@ export class MissionCache {
 			for (const zip of lib) {
 				showProgressBar(true);
 				let found = false;
-				for (const m of getGlobals().getAllMissions()) {
+				let missions = globals.getAllMissions()
+				for (const m of missions) {
 					if (this.storyJson.getModuleBaseName(zip).toLowerCase().includes(m.toLowerCase())) {
 						found = true;
 						// Here we refer to the mission instead of the zip
