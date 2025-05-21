@@ -598,10 +598,19 @@ export function getLabelMetadataKeys(label:LabelInfo) {
 	const re: RegExp = /^[ \t]*(\w+):(.*)/gm;
 	let m: RegExpExecArray | null;
 	let keys = [];
+	debug(label)
+	debug(meta)
 	while (m = re.exec(meta)) {
 		let key = m[1];
 		let def = m[2].trim();
 		keys.push([key,def]);
 	}
+	debug(keys)
+	keys.push(["START_X",""]);
+	keys.push(["START_Y",""]);
+	keys.push(["START_Z",""]);
+	keys = [...new Map(keys.map(v => [v[0], v])).values()];
+	// debug(arrUniq);
+	debug(keys);
 	return keys;
 }

@@ -558,11 +558,20 @@ function getLabelMetadataKeys(label) {
     const re = /^[ \t]*(\w+):(.*)/gm;
     let m;
     let keys = [];
+    (0, console_1.debug)(label);
+    (0, console_1.debug)(meta);
     while (m = re.exec(meta)) {
         let key = m[1];
         let def = m[2].trim();
         keys.push([key, def]);
     }
+    (0, console_1.debug)(keys);
+    keys.push(["START_X", ""]);
+    keys.push(["START_Y", ""]);
+    keys.push(["START_Z", ""]);
+    keys = [...new Map(keys.map(v => [v[0], v])).values()];
+    // debug(arrUniq);
+    (0, console_1.debug)(keys);
     return keys;
 }
 //# sourceMappingURL=labels.js.map
