@@ -8,6 +8,18 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 * Determine variable types based on function return values, etc
 * Add python built-in module information
+* Add more info about shipdata entries to the art arguments for space objects
+
+### 0.11.0
+
+* Add support for Find All References
+* Fix bug that caused the global information to get parsed twice
+* Fix art autocompletions to correctly use the "key" key in shipData.json instead of "artfileroot"
+* Fix for block comments
+* Add `__player__` as a default role option
+* Add metadata keys as variables
+* Add map properties as variables
+
 
 ### 0.10.2
 

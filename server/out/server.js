@@ -453,7 +453,7 @@ exports.connection.onDefinition((params, token, workDoneProgress, resultProgress
     return def;
 });
 exports.connection.onReferences((params) => {
-    (0, console_1.debug)("Trying to find word refs....");
+    // debug("Trying to find word refs....")
     const document = exports.documents.get(params.textDocument.uri);
     let def = undefined;
     if (document !== undefined) {
