@@ -583,6 +583,20 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				ci.push(c);
 			}
 		// }
+	} else {
+		// If it's a main or inline label
+		const keys = getLabelMetadataKeys(lbl);
+		for (const k of keys) {
+			const c: CompletionItem = {
+				label: k[0],
+				kind: CompletionItemKind.Text,
+				insertText: "\"" + k[0] + "\":"
+			}
+			if (k[1] !== "") {
+				c.documentation = "Default value: " + k[1];
+			}
+			ci.push(c);
+		}
 	}
 	
 

@@ -556,6 +556,21 @@ function onCompletion(_textDocumentPosition, text) {
         }
         // }
     }
+    else {
+        // If it's a main or inline label
+        const keys = (0, labels_1.getLabelMetadataKeys)(lbl);
+        for (const k of keys) {
+            const c = {
+                label: k[0],
+                kind: vscode_languageserver_1.CompletionItemKind.Text,
+                insertText: "\"" + k[0] + "\":"
+            };
+            if (k[1] !== "") {
+                c.documentation = "Default value: " + k[1];
+            }
+            ci.push(c);
+        }
+    }
     // Add variable names to autocomplete list
     // TODO: Add variables from other files in scope?
     let variables = [];

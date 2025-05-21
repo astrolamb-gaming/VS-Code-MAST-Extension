@@ -12,6 +12,9 @@ import { getCurrentLineFromTextDocument } from '../hover';
 
 
 export interface LabelInfo {
+	/**
+	 * Valid types: `main`, `inline`, or `route`
+	 */
 	type: string,
 	name: string,
 	start: integer,
