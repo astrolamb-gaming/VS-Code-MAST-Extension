@@ -21,6 +21,7 @@ export class ShipData {
 	ships: Ship[] = [];
 	constructor(artemisDir: string) {
 		this.artemisDir = artemisDir;
+		if (artemisDir === "") return;
 		try {
 			this.load();
 		} catch(e) {

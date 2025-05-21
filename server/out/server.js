@@ -451,7 +451,14 @@ exports.connection.onDefinition((params, token, workDoneProgress, resultProgress
     return def;
 });
 exports.connection.onReferences((params) => {
-    return (0, references_1.onReferences)(params);
+    (0, console_1.debug)("Trying to find word refs....");
+    const document = exports.documents.get(params.textDocument.uri);
+    let def = undefined;
+    if (document !== undefined) {
+        def = (0, references_1.onReferences)(params);
+        def.then((locs) => { (0, console_1.debug)(locs); });
+    }
+    return def;
 });
 async function showProgressBar(visible) {
     sendToClient("progressNotif", visible);

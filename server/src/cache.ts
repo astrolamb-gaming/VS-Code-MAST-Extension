@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { CompletionItem, integer, SignatureInformation } from 'vscode-languageserver';
+import { CompletionItem, integer, Location, SignatureInformation } from 'vscode-languageserver';
 import { MastFile, PyFile } from './data';
 import { parseLabelsInFile, LabelInfo, getMainLabelAtPos } from './tokens/labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -113,11 +113,11 @@ export class MissionCache {
 		this.checkForCacheUpdates();
 		debug(this.missionURI)
 		fs.watch(this.missionURI, {"recursive": true}, (eventType, filename) => {
-			debug("fs.watch() EVENT: ")
-			debug(eventType);
+			// debug("fs.watch() EVENT: ")
+			// debug(eventType);
 			// could be either 'rename' or 'change'. new file event and delete
 			// also generally emit 'rename'
-			debug(filename);
+			// debug(filename);
 			if (eventType === "rename") {
 				if (filename?.endsWith(".py")) {
 					this.removePyFile(path.join(this.missionURI,filename));
@@ -493,20 +493,20 @@ export class MissionCache {
 	 * Get all the words in scope
 	 * @returns a list of {@link Word Word}
 	 */
-	getWords() : Word[] {
-		let words: Word[] = [];
+	getWordLocations(word: string) : Location[] {
+		let words: Location[] = [];
 		for (const m of this.mastFileCache) {
-			words = words.concat(m.words);
+			words = words.concat(m.getWordLocations(word));
 		}
 		for (const m of this.missionMastModules) {
-			words = words.concat(m.words);
+			words = words.concat(m.getWordLocations(word));
 		}
-		for (const p of this.pyFileCache) {
-			words = words.concat(p.words);
-		}
-		for (const p of this.missionPyModules) {
-			words = words.concat(p.words);
-		}
+		// for (const p of this.pyFileCache) {
+		// 	words = words.concat(p.getWordLocations(word));
+		// }
+		// for (const p of this.missionPyModules) {
+		// 	words = words.concat(p.getWordLocations(word));
+		// }
 		return words;
 	}
 	

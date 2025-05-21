@@ -136,6 +136,14 @@ export class MastFile extends FileCache {
 		const arrUniq = [...new Map(arr.map(v => [v.label, v])).values()]
 		return arrUniq;
 	} 
+	getWordLocations(check:string): Location[] {
+		for (const word of this.words) {
+			if (word.name === check) {
+				return word.locations;
+			}
+		}
+		return [];
+	}
 
 }
 

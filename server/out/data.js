@@ -130,6 +130,14 @@ class MastFile extends FileCache {
         const arrUniq = [...new Map(arr.map(v => [v.label, v])).values()];
         return arrUniq;
     }
+    getWordLocations(check) {
+        for (const word of this.words) {
+            if (word.name === check) {
+                return word.locations;
+            }
+        }
+        return [];
+    }
 }
 exports.MastFile = MastFile;
 class PyFile extends FileCache {

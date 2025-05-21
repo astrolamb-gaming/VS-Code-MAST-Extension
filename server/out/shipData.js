@@ -20,6 +20,8 @@ class ShipData {
         this.filePath = "";
         this.ships = [];
         this.artemisDir = artemisDir;
+        if (artemisDir === "")
+            return;
         try {
             this.load();
         }

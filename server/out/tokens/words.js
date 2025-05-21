@@ -4,6 +4,7 @@ exports.parseWords = parseWords;
 exports.getWordRangeAtPosition = getWordRangeAtPosition;
 const vscode_languageserver_1 = require("vscode-languageserver");
 const comments_1 = require("./comments");
+const fileFunctions_1 = require("../fileFunctions");
 const ignore = [
     "if",
     "else",
@@ -31,15 +32,27 @@ function parseWords(doc) {
         const end = start + m[0].length;
         if (!(0, comments_1.isInString)(doc, m.index) || !(0, comments_1.isInComment)(doc, m.index) || v.match(num)?.[0] !== null) {
             const range = { start: doc.positionAt(start), end: doc.positionAt(end) };
-            let var1 = {
-                name: v,
-                range: range,
-                doc: doc.uri
-            };
-            ret.push(var1);
+            let found = false;
+            for (const w of ret) {
+                if (w.name === v) {
+                    w.locations.push({ uri: (0, fileFunctions_1.fileFromUri)(doc.uri), range: range });
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                let var1 = {
+                    name: v,
+                    locations: [{
+                            uri: (0, fileFunctions_1.fileFromUri)(doc.uri),
+                            range: range
+                        }]
+                };
+                ret.push(var1);
+            }
         }
     }
-    ret = [...new Map(ret.map(v => [v.range, v])).values()];
+    // ret = [...new Map(ret.map(v => [v.range, v])).values()];
     // debug(ret);
     return ret;
 }

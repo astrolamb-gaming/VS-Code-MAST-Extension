@@ -585,8 +585,15 @@ connection.onDefinition((params: DefinitionParams,token: CancellationToken,workD
 	return def;
 });
 
-connection.onReferences((params:ReferenceParams): Location[] | undefined => {
-	return onReferences(params);
+connection.onReferences((params:ReferenceParams): Promise<Location[] | undefined> | undefined => {
+	debug("Trying to find word refs....")
+	const document = documents.get(params.textDocument.uri);
+	let def = undefined;
+	if (document !== undefined) {
+		def = onReferences(params);
+		def.then((locs)=>{debug(locs)});
+	}
+	return def;
 });
 
 

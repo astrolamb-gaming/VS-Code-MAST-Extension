@@ -5,21 +5,20 @@ import { documents } from './server';
 import { fileFromUri } from './fileFunctions';
 import { debug } from 'console';
 
-export function onReferences(params:ReferenceParams): Location[] | undefined {
+export async function onReferences(params:ReferenceParams): Promise<Location[] | undefined> {
+	debug("Trying to find word...");
 	let locs: Location[] = [];
 	const pos: Position = params.position;
 	const doc = documents.get(params.textDocument.uri);
-	if (doc === undefined) return [];
+	if (doc === undefined) {
+		debug("Undefined doc..."); 
+		return [];
+	}
 	const word = getWordRangeAtPosition(doc,pos);
 	debug("Finding: " + word);
-	const words = getCache(params.textDocument.uri).getWords();
-	for (const w of words) {
-		if (w.name !== word) continue;
-		let loc: Location = {
-			uri: fileFromUri(w.doc),
-			range: w.range
-		}
-		locs.push(loc);
+	const wordLocs = getCache(params.textDocument.uri).getWordLocations(word);
+	for (const loc of wordLocs) {
+		locs = locs.concat(loc);
 	}
 	return locs;
 }
