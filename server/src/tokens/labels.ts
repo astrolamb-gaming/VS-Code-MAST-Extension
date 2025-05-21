@@ -107,8 +107,10 @@ export function parseLabels(text: string, src: string, type: string = "main"): L
 		labels[i].metadata = getMetadata(text.substring(labels[i].start,labels[i].end));
 		i++;
 	}
+	// This is supposed to get the end of the last label
 	if (labels[i] !== undefined) {
  		labels[i].end = text.length;
+		labels[i].metadata = getMetadata(text.substring(labels[i].start,labels[i].end));
 	}
 
 	// TODO: Get Comments or Weighted Text immediately following the label
@@ -146,11 +148,11 @@ export function parseLabels(text: string, src: string, type: string = "main"): L
 function getMetadata(text:string):string {
 	let ret = "";
 	const start = text.indexOf("```");
-	const end = text.lastIndexOf("```");
-	if (start === -1 || end === -1) {
-		return ret;
-	}
-	text = text.substring(start,end)
+	if (start === -1) return ret;
+	text = text.substring(start).replace(/```/,"");
+	const end = text.indexOf("```");
+	if (end === -1) return ret;
+	text = text.substring(0,end)
 	text = text.replace(/```/g,"").trim();
 	// text = text.substring(text.indexOf("\n"));
 	return text;
