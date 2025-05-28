@@ -1,7 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { CompletionItem, integer, Location, SignatureInformation } from 'vscode-languageserver';
-import { MastFile, PyFile } from './data';
+import { MastFile } from './files/MastFile';
+import { PyFile } from './files/PyFile';
 import { parseLabelsInFile, LabelInfo, getMainLabelAtPos } from './tokens/labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
@@ -732,6 +733,8 @@ export class MissionCache {
 				return p;
 			}
 		}
+		/// Should never get to this point unless a new py file was created.
+		debug("New py file: " + uri);
 		const p: PyFile = new PyFile(uri);
 		this.pyFileCache.push(p);
 		return p;
