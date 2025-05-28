@@ -97,20 +97,36 @@ function onHover(_pos, text) {
     }
     else if ((0, tokens_1.isFunction)(hoveredLine, symbol)) {
         // hoverText += "\nFunction"
-        for (const m of cache.missionDefaultFunctions) {
-            if (m.name === symbol) {
-                hoverText = m.buildCompletionItem().detail; // + "\n\n" + m.completionItem.documentation;
-                // debug(m.documentation.toString())
-                // let mc: MarkupContent = {
-                // 	kind: "markdown",
-                // 	value: "```javascript\n" + m.buildFunctionDetails() + "\n```\n\n```text\n\n" + m.documentation.toString() + "\n```\n"
-                // }
-                let mc = m.buildMarkUpContent();
-                // mc.value = m.documentation.toString();
-                hoverText = mc;
-                return { contents: mc };
+        for (const p of cache.missionPyModules) {
+            for (const m of p.defaultFunctions) {
+                if (m.name === symbol) {
+                    hoverText = m.buildCompletionItem().detail; // + "\n\n" + m.completionItem.documentation;
+                    // debug(m.documentation.toString())
+                    // let mc: MarkupContent = {
+                    // 	kind: "markdown",
+                    // 	value: "```javascript\n" + m.buildFunctionDetails() + "\n```\n\n```text\n\n" + m.documentation.toString() + "\n```\n"
+                    // }
+                    let mc = m.buildMarkUpContent();
+                    // mc.value = m.documentation.toString();
+                    hoverText = mc;
+                    return { contents: mc };
+                }
             }
         }
+        // for (const m of cache.missionDefaultFunctions) {
+        // 	if(m.name === symbol) {
+        // 		hoverText = m.buildCompletionItem().detail;// + "\n\n" + m.completionItem.documentation;
+        // 		// debug(m.documentation.toString())
+        // 		// let mc: MarkupContent = {
+        // 		// 	kind: "markdown",
+        // 		// 	value: "```javascript\n" + m.buildFunctionDetails() + "\n```\n\n```text\n\n" + m.documentation.toString() + "\n```\n"
+        // 		// }
+        // 		let mc = m.buildMarkUpContent();
+        // 		// mc.value = m.documentation.toString();
+        // 		hoverText = mc;
+        // 		return {contents: mc}
+        // 	}
+        // }
         for (const m of cache.pyFileCache) {
             for (const p of m.defaultFunctions) {
                 if (p.name === symbol) {

@@ -181,12 +181,12 @@ function getVariableTypes(typeEvalStr:string, uri:string): string[] {
 	
 
 	// Check over all default functions
-	for (const f of cache.missionDefaultFunctions) {
-		if (typeEvalStr.startsWith(f.name)) {
-			if (test) debug(f);
-			types.push(f.returnType);
-		}
-	}
+	// for (const f of cache.missionDefaultFunctions) {
+	// 	if (typeEvalStr.startsWith(f.name)) {
+	// 		if (test) debug(f);
+	// 		types.push(f.returnType);
+	// 	}
+	// }
 
 	// Is this a class, or a class function?
 	for (const co of cache.missionClasses) {

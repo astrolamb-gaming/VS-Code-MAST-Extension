@@ -143,7 +143,9 @@ export class PyFile extends FileCache {
 		 * This refers to MAST globals, NOT extension globals
 		 */
 		let globalRegEx = /MastGlobals\.import_python_module\((["']([\w_\.]+)["'])(,[ \t]['"](\w+)['"])?\)/g;
+		// Here we find all the instances of import_python_module() in the file.
 		while (m = globalRegEx.exec(text)) {
+			debug(m[0])
 			let mod = m[2];
 			let name = m[4];
 			let g = [mod];
@@ -151,6 +153,7 @@ export class PyFile extends FileCache {
 				name = "";
 			}
 			g.push(name);
+			debug(g);
 			this.globals.push(g);
 		}
 
@@ -171,25 +174,25 @@ export class PyFile extends FileCache {
 			}
 		}
 
-		// This checks if the module name should be prepended to the function names in this module
-		let prefix = "";
-		for (const o of prepend) {
-			if (path.basename(this.uri).replace(".py", "") === o) {
-				prefix = o + "_"; //o.replace(".py","_");
-				const newDefaults: Function[] = [];
-				for (const m of this.defaultFunctions) {
-					// const n = Object.assign({},m);
-					const n = m.copy();
-					n.name = prefix + n.name;
-					newDefaults.push(n);
-				}
-				this.defaultFunctions = newDefaults;
-				if (o === "scatter") {
-					debug(this.defaultFunctions);
-				}
-			}
+		// // This checks if the module name should be prepended to the function names in this module
+		// let prefix = "";
+		// for (const o of prepend) {
+		// 	if (path.basename(this.uri).replace(".py", "") === o) {
+		// 		prefix = o + "_"; //o.replace(".py","_");
+		// 		const newDefaults: Function[] = [];
+		// 		for (const m of this.defaultFunctions) {
+		// 			// const n = Object.assign({},m);
+		// 			const n = m.copy();
+		// 			n.name = prefix + n.name;
+		// 			newDefaults.push(n);
+		// 		}
+		// 		this.defaultFunctions = newDefaults;
+		// 		if (o === "scatter") {
+		// 			debug(this.defaultFunctions);
+		// 		}
+		// 	}
 
-		}
+		// }
 
 	}
 

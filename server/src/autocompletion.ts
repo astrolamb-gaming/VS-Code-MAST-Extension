@@ -21,12 +21,13 @@ let currentLine = 0;
 export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, text: TextDocument): CompletionItem[] {
 	// return buildFaction("kra","Kralien_Set");
 	debug("Staring onCompletion");
+	const cache = getCache(text.uri);
 	// return getGlobals().artFiles;
 	if (!getGlobals().isCurrentFile(text.uri)) {
-		getCache(text.uri).updateFileInfo(text);
+		cache.updateFileInfo(text);
 		getGlobals().setCurrentFile(text.uri);
 	}
-	const cache = getCache(text.uri);
+	
 	let ci : CompletionItem[] = [];
 	debug("Cache loaded.");
 	const t = text?.getText();
@@ -617,9 +618,14 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	debug("Variables parsed.");
 	// debug(variables)
 	ci = ci.concat(variables);
+	// ci = ci.concat(cache.getMethods());
+	
 
 	//debug(ci.length);
 	//ci = ci.concat(defaultFunctionCompletionItems);
+	for (const m of cache.getMethods()) {
+		ci.push(m.buildCompletionItem());
+	}
 	// TODO: Account for text that's already present?? I don't think that's necessary
 	// - Remove the text from the start of the completion item label
 	return ci;

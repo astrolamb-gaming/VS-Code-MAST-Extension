@@ -45,12 +45,24 @@ export class MissionCache {
 	missionPyModules: PyFile[] = [];
 	missionMastModules: MastFile[] = [];
 	missionClasses: ClassObject[] = [];
-	missionDefaultFunctions: Function[] = [];
+	// missionDefaultFunctions: Function[] = [];
 
 
 	// These are for the files specific to this mission.
+	/**
+	 * A list of all {@link PyFile PyFile}s included in modules applicable to the current misison.
+	 */
 	pyFileCache: PyFile[] = [];
+	/**
+	 * A list of all {@link MastFile MastFile}s included in modules applicable to the current mission.
+	 */
 	mastFileCache: MastFile[] = [];
+	/**
+	 * A two-dimensional array of all the globally-scoped files for the current mission.  
+	 * The first index of each array is the file name (e.g. sbs_utils.names)  
+	 * The second index is the prepend name - the name that is prepended to all functions in the file.
+	 */
+	sbsGlobals: string[][] = [];
 
 	//// Other Labels
 	// Route Labels - From RouteDecoratorLabel class
@@ -85,7 +97,7 @@ export class MissionCache {
 		showProgressBar(true);
 		// (re)set all the arrays before (re)populating them.
 		this.missionClasses = [];
-		this.missionDefaultFunctions = [];
+		// this.missionDefaultFunctions = [];
 		this.missionMastModules = [];
 		this.missionPyModules = [];
 		this.pyFileCache = [];
@@ -264,31 +276,33 @@ export class MissionCache {
 			// debug(file)
 			this.routeLabels = this.routeLabels.concat(loadRouteLabels(data));
 			this.styleDefinitions = this.styleDefinitions.concat(loadStyleDefs(file,data))
-			// this.mediaLabels = this.mediaLabels.concat(loadMediaLabels(data));
-			// this.resourceLabels = this.resourceLabels.concat(loadResourceLabels(data));
-			if (file.includes("sbs_utils\\mast")) return;
-			if (file.includes("sbs_utils") && !file.includes("procedural")) {
-				// Don't wanat anything not procedural included???
-				let found = false;
-				for (const special of includeNonProcedurals) {
-					if (file.includes(special)) {
-						found = true;
-						//don't return
-						debug("Adding " + special);
-						// const p = new PyFile(file, data);
-						// this.missionPyModules.push(p);
-						// this.missionClasses = this.missionClasses.concat(p.classes);
-						// this.missionDefaultFunctions = this.missionDefaultFunctions.concat(p.defaultFunctions);
-						break;
-					}
-				}
-				// TODO: Uncomment this to remove all the extra stuff like Gui that most mission writers probably don't need...
-				// if (!found) return;
-			}
+			// if (file.includes("sbs_utils\\mast")) return;
+			// if (file.includes("sbs_utils") && !file.includes("procedural")) {
+			// 	// Don't wanat anything not procedural included???
+			// 	let found = false;
+			// 	for (const special of includeNonProcedurals) {
+			// 		if (file.includes(special)) {
+			// 			found = true;
+			// 			//don't return
+			// 			debug("Adding " + special);
+			// 			// const p = new PyFile(file, data);
+			// 			// this.missionPyModules.push(p);
+			// 			// this.missionClasses = this.missionClasses.concat(p.classes);
+			// 			// this.missionDefaultFunctions = this.missionDefaultFunctions.concat(p.defaultFunctions);
+			// 			break;
+			// 		}
+			// 	}
+			// 	// TODO: Uncomment this to remove all the extra stuff like Gui that most mission writers probably don't need...
+			// 	// if (!found) return;
+			// }
 			const p = new PyFile(file, data);
-			this.missionPyModules.push(p);
-			this.missionClasses = this.missionClasses.concat(p.classes);
-			this.missionDefaultFunctions = this.missionDefaultFunctions.concat(p.defaultFunctions);
+			if (file.includes("sbs_utils")) {
+				this.addSbsPyFile(p);
+				return;
+			}
+			this.addMissionPyFile(p);
+			
+			// this.missionDefaultFunctions = this.missionDefaultFunctions.concat(p.defaultFunctions);
 		} else if (file.endsWith(".mast")) {
 			//debug("Building file: " + file);
 			if (file.includes("sbs_utils")) return;
@@ -308,6 +322,56 @@ export class MissionCache {
 		} else if (doc.languageId === "py") {
 			debug("Updating " + doc.uri);
 			this.getPyFile(doc.uri).parseWholeFile(doc.getText());
+		}
+	}
+
+	/**
+	 * Add a py file to the mision cache (stuff in the mission folder, or a module that isn't sbs_utils)
+	 * @param p A {@link PyFile PyFile} that should be added to {@link MissionCache.missionPyModules MissionCache.missionPyModules}
+	 */
+	addMissionPyFile(p:PyFile) {
+		this.missionPyModules.push(p);
+		this.missionClasses = this.missionClasses.concat(p.classes);
+	}
+
+	/**
+	 * Add a py file to the sbs_utils cache (stuff that's in sbs_utils)
+	 * @param p A {@link PyFile PyFile} that should be added to {@link MissionCache.pyFileCache MissionCache.pyFileCache}
+	 */
+	addSbsPyFile(p:PyFile) {
+		if (!p.uri.includes("sbs_utils")) {
+			//// Don't want non-sbs_utils stuff in the py file cache
+			debug("ERROR: Py file added to wrong part of cache: " + p.uri);
+		}
+		this.pyFileCache.push(p);
+		this.sbsGlobals = this.sbsGlobals.concat(p.globals);
+		// debug(this.sbsGlobals)
+		for (const f of this.pyFileCache) {
+			const file = f.uri.replace(/\//g,".").replace(/\\/g,".");
+			// debug(file);
+			if (f.isGlobal) continue; /// This will prevent global logic from happening more than once per file.
+			for (const g of this.sbsGlobals) {
+				if (g[0] === "sbs") {
+					// if (f.uri.includes("sbs.py"))
+					// Treat sbs differently
+					continue;
+				}
+				if (file.includes(g[0])) {
+					debug(g[0]);
+					debug("Adding " + f.uri + " as a global")
+					f.isGlobal = true;
+					if (g[1] !== "") {
+						// TODO: Update function names with prepend
+						const newDefaults: Function[] = [];
+						for (const func of f.defaultFunctions) {
+							const n = func.copy();
+							n.name = g[1] + "_" + func.name;
+							newDefaults.push(n);
+						}
+						f.defaultFunctions = newDefaults;
+					}
+				}
+			}
 		}
 	}
 
@@ -415,7 +479,9 @@ export class MissionCache {
 	getMethods(): Function[] {
 		let methods: Function[] = [];
 		for (const py of this.pyFileCache) {
-			methods = methods.concat(py.defaultFunctions);
+			if (py.isGlobal) {
+				methods = methods.concat(py.defaultFunctions);
+			}
 		}
 		for (const py of this.missionPyModules) {
 			methods = methods.concat(py.defaultFunctions);
@@ -576,15 +642,22 @@ export class MissionCache {
 		if (_class === "") {
 			//debug(ci.length);
 			// ci = ci.concat(this.missionDefaultCompletions);
-			for (const f of this.missionDefaultFunctions) {
-				ci.push(f.buildCompletionItem());
+			// for (const f of this.missionDefaultFunctions) {
+			// 	ci.push(f.buildCompletionItem());
+			// }
+			for (const p of this.missionPyModules) {
+				for (const f of p.defaultFunctions) {
+					ci.push(f.buildCompletionItem());
+				}
 			}
 			for (const c of this.missionClasses) {
 				ci.push(c.buildCompletionItem());
 			}
 			for (const p of this.pyFileCache) {
-				for (const f of p.defaultFunctions) {
-					ci.push(f.buildCompletionItem());
+				if (p.isGlobal) {
+					for (const f of p.defaultFunctions) {
+						ci.push(f.buildCompletionItem());
+					}
 				}
 			}
 			return ci;
@@ -606,9 +679,12 @@ export class MissionCache {
 	 * @returns Associated {@link SignatureInformation}
 	 */
 	getSignatureOfMethod(name: string): SignatureInformation | undefined {
-		for (const f of this.missionDefaultFunctions) {
-			if (f.name === name) {
-				return f.buildSignatureInformation();
+		for (const p of this.missionPyModules) {
+			for (const f of p.defaultFunctions) {
+				// for (const f of this.missionDefaultFunctions) {
+				if (f.name === name) {
+					return f.buildSignatureInformation();
+				}
 			}
 		}
 		for (const c of this.missionClasses) {
@@ -714,12 +790,12 @@ export class MissionCache {
 		uri = fixFileName(uri);
 		debug("Removing " + uri);
 		let newCache: PyFile[] = [];
-		for (const m of this.pyFileCache) {
+		for (const m of this.missionPyModules) {
 			if (m.uri !== uri) {
 				newCache.push(m);
 			}
 		}
-		this.pyFileCache = newCache;
+		this.missionPyModules = newCache;
 	}
 
 	/**
@@ -728,7 +804,7 @@ export class MissionCache {
 	 */
 	getPyFile(uri:string) : PyFile {
 		uri = fixFileName(uri);
-		for (const p of this.pyFileCache) {
+		for (const p of this.missionPyModules) {
 			if (p.uri === fixFileName(uri)) {
 				return p;
 			}
@@ -736,7 +812,12 @@ export class MissionCache {
 		/// Should never get to this point unless a new py file was created.
 		debug("New py file: " + uri);
 		const p: PyFile = new PyFile(uri);
-		this.pyFileCache.push(p);
+		if (uri.includes("sbs_utils")) {
+			this.addSbsPyFile(p);
+		} else {
+			this.addMissionPyFile(p);
+		}
+		// this.pyFileCache.push(p);
 		return p;
 	}
 }
