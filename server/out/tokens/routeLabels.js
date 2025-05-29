@@ -232,6 +232,9 @@ function getRouteLabelVars(route) {
     const lifeCycle = ["spawn", "destory", "kill"];
     for (const con of consoles) {
         if (route.includes(con)) {
+            if (con === "comms") {
+                retVars.push("LIFEFORM_ID");
+            }
             const caps = con.toUpperCase();
             const vars = [
                 caps,

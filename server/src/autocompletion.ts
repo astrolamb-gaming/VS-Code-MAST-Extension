@@ -549,7 +549,10 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		"case",
 		"yield",
 		"pass",
-		"with"
+		"with",
+		"None",
+		"True",
+		"False"
 	]
 	// Add keywords to completions
 	for (const key of keywords) {
@@ -620,6 +623,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	ci = ci.concat(variables);
 	// ci = ci.concat(cache.getMethods());
 	
+
 
 	//debug(ci.length);
 	//ci = ci.concat(defaultFunctionCompletionItems);

@@ -521,7 +521,10 @@ function onCompletion(_textDocumentPosition, text) {
         "case",
         "yield",
         "pass",
-        "with"
+        "with",
+        "None",
+        "True",
+        "False"
     ];
     // Add keywords to completions
     for (const key of keywords) {
