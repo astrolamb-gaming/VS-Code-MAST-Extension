@@ -57,10 +57,11 @@ import { getVariableNamesInDoc } from './tokens/variables';
 import { getGlobals, initializeGlobals } from './globals';
 import { validateTextDocument } from './validate';
 import path = require('path');
-import { getTokenInfo } from './python/python';
+import { getGlobalFunctions, getTokenInfo, initializePython } from './python/python';
 import { onDefinition } from './goToDefinition';
 import { getCache } from './cache';
 import { onReferences } from './references';
+import { fixFileName } from './fileFunctions';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -175,43 +176,9 @@ connection.onInitialize((params: InitializeParams) => {
 		// 	}
 		// }
 		// debug("Cache loaded")
-
-// Uncommment this to enable python stuff
-
-		// try {
-		// 	let globalFuncs = getGlobalFunctions(cache.storyJson.sbslib).then((funcs)=>{
-		// 		const classes = Object.fromEntries(cache.missionClasses.map(obj => [obj.name, obj]));
-		// 		const functions = Object.fromEntries(cache.missionDefaultFunctions.map(obj => [obj.name, obj]));
-		// 		// debug(funcs);
-		// 		for (const f of funcs) {
-		// 			// debug(f);
-		// 			try {
-		// 				// const json = JSON.parse(f);
-		// 				// debug(json);
-		// 				// debug(json['name']);
-		// 				// let found = false;
-		// 				// const c = classes[json['name']];
-		// 				// if (c === undefined) debug(json['name'] + " is undefined");
-		// 				// // if (found) continue;
-		// 				// const df = functions[json['name']];
-		// 				// if (df === undefined) debug(json['name'] + " is undefined");
-		// 				// if (found) {
-		// 				// 	debug(json['name'] + " is found!");
-		// 				// } else {
-		// 				// 	debug("Checking for... " + json['name']);
-		// 				// 	// getTokenInfo(json['name'])
-		// 				// }
-		// 			} catch (ex) {
-		// 				debug(f);
-		// 				debug(ex);
-		// 			}
-		// 		}
-		// 	});
-		// } catch (e) {
-		// 	debug(e)
-		// }
+		
 		initializeGlobals().then(()=>{
-			
+			debug("Global data compiled");
 		})
 	} else {
 		debug("No Workspace folders");

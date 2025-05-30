@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sleep = void 0;
+exports.initializePython = initializePython;
 exports.getGlobalFunctions = getGlobalFunctions;
 exports.compileMission = compileMission;
 exports.getTokenInfo = getTokenInfo;
@@ -8,10 +9,48 @@ const python_shell_1 = require("python-shell");
 const fileFunctions_1 = require("../fileFunctions");
 const console_1 = require("console");
 const path = require("path");
+const cache_1 = require("../cache");
 const globals_1 = require("../globals");
 let pyPath = "";
 let scriptPath = "";
 let regularOptions;
+function initializePython(uri) {
+    const cache = (0, cache_1.getCache)(uri);
+    try {
+        let globalFuncs = getGlobalFunctions(cache.storyJson.sbslib).then((funcs) => {
+            const classes = Object.fromEntries(cache.missionClasses.map(obj => [obj.name, obj]));
+            // const functions = Object.fromEntries(cache.missionDefaultFunctions.map(obj => [obj.name, obj]));
+            // debug(funcs);
+            for (const f of funcs) {
+                // debug(f);
+                try {
+                    // const json = JSON.parse(f);
+                    // debug(json);
+                    // debug(json['name']);
+                    // let found = false;
+                    // const c = classes[json['name']];
+                    // if (c === undefined) debug(json['name'] + " is undefined");
+                    // // if (found) continue;
+                    // const df = functions[json['name']];
+                    // if (df === undefined) debug(json['name'] + " is undefined");
+                    // if (found) {
+                    // 	debug(json['name'] + " is found!");
+                    // } else {
+                    // 	debug("Checking for... " + json['name']);
+                    // 	// getTokenInfo(json['name'])
+                    // }
+                }
+                catch (ex) {
+                    (0, console_1.debug)(f);
+                    (0, console_1.debug)(ex);
+                }
+            }
+        });
+    }
+    catch (e) {
+        (0, console_1.debug)(e);
+    }
+}
 async function getGlobalFunctions(sbs_utils) {
     let ret = [];
     if (pyPath === "") {
@@ -42,7 +81,7 @@ async function getGlobalFunctions(sbs_utils) {
         (0, console_1.debug)("Starting python shell");
         await python_shell_1.PythonShell.run('mastGlobals.py', o).then((messages) => {
             for (let m of messages) {
-                //debug(m);
+                (0, console_1.debug)(m);
                 ret.push(m);
             }
             console.log('finished');

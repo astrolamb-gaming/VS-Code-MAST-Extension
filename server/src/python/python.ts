@@ -11,6 +11,42 @@ let pyPath = "";
 let scriptPath = "";
 let regularOptions:Options;
 
+export function initializePython(uri: string) {
+	const cache = getCache(uri)
+	try {
+		let globalFuncs = getGlobalFunctions(cache.storyJson.sbslib).then((funcs)=>{
+			const classes = Object.fromEntries(cache.missionClasses.map(obj => [obj.name, obj]));
+			// const functions = Object.fromEntries(cache.missionDefaultFunctions.map(obj => [obj.name, obj]));
+			// debug(funcs);
+			for (const f of funcs) {
+				// debug(f);
+				try {
+					// const json = JSON.parse(f);
+					// debug(json);
+					// debug(json['name']);
+					// let found = false;
+					// const c = classes[json['name']];
+					// if (c === undefined) debug(json['name'] + " is undefined");
+					// // if (found) continue;
+					// const df = functions[json['name']];
+					// if (df === undefined) debug(json['name'] + " is undefined");
+					// if (found) {
+					// 	debug(json['name'] + " is found!");
+					// } else {
+					// 	debug("Checking for... " + json['name']);
+					// 	// getTokenInfo(json['name'])
+					// }
+				} catch (ex) {
+					debug(f);
+					debug(ex);
+				}
+			}
+		});
+	} catch (e) {
+		debug(e)
+	}
+}
+
 export async function getGlobalFunctions(sbs_utils: string[]): Promise<string[]> {
 	let ret: string[] = [];
 	if (pyPath === "") {
@@ -41,7 +77,7 @@ export async function getGlobalFunctions(sbs_utils: string[]): Promise<string[]>
 		debug("Starting python shell")
 		await PythonShell.run('mastGlobals.py', o).then((messages: any)=>{
 			for (let m of messages) {
-				//debug(m);
+				debug(m);
 				ret.push(m);
 			}
 			console.log('finished');

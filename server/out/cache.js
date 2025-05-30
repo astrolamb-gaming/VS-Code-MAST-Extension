@@ -18,6 +18,7 @@ const globals_1 = require("./globals");
 const os = require("os");
 const audioFiles_1 = require("./resources/audioFiles");
 const storyJson_1 = require("./data/storyJson");
+const python_1 = require("./python/python");
 const styles_1 = require("./data/styles");
 const includeNonProcedurals = [
     "scatter",
@@ -74,9 +75,14 @@ class MissionCache {
         this.missionLibFolder = path.join(parent, "__lib__");
         this.missionName = path.basename(this.missionURI);
         this.storyJson = new storyJson_1.StoryJson(path.join(this.missionURI, "story.json"));
-        this.load();
+        this.load().then(async () => {
+            await (0, python_1.sleep)(100);
+            (0, server_1.showProgressBar)(false);
+            (0, console_1.debug)("Starting python");
+            (0, python_1.initializePython)(path.join(this.missionURI, "story.json"));
+        });
     }
-    load() {
+    async load() {
         (0, console_1.debug)("Starting MissionCache.load()");
         (0, server_1.showProgressBar)(true);
         // (re)set all the arrays before (re)populating them.
@@ -89,14 +95,17 @@ class MissionCache {
         this.mediaLabels = [];
         this.mastFileCache = [];
         this.storyJson = new storyJson_1.StoryJson(path.join(this.missionURI, "story.json"));
+        let storyJsonDone = false;
         this.storyJson.readFile()
             .then(() => {
             (0, server_1.showProgressBar)(true);
             this.modulesLoaded().then(() => {
                 (0, console_1.debug)("Modules loaded for " + this.missionName);
                 // showProgressBar(false);
+                storyJsonDone = true;
             });
         });
+        let sbsLoaded = false;
         loadSbs().then((p) => {
             (0, server_1.showProgressBar)(true);
             if (p !== null) {
@@ -106,6 +115,7 @@ class MissionCache {
             }
             (0, console_1.debug)("Finished loading sbs_utils for " + this.missionName);
             (0, server_1.showProgressBar)(false);
+            sbsLoaded = true;
         });
         this.checkForCacheUpdates();
         (0, console_1.debug)(this.missionURI);
@@ -126,6 +136,10 @@ class MissionCache {
         });
         //this.checkForInitFolder(this.missionURI);
         (0, console_1.debug)("Number of py files: " + this.pyFileCache.length);
+        while (!sbsLoaded || !storyJsonDone) {
+            await (0, python_1.sleep)(100);
+        }
+        (0, console_1.debug)("Everything is laoded");
     }
     async checkForInitFolder(folder) {
         // if (this.ingoreInitFileMissing) return;

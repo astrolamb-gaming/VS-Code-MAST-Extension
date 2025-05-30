@@ -18,7 +18,7 @@ import { getMusicFiles } from './resources/audioFiles';
 import { Function } from "./data/function";
 import { ClassObject } from './data/class';
 import { StoryJson } from './data/storyJson';
-import { sleep } from './python/python';
+import { initializePython, sleep } from './python/python';
 import { Func } from 'mocha';
 import { loadStyleDefs } from './data/styles';
 import { Word } from './tokens/words';
@@ -89,10 +89,15 @@ export class MissionCache {
 		this.missionName = path.basename(this.missionURI);
 		this.storyJson = new StoryJson(path.join(this.missionURI,"story.json"));
 
-		this.load();
+		this.load().then(async ()=>{
+			await sleep(100);
+			showProgressBar(false);
+			debug("Starting python")
+			initializePython(path.join(this.missionURI,"story.json"))	
+		});
 	}
 
-	load() {
+	async load() {
 		debug("Starting MissionCache.load()");
 		showProgressBar(true);
 		// (re)set all the arrays before (re)populating them.
@@ -105,14 +110,17 @@ export class MissionCache {
 		this.mediaLabels = [];
 		this.mastFileCache = [];
 		this.storyJson = new StoryJson(path.join(this.missionURI,"story.json"));
+		let storyJsonDone = false;
 		this.storyJson.readFile()
 			.then(()=>{
 				showProgressBar(true);
 				this.modulesLoaded().then(()=>{
 					debug("Modules loaded for " + this.missionName);
 					// showProgressBar(false);
+					storyJsonDone = true;
 				})
 			});
+		let sbsLoaded = false;
 		loadSbs().then((p)=>{
 			showProgressBar(true);
 			if (p !== null) {
@@ -122,6 +130,7 @@ export class MissionCache {
 			}
 			debug("Finished loading sbs_utils for " + this.missionName);
 			showProgressBar(false);
+			sbsLoaded = true;
 		});
 		this.checkForCacheUpdates();
 		debug(this.missionURI)
@@ -142,6 +151,11 @@ export class MissionCache {
 		});
 		//this.checkForInitFolder(this.missionURI);
 		debug("Number of py files: "+this.pyFileCache.length);
+		while (!sbsLoaded || !storyJsonDone) {
+			await sleep(100);
+		}
+		debug("Everything is laoded")
+		
 	}
 
 	async checkForInitFolder(folder:string) : Promise<boolean> {

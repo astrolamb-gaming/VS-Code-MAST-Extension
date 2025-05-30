@@ -118,40 +118,8 @@ exports.connection.onInitialize((params) => {
         // 	}
         // }
         // debug("Cache loaded")
-        // Uncommment this to enable python stuff
-        // try {
-        // 	let globalFuncs = getGlobalFunctions(cache.storyJson.sbslib).then((funcs)=>{
-        // 		const classes = Object.fromEntries(cache.missionClasses.map(obj => [obj.name, obj]));
-        // 		const functions = Object.fromEntries(cache.missionDefaultFunctions.map(obj => [obj.name, obj]));
-        // 		// debug(funcs);
-        // 		for (const f of funcs) {
-        // 			// debug(f);
-        // 			try {
-        // 				// const json = JSON.parse(f);
-        // 				// debug(json);
-        // 				// debug(json['name']);
-        // 				// let found = false;
-        // 				// const c = classes[json['name']];
-        // 				// if (c === undefined) debug(json['name'] + " is undefined");
-        // 				// // if (found) continue;
-        // 				// const df = functions[json['name']];
-        // 				// if (df === undefined) debug(json['name'] + " is undefined");
-        // 				// if (found) {
-        // 				// 	debug(json['name'] + " is found!");
-        // 				// } else {
-        // 				// 	debug("Checking for... " + json['name']);
-        // 				// 	// getTokenInfo(json['name'])
-        // 				// }
-        // 			} catch (ex) {
-        // 				debug(f);
-        // 				debug(ex);
-        // 			}
-        // 		}
-        // 	});
-        // } catch (e) {
-        // 	debug(e)
-        // }
         (0, globals_1.initializeGlobals)().then(() => {
+            (0, console_1.debug)("Global data compiled");
         });
     }
     else {
