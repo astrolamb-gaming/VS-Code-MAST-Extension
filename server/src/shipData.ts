@@ -120,7 +120,7 @@ export class ShipData {
 			}
 			ship.completionItem.documentation = documentation;
 		}
-		debug(ships);
+		// debug(ships);
 		return ships;
 	}
 

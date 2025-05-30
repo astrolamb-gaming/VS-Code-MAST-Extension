@@ -14,6 +14,9 @@ import { getKeysAsCompletionItem, getRolesAsCompletionItem, getRolesForFile } fr
 import { variableModifiers } from './tokens/variables';
 import { isClassMethod, isFunction } from './tokens/tokens';
 import { Function } from './data/function';
+import { getCurrentLineFromTextDocument } from './hover';
+import { countMatches } from './rx';
+import { showProgressBar } from './server';
 
 
 let currentLine = 0;
@@ -23,9 +26,12 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	debug("Staring onCompletion");
 	const cache = getCache(text.uri);
 	// return getGlobals().artFiles;
+	// This updates the file's info with any new info from other files.
 	if (!getGlobals().isCurrentFile(text.uri)) {
+		showProgressBar(true);
 		cache.updateFileInfo(text);
 		getGlobals().setCurrentFile(text.uri);
+		showProgressBar(false);
 	}
 	
 	let ci : CompletionItem[] = [];
@@ -42,13 +48,23 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// Calculate the position in the text's string value using the Position value.
 	const pos : integer = text.offsetAt(_textDocumentPosition.position);
 	const startOfLine : integer = pos - _textDocumentPosition.position.character;
+	// const eolPos: Position = _textDocumentPosition.position;
+	// eolPos.line += 1;
+	// eolPos.character = 0;
+	// const endOfLine: integer = pos + text.offsetAt(eolPos)-1;
 	const iStr : string = t.substring(startOfLine,pos);
-
-	debug(iStr);
-	if (iStr.includes("(")) {
-		let arg = getCurrentArgumentNames(iStr,text);
-		debug(arg);
-	}
+	// const eStr: string = t.substring(pos, endOfLine);
+	// const line = iStr + eStr;
+	const line = getCurrentLineFromTextDocument(_textDocumentPosition.position, text)
+	debug(line);
+	const eStr = line.replace(iStr,"");
+	debug(iStr)
+	debug(eStr);
+	// debug(iStr);
+	// if (iStr.includes("(")) {
+	// 	let arg = getCurrentArgumentNames(iStr,text);
+	// 	debug(arg);
+	// }
 	
 
 	if (fixFileName(text.uri).endsWith("__init__.mast")) {
@@ -144,7 +160,10 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// This is to get rid of " or ' at end so we don't have to check for both
 	const blobStr = iStr.substring(0,iStr.length-1);
 	// debug(blobStr)
-	if (isInString(text,pos)) {
+	// Check if there's an odd number of quotes, if it starts with quotes, or is within a string
+	// TODO: this doesn't account for f-strings....
+	if (countMatches(iStr,/[\"']/g) % 2 !== 0 || iStr.endsWith("\"") || iStr.endsWith("'") || isInString(text,pos)) {
+		debug("Is in string (probably)")
 		if (!isTextInBracket(iStr,pos)) {
 			// Here we check for blob info
 			if (blobStr.endsWith(".set(") || blobStr.endsWith(".get(")) {
@@ -158,7 +177,6 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				let roles = getRolesForFile(t);
 				roles = roles.concat(cache.getRoles(text.uri));
 				roles = roles.concat(getGlobals().shipData.roles);
-				roles.push("__player__");
 				ci = getRolesAsCompletionItem(roles);
 				return ci;
 			}
@@ -179,6 +197,14 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			const arr = wholeFunc.split(",");
 			const args = getCurrentArgumentNames(iStr,text);
 			for (const a of args) {
+				if (a === "role" || a === "roles") {
+					debug("Getting roles")
+					let roles = getRolesForFile(t);
+					roles = roles.concat(cache.getRoles(text.uri));
+					roles = roles.concat(getGlobals().shipData.roles);
+					ci = getRolesAsCompletionItem(roles);
+				return ci;
+				}
 				if (a === "style") {
 					debug("Style found; iterating over widget stylestrings");
 					for (const s of getGlobals().widget_stylestrings) {
@@ -642,10 +668,21 @@ export function getCurrentArgumentNames(iStr:string, doc:TextDocument): string[]
 	let wholeFunc = iStr.substring(fstart,iStr.length);
 	let obj = /{.*?(}|$)/gm;
 	wholeFunc = wholeFunc.replace(obj, "_")
+	wholeFunc = wholeFunc.replace(/(?<quote>[\"']).*?(\k<quote>)/g, "_");
+	const doublequotes = countMatches(wholeFunc, /\"/g);
+	const singleQuotes = countMatches(wholeFunc, /'/g);
+	if (doublequotes % 2 !== 0) {
+		const last = wholeFunc.lastIndexOf("\"")
+		wholeFunc = replaceRegexMatchWithUnderscore(wholeFunc, {start: last, end: wholeFunc.length});
+	}
+	if (singleQuotes % 2 !== 0) {
+		const last = wholeFunc.lastIndexOf("\"")
+		wholeFunc = replaceRegexMatchWithUnderscore(wholeFunc, {start: last, end: wholeFunc.length});
+	}
 	const arr = wholeFunc.split(",");
 	const paramNumber = arr.length-1;
 	let methods:Function[]=[];
-	if (isClassMethod(iStr,func)) {
+	if (isClassMethod(wholeFunc,func)) {
 		methods = getCache(doc.uri).getPossibleMethods(func);
 	} else {
 		let f = getCache(doc.uri).getMethod(func);
@@ -654,7 +691,6 @@ export function getCurrentArgumentNames(iStr:string, doc:TextDocument): string[]
 	for (const m of methods) {
 		let p = m.parameters[paramNumber];
 		let name = p.name.replace(/=.*/,"").trim();
-		debug(name);
 		ret.push(name);
 	}
 	return ret;

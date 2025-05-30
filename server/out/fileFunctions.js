@@ -179,7 +179,7 @@ function getInitContents(uri) {
     let lines = text.split("\n");
     for (const l of lines) {
         const t = l.trim();
-        if (t !== "") {
+        if (t !== "" && !t.startsWith("#")) {
             ret.push(t);
         }
     }

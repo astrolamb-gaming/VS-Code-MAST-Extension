@@ -8,6 +8,16 @@ import { debug } from 'console';
 import { myDebug } from './server';
 import { integer } from 'vscode-languageserver';
 
+/**
+ * Count the number of instance of the regex in the string
+ * @param text the string
+ * @param re the regular expression (must have global flag!!)
+ * @returns 
+ */
+export function countMatches(text: string, re:RegExp) {
+	return (text.match(re)||[]).length;
+}
+
 export function parse(result: string, RXDict: Map<string, RegExp>) {
 	debug("Responded");
 	//const result =  xhttp.responseText;

@@ -357,8 +357,8 @@ export class MissionCache {
 					continue;
 				}
 				if (file.includes(g[0])) {
-					debug(g[0]);
-					debug("Adding " + f.uri + " as a global")
+					// debug(g[0]);
+					// debug("Adding " + f.uri + " as a global")
 					f.isGlobal = true;
 					if (g[1] !== "") {
 						// TODO: Update function names with prepend
@@ -728,6 +728,9 @@ export class MissionCache {
 				roles = roles.concat(m.roles);
 			}
 		}
+		// Add default roles
+		roles.push("__player__");
+
 		return roles;
 	}
 
@@ -810,7 +813,7 @@ export class MissionCache {
 			}
 		}
 		/// Should never get to this point unless a new py file was created.
-		debug("New py file: " + uri);
+		// debug("New py file: " + uri);
 		const p: PyFile = new PyFile(uri);
 		if (uri.includes("sbs_utils")) {
 			this.addSbsPyFile(p);

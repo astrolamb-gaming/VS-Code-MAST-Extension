@@ -120,7 +120,7 @@ class ShipData {
             };
             ship.completionItem.documentation = documentation;
         }
-        (0, console_1.debug)(ships);
+        // debug(ships);
         return ships;
     }
     findArtFile(artfileroot) {

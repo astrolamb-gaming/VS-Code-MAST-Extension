@@ -145,7 +145,7 @@ export class PyFile extends FileCache {
 		let globalRegEx = /MastGlobals\.import_python_module\((["']([\w_\.]+)["'])(,[ \t]['"](\w+)['"])?\)/g;
 		// Here we find all the instances of import_python_module() in the file.
 		while (m = globalRegEx.exec(text)) {
-			debug(m[0])
+			// debug(m[0])
 			let mod = m[2];
 			let name = m[4];
 			let g = [mod];
@@ -153,7 +153,7 @@ export class PyFile extends FileCache {
 				name = "";
 			}
 			g.push(name);
-			debug(g);
+			// debug(g);
 			this.globals.push(g);
 		}
 
@@ -168,8 +168,8 @@ export class PyFile extends FileCache {
 				if (c.name !== "scatter") {
 					this.defaultFunctions = [];
 				} else {
-					debug(this.defaultFunctions);
-					debug(c.methods);
+					// debug(this.defaultFunctions);
+					// debug(c.methods);
 				}
 			}
 		}

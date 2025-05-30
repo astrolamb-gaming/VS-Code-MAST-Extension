@@ -1,7 +1,17 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.countMatches = countMatches;
 exports.parse = parse;
 const console_1 = require("console");
+/**
+ * Count the number of instance of the regex in the string
+ * @param text the string
+ * @param re the regular expression (must have global flag!!)
+ * @returns
+ */
+function countMatches(text, re) {
+    return (text.match(re) || []).length;
+}
 function parse(result, RXDict) {
     (0, console_1.debug)("Responded");
     //const result =  xhttp.responseText;

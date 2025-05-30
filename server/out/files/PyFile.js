@@ -142,7 +142,7 @@ class PyFile extends data_1.FileCache {
         let globalRegEx = /MastGlobals\.import_python_module\((["']([\w_\.]+)["'])(,[ \t]['"](\w+)['"])?\)/g;
         // Here we find all the instances of import_python_module() in the file.
         while (m = globalRegEx.exec(text)) {
-            (0, console_1.debug)(m[0]);
+            // debug(m[0])
             let mod = m[2];
             let name = m[4];
             let g = [mod];
@@ -150,7 +150,7 @@ class PyFile extends data_1.FileCache {
                 name = "";
             }
             g.push(name);
-            (0, console_1.debug)(g);
+            // debug(g);
             this.globals.push(g);
         }
         for (const o of data_1.asClasses) {
@@ -163,8 +163,8 @@ class PyFile extends data_1.FileCache {
                     this.defaultFunctions = [];
                 }
                 else {
-                    (0, console_1.debug)(this.defaultFunctions);
-                    (0, console_1.debug)(c.methods);
+                    // debug(this.defaultFunctions);
+                    // debug(c.methods);
                 }
             }
         }
