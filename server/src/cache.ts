@@ -18,11 +18,12 @@ import { getMusicFiles } from './resources/audioFiles';
 import { Function } from "./data/function";
 import { ClassObject } from './data/class';
 import { StoryJson } from './data/storyJson';
-import { initializePython, sleep } from './python/python';
+import { compileMission, getGlobalFunctions, getSpecificGlobals, initializePython, sleep } from './python/python';
 import { Func } from 'mocha';
 import { loadStyleDefs } from './data/styles';
 import { Word } from './tokens/words';
 
+export const testingPython = false;
 
 const includeNonProcedurals = [
 	"scatter",
@@ -94,6 +95,7 @@ export class MissionCache {
 			showProgressBar(false);
 			debug("Starting python")
 			initializePython(path.join(this.missionURI,"story.json"))	
+			
 		});
 	}
 
@@ -118,6 +120,15 @@ export class MissionCache {
 					debug("Modules loaded for " + this.missionName);
 					// showProgressBar(false);
 					storyJsonDone = true;
+
+					// Now we do the python checks for the MastGlobals that don't exist already
+					for (const p of this.pyFileCache) {
+						if (p.globals.length > 0) {
+							this.loadPythonGlobals(p.globals).then((info)=>{
+
+							});
+						}
+					}
 				})
 			});
 		let sbsLoaded = false;
@@ -156,6 +167,10 @@ export class MissionCache {
 		}
 		debug("Everything is laoded")
 		
+	}
+	async loadPythonGlobals(globals: string[]) {
+		let info = await getSpecificGlobals(this, globals);
+		debug(info);
 	}
 
 	async checkForInitFolder(folder:string) : Promise<boolean> {
@@ -217,6 +232,7 @@ export class MissionCache {
 	}
 
 	async modulesLoaded() {
+		if (testingPython) return;
 		const uri = this.missionURI;
 		const globals = getGlobals();
 		debug(uri);
@@ -353,12 +369,12 @@ export class MissionCache {
 	 * @param p A {@link PyFile PyFile} that should be added to {@link MissionCache.pyFileCache MissionCache.pyFileCache}
 	 */
 	addSbsPyFile(p:PyFile) {
-		if (!p.uri.includes("sbs_utils")) {
-			//// Don't want non-sbs_utils stuff in the py file cache
-			debug("ERROR: Py file added to wrong part of cache: " + p.uri);
-		}
+		// if (!p.uri.includes("sbs_utils")) {
+		// 	//// Don't want non-sbs_utils stuff in the py file cache
+		// 	debug("ERROR: Py file added to wrong part of cache: " + p.uri);
+		// }
 		this.pyFileCache.push(p);
-		this.sbsGlobals = this.sbsGlobals.concat(p.globals);
+		this.sbsGlobals = this.sbsGlobals.concat(p.globalFiles);
 		// debug(this.sbsGlobals)
 		for (const f of this.pyFileCache) {
 			const file = f.uri.replace(/\//g,".").replace(/\\/g,".");
@@ -383,6 +399,7 @@ export class MissionCache {
 							newDefaults.push(n);
 						}
 						f.defaultFunctions = newDefaults;
+						debug(f.defaultFunctions);
 					}
 				}
 			}
@@ -866,6 +883,7 @@ async function loadTypings(): Promise<void> {
 }
 
 async function loadSbs(): Promise<PyFile|null>{
+	if (testingPython) return null;
 	let gh: string = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/typings/sbs/__init__.pyi";
 	// Testing fake bad url
 	// gh = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/typings/sbs/__iniit__.pyi";

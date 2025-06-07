@@ -13,6 +13,7 @@ sbs_utilsPath = sys.argv[1] # Very important
 sbsPath = sys.argv[2]
 try: 
 	if sys.argv[3]:
+		print("sys.argv[3] is not None")
 		pass
 except:
 	pass
@@ -85,6 +86,7 @@ def compare():
 
 
 def getGlobals(globals):
+	print("Getting globals")
 	count = 0
 	for k in globals:
 		if k.startswith("__"):
@@ -231,16 +233,43 @@ def getGlobals(globals):
 				continue
 	print("Count: " + str(count))
 
+class Entry:
+	name = ""
+	kind = ""
+	docs = ""
 
 def getOnlyGlobals(globals):
+	# print("getOnlyGlobals()")
+	globalNames = []
 	for k in globals:
 		mod = str(globals[k]).replace("\\","/")
-		# print("{"+f"\"name\":\"{k}\",\"value\":\"{mod}\"" + "}")
-		print(k)
-		# print(globals[k])
+		# ret = "{"+f"\"name\":\"{k}\",\"value\":\"{mod}\"" + "}"
+		ret = Entry()
+		ret.name = k
+		if inspect.getdoc(globals[k]) is not None:
+			ret.docs = inspect.getdoc(globals[k])
+		if callable(globals[k]):
+			ret.kind = "function"
+		elif "module" in str(globals[k]):
+			ret.kind = "module"
 
+		# print(k)
+		# print(globals[k])
+		# print(callable(globals[k]))
+
+		# Now let's just look at the non-callable ones
+		globalNames.append(ret.__dict__)
+		if not callable(globals[k]):
+			# print(k)
+			# print(globals[k])
+			if ("module" in str(globals[k])):
+				# print("Is module")
+				pass
+	return globalNames
 # try:
-sys.path.append(sbsPath)
+# print(sbsPath)
+if sbsPath is not None:
+	sys.path.append(sbsPath)
 sys.path.append(sbs_utilsPath)
 # print(sbs_utilsPath)
 loaded = False
@@ -267,10 +296,16 @@ if not loaded:
 		# g = globals()
 		# for k in g:
 		# 	print(f"{k[0]}\n{k[1]}")
-		getOnlyGlobals(MastGlobals.globals)
+		# getGlobals(MastGlobals.globals)
+		
+		globalsList = getOnlyGlobals(MastGlobals.globals)
+		import json
+		print(json.dumps(globalsList))
+
 	except:
 		exc_type, exc_value, exc_tb = sys.exc_info()
 		stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
+		print("Last possible load")
 		print(stack_trace)
 
 compare()

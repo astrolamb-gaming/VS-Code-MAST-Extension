@@ -17,7 +17,8 @@ export const replaceNames = [
  * This accounts for modules that are treated as classes instead of just adding the functions as default functions.
  * So instead of simply using the arc() function from scatter.py, you'd need to use scatter.arc()
  */
-export const asClasses = ["sbs","scatter","faces"];
+export const asClasses = ["sbs"];
+// export const asClasses = ["sbs","scatter","faces"];
 /**
  * This accounts for modules that prepend the class name to the function name.
  * E.g. names.random_kralien_name() would become names_random_kralien_name()

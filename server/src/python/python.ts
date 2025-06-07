@@ -3,7 +3,7 @@ import { findSubfolderByName, fixFileName, getArtemisDirFromChild, getMissionFol
 import { debug } from 'console';
 import path = require('path');
 import * as fs from 'fs';
-import { getCache } from '../cache';
+import { getCache, MissionCache } from '../cache';
 import { integer } from 'vscode-languageserver';
 import { getGlobals } from '../globals';
 
@@ -12,8 +12,36 @@ let scriptPath = "";
 let regularOptions:Options;
 
 export function initializePython(uri: string) {
-	const cache = getCache(uri)
+	return;
+	const cache = getCache(uri);
+	let pyGlobals = [];
+	debug("Starting initializePython()");
 	try {
+		// compileMission(uri)
+		getGlobalFunctions(cache.storyJson.sbslib).then((data)=>{
+			try {
+				pyGlobals = JSON.parse(data[0]);
+			} catch(e) {
+				pyGlobals = data;
+			}
+			
+			debug(pyGlobals);
+			let g = cache.getMethods();
+			let keys = [...new Map(g.map(v => [v.name, v.name])).values()];
+			debug(keys);
+			let notFound: string[] = [];
+			for (const g of pyGlobals) {
+				if (keys.includes(g.name)) {
+					continue;
+				} else {
+					notFound.push(g);
+				}
+			}
+			debug(notFound)
+
+		});
+		// getTokenInfo("math");
+		/*
 		let globalFuncs = getGlobalFunctions(cache.storyJson.sbslib).then((funcs)=>{
 			const classes = Object.fromEntries(cache.missionClasses.map(obj => [obj.name, obj]));
 			// const functions = Object.fromEntries(cache.missionDefaultFunctions.map(obj => [obj.name, obj]));
@@ -42,9 +70,56 @@ export function initializePython(uri: string) {
 				}
 			}
 		});
+		*/
 	} catch (e) {
 		debug(e)
 	}
+}
+
+export async function getSpecificGlobals(cache: MissionCache, globals: any) {
+	let ret: string[] = [];
+	// const cache = getCache(mission);
+	globals = JSON.stringify(globals);
+	if (scriptPath === "") {
+		scriptPath = __dirname.replace("out","src");
+		// scriptPath = __dirname
+	}
+
+	if (pyPath === "") {
+		let adir = getGlobals().artemisDir;
+		let f = findSubfolderByName(adir,"PyRuntime");
+		if (f !== null) {
+			pyPath = path.resolve(f);
+		} else {
+			return [];
+		}
+		//debug(pyPath);
+	}
+
+	let sbs = path.join(scriptPath, "sbs.zip");
+	let libFolder = path.join(getGlobals().artemisDir,"data","missions");
+	const sbs_utils = path.join(libFolder,"__lib__",cache.storyJson.sbslib[0]);
+	
+
+	const o: Options = {
+		pythonPath: path.join(pyPath,"python.exe"),
+		scriptPath: scriptPath,
+		args: [sbs_utils, sbs, globals]
+	}
+
+	await PythonShell.run('mastGlobalInfo.py', o).then((messages: any)=>{
+		for (let m of messages) {
+			// try {
+			// 	debug(m)
+			// 	m = JSON.parse(m);
+			// 	debug(m)
+			// } catch (e) {debug(e)}
+			ret.push(m);
+		}
+		console.log('finished');
+	}).catch((e)=>{debug(e);});
+	// ret[0] = JSON.parse(ret[0])
+	return ret;
 }
 
 export async function getGlobalFunctions(sbs_utils: string[]): Promise<string[]> {
@@ -61,12 +136,12 @@ export async function getGlobalFunctions(sbs_utils: string[]): Promise<string[]>
 	}
 	if (scriptPath === "") {
 		scriptPath = __dirname.replace("out","src");
+		// scriptPath = __dirname
 	}
 	
 	try {
 		let sbsPath = path.join(scriptPath, "sbs.zip");
 		let libFolder = path.join(getGlobals().artemisDir,"data","missions");
-		//const sbsLibPath = "D:\\Cosmos Dev\\Cosmos-1-0-1\\data\\missions\\sbs_utils"//
 		const sbsLibPath = path.join(libFolder,"__lib__",sbs_utils[0]);
 		const o: Options = {
 			pythonPath: path.join(pyPath,"python.exe"),
@@ -75,9 +150,12 @@ export async function getGlobalFunctions(sbs_utils: string[]): Promise<string[]>
 		}
 		regularOptions = o;
 		debug("Starting python shell")
-		await PythonShell.run('mastGlobals.py', o).then((messages: any)=>{
+		await PythonShell.run('mastGlobalInfo.py', o).then((messages: any)=>{
 			for (let m of messages) {
-				debug(m);
+				// try {
+				// 	debug(JSON.parse(m));
+				// } catch (e) {}
+				// debug(m);
 				ret.push(m);
 			}
 			console.log('finished');
@@ -110,6 +188,7 @@ export async function compileMission(mastFile: string, content: string, sbs_util
 
 	if (scriptPath === "") {
 		scriptPath = __dirname.replace("out","src");
+		// scriptPath = __dirname
 	}
 
 	const libFolder = getParentFolder(missionPath);
@@ -149,13 +228,33 @@ export async function compileMission(mastFile: string, content: string, sbs_util
 let shell: PythonShell;
 export async function getTokenInfo(token: string) {
 	if (shell === undefined || shell === null) {
-		shell = new PythonShell('mastFunctionInfo.py', regularOptions);
+		let opt = regularOptions;
+		if (!opt.args) {
+			opt.args = [""];
+		}
+		opt.args[2] = token;
+		debug(token)
+		debug(opt)
+		shell = new PythonShell('mastFunctionInfo.py', opt);
+	
+
+		await PythonShell.run('mastFunctionInfo.py', opt).then((messages: any)=>{
+			for (let m of messages) {
+				try {
+					debug(JSON.parse(m));
+				} catch (e) {}
+				debug(m);
+				// ret.push(m);
+			}
+			console.log('finished');
+		}).catch((e)=>{debug(e);});
+		
+		shell.on('message',(parsedChunk)=>{
+			debug(parsedChunk);
+			shell.removeAllListeners();
+		})
+		shell.send(token);
 	}
-	shell.on('message',(parsedChunk)=>{
-		debug(parsedChunk);
-		shell.removeAllListeners();
-	})
-	shell.send(token);
 }
 
 async function runScript(o: Options): Promise<string[]> {

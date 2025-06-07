@@ -14,9 +14,11 @@ export class PyFile extends FileCache {
 	defaultFunctions: Function[] = [];
 	classes: ClassObject[] = [];
 	words: Word[] = [];
-	globals: string[][] = [];
+	globalFiles: string[][] = [];
+	globals: string[] = [];
 	isGlobal: boolean = false;
 	constructor(uri: string, fileContents: string = "") {
+		if (fileContents === "") debug("pyFile Contents empty for " + uri)
 		uri = fixFileName(uri);
 		super(uri);
 		// If fileContents is NOT an empty string (e.g. if it's from a zipped folder), then all we do is parse the contents
@@ -136,6 +138,9 @@ export class PyFile extends FileCache {
 				};
 				this.defaultFunctions.push(m);
 			}
+			// if (this.uri.endsWith("ship_data.py")) {
+			// 	debug(this.defaultFunctions)
+			// }
 		}
 
 
@@ -153,12 +158,34 @@ export class PyFile extends FileCache {
 				name = "";
 			}
 			g.push(name);
-			// debug(g);
-			this.globals.push(g);
+			debug(g);
+			this.globalFiles.push(g);
+		}
+		// debug("GLOBALS")
+		// debug(this.globals);
+
+		let findMastGlobals = /class MastGlobals:.*?globals = {(.*?)}/ms;
+		let n = text.match(findMastGlobals);
+		if (n !== null) {
+			const globals = n[1].split("\n");
+			const newGlobals = [];
+			for (let g of globals) {
+				g = g.replace(/#.*/, "");
+				let start = g.indexOf(":")+1;
+				let end = g.indexOf(",");
+				if (end === -1) end = g.length-1;
+				let global = g.substring(start, end).trim();
+				if (global !== "") {
+					newGlobals.push(global);
+				}
+			}
+			debug(newGlobals);
+			this.globals = newGlobals;
+			debug("^^^ GLOBALS!")
 		}
 
 
-
+		// debug("asClasses stuff...")
 		for (const o of asClasses) {
 			if (path.basename(this.uri).replace(".py", "") === o) {
 				const c = new ClassObject("", path.basename(this.uri));

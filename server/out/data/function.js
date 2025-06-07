@@ -47,6 +47,11 @@ class Function {
             let cLines = comments.split("\n");
             for (let i = 0; i < cLines.length; i++) {
                 if (cLines[i].includes("Return")) {
+                    if (cLines[i + 1] === undefined) {
+                        // debug(this)
+                        // debug(comments);
+                        continue;
+                    }
                     let retLine = cLines[i + 1].trim().replace("(", "");
                     if (retLine.startsWith("bool")) {
                         this.returnType = "boolean";

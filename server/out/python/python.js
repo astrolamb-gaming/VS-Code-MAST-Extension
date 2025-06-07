@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sleep = void 0;
 exports.initializePython = initializePython;
+exports.getSpecificGlobals = getSpecificGlobals;
 exports.getGlobalFunctions = getGlobalFunctions;
 exports.compileMission = compileMission;
 exports.getTokenInfo = getTokenInfo;
@@ -15,9 +16,37 @@ let pyPath = "";
 let scriptPath = "";
 let regularOptions;
 function initializePython(uri) {
+    return;
     const cache = (0, cache_1.getCache)(uri);
+    let pyGlobals = [];
+    (0, console_1.debug)("Starting initializePython()");
     try {
-        let globalFuncs = getGlobalFunctions(cache.storyJson.sbslib).then((funcs) => {
+        // compileMission(uri)
+        getGlobalFunctions(cache.storyJson.sbslib).then((data) => {
+            try {
+                pyGlobals = JSON.parse(data[0]);
+            }
+            catch (e) {
+                pyGlobals = data;
+            }
+            (0, console_1.debug)(pyGlobals);
+            let g = cache.getMethods();
+            let keys = [...new Map(g.map(v => [v.name, v.name])).values()];
+            (0, console_1.debug)(keys);
+            let notFound = [];
+            for (const g of pyGlobals) {
+                if (keys.includes(g.name)) {
+                    continue;
+                }
+                else {
+                    notFound.push(g);
+                }
+            }
+            (0, console_1.debug)(notFound);
+        });
+        // getTokenInfo("math");
+        /*
+        let globalFuncs = getGlobalFunctions(cache.storyJson.sbslib).then((funcs)=>{
             const classes = Object.fromEntries(cache.missionClasses.map(obj => [obj.name, obj]));
             // const functions = Object.fromEntries(cache.missionDefaultFunctions.map(obj => [obj.name, obj]));
             // debug(funcs);
@@ -39,17 +68,58 @@ function initializePython(uri) {
                     // 	debug("Checking for... " + json['name']);
                     // 	// getTokenInfo(json['name'])
                     // }
-                }
-                catch (ex) {
-                    (0, console_1.debug)(f);
-                    (0, console_1.debug)(ex);
+                } catch (ex) {
+                    debug(f);
+                    debug(ex);
                 }
             }
         });
+        */
     }
     catch (e) {
         (0, console_1.debug)(e);
     }
+}
+async function getSpecificGlobals(cache, globals) {
+    let ret = [];
+    // const cache = getCache(mission);
+    globals = JSON.stringify(globals);
+    if (scriptPath === "") {
+        scriptPath = __dirname.replace("out", "src");
+        // scriptPath = __dirname
+    }
+    if (pyPath === "") {
+        let adir = (0, globals_1.getGlobals)().artemisDir;
+        let f = (0, fileFunctions_1.findSubfolderByName)(adir, "PyRuntime");
+        if (f !== null) {
+            pyPath = path.resolve(f);
+        }
+        else {
+            return [];
+        }
+        //debug(pyPath);
+    }
+    let sbs = path.join(scriptPath, "sbs.zip");
+    let libFolder = path.join((0, globals_1.getGlobals)().artemisDir, "data", "missions");
+    const sbs_utils = path.join(libFolder, "__lib__", cache.storyJson.sbslib[0]);
+    const o = {
+        pythonPath: path.join(pyPath, "python.exe"),
+        scriptPath: scriptPath,
+        args: [sbs_utils, sbs, globals]
+    };
+    await python_shell_1.PythonShell.run('mastGlobalInfo.py', o).then((messages) => {
+        for (let m of messages) {
+            // try {
+            // 	debug(m)
+            // 	m = JSON.parse(m);
+            // 	debug(m)
+            // } catch (e) {debug(e)}
+            ret.push(m);
+        }
+        console.log('finished');
+    }).catch((e) => { (0, console_1.debug)(e); });
+    // ret[0] = JSON.parse(ret[0])
+    return ret;
 }
 async function getGlobalFunctions(sbs_utils) {
     let ret = [];
@@ -66,11 +136,11 @@ async function getGlobalFunctions(sbs_utils) {
     }
     if (scriptPath === "") {
         scriptPath = __dirname.replace("out", "src");
+        // scriptPath = __dirname
     }
     try {
         let sbsPath = path.join(scriptPath, "sbs.zip");
         let libFolder = path.join((0, globals_1.getGlobals)().artemisDir, "data", "missions");
-        //const sbsLibPath = "D:\\Cosmos Dev\\Cosmos-1-0-1\\data\\missions\\sbs_utils"//
         const sbsLibPath = path.join(libFolder, "__lib__", sbs_utils[0]);
         const o = {
             pythonPath: path.join(pyPath, "python.exe"),
@@ -79,9 +149,12 @@ async function getGlobalFunctions(sbs_utils) {
         };
         regularOptions = o;
         (0, console_1.debug)("Starting python shell");
-        await python_shell_1.PythonShell.run('mastGlobals.py', o).then((messages) => {
+        await python_shell_1.PythonShell.run('mastGlobalInfo.py', o).then((messages) => {
             for (let m of messages) {
-                (0, console_1.debug)(m);
+                // try {
+                // 	debug(JSON.parse(m));
+                // } catch (e) {}
+                // debug(m);
                 ret.push(m);
             }
             console.log('finished');
@@ -113,6 +186,7 @@ async function compileMission(mastFile, content, sbs_utils) {
     }
     if (scriptPath === "") {
         scriptPath = __dirname.replace("out", "src");
+        // scriptPath = __dirname
     }
     const libFolder = (0, fileFunctions_1.getParentFolder)(missionPath);
     // Get the possible sbslib files to use - this is sbs_utils
@@ -145,13 +219,31 @@ async function compileMission(mastFile, content, sbs_utils) {
 let shell;
 async function getTokenInfo(token) {
     if (shell === undefined || shell === null) {
-        shell = new python_shell_1.PythonShell('mastFunctionInfo.py', regularOptions);
+        let opt = regularOptions;
+        if (!opt.args) {
+            opt.args = [""];
+        }
+        opt.args[2] = token;
+        (0, console_1.debug)(token);
+        (0, console_1.debug)(opt);
+        shell = new python_shell_1.PythonShell('mastFunctionInfo.py', opt);
+        await python_shell_1.PythonShell.run('mastFunctionInfo.py', opt).then((messages) => {
+            for (let m of messages) {
+                try {
+                    (0, console_1.debug)(JSON.parse(m));
+                }
+                catch (e) { }
+                (0, console_1.debug)(m);
+                // ret.push(m);
+            }
+            console.log('finished');
+        }).catch((e) => { (0, console_1.debug)(e); });
+        shell.on('message', (parsedChunk) => {
+            (0, console_1.debug)(parsedChunk);
+            shell.removeAllListeners();
+        });
+        shell.send(token);
     }
-    shell.on('message', (parsedChunk) => {
-        (0, console_1.debug)(parsedChunk);
-        shell.removeAllListeners();
-    });
-    shell.send(token);
 }
 async function runScript(o) {
     let errors = [];

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MissionCache = void 0;
+exports.MissionCache = exports.testingPython = void 0;
 exports.getSourceFiles = getSourceFiles;
 exports.getCache = getCache;
 const fs = require("fs");
@@ -20,6 +20,7 @@ const audioFiles_1 = require("./resources/audioFiles");
 const storyJson_1 = require("./data/storyJson");
 const python_1 = require("./python/python");
 const styles_1 = require("./data/styles");
+exports.testingPython = false;
 const includeNonProcedurals = [
     "scatter",
     "faces",
@@ -103,6 +104,13 @@ class MissionCache {
                 (0, console_1.debug)("Modules loaded for " + this.missionName);
                 // showProgressBar(false);
                 storyJsonDone = true;
+                // Now we do the python checks for the MastGlobals that don't exist already
+                for (const p of this.pyFileCache) {
+                    if (p.globals.length > 0) {
+                        this.loadPythonGlobals(p.globals).then((info) => {
+                        });
+                    }
+                }
             });
         });
         let sbsLoaded = false;
@@ -140,6 +148,10 @@ class MissionCache {
             await (0, python_1.sleep)(100);
         }
         (0, console_1.debug)("Everything is laoded");
+    }
+    async loadPythonGlobals(globals) {
+        let info = await (0, python_1.getSpecificGlobals)(this, globals);
+        (0, console_1.debug)(info);
     }
     async checkForInitFolder(folder) {
         // if (this.ingoreInitFileMissing) return;
@@ -199,6 +211,8 @@ class MissionCache {
         }
     }
     async modulesLoaded() {
+        if (exports.testingPython)
+            return;
         const uri = this.missionURI;
         const globals = (0, globals_1.getGlobals)();
         (0, console_1.debug)(uri);
@@ -335,12 +349,12 @@ class MissionCache {
      * @param p A {@link PyFile PyFile} that should be added to {@link MissionCache.pyFileCache MissionCache.pyFileCache}
      */
     addSbsPyFile(p) {
-        if (!p.uri.includes("sbs_utils")) {
-            //// Don't want non-sbs_utils stuff in the py file cache
-            (0, console_1.debug)("ERROR: Py file added to wrong part of cache: " + p.uri);
-        }
+        // if (!p.uri.includes("sbs_utils")) {
+        // 	//// Don't want non-sbs_utils stuff in the py file cache
+        // 	debug("ERROR: Py file added to wrong part of cache: " + p.uri);
+        // }
         this.pyFileCache.push(p);
-        this.sbsGlobals = this.sbsGlobals.concat(p.globals);
+        this.sbsGlobals = this.sbsGlobals.concat(p.globalFiles);
         // debug(this.sbsGlobals)
         for (const f of this.pyFileCache) {
             const file = f.uri.replace(/\//g, ".").replace(/\\/g, ".");
@@ -366,6 +380,7 @@ class MissionCache {
                             newDefaults.push(n);
                         }
                         f.defaultFunctions = newDefaults;
+                        (0, console_1.debug)(f.defaultFunctions);
                     }
                 }
             }
@@ -833,6 +848,8 @@ async function loadTypings() {
     }
 }
 async function loadSbs() {
+    if (exports.testingPython)
+        return null;
     let gh = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/typings/sbs/__init__.pyi";
     // Testing fake bad url
     // gh = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/typings/sbs/__iniit__.pyi";
