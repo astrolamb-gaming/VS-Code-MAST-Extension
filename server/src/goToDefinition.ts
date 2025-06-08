@@ -49,15 +49,14 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 			// For now we're only checking mission py files
 			// TODO: Implement definitions for the sbs/sbs_utils stuff
 			// 		Will need to figure out a way to convert the uri
-			for (const p of getCache(doc.uri).pyFileCache) {//.missionClasses) {
-				for (const c of p.classes) {
-					if (c.name === className) {
-						for (const f of c.methods) {
-							if (f.name === symbol) {
-								const loc:Location = f.location;
-								loc.uri = fileFromUri(loc.uri);
-								return loc;
-							}
+			// for (const p of getCache(doc.uri).pyFileCache) {//.missionClasses) {
+			for (const c of getCache(doc.uri).getClasses()) {
+				if (c.name === className) {
+					for (const f of c.methods) {
+						if (f.name === symbol) {
+							const loc:Location = f.location;
+							loc.uri = fileFromUri(loc.uri);
+							return loc;
 						}
 					}
 				}

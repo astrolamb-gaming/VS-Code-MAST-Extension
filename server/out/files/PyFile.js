@@ -12,8 +12,7 @@ const fileFunctions_1 = require("../fileFunctions");
 const words_1 = require("../tokens/words");
 class PyFile extends data_1.FileCache {
     constructor(uri, fileContents = "") {
-        if (fileContents === "")
-            (0, console_1.debug)("pyFile Contents empty for " + uri);
+        // if (fileContents === "") debug("pyFile Contents empty for " + uri)
         uri = (0, fileFunctions_1.fixFileName)(uri);
         super(uri);
         this.defaultFunctions = [];
@@ -156,27 +155,43 @@ class PyFile extends data_1.FileCache {
                 name = "";
             }
             g.push(name);
-            (0, console_1.debug)(g);
+            // debug(g);
             this.globalFiles.push(g);
         }
         // debug("GLOBALS")
         // debug(this.globals);
         let findMastGlobals = /class MastGlobals:.*?globals = {(.*?)}/ms;
         let n = text.match(findMastGlobals);
+        // debug(n);
         if (n !== null) {
             const globals = n[1].split("\n");
             const newGlobals = [];
+            // debug("NOT NULL")
             for (let g of globals) {
+                if (g.trim().startsWith("#"))
+                    continue;
                 g = g.replace(/#.*/, "");
-                let start = g.indexOf(":") + 1;
-                let end = g.indexOf(",");
-                if (end === -1)
-                    end = g.length - 1;
-                let global = g.substring(start, end).trim();
-                if (global !== "") {
-                    newGlobals.push(global);
+                // debug(g)
+                let arr = g.match(/[\"']([\w]+)[\"'][\t ]*:[\t ]*(.*?)[,#\n]/);
+                // debug(arr);
+                if (arr !== null) {
+                    const globalRef = arr[1];
+                    const globalVar = arr[2];
+                    if (globalVar.includes("scatter") || globalVar.includes("faces") || globalVar.includes("__build_class__"))
+                        continue; // This leaves scatter and faces out of it. These are already parsed anyway. Also __build_class__ probably doesn't need exposed to the user.
+                    newGlobals.push([globalRef, globalVar]);
                 }
             }
+            // for (let g of globals) {
+            // 	// g = g.replace(/#.*/, "");
+            // 	// let start = g.indexOf(":")+1;
+            // 	// let end = g.indexOf(",");
+            // 	// if (end === -1) end = g.length-1;
+            // 	// let global = g.substring(start, end).trim();
+            // 	// if (global !== "") {
+            // 	// 	newGlobals.push(global);
+            // 	// }
+            // }
             (0, console_1.debug)(newGlobals);
             this.globals = newGlobals;
             (0, console_1.debug)("^^^ GLOBALS!");

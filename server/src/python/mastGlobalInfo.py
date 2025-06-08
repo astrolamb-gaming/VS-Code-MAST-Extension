@@ -6,15 +6,7 @@ import inspect
 import numbers
 import json
 
-def parseFunction(module,f):
-	print(callable(math.cos))
-	func = eval(module + "." + f)
-	print(func)
-	if not callable(func):
-		print("not callable")
-		return 0
-	print(inspect.getdoc(func))
-	print(inspect.signature(func))
+
 
 
 def parseModule(module):
@@ -84,27 +76,188 @@ if not loaded:
 		
 		# parseModule(token)
 		# print(MastGlobals.globals)
-		globalsList = json.loads(token)
-		for g in MastGlobals.globals:
-			# print(str(g))
-			for t in globalsList:
-				if str(g) == t:
-					print(g)
-					mod = eval(g)
-					sig = inspect.signature(mod)
-					
-					members = inspect.getmembers(module)
-					if sig is not None:
-						print(sig)
 
-		# 
-		# for t in globalsList:
-		# 	g = eval(t)
-		# 	print(g)
 
-		# print(token)
 		
 	except:
 		exc_type, exc_value, exc_tb = sys.exc_info()
 		stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
 		print(stack_trace)
+else:
+	sys.exit(0)
+
+# Need to 
+import json
+import random
+import itertools
+
+def is_number(value):
+    try:
+        float(value)
+        return True
+    except ValueError:
+        return False
+
+class Info:
+	"""
+	We're going to treat everything as a function for simplicity's sake on the python end.
+	So if we're using math.cos(), the function will be math.cos(), we'll ignore the fact that its part of a module for now.
+	"""
+	mastName = ""
+	pyName = ""
+	kind = ""
+	documentation = ""
+	arguments = ""
+	module = ""
+	argspec = ""
+	_help = ""
+	code = ""
+	sigs = ""
+	value = ""
+
+
+	def __init__(self, mastName, pyName):
+		self.mastName = mastName
+		self.pyName = pyName
+
+
+def parseFunction(mastName: str, module:str , pyName) -> Info:
+	"""
+	parses function info and returns and Info object
+	"""
+	if module != "":
+		pyName = module + "." + pyName
+		# mastName = pyName
+	# print(pyName)
+	func = eval(pyName)
+	# print(func)
+	
+	
+	info = Info(mastName, pyName)
+	info.module = module
+	try:
+		info.documentation = inspect.getdoc(func)
+	except:
+		try:
+			info.documentation = func.__doc__
+		except:
+
+			pass
+	if not callable(func):
+		# print("not callable")
+		return info
+	info.kind = "function"
+	# print(inspect.getdoc(func))
+	# print(inspect.signature(func))
+	
+
+	try:
+		# inspect.signature(func):
+		info.arguments = json.dumps(inspect.signature(func).items())
+	except: 
+		pass
+
+	try:
+		info.argspec = str(inpsect.getfullargspec())
+	except:
+		try:
+			info.argspec = str(inspect.getargspec())
+		except:
+			pass
+	
+
+	try:
+		info._help = help(func)
+	except:
+		pass
+
+	# try:
+	# 	info.code = str(func.__code__)
+	# except:
+	# 	pass
+
+	try:
+		info.sigs = json.dumps(inspect.signature(func).parameters)
+	except:
+		pass
+
+	return info
+
+
+def parseClass(mastName,module,pyName):
+	if inpsect.isclass(mastName):
+		try:
+			sig = inpsect.signature(mastName)
+			print(sig)
+		except:
+			pass
+		try:
+			members = inspect.getmembers(mastName)
+		except:
+			pass
+
+
+
+globalsList = json.loads(token)
+# print(globalsList)
+globals = MastGlobals.globals
+standardTypes = ["str",'int','list','set','range']
+ret = []
+for g in globals:
+	for t in globalsList:
+		if str(g) == t[0]:
+			# This is the name of the global for MAST
+			# print(g)
+
+			# print(globals[g])
+
+			if "module" in str(globals[g]) or "class" in str(globals[g]):
+				info = Info(g,g)
+				info.kind = "module"
+				try:
+					info.documentation = inspect.getdoc(globals[g])
+				except:
+					pass
+				print(json.dumps(info.__dict__))
+				# print("Module: " + g)
+				# parseFunction(t[0], "", globals[g])
+				try:
+					members = inspect.getmembers(globals[g])
+					if members:
+						for m in members:
+							if m[0].startswith("_"):
+								continue
+							name = g + "." + m[0]
+
+							info = parseFunction(m[0],g,m[0]) #Is an Info object
+							if info.documentation is None:
+								info.documentation = ""
+
+							if g in standardTypes:
+								info.documentation += f"\nMore information can probably be found at https://docs.python.org/3/library/stdtypes.html#{name}"
+							else:
+								info.documentation += f"\nMore information can probably be found at https://docs.python.org/3/library/{g}.html#{name}"
+							if "module" in str(globals[g]):
+								info.kind = "module"
+								
+
+							elif "class" in str(globals[g]):
+								info.kind = "class"
+
+							if is_number(str(m[1])) or str(m[1]) == "Infinity":
+								info.value = str(m[1])
+								info.kind += " constant"
+								# print("Constant: ")
+								# print(info.__dict__)
+							else:
+								info.kind += " function"
+
+							#### UNCOMMENT
+							print(json.dumps(info.__dict__))
+							
+
+
+				except:
+					exc_type, exc_value, exc_tb = sys.exc_info()
+					stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
+					print(stack_trace)

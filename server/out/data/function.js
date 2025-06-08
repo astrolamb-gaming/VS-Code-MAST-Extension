@@ -156,7 +156,7 @@ class Function {
             classRef = "";
         }
         let paramList = "";
-        if (this.functionType !== 'property')
+        if ((this.functionType !== 'property') && (this.functionType !== 'constant'))
             paramList = "(" + this.rawParams + ")" + paramList;
         let retType = "";
         if (this.returnType !== "")
@@ -248,7 +248,7 @@ class Function {
         let docs = this.buildMarkUpContent(this.documentation);
         // docs.value = docs.value.replace(/\t/g,"&emsp;").replace(/    /g,"&emsp;").replace(/\n/g,"\\\n");
         let insert = this.name;
-        if (this.parameters.length === 0 && this.functionType !== "property") {
+        if (this.parameters.length === 0 && this.functionType !== "property" && this.functionType !== "constant") {
             insert = this.name + "()";
         }
         let ci = {
@@ -263,7 +263,7 @@ class Function {
         return ci;
     }
     buildSignatureInformation() {
-        let ci_details = "(" + this.functionType + ") " + ((this.className === "") ? "" : this.className + ".") + this.name + "(" + this.rawParams + "): " + (this.functionType === "constructor") ? this.className : this.name;
+        let ci_details = "(" + this.functionType + ") " + ((this.className === "") ? "" : this.className + ".") + this.name + ((this.functionType === "constant") ? ": " : "(" + this.rawParams + "): ") + (this.functionType === "constructor") ? this.className : this.name;
         //debug(ci_details)
         const params = [];
         // const markup: MarkupContent = {

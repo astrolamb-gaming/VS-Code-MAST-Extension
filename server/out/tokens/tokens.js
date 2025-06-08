@@ -114,12 +114,12 @@ function isFunction(line, token) {
 function isClassMethod(line, token) {
     const start = line.indexOf(token);
     const end = start + token.length;
-    if (isFunction(line, token)) {
-        // debug(line.substring(0,start));
-        if (line.substring(0, start).trim().endsWith(".")) {
-            return true;
-        }
+    // if (isFunction(line,token)) {
+    // debug(line.substring(0,start));
+    if (line.substring(0, start).trim().endsWith(".")) {
+        return true;
     }
+    // }
     return false;
 }
 function getClassOfMethod(line, token) {

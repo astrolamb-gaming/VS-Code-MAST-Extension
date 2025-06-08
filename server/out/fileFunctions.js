@@ -157,6 +157,7 @@ function getParentFolder(childUri) {
     fs.lstat(p, (err, stats) => {
         if (err) {
             (0, console_1.debug)(err);
+            (0, console_1.debug)(err.stack);
             //throw new URIError(err.message);
             return p;
         }

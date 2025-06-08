@@ -296,11 +296,11 @@ if not loaded:
 		# g = globals()
 		# for k in g:
 		# 	print(f"{k[0]}\n{k[1]}")
-		# getGlobals(MastGlobals.globals)
+		getGlobals(MastGlobals.globals)
 		
-		globalsList = getOnlyGlobals(MastGlobals.globals)
-		import json
-		print(json.dumps(globalsList))
+		# globalsList = getOnlyGlobals(MastGlobals.globals)
+		# import json
+		# print(json.dumps(globalsList))
 
 	except:
 		exc_type, exc_value, exc_tb = sys.exc_info()

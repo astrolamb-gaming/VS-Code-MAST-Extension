@@ -16,7 +16,7 @@ exports.replaceNames = [
  * This accounts for modules that are treated as classes instead of just adding the functions as default functions.
  * So instead of simply using the arc() function from scatter.py, you'd need to use scatter.arc()
  */
-exports.asClasses = ["sbs"];
+exports.asClasses = ["sbs", "math", "random"];
 // export const asClasses = ["sbs","scatter","faces"];
 /**
  * This accounts for modules that prepend the class name to the function name.
@@ -29,7 +29,7 @@ class FileCache {
         this.variableNames = [];
         this.uri = (0, fileFunctions_1.fixFileName)(uri);
         let parent = "sbs_utils";
-        if (!uri.includes("sbs_utils") && !uri.includes("mastlib")) {
+        if (!uri.includes("sbs_utils") && !uri.includes("mastlib") && !uri.includes("builtin")) {
             parent = (0, fileFunctions_1.getParentFolder)(uri);
         }
         this.parentFolder = parent;

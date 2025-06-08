@@ -107,17 +107,21 @@ async function getSpecificGlobals(cache, globals) {
         scriptPath: scriptPath,
         args: [sbs_utils, sbs, globals]
     };
-    await python_shell_1.PythonShell.run('mastGlobalInfo.py', o).then((messages) => {
-        for (let m of messages) {
-            // try {
-            // 	debug(m)
-            // 	m = JSON.parse(m);
-            // 	debug(m)
-            // } catch (e) {debug(e)}
-            ret.push(m);
+    (0, console_1.debug)("Running py shell");
+    let messages = await python_shell_1.PythonShell.run('mastGlobalInfo.py', o); //.then((messages: any)=>{
+    for (let m of messages) {
+        try {
+            // debug(m)
+            m = JSON.parse(m);
+            // debug(m)
         }
-        console.log('finished');
-    }).catch((e) => { (0, console_1.debug)(e); });
+        catch (e) {
+            (0, console_1.debug)(e);
+        }
+        ret.push(m);
+    }
+    console.log('finished');
+    //}).catch((e)=>{debug(e);});
     // ret[0] = JSON.parse(ret[0])
     return ret;
 }
@@ -149,7 +153,7 @@ async function getGlobalFunctions(sbs_utils) {
         };
         regularOptions = o;
         (0, console_1.debug)("Starting python shell");
-        await python_shell_1.PythonShell.run('mastGlobalInfo.py', o).then((messages) => {
+        await python_shell_1.PythonShell.run('mastGlobals.py', o).then((messages) => {
             for (let m of messages) {
                 // try {
                 // 	debug(JSON.parse(m));

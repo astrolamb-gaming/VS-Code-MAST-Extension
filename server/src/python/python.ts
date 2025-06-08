@@ -79,6 +79,7 @@ export function initializePython(uri: string) {
 export async function getSpecificGlobals(cache: MissionCache, globals: any) {
 	let ret: string[] = [];
 	// const cache = getCache(mission);
+	
 	globals = JSON.stringify(globals);
 	if (scriptPath === "") {
 		scriptPath = __dirname.replace("out","src");
@@ -106,18 +107,20 @@ export async function getSpecificGlobals(cache: MissionCache, globals: any) {
 		scriptPath: scriptPath,
 		args: [sbs_utils, sbs, globals]
 	}
-
-	await PythonShell.run('mastGlobalInfo.py', o).then((messages: any)=>{
+	debug("Running py shell")
+	let messages = await PythonShell.run('mastGlobalInfo.py', o);//.then((messages: any)=>{
 		for (let m of messages) {
-			// try {
-			// 	debug(m)
-			// 	m = JSON.parse(m);
-			// 	debug(m)
-			// } catch (e) {debug(e)}
+			try {
+				// debug(m)
+				m = JSON.parse(m);
+				// debug(m)
+			} catch (e) {
+				debug(e)
+			}
 			ret.push(m);
 		}
 		console.log('finished');
-	}).catch((e)=>{debug(e);});
+	//}).catch((e)=>{debug(e);});
 	// ret[0] = JSON.parse(ret[0])
 	return ret;
 }
@@ -150,7 +153,7 @@ export async function getGlobalFunctions(sbs_utils: string[]): Promise<string[]>
 		}
 		regularOptions = o;
 		debug("Starting python shell")
-		await PythonShell.run('mastGlobalInfo.py', o).then((messages: any)=>{
+		await PythonShell.run('mastGlobals.py', o).then((messages: any)=>{
 			for (let m of messages) {
 				// try {
 				// 	debug(JSON.parse(m));

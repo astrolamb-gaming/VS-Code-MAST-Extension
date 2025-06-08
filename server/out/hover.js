@@ -61,41 +61,60 @@ function onHover(_pos, text) {
     //hover.contents = symbol;
     let hoverText = symbol;
     if ((0, tokens_1.isClassMethod)(hoveredLine, symbol)) {
+        (0, console_1.debug)("class method");
         const c = (0, tokens_1.getClassOfMethod)(hoveredLine, symbol);
-        const classObj = cache.missionClasses; //.find((value)=>{value.name===c});
+        (0, console_1.debug)(c);
+        const classObj = cache.getClasses();
+        const otherFunctions = [];
+        let found = false;
         for (const co of classObj) {
-            let found = false;
-            if (co.name === c) {
-                (0, console_1.debug)("FOUND");
-                (0, console_1.debug)(c);
-                for (const m of co.methods) {
-                    if (m.name === symbol) {
-                        hoverText = m.buildCompletionItem().detail; // + "\n\n" + m.completionItem.documentation;
-                        (0, console_1.debug)(m.documentation);
-                        // let mc: MarkupContent = {
-                        // 	kind: "markdown",
-                        // 	value: "```javascript\n" + m.buildFunctionDetails() + "\n```\n```text\n\n" + (m.documentation as string) + "\n```\n"
-                        // }
-                        let mc = m.buildMarkUpContent();
-                        //mc.value = m.documentation.toString();
-                        hoverText = mc;
-                        if (hoverText === undefined) {
-                            (0, console_1.debug)("Error, hoverText is undefined");
-                            hoverText = "";
-                        }
+            if (c === undefined || c === "") {
+                (0, console_1.debug)("not a class name");
+            }
+            // if (co.name === c) {
+            // 	debug("FOUND")
+            // 	debug(c);
+            for (const m of co.methods) {
+                if (m.name === symbol) {
+                    hoverText = m.buildCompletionItem().detail; // + "\n\n" + m.completionItem.documentation;
+                    (0, console_1.debug)(hoverText);
+                    (0, console_1.debug)(m.documentation);
+                    // let mc: MarkupContent = {
+                    // 	kind: "markdown",
+                    // 	value: "```javascript\n" + m.buildFunctionDetails() + "\n```\n```text\n\n" + (m.documentation as string) + "\n```\n"
+                    // }
+                    let mc = m.buildMarkUpContent();
+                    //mc.value = m.documentation.toString();
+                    hoverText = mc;
+                    if (hoverText === undefined) {
+                        (0, console_1.debug)("Error, hoverText is undefined");
+                        hoverText = "";
+                    }
+                    if (co.name === c) {
                         found = true;
                         break;
                     }
+                    otherFunctions.push(m);
                 }
             }
+            // }
             if (found) {
                 break;
             }
+        }
+        // Here we get possible functions for other things...
+        if (!found) {
+            let info = "";
+            for (const m of otherFunctions) {
+                info = info + m.documentation + "\n";
+            }
+            hoverText = info;
         }
         //const func = classObj?.methods.find((value)=>{value.name===symbol});
         //hoverText = ""
     }
     else if ((0, tokens_1.isFunction)(hoveredLine, symbol)) {
+        (0, console_1.debug)("function");
         // hoverText += "\nFunction"
         for (const p of cache.missionPyModules) {
             for (const m of p.defaultFunctions) {
@@ -113,20 +132,6 @@ function onHover(_pos, text) {
                 }
             }
         }
-        // for (const m of cache.missionDefaultFunctions) {
-        // 	if(m.name === symbol) {
-        // 		hoverText = m.buildCompletionItem().detail;// + "\n\n" + m.completionItem.documentation;
-        // 		// debug(m.documentation.toString())
-        // 		// let mc: MarkupContent = {
-        // 		// 	kind: "markdown",
-        // 		// 	value: "```javascript\n" + m.buildFunctionDetails() + "\n```\n\n```text\n\n" + m.documentation.toString() + "\n```\n"
-        // 		// }
-        // 		let mc = m.buildMarkUpContent();
-        // 		// mc.value = m.documentation.toString();
-        // 		hoverText = mc;
-        // 		return {contents: mc}
-        // 	}
-        // }
         for (const m of cache.pyFileCache) {
             for (const p of m.defaultFunctions) {
                 if (p.name === symbol) {
@@ -136,6 +141,7 @@ function onHover(_pos, text) {
         }
     }
     else {
+        (0, console_1.debug)("not class method or function");
         // Check if it's a label
         const mainLabels = (0, cache_1.getCache)(text.uri).getLabels(text);
         const mainLabelAtPos = (0, labels_1.getMainLabelAtPos)(text.offsetAt(_pos.position), mainLabels);
@@ -158,6 +164,7 @@ function onHover(_pos, text) {
             }
         }
     }
+    (0, console_1.debug)("something else");
     // Now we'll check for variables
     // for (const file of getCache(text.uri).mastFileCache) {
     // 	for (const v of file.variables) {

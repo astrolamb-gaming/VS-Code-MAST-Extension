@@ -159,6 +159,7 @@ export function getParentFolder(childUri:string) {
 	fs.lstat(p, (err,stats) => {
 		if (err) {
 			debug(err);
+			debug(err.stack)
 			//throw new URIError(err.message);
 			return p;
 		}

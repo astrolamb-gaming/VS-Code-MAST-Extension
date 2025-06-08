@@ -454,7 +454,8 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		debug("Getting Classes...");
 		debug(iStr);
 		// First we check if a class is being referenced.
-		for (const c of cache.missionClasses) {
+		const classes = cache.getClasses();
+		for (const c of classes) {
 			if (c.name === "sbs") {
 				debug("THIS IS SBS");
 				debug(c);
@@ -471,8 +472,8 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			}
 		}
 		// Then we assume it's an object, but we can't determine the type, so we iterate over all the classes.
-		for (const c of cache.missionClasses) {
-			debug(c.name);
+		for (const c of classes) {
+			// debug(c.name);
 			if (asClasses.includes(c.name)) continue;
 			if (c.name.includes("Route")) continue;
 			if (c.name === "event") continue;

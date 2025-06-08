@@ -292,7 +292,7 @@ export function loadRouteLabels(textData:string): IRouteLabel[] {
 
 	let routeLabels: IRouteLabel[] = [];
 	if (textData.includes("RouteDecoratorLabel") && textData.includes("generate_label_begin_cmds")) {
-		debug(" THIS ONE ");
+		debug("Route Labels");
 	} else {
 		return routeLabels;
 	}

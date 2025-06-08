@@ -421,7 +421,8 @@ function onCompletion(_textDocumentPosition, text) {
         (0, console_1.debug)("Getting Classes...");
         (0, console_1.debug)(iStr);
         // First we check if a class is being referenced.
-        for (const c of cache.missionClasses) {
+        const classes = cache.getClasses();
+        for (const c of classes) {
             if (c.name === "sbs") {
                 (0, console_1.debug)("THIS IS SBS");
                 (0, console_1.debug)(c);
@@ -438,8 +439,8 @@ function onCompletion(_textDocumentPosition, text) {
             }
         }
         // Then we assume it's an object, but we can't determine the type, so we iterate over all the classes.
-        for (const c of cache.missionClasses) {
-            (0, console_1.debug)(c.name);
+        for (const c of classes) {
+            // debug(c.name);
             if (data_1.asClasses.includes(c.name))
                 continue;
             if (c.name.includes("Route"))

@@ -135,12 +135,12 @@ export function isFunction(line:string,token:string) {
 export function isClassMethod(line:string,token:string) {
 	const start = line.indexOf(token);
 	const end = start + token.length;
-	if (isFunction(line,token)) {
+	// if (isFunction(line,token)) {
 		// debug(line.substring(0,start));
 		if (line.substring(0,start).trim().endsWith(".")) {
 			return true;
 		}
-	}
+	// }
 	return false;
 }
 export function getClassOfMethod(line:string,token:string) {

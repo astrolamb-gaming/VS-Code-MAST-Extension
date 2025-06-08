@@ -17,6 +17,8 @@ const vscode_uri_1 = require("vscode-uri");
 const globals_1 = require("./globals");
 const os = require("os");
 const audioFiles_1 = require("./resources/audioFiles");
+const function_1 = require("./data/function");
+const class_1 = require("./data/class");
 const storyJson_1 = require("./data/storyJson");
 const python_1 = require("./python/python");
 const styles_1 = require("./data/styles");
@@ -108,6 +110,7 @@ class MissionCache {
                 for (const p of this.pyFileCache) {
                     if (p.globals.length > 0) {
                         this.loadPythonGlobals(p.globals).then((info) => {
+                            (0, console_1.debug)("Loaded globals");
                         });
                     }
                 }
@@ -150,8 +153,67 @@ class MissionCache {
         (0, console_1.debug)("Everything is laoded");
     }
     async loadPythonGlobals(globals) {
-        let info = await (0, python_1.getSpecificGlobals)(this, globals);
+        let globalInfo = [];
+        let globalNames = [];
+        for (const g of globals) {
+            // mission_dir and data_dir references we aleady know, and might return bad values if left to python outside of an actual artemis dir
+            if (g[0] === "mission_dir") {
+                globalInfo.push([g[0], this.missionURI]);
+                continue;
+            }
+            if (g[0] === "data_dir") {
+                globalInfo.push([g[0], path.join((0, globals_1.getGlobals)().artemisDir, "data")]);
+                continue;
+            }
+            // Add all other names to the list to check globals in python
+            globalNames.push(g);
+        }
+        let info = await (0, python_1.getSpecificGlobals)(this, globalNames);
+        // let info = await getGlobalFunctions(this.storyJson.sbslib)
         (0, console_1.debug)(info);
+        let classes = [];
+        for (const g of info) {
+            let mod = g["module"];
+            let doc = g["documentation"];
+            let kind = g["kind"];
+            let name = g["mastName"];
+            let val = g["value"];
+            if (kind === "module") {
+                const _c = new class_1.ClassObject("", "");
+                _c.name = name;
+                _c.sourceFile = "built-in";
+                _c.documentation = doc;
+                classes.push(_c);
+            }
+            else {
+                // if (g["kind"].includes("module")) {
+                for (const _c of classes) {
+                    if (_c.name === mod) {
+                        // Add the function to the class
+                        const f = new function_1.Function("", "", "");
+                        f.name = name;
+                        f.className = mod;
+                        if (val !== undefined) {
+                            f.functionType = "constant";
+                            f.returnType = "float";
+                        }
+                        else {
+                            f.functionType = "function";
+                            f.returnType = "";
+                        }
+                        f.rawParams = "";
+                        f.sourceFile = "built-in";
+                        f.documentation = doc;
+                        _c.methods.push(f);
+                    }
+                }
+            }
+        }
+        const builtIns = new PyFile_1.PyFile("builtin", "");
+        builtIns.classes = classes;
+        builtIns.isGlobal = true;
+        this.pyFileCache.push(builtIns);
+        (0, console_1.debug)("buitins added");
     }
     async checkForInitFolder(folder) {
         // if (this.ingoreInitFileMissing) return;
@@ -380,7 +442,7 @@ class MissionCache {
                             newDefaults.push(n);
                         }
                         f.defaultFunctions = newDefaults;
-                        (0, console_1.debug)(f.defaultFunctions);
+                        // debug(f.defaultFunctions);
                     }
                 }
             }
@@ -531,6 +593,20 @@ class MissionCache {
             }
         }
         return list;
+    }
+    /**
+     *
+     * @returns All the classes in scope for this mission cache
+     */
+    getClasses() {
+        let ret = [];
+        for (const p of this.pyFileCache) {
+            ret = ret.concat(p.classes);
+        }
+        for (const p of this.missionPyModules) {
+            ret = ret.concat(p.classes);
+        }
+        return ret;
     }
     /**
      * TODO: This should only return variables that are in scope

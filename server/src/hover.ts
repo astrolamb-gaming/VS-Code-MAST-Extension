@@ -8,6 +8,7 @@ import { getClassOfMethod, isClassMethod, isFunction } from './tokens/tokens';
 import { variableModifiers } from './tokens/variables';
 import { buildLabelDocs, getMainLabelAtPos } from './tokens/labels';
 import { getCurrentArgumentNames } from './autocompletion';
+import { Function } from './data/function';
 
 export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : Hover | undefined {
 	if (text.languageId !== "mast") {
@@ -63,16 +64,24 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 	
 	let hoverText: string|MarkupContent|undefined = symbol;
 	if (isClassMethod(hoveredLine, symbol)) {
+		debug("class method")
 		const c = getClassOfMethod(hoveredLine,symbol);
-		const classObj = cache.missionClasses//.find((value)=>{value.name===c});
+		debug(c);
+		const classObj = cache.getClasses();
+		const otherFunctions: Function[] = [];
+		let found = false;
 		for (const co of classObj) {
-			let found = false;
-			if (co.name === c) {
-				debug("FOUND")
-				debug(c);
+			
+			if (c === undefined || c === "") {
+				debug("not a class name")
+			}
+			// if (co.name === c) {
+			// 	debug("FOUND")
+			// 	debug(c);
 				for (const m of co.methods) {
 					if(m.name === symbol) {
 						hoverText = m.buildCompletionItem().detail;// + "\n\n" + m.completionItem.documentation;
+						debug(hoverText)
 						debug(m.documentation as string);
 						// let mc: MarkupContent = {
 						// 	kind: "markdown",
@@ -85,19 +94,34 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 							debug("Error, hoverText is undefined")
 							hoverText = ""
 						}
-						found = true;
-						break;
+						
+						if (co.name === c) {
+							found = true;
+							break;
+						}
+						otherFunctions.push(m);
 					}
 				}
-			}
+			// }
 			if (found) {
 				break;
 			}
 		}
+		// Here we get possible functions for other things...
+		if (!found) {
+			let info: string = ""
+			for (const m of otherFunctions) {
+				info = info + m.documentation + "\n"
+			}
+			hoverText = info;
+		}
+
+
 		//const func = classObj?.methods.find((value)=>{value.name===symbol});
 		
 		//hoverText = ""
 	} else if (isFunction(hoveredLine,symbol)) {
+		debug("function")
 		// hoverText += "\nFunction"
 		for (const p of cache.missionPyModules) {
 			for (const m of p.defaultFunctions) {
@@ -115,20 +139,6 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 				}
 			}
 		}
-		// for (const m of cache.missionDefaultFunctions) {
-		// 	if(m.name === symbol) {
-		// 		hoverText = m.buildCompletionItem().detail;// + "\n\n" + m.completionItem.documentation;
-		// 		// debug(m.documentation.toString())
-		// 		// let mc: MarkupContent = {
-		// 		// 	kind: "markdown",
-		// 		// 	value: "```javascript\n" + m.buildFunctionDetails() + "\n```\n\n```text\n\n" + m.documentation.toString() + "\n```\n"
-		// 		// }
-		// 		let mc = m.buildMarkUpContent();
-		// 		// mc.value = m.documentation.toString();
-		// 		hoverText = mc;
-		// 		return {contents: mc}
-		// 	}
-		// }
 		for (const m of cache.pyFileCache) {
 			for (const p of m.defaultFunctions) {
 				if (p.name === symbol) {
@@ -137,6 +147,7 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 			}
 		}
 	} else {
+		debug("not class method or function")
 		// Check if it's a label
 		const mainLabels = getCache(text.uri).getLabels(text);
 		const mainLabelAtPos = getMainLabelAtPos(text.offsetAt(_pos.position),mainLabels);
@@ -159,6 +170,7 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 			}
 		}
 	}
+	debug("something else")
 
 
 	// Now we'll check for variables
