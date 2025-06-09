@@ -1,6 +1,6 @@
 import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 import { Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, integer } from 'vscode-languageserver/node';
-import {hasDiagnosticRelatedInformationCapability} from './server';
+import {ErrorInstance, hasDiagnosticRelatedInformationCapability} from './server';
 import { debug } from 'console';
 import { isInComment, isInString, isInYaml, replaceRegexMatchWithUnderscore, getComments, getStrings } from './tokens/comments';
 
@@ -36,7 +36,8 @@ export function checkLastLine(textDocument: TextDocument): Diagnostic | undefine
 	return undefined;
 }
 
-export function findDiagnostic(pattern: RegExp, textDocument: TextDocument, severity: DiagnosticSeverity, message: string, source: string, relatedInfo: string, maxProblems: integer, problems: integer): Diagnostic[] {
+// export function findDiagnostic(pattern: RegExp, textDocument: TextDocument, severity: DiagnosticSeverity, message: string, source: string, relatedInfo: string, maxProblems: integer, problems: integer): Diagnostic[] {
+export function findDiagnostic(e:ErrorInstance, textDocument: TextDocument, problems:integer, maxProblems:integer) {
 	let text = textDocument.getText();
 	const commentsStrings = getComments(textDocument).concat(getStrings(textDocument));
 	// TODO: This doesn't work right for weighted text in particular.
@@ -47,17 +48,17 @@ export function findDiagnostic(pattern: RegExp, textDocument: TextDocument, seve
 	
 	let m: RegExpExecArray | null;
 	const diagnostics: Diagnostic[] = [];
-	while ((m = pattern.exec(text)) && problems < maxProblems) {
+	while ((m = e.pattern.exec(text)) && problems < maxProblems) {
 		//debug(JSON.stringify(m));
 		problems++;
 		const diagnostic: Diagnostic = {
-			severity: severity,
+			severity: e.severity,
 			range: {
 				start: textDocument.positionAt(m.index),
 				end: textDocument.positionAt(m.index + m[0].length)
 			},
-			message: message,
-			source: source
+			message: e.message,
+			source: e.source
 		};
 
 		if (hasDiagnosticRelatedInformationCapability) {
@@ -67,7 +68,7 @@ export function findDiagnostic(pattern: RegExp, textDocument: TextDocument, seve
 						uri: textDocument.uri,
 						range: Object.assign({}, diagnostic.range)
 					},
-					message: relatedInfo
+					message: e.relatedMessage
 				}
 			];
 		}

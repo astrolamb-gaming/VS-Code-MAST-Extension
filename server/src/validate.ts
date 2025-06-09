@@ -112,9 +112,19 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	}
 	errorSources.push(with_colon);
 
+	let gui_colon: ErrorInstance = {
+		pattern: /gui\w*?\(\".*?:.*?\"\)/,
+		severity: DiagnosticSeverity.Warning,
+		source: 'mast',
+		message: 'For gui text, colons are not allowed. Use <colon> instead.',
+		relatedMessage: ''
+	}
+	errorSources.push(gui_colon);
+
 	errorSources.push(e1);
 	for (let i = 0; i < errorSources.length; i++) {
-		let d1: Diagnostic[] = findDiagnostic(errorSources[i].pattern,textDocument,errorSources[i].severity,errorSources[i].message,errorSources[i].source, errorSources[i].relatedMessage, maxNumberOfProblems,problems);
+		// let d1: Diagnostic[] = findDiagnostic(errorSources[i].pattern,textDocument,errorSources[i].severity,errorSources[i].message,errorSources[i].source, errorSources[i].relatedMessage, maxNumberOfProblems,problems);
+		let d1: Diagnostic[] = findDiagnostic(errorSources[i], textDocument, diagnostics.length, maxNumberOfProblems);
 		diagnostics = diagnostics.concat(d1);
 	}
 	//let d1: Diagnostic[] = findDiagnostic(pattern, textDocument, DiagnosticSeverity.Error, "Message", "Source", "Testing", settings.maxNumberOfProblems, 0);

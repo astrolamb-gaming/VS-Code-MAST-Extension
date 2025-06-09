@@ -41,7 +41,8 @@ function checkLastLine(textDocument) {
     }
     return undefined;
 }
-function findDiagnostic(pattern, textDocument, severity, message, source, relatedInfo, maxProblems, problems) {
+// export function findDiagnostic(pattern: RegExp, textDocument: TextDocument, severity: DiagnosticSeverity, message: string, source: string, relatedInfo: string, maxProblems: integer, problems: integer): Diagnostic[] {
+function findDiagnostic(e, textDocument, problems, maxProblems) {
     let text = textDocument.getText();
     const commentsStrings = (0, comments_1.getComments)(textDocument).concat((0, comments_1.getStrings)(textDocument));
     // TODO: This doesn't work right for weighted text in particular.
@@ -50,17 +51,17 @@ function findDiagnostic(pattern, textDocument, severity, message, source, relate
     }
     let m;
     const diagnostics = [];
-    while ((m = pattern.exec(text)) && problems < maxProblems) {
+    while ((m = e.pattern.exec(text)) && problems < maxProblems) {
         //debug(JSON.stringify(m));
         problems++;
         const diagnostic = {
-            severity: severity,
+            severity: e.severity,
             range: {
                 start: textDocument.positionAt(m.index),
                 end: textDocument.positionAt(m.index + m[0].length)
             },
-            message: message,
-            source: source
+            message: e.message,
+            source: e.source
         };
         if (server_1.hasDiagnosticRelatedInformationCapability) {
             diagnostic.relatedInformation = [
@@ -69,7 +70,7 @@ function findDiagnostic(pattern, textDocument, severity, message, source, relate
                         uri: textDocument.uri,
                         range: Object.assign({}, diagnostic.range)
                     },
-                    message: relatedInfo
+                    message: e.relatedMessage
                 }
             ];
         }
