@@ -154,6 +154,7 @@ class MissionCache {
         (0, console_1.debug)("Everything is laoded");
     }
     async loadPythonGlobals(globals) {
+        (0, server_1.showProgressBar)(true);
         let sigParser = /'(.*?)'/g;
         let globalInfo = [];
         let globalNames = [];
@@ -171,8 +172,7 @@ class MissionCache {
             globalNames.push(g);
         }
         let info = await (0, python_1.getSpecificGlobals)(this, globalNames);
-        // let info = await getGlobalFunctions(this.storyJson.sbslib)
-        (0, console_1.debug)(info);
+        // debug(info);
         let classes = [];
         for (const g of info) {
             let mod = g["module"];
@@ -187,7 +187,8 @@ class MissionCache {
                 classes.push(_c);
             }
             else {
-                // if (g["kind"].includes("module")) {
+                // try to find the module/class the function is from
+                // Shouldn't be any that aren't from a class/module, since we use the mock file.
                 for (const _c of classes) {
                     if (_c.name === mod) {
                         let val = g["value"];
@@ -208,17 +209,36 @@ class MissionCache {
                         f.sourceFile = "builtin";
                         f.documentation = doc;
                         // Add signature information
-                        (0, console_1.debug)(sigs);
+                        let m;
                         if (sigs !== undefined) {
-                            // let sig = JSON.parse(sigs)
-                            let m;
+                            let params = [];
                             while (m = sigParser.exec(sigs)) {
-                                (0, console_1.debug)(m[1]);
+                                params.push(m[1]);
                                 if (m[1] !== "self") {
                                     const p = new function_1.Parameter(m[1], f.parameters.length, "");
                                     f.parameters.push(p);
                                 }
                             }
+                            f.rawParams = params.join(', ');
+                        }
+                        // If there's no sig info, such as for math.hypot, we can do this to parse the documentation
+                        if (f.parameters.length === 0 && doc !== undefined) {
+                            let paramCheck = /\((.*?)\)/g;
+                            let params = [];
+                            while (m = paramCheck.exec(doc)) {
+                                if (doc.includes(name + m[0])) {
+                                    f.rawParams = m[1];
+                                    params = m[1].split(",");
+                                    break;
+                                }
+                            }
+                            for (const p of params) {
+                                if (p !== "self") {
+                                    const param = new function_1.Parameter(p, f.parameters.length, "");
+                                    f.parameters.push(param);
+                                }
+                            }
+                            f.rawParams = params.join(', ');
                         }
                         _c.methods.push(f);
                     }
@@ -243,6 +263,7 @@ class MissionCache {
         // this.pyFileCache.push(builtIns);
         // this.pyFileCache.push(builtInFunctions);
         (0, console_1.debug)("buitins added");
+        (0, server_1.showProgressBar)(false);
     }
     async checkForInitFolder(folder) {
         // if (this.ingoreInitFileMissing) return;

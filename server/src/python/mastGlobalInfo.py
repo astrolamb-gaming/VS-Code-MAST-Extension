@@ -93,7 +93,11 @@ import random
 import itertools
 # Testing
 # print(inspect.signature(math.cos))
-
+# print(inspect.signature(math.hypot)) # not found
+# print(str(inspect.getfullargspec(math.hypot))) # unsupported callable
+# print(inspect.getdoc(math.e))
+# import sys
+# print(sys.version)
 def is_number(value):
     try:
         float(value)

@@ -170,6 +170,7 @@ export class MissionCache {
 		
 	}
 	async loadPythonGlobals(globals: string[][]) {
+		showProgressBar(true);
 		let sigParser = /'(.*?)'/g;
 		let globalInfo: any = [];
 		let globalNames:string[][] = [];
@@ -188,8 +189,7 @@ export class MissionCache {
 			globalNames.push(g);
 		}
 		let info: any[] = await getSpecificGlobals(this, globalNames);
-		// let info = await getGlobalFunctions(this.storyJson.sbslib)
-		debug(info);
+		// debug(info);
 		let classes:ClassObject[] = [];
 		for (const g of info) {
 			let mod = g["module"];
@@ -203,11 +203,13 @@ export class MissionCache {
 					_c.documentation = doc
 					classes.push(_c);
 			} else {
-			// if (g["kind"].includes("module")) {
+				// try to find the module/class the function is from
+				// Shouldn't be any that aren't from a class/module, since we use the mock file.
 				for (const _c of classes) {
 					if (_c.name === mod) {
 						let val = g["value"];
 						let sigs = g["argspec"];
+
 						// Add the function to the class
 						const f = new Function("","","");
 						f.name = name;
@@ -224,17 +226,36 @@ export class MissionCache {
 						f.documentation = doc;
 
 						// Add signature information
-						debug(sigs)
+						let m: RegExpExecArray | null;
 						if (sigs !== undefined) {
-							// let sig = JSON.parse(sigs)
-							let m: RegExpExecArray | null;
+							let params = [];
 							while (m = sigParser.exec(sigs)) {
-								debug(m[1]);
+								params.push(m[1])
 								if (m[1] !== "self") {
 									const p = new Parameter(m[1],f.parameters.length,"");
 									f.parameters.push(p);
 								}
 							}
+							f.rawParams = params.join(', ');
+						}
+						// If there's no sig info, such as for math.hypot, we can do this to parse the documentation
+						if (f.parameters.length === 0 && doc !== undefined) {
+							let paramCheck = /\((.*?)\)/g;
+							let params:string[] = [];
+							while (m = paramCheck.exec(doc)) {
+								if (doc.includes(name + m[0])) {
+									f.rawParams = m[1];
+									params = m[1].split(",");
+									break;
+								}
+							}
+							for (const p of params) {
+								if (p !== "self") {
+									const param = new Parameter(p,f.parameters.length,"");
+									f.parameters.push(param);
+								}
+							}
+							f.rawParams = params.join(', ');
 						}
 						_c.methods.push(f);
 					}
@@ -261,6 +282,7 @@ export class MissionCache {
 		// this.pyFileCache.push(builtIns);
 		// this.pyFileCache.push(builtInFunctions);
 		debug("buitins added")
+		showProgressBar(false);
 	}
 
 	async checkForInitFolder(folder:string) : Promise<boolean> {
