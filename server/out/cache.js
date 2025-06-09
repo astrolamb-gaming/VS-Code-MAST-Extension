@@ -120,9 +120,10 @@ class MissionCache {
         loadSbs().then((p) => {
             (0, server_1.showProgressBar)(true);
             if (p !== null) {
-                this.missionPyModules.push(p);
-                (0, console_1.debug)("addding " + p.uri);
-                this.missionClasses = this.missionClasses.concat(p.classes);
+                this.addMissionPyFile(p);
+                // this.missionPyModules.push(p);
+                // debug("addding " + p.uri);
+                // this.missionClasses = this.missionClasses.concat(p.classes);
             }
             (0, console_1.debug)("Finished loading sbs_utils for " + this.missionName);
             (0, server_1.showProgressBar)(false);
@@ -153,6 +154,7 @@ class MissionCache {
         (0, console_1.debug)("Everything is laoded");
     }
     async loadPythonGlobals(globals) {
+        let sigParser = /'(.*?)'/g;
         let globalInfo = [];
         let globalNames = [];
         for (const g of globals) {
@@ -205,6 +207,19 @@ class MissionCache {
                         f.rawParams = "";
                         f.sourceFile = "builtin";
                         f.documentation = doc;
+                        // Add signature information
+                        (0, console_1.debug)(sigs);
+                        if (sigs !== undefined) {
+                            // let sig = JSON.parse(sigs)
+                            let m;
+                            while (m = sigParser.exec(sigs)) {
+                                (0, console_1.debug)(m[1]);
+                                if (m[1] !== "self") {
+                                    const p = new function_1.Parameter(m[1], f.parameters.length, "");
+                                    f.parameters.push(p);
+                                }
+                            }
+                        }
                         _c.methods.push(f);
                     }
                 }
@@ -218,12 +233,15 @@ class MissionCache {
         let contents = await (0, fileFunctions_1.readFile)(path.join(scriptPath, "files", "globals.py"));
         // debug(contents)
         const builtInFunctions = new PyFile_1.PyFile("builtin_functions.py", contents);
+        builtInFunctions.isGlobal = true;
         // for (const m of builtInFunctions.defaultFunctions) {
         // 	m.sourceFile = "builtin";
         // }
         (0, console_1.debug)(builtInFunctions);
-        this.pyFileCache.push(builtIns);
-        this.pyFileCache.push(builtInFunctions);
+        this.addSbsPyFile(builtIns);
+        this.addSbsPyFile(builtInFunctions);
+        // this.pyFileCache.push(builtIns);
+        // this.pyFileCache.push(builtInFunctions);
         (0, console_1.debug)("buitins added");
     }
     async checkForInitFolder(folder) {
@@ -414,6 +432,12 @@ class MissionCache {
      * @param p A {@link PyFile PyFile} that should be added to {@link MissionCache.missionPyModules MissionCache.missionPyModules}
      */
     addMissionPyFile(p) {
+        for (const f of this.missionPyModules) {
+            if (f.uri === p.uri) {
+                return;
+            }
+        }
+        // Only do this if the file doesn't exist yet
         this.missionPyModules.push(p);
         this.missionClasses = this.missionClasses.concat(p.classes);
     }
@@ -564,26 +588,26 @@ class MissionCache {
      * @returns List of {@link Function Function}
      */
     getMethods() {
-        let count = 0;
+        // let count = 0;
         let methods = [];
-        (0, console_1.debug)(this.missionPyModules);
-        let keys = [...new Map(this.missionPyModules.map(v => [v.uri, v])).values()];
-        (0, console_1.debug)(keys);
-        // for (const py of this.pyFileCache) {
-        // 	if (py.isGlobal) {
-        // 		methods = methods.concat(py.defaultFunctions);
-        // 		count += py.defaultFunctions.length;
-        // 		// debug("From: "+ py.uri)
-        // 		// debug(py.defaultFunctions)
-        // 	}
-        // }
+        // debug(this.pyFileCache)
+        // let keys = [...new Map(this.missionPyModules.map(v => [v.uri, v])).values()];
+        // debug(keys);
+        for (const py of this.pyFileCache) {
+            if (py.isGlobal) {
+                methods = methods.concat(py.defaultFunctions);
+                // count += py.defaultFunctions.length;
+                // debug("From: "+ py.uri)
+                // debug(py.defaultFunctions)
+            }
+        }
         for (const py of this.missionPyModules) {
             methods = methods.concat(py.defaultFunctions);
-            count += py.defaultFunctions.length;
+            // count += py.defaultFunctions.length;
             // debug("From: "+ py.uri)
             // debug(py.defaultFunctions)
         }
-        (0, console_1.debug)(count);
+        // debug(count)
         methods.sort((a, b) => {
             if (a.name < b.name) {
                 return -1;
@@ -593,7 +617,7 @@ class MissionCache {
             }
             return 0;
         });
-        (0, console_1.debug)(methods);
+        // debug(methods)
         return methods;
     }
     /**
