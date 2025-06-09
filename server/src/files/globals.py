@@ -1,16 +1,37 @@
+
 def print(obj, sep='', end="\n", file=sys.stdout, flush=False):
 	"""
-	Prints the values to a stream, or to sys.stdout by default.\n\nsep\n  string inserted between values, default a space.\nend\n  string appended after the last value, default a newline.\nfile\n  a file-like object (stream); defaults to the current sys.stdout.\nflush\n  whether to forcibly flush the stream.
+	Prints the values to a stream, or to sys.stdout by default.
+	
+	Args:
+		sep: string inserted between values, default a space.
+		end: string appended after the last value, default a newline.
+		file: a file-like object (stream); defaults to the current sys.stdout.
+		flush: whether to forcibly flush the stream.
 	"""
 	pass
 def dir(obj):
 	"""
-	dir([object]) -> list of strings\n\nIf called without an argument, return the names in the current scope.\nElse, return an alphabetized list of names comprising (some of) the attributes\nof the given object, and of attributes reachable from it.\nIf the object supplies a method named __dir__, it will be used; otherwise\nthe default dir() logic is used and returns:\n  for a module object: the module's attributes.\n  for a class object:  its attributes, and recursively the attributes\n    of its bases.\n  for any other object: its attributes, its class's attributes, and\n    recursively the attributes of its class's base classes.
+	dir([object]) -> list of strings
+	
+	If called without an argument, return the names in the current scope.
+	Else, return an alphabetized list of names comprising (some of) the attributes
+	of the given object, and of attributes reachable from it.
+	If the object supplies a method named __dir__, it will be used; otherwise
+	the default dir() logic is used and returns:
+	  for a module object: the module's attributes.
+	  for a class object:  its attributes, and recursively the attributes
+	    of its bases.
+	  for any other object: its attributes, its class's attributes, and
+	    recursively the attributes of its class's base classes.
 	"""
 	pass
 def next(iterator, default=None):
 	"""
-	next(iterator[, default])\n\nReturn the next item from the iterator. If default is given and the iterator\nis exhausted, it is returned instead of raising StopIteration.
+	next(iterator[, default])
+	
+	Return the next item from the iterator. If default is given and the iterator
+	is exhausted, it is returned instead of raising StopIteration.
 	"""
 	pass
 def len(obj)->int:
@@ -47,16 +68,21 @@ def int(value, base=10)->int:
 	pass
 def str(object, encoding="UTF-8", errors=None)->str:
 	"""
-	Converts the specified value into a string.
+	Converts the specified object into a string.
 	Args:
 		object: Any object. Specifies the object to convert into a string
 		encoding: The encoding of the object. Default is UTF-8
 		errors: Specifies what to do if the decoding fails
+	Returns:
+		str: The string representation of the object
 	"""
 	pass
 def hex(integer: int):
 	"""
-	Return the hexadecimal representation of an integer.\n\n>>> hex(12648430)\n'0xc0ffee'
+	Return the hexadecimal representation of an integer.
+	
+	>>> hex(12648430)
+	'0xc0ffee'
 
 	Args:
 		integer: The integer to convert
@@ -66,12 +92,24 @@ def hex(integer: int):
 	pass
 def min(iterable):
 	"""
-	min(iterable, *[, default=obj, key=func]) -> value\nmin(arg1, arg2, *args, *[, key=func]) -> value\n\nWith a single iterable argument, return its smallest item. The\ndefault keyword-only argument specifies an object to return if\nthe provided iterable is empty.\nWith two or more arguments, return the smallest argument.
+	min(iterable, *[, default=obj, key=func]) -> value
+	min(arg1, arg2, *args, *[, key=func]) -> value
+	
+	With a single iterable argument, return its smallest item. The
+	default keyword-only argument specifies an object to return if
+	the provided iterable is empty.
+	With two or more arguments, return the smallest argument.
 	"""
 	pass
 def max(iterable):
 	"""
-	max(iterable, *[, default=obj, key=func]) -> value\nmax(arg1, arg2, *args, *[, key=func]) -> value\n\nWith a single iterable argument, return its biggest item. The\ndefault keyword-only argument specifies an object to return if\nthe provided iterable is empty.\nWith two or more arguments, return the largest argument.
+	max(iterable, *[, default=obj, key=func]) -> value
+	max(arg1, arg2, *args, *[, key=func]) -> value
+	
+	With a single iterable argument, return its biggest item. The
+	default keyword-only argument specifies an object to return if
+	the provided iterable is empty.
+	With two or more arguments, return the largest argument.
 	"""
 	pass
 def abs(number):
@@ -116,16 +154,24 @@ def set(iterable)->Set:
 	pass
 def iter(iterable, sentinel)->iterator:
 	"""
-	iter(iterable) -> iterator\niter(callable, sentinel) -> iterator\n\nGet an iterator from an object.  In the first form, the argument must\nsupply its own iterator, or be a sequence.\nIn the second form, the callable is called until it returns the sentinel.
+	iter(iterable) -> iterator
+	iter(callable, sentinel) -> iterator
+	
+	Get an iterator from an object.  In the first form, the argument must
+	supply its own iterator, or be a sequence.
+	In the second form, the callable is called until it returns the sentinel.
 	"""
 	pass
 def sorted(iterable, key=None, reverse=False)->List:
 	"""
-	Return a new list containing all items from the iterable in ascending order.\n\nA custom key function can be supplied to customize the sort order, and the\nreverse flag can be set to request the result in descending order.
+	Return a new list containing all items from the iterable in ascending order.
+	
+	A custom key function can be supplied to customize the sort order, and the
+	reverse flag can be set to request the result in descending order.
 	Note: You cannot sort a list that contains BOTH string values AND numeric values.
 	"""
 	pass
-def range(start=0, stop, step=1):
+def range(start=0, stop, step=1)->Range:
 	"""
 	Returns a sequence of numbers, starting from 0 by default, and increments by 1 (by default), and stops before a specified number.
 
@@ -137,96 +183,3 @@ def range(start=0, stop, step=1):
 		iterator: The sequence of numbers
 	"""
 	pass
-
-
-# class Set:
-# 	def __init__(arg0: any)->Set:
-# 		"""
-# 		Defines a Set object. A set is a collection of items which are unordered, unchangeable, and unindexed, but you can add or remove items.  
-# 		A set cannot contain duplicate values.  
-# 		Usage:  
-# 		mySet = Set((item1, item2, item3)) #Note the double parentheses!  
-# 		OR:
-# 		mySet = {item1, item2, item3}
-# 		"""
-# 		pass
-# 	def add(element: any):
-# 		""" Add an item to a Set.  
-# 		Args:
-# 			element (any): the item to add to the set.
-
-# 		Example:  
-# 			fruits = {"apple", "banana", "cherry"}
-# 			fruits.add("orange")
-# 			# Result: {"apple", "banana", "cherry", "orange"}
-# 		"""
-# 		pass
-# 	def clear():
-# 		"""
-# 		Remove all the elements from the Set
-
-# 		Example:
-# 			mySet = {"one","two"}
-# 			mySet.clear()
-# 			print(mySet) # returns {}
-# 		"""
-# 		pass
-# 	def copy()->Set:
-# 		"""
-# 		Returns a copy of the Set.
-
-# 		Returns:
-# 			A copy of the Set.
-
-# 		Example:
-# 			mySet = {"one", "two"}
-# 			yourSet = mySet.copy()
-# 			print(yourSet) # Returns {"one", "two"}
-# 		"""
-# 		pass
-# 	def difference(set1: Set, set2: Set)->Set:
-# 		"""
-# 		Returns a Set containing the difference between two or more sets.
-
-# 		Args:
-# 			set1: Required. The set(s) to check for differences in.
-# 			set2: Optional. The other set to search for equal terms in. You can compare as many sets you like. Separate the sets with a comma.
-		
-# 		Returns:
-# 			A set with the differences in the supplied sets.
-
-# 		Example:
-# 			mySet = {"one", "two", "three"}
-# 			subSet = {"one", "two"}
-# 			newSet = mySet.difference(subSet)
-# 			print(newSet) # Returns {"three"}
-# 		"""
-# 		pass
-# 	def difference_update(set1: Set, Set2: Set):
-# 		"""
-# 		Remove the items that exist in both sets
-
-# 		Args:
-# 			set1: Requried. The set to check for differences in.
-# 			set2: Optional. The other set to search for equal items in. You can compare as many sets as you like. Separate the sets with a comma.
-
-# 		Example:
-# 			mySet = {"one", "two", "three"}
-# 			otherSet = {"one", "two"}
-# 			mySet.difference_update(otherSet)
-# 			print(mySet) # Returns {"three"}
-# 		"""
-# 		pass
-# 	def discard(value: any):
-# 		"""
-# 		Remove the specified item from the Set. Does not throw an error if the value is not in the Set.
-
-# 		Args:
-# 			value: The value to remove from the Set.
-
-# 		Example:
-# 			fruits = {"apple", "banana", "cherry"}
-# 			fruits.discard("banana")
-# 			print(fruits) # Returns {"apple", "cherry"}
-# 		"""
-# 		pass

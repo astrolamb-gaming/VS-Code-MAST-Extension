@@ -177,7 +177,6 @@ class MissionCache {
             let doc = g["documentation"];
             let kind = g["kind"];
             let name = g["mastName"];
-            let val = g["value"];
             if (kind === "module") {
                 const _c = new class_1.ClassObject("", "");
                 _c.name = name;
@@ -189,6 +188,8 @@ class MissionCache {
                 // if (g["kind"].includes("module")) {
                 for (const _c of classes) {
                     if (_c.name === mod) {
+                        let val = g["value"];
+                        let sigs = g["argspec"];
                         // Add the function to the class
                         const f = new function_1.Function("", "", "");
                         f.name = name;
@@ -202,17 +203,27 @@ class MissionCache {
                             f.returnType = "";
                         }
                         f.rawParams = "";
-                        f.sourceFile = "built-in";
+                        f.sourceFile = "builtin";
                         f.documentation = doc;
                         _c.methods.push(f);
                     }
                 }
             }
         }
-        const builtIns = new PyFile_1.PyFile("builtin", "");
+        const builtIns = new PyFile_1.PyFile("builtin.py", "");
         builtIns.classes = classes;
         builtIns.isGlobal = true;
+        // Now we add the mock pyfile:
+        const scriptPath = __dirname.replace("out", "src");
+        let contents = await (0, fileFunctions_1.readFile)(path.join(scriptPath, "files", "globals.py"));
+        // debug(contents)
+        const builtInFunctions = new PyFile_1.PyFile("builtin_functions.py", contents);
+        // for (const m of builtInFunctions.defaultFunctions) {
+        // 	m.sourceFile = "builtin";
+        // }
+        (0, console_1.debug)(builtInFunctions);
         this.pyFileCache.push(builtIns);
+        this.pyFileCache.push(builtInFunctions);
         (0, console_1.debug)("buitins added");
     }
     async checkForInitFolder(folder) {
@@ -553,15 +564,36 @@ class MissionCache {
      * @returns List of {@link Function Function}
      */
     getMethods() {
+        let count = 0;
         let methods = [];
-        for (const py of this.pyFileCache) {
-            if (py.isGlobal) {
-                methods = methods.concat(py.defaultFunctions);
-            }
-        }
+        (0, console_1.debug)(this.missionPyModules);
+        let keys = [...new Map(this.missionPyModules.map(v => [v.uri, v])).values()];
+        (0, console_1.debug)(keys);
+        // for (const py of this.pyFileCache) {
+        // 	if (py.isGlobal) {
+        // 		methods = methods.concat(py.defaultFunctions);
+        // 		count += py.defaultFunctions.length;
+        // 		// debug("From: "+ py.uri)
+        // 		// debug(py.defaultFunctions)
+        // 	}
+        // }
         for (const py of this.missionPyModules) {
             methods = methods.concat(py.defaultFunctions);
+            count += py.defaultFunctions.length;
+            // debug("From: "+ py.uri)
+            // debug(py.defaultFunctions)
         }
+        (0, console_1.debug)(count);
+        methods.sort((a, b) => {
+            if (a.name < b.name) {
+                return -1;
+            }
+            if (a.name > b.name) {
+                return 1;
+            }
+            return 0;
+        });
+        (0, console_1.debug)(methods);
         return methods;
     }
     /**

@@ -242,7 +242,8 @@ export class PyFile extends FileCache {
 		// 	}
 
 		// }
-
+		// Looks good here
+		// debug(this.defaultFunctions)
 	}
 
 	getDefaultMethodCompletionItems(): CompletionItem[] {

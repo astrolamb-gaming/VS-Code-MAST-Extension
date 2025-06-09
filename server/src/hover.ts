@@ -109,9 +109,14 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 		}
 		// Here we get possible functions for other things...
 		if (!found) {
-			let info: string = ""
+			let info: MarkupContent = {
+				kind: 'markdown',
+				value: ''
+			}
 			for (const m of otherFunctions) {
-				info = info + m.documentation + "\n"
+				let mc = m.buildMarkUpContent();
+				info.value = info.value + "\n" + mc.value;
+				// info = info + m.documentation + "\n"
 			}
 			hoverText = info;
 		}
@@ -169,8 +174,15 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 				return {contents: key[1]}
 			}
 		}
+		for (const c of cache.getClasses()) {
+			if (c.name === symbol) {
+				return {contents: c.documentation}
+			}
+		}
 	}
 	debug("something else")
+
+	
 
 
 	// Now we'll check for variables

@@ -116,7 +116,7 @@ async function getSpecificGlobals(cache, globals) {
             // debug(m)
         }
         catch (e) {
-            (0, console_1.debug)(e);
+            // debug(e)
         }
         ret.push(m);
     }

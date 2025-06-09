@@ -8,7 +8,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
 import { parse, RX } from './rx';
 import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } from './tokens/routeLabels';
-import { fixFileName, getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readZipArchive } from './fileFunctions';
+import { fixFileName, getFileContents, getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readZipArchive } from './fileFunctions';
 import { connection, showProgressBar as showProgressBar } from './server';
 import { URI } from 'vscode-uri';
 import { getGlobals } from './globals';
@@ -194,7 +194,6 @@ export class MissionCache {
 			let doc = g["documentation"];
 			let kind = g["kind"];
 			let name = g["mastName"];
-			let val = g["value"];
 			if (kind === "module") {
 					const _c = new ClassObject("","");
 					_c.name = name;
@@ -205,6 +204,8 @@ export class MissionCache {
 			// if (g["kind"].includes("module")) {
 				for (const _c of classes) {
 					if (_c.name === mod) {
+						let val = g["value"];
+						let sigs = g["argspec"];
 						// Add the function to the class
 						const f = new Function("","","");
 						f.name = name;
@@ -217,17 +218,29 @@ export class MissionCache {
 							f.returnType = "";
 						}
 						f.rawParams = "";
-						f.sourceFile = "built-in";
+						f.sourceFile = "builtin";
 						f.documentation = doc;
 						_c.methods.push(f);
 					}
 				}
 			}
 		}
-		const builtIns = new PyFile("builtin","");
+		const builtIns = new PyFile("builtin.py","");
 		builtIns.classes = classes;
 		builtIns.isGlobal = true;
+
+		// Now we add the mock pyfile:
+		const scriptPath = __dirname.replace("out","src");
+		let contents = await readFile(path.join(scriptPath,"files","globals.py"));
+		// debug(contents)
+		const builtInFunctions = new PyFile("builtin_functions.py",contents);
+		// for (const m of builtInFunctions.defaultFunctions) {
+		// 	m.sourceFile = "builtin";
+		// }
+		debug(builtInFunctions);
+
 		this.pyFileCache.push(builtIns);
+		this.pyFileCache.push(builtInFunctions);
 		debug("buitins added")
 	}
 
@@ -566,15 +579,39 @@ export class MissionCache {
 	 * @returns List of {@link Function Function}
 	 */
 	getMethods(): Function[] {
+		let count = 0;
 		let methods: Function[] = [];
-		for (const py of this.pyFileCache) {
-			if (py.isGlobal) {
-				methods = methods.concat(py.defaultFunctions);
-			}
-		}
+		debug(this.missionPyModules)
+		let keys = [...new Map(this.missionPyModules.map(v => [v.uri, v])).values()];
+		debug(keys);
+
+		// for (const py of this.pyFileCache) {
+		// 	if (py.isGlobal) {
+		// 		methods = methods.concat(py.defaultFunctions);
+		// 		count += py.defaultFunctions.length;
+		// 		// debug("From: "+ py.uri)
+		// 		// debug(py.defaultFunctions)
+		// 	}
+		// }
 		for (const py of this.missionPyModules) {
 			methods = methods.concat(py.defaultFunctions);
+			count += py.defaultFunctions.length;
+			// debug("From: "+ py.uri)
+			// debug(py.defaultFunctions)
 		}
+
+		debug(count)
+		
+		methods.sort((a, b) => {
+			if (a.name < b.name) {
+				return -1;
+			}
+			if (a.name > b.name) {
+				return 1;
+			}
+			return 0;
+			});
+		debug(methods)
 		return methods;
 	}
 

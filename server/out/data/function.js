@@ -37,6 +37,8 @@ class Function {
         const isProperty = /(@property)/;
         const isClassMethod = /(@classmethod)|(@staticmethod)/;
         const isSetter = /\.setter/;
+        const isLabel = /(@label)/;
+        const isPromise = /(@awaitable)/;
         this.name = (0, class_1.getRegExMatch)(raw, functionName).replace("def ", "").replace("(", "").trim();
         let params = (0, class_1.getRegExMatch)(raw, functionParam).replace(/\(|\)/g, "").replace(/self(.*?,|.*?$)/m, "").trim();
         this.rawParams = params;
@@ -88,6 +90,14 @@ class Function {
             cik = vscode_languageserver_1.CompletionItemKind.Unit;
             cikStr = "setter";
         }
+        if (isPromise.test(raw)) {
+            cik = vscode_languageserver_1.CompletionItemKind.Reference;
+            cikStr = "awaitable";
+        }
+        if (isLabel.test(raw)) {
+            cik = vscode_languageserver_1.CompletionItemKind.Event;
+            cikStr = "label";
+        }
         if (this.name === "__init__") {
             cik = vscode_languageserver_1.CompletionItemKind.Constructor;
             cikStr = "constructor";
@@ -116,6 +126,10 @@ class Function {
             return vscode_languageserver_1.CompletionItemKind.Constructor;
         if (type === "classmethod")
             return vscode_languageserver_1.CompletionItemKind.Method;
+        if (type === "label")
+            return vscode_languageserver_1.CompletionItemKind.Event;
+        if (type === "awaitable")
+            return vscode_languageserver_1.CompletionItemKind.Reference;
         return cik;
     }
     /**

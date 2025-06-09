@@ -230,6 +230,8 @@ class PyFile extends data_1.FileCache {
         // 		}
         // 	}
         // }
+        // Looks good here
+        // debug(this.defaultFunctions)
     }
     getDefaultMethodCompletionItems() {
         let ci = [];

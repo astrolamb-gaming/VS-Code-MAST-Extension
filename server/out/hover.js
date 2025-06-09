@@ -104,9 +104,14 @@ function onHover(_pos, text) {
         }
         // Here we get possible functions for other things...
         if (!found) {
-            let info = "";
+            let info = {
+                kind: 'markdown',
+                value: ''
+            };
             for (const m of otherFunctions) {
-                info = info + m.documentation + "\n";
+                let mc = m.buildMarkUpContent();
+                info.value = info.value + "\n" + mc.value;
+                // info = info + m.documentation + "\n"
             }
             hoverText = info;
         }
@@ -161,6 +166,11 @@ function onHover(_pos, text) {
         for (const key of variables_1.variableModifiers) {
             if (key[0] === symbol) {
                 return { contents: key[1] };
+            }
+        }
+        for (const c of cache.getClasses()) {
+            if (c.name === symbol) {
+                return { contents: c.documentation };
             }
         }
     }

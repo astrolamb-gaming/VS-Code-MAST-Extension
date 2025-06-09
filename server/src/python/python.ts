@@ -115,7 +115,7 @@ export async function getSpecificGlobals(cache: MissionCache, globals: any) {
 				m = JSON.parse(m);
 				// debug(m)
 			} catch (e) {
-				debug(e)
+				// debug(e)
 			}
 			ret.push(m);
 		}

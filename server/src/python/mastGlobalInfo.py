@@ -87,9 +87,12 @@ else:
 	sys.exit(0)
 
 # Need to 
+# I don't know what I was going to write in the line above...
 import json
 import random
 import itertools
+# Testing
+# print(inspect.signature(math.cos))
 
 def is_number(value):
     try:
@@ -112,7 +115,7 @@ class Info:
 	argspec = ""
 	_help = ""
 	code = ""
-	sigs = ""
+	sig = ""
 	value = ""
 
 
@@ -120,6 +123,11 @@ class Info:
 		self.mastName = mastName
 		self.pyName = pyName
 
+class Param:
+	name = ""
+	annotation = ""
+	default = ""
+	kind = ""
 
 def parseFunction(mastName: str, module:str , pyName) -> Info:
 	"""
@@ -135,50 +143,35 @@ def parseFunction(mastName: str, module:str , pyName) -> Info:
 	
 	info = Info(mastName, pyName)
 	info.module = module
+
+	# Get documentation
 	try:
 		info.documentation = inspect.getdoc(func)
 	except:
 		try:
 			info.documentation = func.__doc__
 		except:
-
 			pass
+	# If it's not a function, don't continue
 	if not callable(func):
-		# print("not callable")
 		return info
 	info.kind = "function"
-	# print(inspect.getdoc(func))
-	# print(inspect.signature(func))
-	
 
+	# Get arguments
 	try:
-		# inspect.signature(func):
-		info.arguments = json.dumps(inspect.signature(func).items())
-	except: 
-		pass
-
-	try:
-		info.argspec = str(inpsect.getfullargspec())
-	except:
-		try:
-			info.argspec = str(inspect.getargspec())
-		except:
-			pass
-	
-
-	try:
-		info._help = help(func)
+		info.argspec = str(inspect.getfullargspec(func).args)
 	except:
 		pass
 
-	# try:
-	# 	info.code = str(func.__code__)
-	# except:
-	# 	pass
-
+	# Get signature info. This might be unnecessary because argspec does this better imo
 	try:
-		info.sigs = json.dumps(inspect.signature(func).parameters)
+		sigs = inspect.signature(func)
+		if sigs:
+			info.sig = str(sigs)
 	except:
+		# exc_type, exc_value, exc_tb = sys.exc_info()
+		# stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
+		# print(stack_trace)
 		pass
 
 	return info

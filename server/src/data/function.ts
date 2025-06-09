@@ -85,6 +85,8 @@ export class Function implements IFunction {
 		const isProperty : RegExp = /(@property)/;
 		const isClassMethod: RegExp = /(@classmethod)|(@staticmethod)/;
 		const isSetter : RegExp = /\.setter/;
+		const isLabel: RegExp = /(@label)/;
+		const isPromise: RegExp = /(@awaitable)/;
 
 		this.name = getRegExMatch(raw, functionName).replace("def ","").replace("(","").trim();
 
@@ -139,6 +141,14 @@ export class Function implements IFunction {
 			cik = CompletionItemKind.Unit;
 			cikStr = "setter";
 		}
+		if (isPromise.test(raw)) {
+			cik = CompletionItemKind.Reference;
+			cikStr = "awaitable";
+		}
+		if (isLabel.test(raw)) {
+			cik = CompletionItemKind.Event;
+			cikStr = "label";
+		}
 		if (this.name === "__init__") {
 			cik = CompletionItemKind.Constructor;
 			cikStr = "constructor";
@@ -164,6 +174,8 @@ export class Function implements IFunction {
 		if (type === "property") return CompletionItemKind.Property;
 		if (type === "constructor") return CompletionItemKind.Constructor
 		if (type === "classmethod") return CompletionItemKind.Method;
+		if (type === "label") return CompletionItemKind.Event;
+		if (type === "awaitable") return CompletionItemKind.Reference;
 		return cik;
 	}
  
