@@ -95,6 +95,14 @@ async function validateTextDocument(textDocument) {
         message: "Property for object not specified.",
         relatedMessage: ""
     };
+    let with_colon = {
+        pattern: /^[ \t]*(((with|if|elif|while|for|on[ \t]+(change)?)[\t ]+)|(else))[^:]*?$/gm,
+        severity: vscode_languageserver_1.DiagnosticSeverity.Error,
+        source: 'mast',
+        message: 'Statement must end with a colon.',
+        relatedMessage: "Applies to: 'with', 'if', 'elif', 'else', 'while', 'for', 'on', and 'on change' blocks."
+    };
+    errorSources.push(with_colon);
     errorSources.push(e1);
     for (let i = 0; i < errorSources.length; i++) {
         let d1 = (0, errorChecking_1.findDiagnostic)(errorSources[i].pattern, textDocument, errorSources[i].severity, errorSources[i].message, errorSources[i].source, errorSources[i].relatedMessage, maxNumberOfProblems, problems);
@@ -167,7 +175,7 @@ async function validateTextDocument(textDocument) {
     // 	}
     // }
     //checkForDuplicateLabelsInFile(textDocument);
-    // For applicable diagnostics, check if they, or parts of them, are inside of a string or comment.
+    // For applicable diagnostics, check if they, or parts of them, are inside of a string or comment. Or metadata
     // Some things should be checked after this. Other things should be checked before.
     // TODO: This doesn't appear to be working, e.g. enemy_taunt.mast
     diagnostics = diagnostics.filter((d) => {
@@ -175,7 +183,8 @@ async function validateTextDocument(textDocument) {
         const end = textDocument.offsetAt(d.range.end);
         const inStr = !(0, comments_1.isInString)(textDocument, start) || !(0, comments_1.isInString)(textDocument, end);
         const inCom = !(0, comments_1.isInComment)(textDocument, start) || !(0, comments_1.isInComment)(textDocument, end);
-        return inStr || inCom;
+        const isInMeta = !(0, comments_1.isInYaml)(textDocument, start) || !(0, comments_1.isInYaml)(textDocument, end);
+        return inStr || inCom || isInMeta;
     });
     let d = (0, errorChecking_1.checkLastLine)(textDocument);
     if (d !== undefined) {

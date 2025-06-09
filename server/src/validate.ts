@@ -2,7 +2,7 @@ import { debug } from 'console';
 import * as path from 'path';
 import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
 import { getCache } from './cache';
-import { parseComments, parseStrings, parseYamls, isInString, isInComment, getMatchesForRegex, parseSquareBrackets, getComments, getStrings } from './tokens/comments';
+import { parseComments, parseStrings, parseYamls, isInString, isInComment, getMatchesForRegex, parseSquareBrackets, getComments, getStrings, isInYaml } from './tokens/comments';
 import { checkLastLine, findDiagnostic } from './errorChecking';
 import { checkLabels } from './tokens/labels';
 import { ErrorInstance, getDocumentSettings } from './server';
@@ -102,6 +102,16 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		message: "Property for object not specified.",
 		relatedMessage: ""
 	}
+
+	let with_colon: ErrorInstance = {
+		pattern: /^[ \t]*(((with|if|elif|while|for|on[ \t]+(change)?)[\t ]+)|(else))[^:]*?$/gm,
+		severity: DiagnosticSeverity.Error,
+		source: 'mast',
+		message: 'Statement must end with a colon.',
+		relatedMessage: "Applies to: 'with', 'if', 'elif', 'else', 'while', 'for', 'on', and 'on change' blocks."
+	}
+	errorSources.push(with_colon);
+
 	errorSources.push(e1);
 	for (let i = 0; i < errorSources.length; i++) {
 		let d1: Diagnostic[] = findDiagnostic(errorSources[i].pattern,textDocument,errorSources[i].severity,errorSources[i].message,errorSources[i].source, errorSources[i].relatedMessage, maxNumberOfProblems,problems);
@@ -180,15 +190,16 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	//checkForDuplicateLabelsInFile(textDocument);
 
 	
-	// For applicable diagnostics, check if they, or parts of them, are inside of a string or comment.
+	// For applicable diagnostics, check if they, or parts of them, are inside of a string or comment. Or metadata
 	// Some things should be checked after this. Other things should be checked before.
 	// TODO: This doesn't appear to be working, e.g. enemy_taunt.mast
 	diagnostics = diagnostics.filter((d)=>{
 		const start = textDocument.offsetAt(d.range.start);
 		const end = textDocument.offsetAt(d.range.end);
-		const inStr = !isInString(textDocument, start) || !isInString(textDocument,end)
+		const inStr = !isInString(textDocument, start) || !isInString(textDocument,end);
 		const inCom = !isInComment(textDocument,start) || !isInComment(textDocument,end);
-		return inStr || inCom;
+		const isInMeta = !isInYaml(textDocument, start) || !isInYaml(textDocument,end);
+		return inStr || inCom || isInMeta;
 	})
 
 	let d = checkLastLine(textDocument);
