@@ -226,6 +226,28 @@ function onCompletion(_textDocumentPosition, text) {
                     }
                     return ci;
                 }
+                if (a === "behave_id") {
+                    let behaves = [
+                        "behav_npcship",
+                        "behav_typhon",
+                        "behav_asteroid",
+                        "behav_station",
+                        "behav_planet",
+                        "behav_nebula",
+                        "behav_mine",
+                        "behav_maelstrom",
+                        "behav_pickup",
+                        "behav_do_nothing"
+                    ];
+                    for (const b of behaves) {
+                        const c = {
+                            label: b,
+                            kind: vscode_languageserver_1.CompletionItemKind.Text
+                        };
+                        ci.push(c);
+                    }
+                    return ci;
+                }
             }
             // if (sig !== undefined) {
             // 	if (sig.parameters !== undefined) {

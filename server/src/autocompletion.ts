@@ -247,6 +247,28 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 					}
 					return ci;
 				}
+				if (a === "behave_id") {
+					let behaves = [
+						"behav_npcship",
+						"behav_typhon",
+						"behav_asteroid",
+						"behav_station",
+						"behav_planet",
+						"behav_nebula",
+						"behav_mine",
+						"behav_maelstrom",
+						"behav_pickup",
+						"behav_do_nothing"
+					]
+					for (const b of behaves) {
+						const c: CompletionItem = {
+							label: b,
+							kind: CompletionItemKind.Text
+						}
+						ci.push(c);
+					}
+					return ci;
+				}
 			}
 
 			// if (sig !== undefined) {
