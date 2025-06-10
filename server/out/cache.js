@@ -257,7 +257,7 @@ class MissionCache {
         // for (const m of builtInFunctions.defaultFunctions) {
         // 	m.sourceFile = "builtin";
         // }
-        (0, console_1.debug)(builtInFunctions);
+        // debug(builtInFunctions);
         this.addSbsPyFile(builtIns);
         this.addSbsPyFile(builtInFunctions);
         // this.pyFileCache.push(builtIns);
@@ -651,6 +651,13 @@ class MissionCache {
         for (const m of this.getMethods()) {
             if (m.name === name) {
                 return m;
+            }
+        }
+        for (const c of this.getClasses()) {
+            for (const m of c.methods) {
+                if (m.name === name) {
+                    return m;
+                }
             }
         }
         return undefined;

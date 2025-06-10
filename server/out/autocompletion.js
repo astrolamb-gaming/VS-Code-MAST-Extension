@@ -174,6 +174,8 @@ function onCompletion(_textDocumentPosition, text) {
             const wholeFunc = iStr.substring(fstart, iStr.length);
             const arr = wholeFunc.split(",");
             const args = getCurrentArgumentNames(iStr, text);
+            (0, console_1.debug)("Current function: " + func);
+            (0, console_1.debug)("arg: " + args);
             for (const a of args) {
                 if (a === "role" || a === "roles") {
                     (0, console_1.debug)("Getting roles");
@@ -651,10 +653,13 @@ function getCurrentArgumentNames(iStr, doc) {
     const arr = wholeFunc.split(",");
     const paramNumber = arr.length - 1;
     let methods = [];
+    (0, console_1.debug)(func);
     if ((0, tokens_1.isClassMethod)(wholeFunc, func)) {
+        (0, console_1.debug)("class method");
         methods = (0, cache_1.getCache)(doc.uri).getPossibleMethods(func);
     }
     else {
+        (0, console_1.debug)("Not class method");
         let f = (0, cache_1.getCache)(doc.uri).getMethod(func);
         if (f !== undefined)
             methods.push(f);

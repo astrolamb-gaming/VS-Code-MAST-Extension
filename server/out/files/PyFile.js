@@ -28,6 +28,8 @@ class PyFile extends data_1.FileCache {
                 this.parseWholeFile(fileContents);
             }
             else {
+                if (uri.includes("builtin.py"))
+                    return;
                 //debug("File contents empty, so we need to load it.");
                 fs.readFile(uri, "utf-8", (err, data) => {
                     if (err) {
@@ -182,19 +184,9 @@ class PyFile extends data_1.FileCache {
                     newGlobals.push([globalRef, globalVar]);
                 }
             }
-            // for (let g of globals) {
-            // 	// g = g.replace(/#.*/, "");
-            // 	// let start = g.indexOf(":")+1;
-            // 	// let end = g.indexOf(",");
-            // 	// if (end === -1) end = g.length-1;
-            // 	// let global = g.substring(start, end).trim();
-            // 	// if (global !== "") {
-            // 	// 	newGlobals.push(global);
-            // 	// }
-            // }
-            (0, console_1.debug)(newGlobals);
+            // debug(newGlobals);
             this.globals = newGlobals;
-            (0, console_1.debug)("^^^ GLOBALS!");
+            // debug("^^^ GLOBALS!")
         }
         // debug("asClasses stuff...")
         for (const o of data_1.asClasses) {

@@ -196,6 +196,8 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			const wholeFunc = iStr.substring(fstart,iStr.length);
 			const arr = wholeFunc.split(",");
 			const args = getCurrentArgumentNames(iStr,text);
+			debug("Current function: " + func);
+			debug("arg: " + args);
 			for (const a of args) {
 				if (a === "role" || a === "roles") {
 					debug("Getting roles")
@@ -683,9 +685,12 @@ export function getCurrentArgumentNames(iStr:string, doc:TextDocument): string[]
 	const arr = wholeFunc.split(",");
 	const paramNumber = arr.length-1;
 	let methods:Function[]=[];
+	debug(func);
 	if (isClassMethod(wholeFunc,func)) {
+		debug("class method")
 		methods = getCache(doc.uri).getPossibleMethods(func);
 	} else {
+		debug("Not class method")
 		let f = getCache(doc.uri).getMethod(func);
 		if (f !== undefined) methods.push(f);
 	}
