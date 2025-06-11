@@ -207,7 +207,7 @@ function buildOptions(sj:StoryJson, additionalArgs: any[]): Options | null {
 
 	let libFolder = path.join(getGlobals().artemisDir,"data","missions");
 	const sbsLibPath = path.join(libFolder,"__lib__",sj.sbslib[0]);
-	debug(sbsLibPath);
+	// debug(sbsLibPath);
 
 	let sbsPath = path.join(scriptPath, "sbs.zip");
 	
@@ -292,7 +292,7 @@ async function bigFile(options: Options, content: string): Promise<string[]> {
 	
 	var results: string[] = [];
 
-	debug(options);
+	// debug(options);
 	// debug(content);
 	myscript.send(content);
 

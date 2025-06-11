@@ -20,7 +20,7 @@ export function checkLastLine(textDocument: TextDocument): Diagnostic | undefine
 	});
 	const arr: string[] = text.split("\n");
 	//const lastLine = text.substring(lastLinePos);
-	const lastLine = arr[arr.length-1];
+	const lastLine = arr[arr.length-1].trim();
 	if (lastLine !== "") {
 		const diagnostic: Diagnostic = {
 			severity: DiagnosticSeverity.Error,

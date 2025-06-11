@@ -372,7 +372,7 @@ export class MissionCache {
 								showProgressBar(true);
 								const data = readFile(f).then((data)=>{
 									showProgressBar(true);
-									debug("Loading: " + path.basename(f));
+									// debug("Loading: " + path.basename(f));
 									this.handleZipData(data, f);
 								});
 							}

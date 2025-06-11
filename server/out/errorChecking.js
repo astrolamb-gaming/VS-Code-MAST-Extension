@@ -26,7 +26,7 @@ function checkLastLine(textDocument) {
     });
     const arr = text.split("\n");
     //const lastLine = text.substring(lastLinePos);
-    const lastLine = arr[arr.length - 1];
+    const lastLine = arr[arr.length - 1].trim();
     if (lastLine !== "") {
         const diagnostic = {
             severity: node_1.DiagnosticSeverity.Error,

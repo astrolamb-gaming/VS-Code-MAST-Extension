@@ -352,7 +352,7 @@ class MissionCache {
                                 (0, server_1.showProgressBar)(true);
                                 const data = (0, fileFunctions_1.readFile)(f).then((data) => {
                                     (0, server_1.showProgressBar)(true);
-                                    (0, console_1.debug)("Loading: " + path.basename(f));
+                                    // debug("Loading: " + path.basename(f));
                                     this.handleZipData(data, f);
                                 });
                             }

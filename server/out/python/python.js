@@ -203,7 +203,7 @@ function buildOptions(sj, additionalArgs) {
     }
     let libFolder = path.join((0, globals_1.getGlobals)().artemisDir, "data", "missions");
     const sbsLibPath = path.join(libFolder, "__lib__", sj.sbslib[0]);
-    (0, console_1.debug)(sbsLibPath);
+    // debug(sbsLibPath);
     let sbsPath = path.join(scriptPath, "sbs.zip");
     // const basicOptions: Options = {
     // 	pythonPath: path.join(pyPath,"python.exe"),
@@ -276,7 +276,7 @@ async function bigFile(options, content) {
     let compiled = false;
     let myscript = new python_shell_1.PythonShell('mastCompile.py', options);
     var results = [];
-    (0, console_1.debug)(options);
+    // debug(options);
     // debug(content);
     myscript.send(content);
     myscript.on('message', (message) => {
