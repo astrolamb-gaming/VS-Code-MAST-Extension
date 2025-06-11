@@ -17,24 +17,21 @@ Includes:
 	* Checks for proper route label usage
 	* Proper f-string usage
 	* Checks if label names are overriden by a variable name
-* Autocompletion for applicable functions within the sbs and sbs_utils packages
-	* sbs package
-	* scatter package
-	* faces package
-	* sbs_utils/procedural
+	* Some possible syntax errors
+	* MAST Compiler errors and exceptions are shown, provided by the actual compiler (so you don't need to run the game to get those errors!)
+* Autocompletion and hover information for applicable functions within the sbs and sbs_utils packages, as well as built-in python functions
 * Autocompletion for variables etc in current file and files in scope
-	- NOTE: It's virtually impossible to determine the type of a variable programmatically. The extension can't really do it, so you'll have to keep track of what each variable represents.
-	The extension will give you options that show the object type associated with that option.
+	- NOTE: It's very difficult to determine the type of a variable programmatically for python (and, therefore, MAST). The extension can't really do it, so you'll have to keep track of what each variable represents.
+	The extension will try to give you options that show the object type associated with that option.
 * Autocompletion for labels in current file and files in scope
 * Autocompletion for roles and inventory keys
 * Function signature information (i.e. notes on argument types)
-* Go To Definition functionality
+* Go To Definition functionality for sbs_utils and modules for functions and labels in scope.
 * Checks for module versions
 	* Can update all to latest version, or manually update
 * In mission folders, checks for `__init__.mast` in the folder you're working in. If it doesn't exist, will promt with an option to auto-generate the file, with all .mast and .py files included automatically.
 * Autocompletion of filenames for `__init__.mast`
 * Checks or root artemis directory existence - most functionality requires the opened folder to be in the artemis mission directory
-* Go To Definition funcionality for functions and labels in scope
 
 ## Requirements
 
@@ -47,8 +44,7 @@ Included dependencies:
 
 ## Known Issues
 
-* Many known global modules, functions, and variables (e.g. math, random, len, sim, etc - see [mast_globals.py](https://github.com/artemis-sbs/sbs_utils/blob/master/sbs_utils/mast/mast_globals.py) for full list of globals) are not implemented in autocomplete yet - this is WIP.
-* See [GitHub](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues) for other issues.
+* See [GitHub](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues) for documented issues, or to create a new issue.
 
 ## Planned Features
 

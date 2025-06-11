@@ -6,9 +6,21 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ### To-DO and WIP
 
-* Determine variable types based on function return values, etc
-* Add python built-in module information
 * Add more info about shipdata entries to the art arguments for space objects
+
+
+### 0.12.0
+
+* Add mast compiler errors - uses the actual mast compiler to compile the file on the fly for error checking
+* Add python built-in module information based off of mast_globals.py, so it is forward-compatible
+* Fixed a pretty big issue where multiple copies of information for each file was being stored in memory
+* Add lifeform support (i.e. LIEFORM_ID)
+* Fix some small role related bugs
+* Fix issue with sublabels not showing up for autocompletion
+* Fix issue where sometimes sublabels would incorrectly show an error saying the sublabel wasn't defined in the main label
+* Better hover information generation, including for class methods
+* Show warning for code block starts that should have a colon if the colon isn't present (e.g. `if`, `with`, etc)
+* Add `behave_id` options to autocomplete for applicable function parameters (i.e. spawns)
 
 ### 0.11.0
 
