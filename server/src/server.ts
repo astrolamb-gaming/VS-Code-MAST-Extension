@@ -42,7 +42,8 @@ import {
 	CodeAction,
 	CodeActionKind,
 	Command,
-	ReferenceParams
+	ReferenceParams,
+	Diagnostic
 
 } from 'vscode-languageserver/node';
 import { URI } from 'vscode-uri';
@@ -55,9 +56,9 @@ import { getCurrentMethodName, onSignatureHelp } from './signatureHelp';
 import fs = require("fs");
 import { getVariableNamesInDoc } from './tokens/variables';
 import { getGlobals, initializeGlobals } from './globals';
-import { validateTextDocument } from './validate';
+import { compileMastFile, validateTextDocument } from './validate';
 import path = require('path');
-import { getGlobalFunctions, getTokenInfo, initializePython } from './python/python';
+import { compileMission, getGlobalFunctions, getTokenInfo, initializePython } from './python/python';
 import { onDefinition } from './goToDefinition';
 import { getCache } from './cache';
 import { onReferences } from './references';
@@ -307,9 +308,12 @@ connection.languages.diagnostics.on(async (params) => {
 	
 	if (document !== undefined) {
 		getVariableNamesInDoc(document);
+		let [val, comp]: Diagnostic[][] = await Promise.all([validateTextDocument(document), compileMastFile(document)]);
+		const ret = val.concat(comp);
 		return {
 			kind: DocumentDiagnosticReportKind.Full,
-			items: await validateTextDocument(document)
+			items: ret
+			// items: await validateTextDocument(document)
 		} satisfies DocumentDiagnosticReport;
 	} else {
 		// We don't know the document. We can either try to read it from disk

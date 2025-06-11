@@ -15,6 +15,11 @@ sbs_utilsPath = sys.argv[1] # Very important
 sbsPath = sys.argv[2] # Will not be important in the future - v1.0.2 does not require sbs
 mastFile = sys.argv[3] # Very important
 
+# print(sbs_utilsPath)
+# print(sbsPath)
+# print(mastFile)
+# import sys
+# sys.exit(0)
 try: 
 	
 	content = sys.argv[4] # Very important
@@ -33,12 +38,15 @@ sys.modules['script'] = sys.modules.get('__main__')
 try:
 	from sbs_utils.mast.maststory import MastStory # type: ignore
 except Exception as e:
-	
-	sys.path.append(sbsPath)
-	sys.path.append(sbs_utilsPath)
-	from sbs import * # type: ignore
-	from sbs_utils.mast.maststory import MastStory # type: ignore
-		
+	try:
+		sys.path.append(sbsPath)
+		sys.path.append(sbs_utilsPath)
+		from sbs import * # type: ignore
+		from sbs_utils.mast.maststory import MastStory # type: ignore
+	except:
+		exc_type, exc_value, exc_tb = sys.exc_info()
+		stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
+		# print(stack_trace)
 loaded = False
 try:
 	from sbs_utils.mast.mast_sbs_procedural import * # type: ignore
@@ -48,6 +56,7 @@ except:
 	exc_type, exc_value, exc_tb = sys.exc_info()
 	stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
 	# print(stack_trace)
+	
 if not loaded:
 	try:
 		# Works
@@ -60,11 +69,13 @@ if not loaded:
 		## "sys.modules['script'] = sys.modules.get('__main__')"
 		## earlier in the script.
 		from sbs_utils.mast_sbs.mast_sbs_procedural import * # type: ignore		
-
+		loaded = True
 	except:
 		exc_type, exc_value, exc_tb = sys.exc_info()
 		stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
 		print(stack_trace)
+		# import sys
+		# sys.exit(0)
 
 	class MyMast(MastStory):
 		def __init__(self, cmds=None, is_import=False):
@@ -105,7 +116,7 @@ if not loaded:
 				# 		errors = self.import_content(name, root, None)
 				# 		if len(errors)>0:
 				# 			return errors
-						
+			
 			return errors
 	try:
 		mast = MyMast()

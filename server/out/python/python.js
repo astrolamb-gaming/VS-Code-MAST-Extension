@@ -22,7 +22,7 @@ function initializePython(uri) {
     (0, console_1.debug)("Starting initializePython()");
     try {
         // compileMission(uri)
-        getGlobalFunctions(cache.storyJson.sbslib).then((data) => {
+        getGlobalFunctions(cache.storyJson).then((data) => {
             try {
                 pyGlobals = JSON.parse(data[0]);
             }
@@ -84,29 +84,31 @@ async function getSpecificGlobals(cache, globals) {
     let ret = [];
     // const cache = getCache(mission);
     globals = JSON.stringify(globals);
-    if (scriptPath === "") {
-        scriptPath = __dirname.replace("out", "src");
-        // scriptPath = __dirname
-    }
-    if (pyPath === "") {
-        let adir = (0, globals_1.getGlobals)().artemisDir;
-        let f = (0, fileFunctions_1.findSubfolderByName)(adir, "PyRuntime");
-        if (f !== null) {
-            pyPath = path.resolve(f);
-        }
-        else {
-            return [];
-        }
-        //debug(pyPath);
-    }
-    let sbs = path.join(scriptPath, "sbs.zip");
+    // if (scriptPath === "") {
+    // 	scriptPath = __dirname.replace("out","src");
+    // 	// scriptPath = __dirname
+    // }
+    // if (pyPath === "") {
+    // 	let adir = getGlobals().artemisDir;
+    // 	let f = findSubfolderByName(adir,"PyRuntime");
+    // 	if (f !== null) {
+    // 		pyPath = path.resolve(f);
+    // 	} else {
+    // 		return [];
+    // 	}
+    // 	//debug(pyPath);
+    // }
+    // let sbs = path.join(scriptPath, "sbs.zip");
     let libFolder = path.join((0, globals_1.getGlobals)().artemisDir, "data", "missions");
     const sbs_utils = path.join(libFolder, "__lib__", cache.storyJson.sbslib[0]);
-    const o = {
-        pythonPath: path.join(pyPath, "python.exe"),
-        scriptPath: scriptPath,
-        args: [sbs_utils, sbs, globals]
-    };
+    // const o: Options = {
+    // 	pythonPath: path.join(pyPath,"python.exe"),
+    // 	scriptPath: scriptPath,
+    // 	args: [sbs_utils, sbs, globals]
+    // }
+    const o = buildOptions(cache.storyJson, [globals]);
+    if (o === null)
+        return [];
     (0, console_1.debug)("Running py shell");
     let messages = await python_shell_1.PythonShell.run('mastGlobalInfo.py', o); //.then((messages: any)=>{
     for (let m of messages) {
@@ -125,58 +127,67 @@ async function getSpecificGlobals(cache, globals) {
     // ret[0] = JSON.parse(ret[0])
     return ret;
 }
-async function getGlobalFunctions(sbs_utils) {
+async function getGlobalFunctions(sj) {
     let ret = [];
-    if (pyPath === "") {
-        let adir = (0, globals_1.getGlobals)().artemisDir;
-        let f = (0, fileFunctions_1.findSubfolderByName)(adir, "PyRuntime");
-        if (f !== null) {
-            pyPath = path.resolve(f);
+    // if (pyPath === "") {
+    // 	let adir = getGlobals().artemisDir;
+    // 	let f = findSubfolderByName(adir,"PyRuntime");
+    // 	if (f !== null) {
+    // 		pyPath = path.resolve(f);
+    // 	} else {
+    // 		return [];
+    // 	}
+    // 	//debug(pyPath);
+    // }
+    // if (scriptPath === "") {
+    // 	scriptPath = __dirname.replace("out","src");
+    // 	// scriptPath = __dirname
+    // }
+    // try {
+    // 	let sbsPath = path.join(scriptPath, "sbs.zip");
+    // 	let libFolder = path.join(getGlobals().artemisDir,"data","missions");
+    // 	const sbsLibPath = path.join(libFolder,"__lib__",sbs_utils[0]);
+    // 	const o: Options = {
+    // 		pythonPath: path.join(pyPath,"python.exe"),
+    // 		scriptPath: scriptPath,
+    // 		args: [sbsLibPath,sbsPath]
+    // 	}
+    // 	regularOptions = o;
+    const o = buildOptions(sj, []);
+    if (o === null)
+        return [];
+    (0, console_1.debug)("Starting python shell");
+    await python_shell_1.PythonShell.run('mastGlobals.py', o).then((messages) => {
+        for (let m of messages) {
+            // try {
+            // 	debug(JSON.parse(m));
+            // } catch (e) {}
+            // debug(m);
+            ret.push(m);
         }
-        else {
-            return [];
-        }
-        //debug(pyPath);
-    }
-    if (scriptPath === "") {
-        scriptPath = __dirname.replace("out", "src");
-        // scriptPath = __dirname
-    }
-    try {
-        let sbsPath = path.join(scriptPath, "sbs.zip");
-        let libFolder = path.join((0, globals_1.getGlobals)().artemisDir, "data", "missions");
-        const sbsLibPath = path.join(libFolder, "__lib__", sbs_utils[0]);
-        const o = {
-            pythonPath: path.join(pyPath, "python.exe"),
-            scriptPath: scriptPath,
-            args: [sbsLibPath, sbsPath]
-        };
-        regularOptions = o;
-        (0, console_1.debug)("Starting python shell");
-        await python_shell_1.PythonShell.run('mastGlobals.py', o).then((messages) => {
-            for (let m of messages) {
-                // try {
-                // 	debug(JSON.parse(m));
-                // } catch (e) {}
-                // debug(m);
-                ret.push(m);
-            }
-            console.log('finished');
-        }).catch((e) => { (0, console_1.debug)(e); });
-    }
-    catch (e) {
-        (0, console_1.debug)(e);
-    }
+        console.log('finished');
+    }).catch((e) => { (0, console_1.debug)(e); });
+    // } catch (e) {
+    // 	debug(e);
+    // }
     return ret;
 }
-async function compileMission(mastFile, content, sbs_utils) {
-    // debug(sbs_utils)
-    // if (sbs_utils[0] !== 'artemis-sbs.sbs_utils.v1.0.1.sbslib') {
-    // 	return [];
-    // }
+async function compileMission(mastFile, content, sj) {
     mastFile = (0, fileFunctions_1.fixFileName)(mastFile);
     let errors = [];
-    let missionPath = (0, fileFunctions_1.getMissionFolder)(mastFile);
+    const o = buildOptions(sj, [mastFile, content]);
+    if (o === null)
+        return [];
+    //errors = await runScript(basicOptions);
+    errors = await bigFile(o, content);
+    return errors;
+}
+/**
+ * Build the {@link Options Options} object for PyShell.
+ * @param sbs_utils The sbs_utils file to reference. E.g. `artemis-sbs.sbs_utils.v1.1.0.sbslib`.
+ * @returns An {@link Options Options} object. The object's `args` parameter contains the uri for sbs_utils and sbs. Others can be added.
+ */
+function buildOptions(sj, additionalArgs) {
     if (pyPath === "") {
         let adir = (0, globals_1.getGlobals)().artemisDir;
         let f = (0, fileFunctions_1.findSubfolderByName)(adir, "PyRuntime");
@@ -184,46 +195,37 @@ async function compileMission(mastFile, content, sbs_utils) {
             pyPath = path.resolve(f);
         }
         else {
-            return [];
+            return null;
         }
-        //debug(pyPath);
     }
     if (scriptPath === "") {
         scriptPath = __dirname.replace("out", "src");
-        // scriptPath = __dirname
     }
-    const libFolder = (0, fileFunctions_1.getParentFolder)(missionPath);
-    // Get the possible sbslib files to use - this is sbs_utils
-    let sbs_utils_file = sbs_utils[0];
-    // This is not a release version - I want my code to be as backwards-compatible as possible
-    // At least I should be able to support errors for the current released version
-    //sbs_utils_file = "artemis-sbs.sbs_utils.v1.0.2.sbslib";
-    const sbsLibPath = path.join(libFolder, "__lib__", sbs_utils_file);
-    // Get sbs, if necessary
+    let libFolder = path.join((0, globals_1.getGlobals)().artemisDir, "data", "missions");
+    const sbsLibPath = path.join(libFolder, "__lib__", sj.sbslib[0]);
+    (0, console_1.debug)(sbsLibPath);
     let sbsPath = path.join(scriptPath, "sbs.zip");
-    //sbsPath = path.join(libFolder, "mock");
-    mastFile = path.basename(mastFile);
-    const basicOptions = {
-        pythonPath: path.join(pyPath, "python.exe"),
-        scriptPath: scriptPath,
-        args: [sbsLibPath, sbsPath, mastFile, content]
-    };
+    // const basicOptions: Options = {
+    // 	pythonPath: path.join(pyPath,"python.exe"),
+    // 	scriptPath: scriptPath,
+    // 	args: [sbsLibPath, sbsPath, mastFile, content]
+    // }
     const o = {
         pythonPath: path.join(pyPath, "python.exe"),
         scriptPath: scriptPath,
-        args: [sbsLibPath, sbsPath, mastFile]
+        args: [sbsLibPath, sbsPath]
     };
-    regularOptions = o;
-    //debug(o);
-    //errors = await runScript(basicOptions);
-    errors = await bigFile(o, content);
-    // errors = [];
-    return errors;
+    // debug(additionalArgs)
+    o.args = o.args?.concat(additionalArgs);
+    // debug(o)
+    return o;
 }
 let shell;
-async function getTokenInfo(token) {
+async function getTokenInfo(sj, token) {
     if (shell === undefined || shell === null) {
-        let opt = regularOptions;
+        let opt = buildOptions(sj, [token]);
+        if (opt === null)
+            return;
         if (!opt.args) {
             opt.args = [""];
         }
@@ -274,6 +276,8 @@ async function bigFile(options, content) {
     let compiled = false;
     let myscript = new python_shell_1.PythonShell('mastCompile.py', options);
     var results = [];
+    (0, console_1.debug)(options);
+    // debug(content);
     myscript.send(content);
     myscript.on('message', (message) => {
         //debug(message);
@@ -287,7 +291,7 @@ async function bigFile(options, content) {
     // end the input stream and allow the process to exit
     await myscript.end(function (err) {
         compiled = true;
-        (0, console_1.debug)(errors);
+        // debug(errors);
         if (err)
             throw err;
         // console.log('The exit code was: ' + code);
@@ -297,7 +301,7 @@ async function bigFile(options, content) {
     while (!compiled) {
         await (0, exports.sleep)(100);
     }
-    (0, console_1.debug)(errors);
+    // debug(errors);
     (0, console_1.debug)("Returning from python.ts");
     return errors;
 }

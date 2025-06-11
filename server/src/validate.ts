@@ -1,19 +1,105 @@
 import { debug } from 'console';
 import * as path from 'path';
-import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
+import { Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, Range } from 'vscode-languageserver';
 import { getCache } from './cache';
 import { parseComments, parseStrings, parseYamls, isInString, isInComment, getMatchesForRegex, parseSquareBrackets, getComments, getStrings, isInYaml } from './tokens/comments';
 import { checkLastLine, findDiagnostic } from './errorChecking';
 import { checkLabels } from './tokens/labels';
-import { ErrorInstance, getDocumentSettings } from './server';
+import { ErrorInstance, getDocumentSettings, hasDiagnosticRelatedInformationCapability } from './server';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { checkEnableRoutes } from './tokens/routeLabels';
 import { URI } from 'vscode-uri';
 import { fixFileName } from './fileFunctions';
+import { compileMission } from './python/python';
 
 let debugStrs : string = "";//Debug: ${workspaceFolder}\n";
 
 let exclude: string[] = [];
+/*
+let errorMessage = "\nError: {error}\nat {file_name} Line {line_no} {line}\n{basedir}\n\n";
+let errorRX = /\nError: (.*)\nat (.*) Line (\d+) (.*)\n(.*)\n\n/;
+let exceptionMessage = "\nException: {error}\nat {file_name} Line {line_no} {line}\n{basedir}\n\n";
+let exceptErrRX = /\nException: (.*)\nat (.*) Line (\d+) (.*)\n(.*)\n]n/;
+let exception = "\nException: {e}";
+let exceptRX = /\nException: (.*)/;
+*/
+let errorOrExcept = /(Error|Exception):(.*)/;
+let errorInfo = /at (.*) Line (\d+) - '(.*)'/;
+let moduleRx = /module[ \t](.*)/;
+
+export async function compileMastFile(textDocument: TextDocument): Promise<Diagnostic[]> {
+	let ret: Diagnostic[] = [];
+	let cm: string[] = await compileMission(textDocument.uri, textDocument.getText(), getCache(textDocument.uri).storyJson)
+	debug(cm);
+	let ma: RegExpMatchArray | null;
+	for (const e of cm) {
+		// let 
+		let m = e.replace(/\\n/g,"\n").replace(/\\'/g,"\'")
+		m = m.replace(/\(\<string\>\, line 1\)/g,"");
+		const lines = m.split("\n");
+		let errorText: string = "";
+		let errType: string = "";
+		let errFile: string = "";
+		let lineNum = 0;
+		let lineContents = "";
+		let module = ""
+		let chr = 0;
+		if (lines.length > 5) {
+			ma = lines[1].match(errorOrExcept);
+			if (ma !== null) {
+				errType = ma[1];
+				errorText  = ma[2].trim();
+			}
+			ma = lines[2].match(errorInfo);
+			if (ma !== null) {
+				errFile = ma[1];
+				lineNum = parseFloat(ma[2]) - 1;
+				lineContents = ma[3];
+				debug(lines[2]);
+				debug(lineContents);
+				let fileLine = textDocument.getText().substring(textDocument.offsetAt({line: lineNum, character: 0}),textDocument.offsetAt({line: lineNum + 1, character: 0})-1);
+				chr = fileLine.indexOf(lineContents);
+				debug(chr);
+			}
+			ma = lines[3].match(moduleRx);
+			if (ma !== null) {
+				if (ma[1] !== "None") {
+					module = ma[1];
+				}
+			} 
+			let message = errorText + "  in:\n`" + lineContents + "`\n";
+			let endPos = textDocument.positionAt(textDocument.offsetAt({line: lineNum+1, character: 0})-1);
+			const r: Range = {
+				start: {line: lineNum, character: chr},
+				end: endPos
+			}
+			const d: Diagnostic = {
+				range: r,
+				message: message,
+				severity: DiagnosticSeverity.Error,
+				source: "MAST Compiler " + errType
+			}
+			if (hasDiagnosticRelatedInformationCapability) {
+				d.relatedInformation = [
+					{
+						location: {
+							uri: textDocument.uri,
+							range: Object.assign({}, d.range)
+						},
+						message: lines[1]
+					}
+				];
+			}
+			debug(d);
+			ret.push(d);
+		}
+
+		
+	}
+	debug(ret);
+	// TODO: Parse string into diagnostic
+	return ret;
+}
 
 export async function validateTextDocument(textDocument: TextDocument): Promise<Diagnostic[]> {
 	if (textDocument.languageId === "py") {
@@ -26,6 +112,16 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		return [];
 	}
 	if (textDocument.languageId !== "mast") return[];
+	let problems = 0;
+	let diagnostics: Diagnostic[] = [];
+	let errorSources: ErrorInstance[] = [];
+
+	
+	// const functionSigs = checkFunctionSignatures(textDocument);
+	// debug(functionSigs);
+	// diagnostics = diagnostics.concat(functionSigs);
+
+
 	const cache = getCache(textDocument.uri);
 	const folder = path.dirname(URI.parse(textDocument.uri).fsPath);
 	if (!exclude.includes(folder)) {
@@ -57,9 +153,7 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	const pattern = /\b[A-Z]{2,}\b/g;
 	let m: RegExpExecArray | null;
 
-	let problems = 0;
-	let diagnostics: Diagnostic[] = [];
-	let errorSources: ErrorInstance[] = [];
+	
 
 	// for (const s of getComments(textDocument)) {
 	// 	let r: Range = {
@@ -138,14 +232,7 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		debug("Couldn't get labels?");
 	}
 
-	// const mastCompilerErrors:string[] = await compileMission(textDocument.uri, textDocument.getText(), getCache(textDocument.uri).storyJson.sbslib);
-	// debug(mastCompilerErrors);
-	// .then((errors)=>{
-	// 	debug(errors);
-	// });
-	// const functionSigs = checkFunctionSignatures(textDocument);
-	// debug(functionSigs);
-	// diagnostics = diagnostics.concat(functionSigs);
+
 
 	// Checking string errors
 	///////////////////////////////////////////////////////     Not sure if this is even applicable

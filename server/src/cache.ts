@@ -368,11 +368,14 @@ export class MissionCache {
 						const missionFolder = path.join(getGlobals().artemisDir,"data","missions",m);
 						const files = getFilesInDir(missionFolder,true);
 						for (const f of files) {
-							showProgressBar(true);
-							const data = readFile(f).then((data)=>{
+							if (f.endsWith(".py")|| f.endsWith(".mast")) {
 								showProgressBar(true);
-								this.handleZipData(data, f);
-							});
+								const data = readFile(f).then((data)=>{
+									showProgressBar(true);
+									debug("Loading: " + path.basename(f));
+									this.handleZipData(data, f);
+								});
+							}
 						}
 					}
 				}
@@ -387,8 +390,11 @@ export class MissionCache {
 							if (zip !== "") {
 								file = path.join(zip,file);
 							}
-							file = saveZipTempFile(file,data);
-							this.handleZipData(data,file);
+							if (file.endsWith(".py") || file.endsWith(".mast")) {
+								file = saveZipTempFile(file,data);
+								this.handleZipData(data,file);
+							}
+							
 						});
 					}).catch(err =>{
 						debug("Error unzipping. \n  " + err);
@@ -451,6 +457,7 @@ export class MissionCache {
 			const m = new MastFile(file, data);
 			this.missionMastModules.push(m);
 		}
+		debug("Finished loading: " + path.basename(file))
 	}
 
 	/**

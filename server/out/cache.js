@@ -348,11 +348,14 @@ class MissionCache {
                         const missionFolder = path.join((0, globals_1.getGlobals)().artemisDir, "data", "missions", m);
                         const files = (0, fileFunctions_1.getFilesInDir)(missionFolder, true);
                         for (const f of files) {
-                            (0, server_1.showProgressBar)(true);
-                            const data = (0, fileFunctions_1.readFile)(f).then((data) => {
+                            if (f.endsWith(".py") || f.endsWith(".mast")) {
                                 (0, server_1.showProgressBar)(true);
-                                this.handleZipData(data, f);
-                            });
+                                const data = (0, fileFunctions_1.readFile)(f).then((data) => {
+                                    (0, server_1.showProgressBar)(true);
+                                    (0, console_1.debug)("Loading: " + path.basename(f));
+                                    this.handleZipData(data, f);
+                                });
+                            }
                         }
                     }
                 }
@@ -367,8 +370,10 @@ class MissionCache {
                             if (zip !== "") {
                                 file = path.join(zip, file);
                             }
-                            file = saveZipTempFile(file, data);
-                            this.handleZipData(data, file);
+                            if (file.endsWith(".py") || file.endsWith(".mast")) {
+                                file = saveZipTempFile(file, data);
+                                this.handleZipData(data, file);
+                            }
                         });
                     }).catch(err => {
                         (0, console_1.debug)("Error unzipping. \n  " + err);
@@ -433,6 +438,7 @@ class MissionCache {
             const m = new MastFile_1.MastFile(file, data);
             this.missionMastModules.push(m);
         }
+        (0, console_1.debug)("Finished loading: " + path.basename(file));
     }
     /**
      * Triggers an update to the {@link MastFile MastFile} or {@link PyFile PyFile} associated with the specified {@link TextDocument TextDocument}.

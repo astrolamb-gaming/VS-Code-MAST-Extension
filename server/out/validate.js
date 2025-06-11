@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.compileMastFile = compileMastFile;
 exports.validateTextDocument = validateTextDocument;
 const console_1 = require("console");
 const path = require("path");
@@ -12,8 +13,91 @@ const server_1 = require("./server");
 const routeLabels_1 = require("./tokens/routeLabels");
 const vscode_uri_1 = require("vscode-uri");
 const fileFunctions_1 = require("./fileFunctions");
+const python_1 = require("./python/python");
 let debugStrs = ""; //Debug: ${workspaceFolder}\n";
 let exclude = [];
+/*
+let errorMessage = "\nError: {error}\nat {file_name} Line {line_no} {line}\n{basedir}\n\n";
+let errorRX = /\nError: (.*)\nat (.*) Line (\d+) (.*)\n(.*)\n\n/;
+let exceptionMessage = "\nException: {error}\nat {file_name} Line {line_no} {line}\n{basedir}\n\n";
+let exceptErrRX = /\nException: (.*)\nat (.*) Line (\d+) (.*)\n(.*)\n]n/;
+let exception = "\nException: {e}";
+let exceptRX = /\nException: (.*)/;
+*/
+let errorOrExcept = /(Error|Exception):(.*)/;
+let errorInfo = /at (.*) Line (\d+) - '(.*)'/;
+let moduleRx = /module[ \t](.*)/;
+async function compileMastFile(textDocument) {
+    let ret = [];
+    let cm = await (0, python_1.compileMission)(textDocument.uri, textDocument.getText(), (0, cache_1.getCache)(textDocument.uri).storyJson);
+    (0, console_1.debug)(cm);
+    let ma;
+    for (const e of cm) {
+        // let 
+        let m = e.replace(/\\n/g, "\n").replace(/\\'/g, "\'");
+        m = m.replace(/\(\<string\>\, line 1\)/g, "");
+        const lines = m.split("\n");
+        let errorText = "";
+        let errType = "";
+        let errFile = "";
+        let lineNum = 0;
+        let lineContents = "";
+        let module = "";
+        let chr = 0;
+        if (lines.length > 5) {
+            ma = lines[1].match(errorOrExcept);
+            if (ma !== null) {
+                errType = ma[1];
+                errorText = ma[2].trim();
+            }
+            ma = lines[2].match(errorInfo);
+            if (ma !== null) {
+                errFile = ma[1];
+                lineNum = parseFloat(ma[2]) - 1;
+                lineContents = ma[3];
+                (0, console_1.debug)(lines[2]);
+                (0, console_1.debug)(lineContents);
+                let fileLine = textDocument.getText().substring(textDocument.offsetAt({ line: lineNum, character: 0 }), textDocument.offsetAt({ line: lineNum + 1, character: 0 }) - 1);
+                chr = fileLine.indexOf(lineContents);
+                (0, console_1.debug)(chr);
+            }
+            ma = lines[3].match(moduleRx);
+            if (ma !== null) {
+                if (ma[1] !== "None") {
+                    module = ma[1];
+                }
+            }
+            let message = errorText + "  in:\n`" + lineContents + "`\n";
+            let endPos = textDocument.positionAt(textDocument.offsetAt({ line: lineNum + 1, character: 0 }) - 1);
+            const r = {
+                start: { line: lineNum, character: chr },
+                end: endPos
+            };
+            const d = {
+                range: r,
+                message: message,
+                severity: vscode_languageserver_1.DiagnosticSeverity.Error,
+                source: "MAST Compiler " + errType
+            };
+            if (server_1.hasDiagnosticRelatedInformationCapability) {
+                d.relatedInformation = [
+                    {
+                        location: {
+                            uri: textDocument.uri,
+                            range: Object.assign({}, d.range)
+                        },
+                        message: lines[1]
+                    }
+                ];
+            }
+            (0, console_1.debug)(d);
+            ret.push(d);
+        }
+    }
+    (0, console_1.debug)(ret);
+    // TODO: Parse string into diagnostic
+    return ret;
+}
 async function validateTextDocument(textDocument) {
     if (textDocument.languageId === "py") {
         (0, cache_1.getCache)(textDocument.uri).updateFileInfo(textDocument);
@@ -25,6 +109,12 @@ async function validateTextDocument(textDocument) {
     }
     if (textDocument.languageId !== "mast")
         return [];
+    let problems = 0;
+    let diagnostics = [];
+    let errorSources = [];
+    // const functionSigs = checkFunctionSignatures(textDocument);
+    // debug(functionSigs);
+    // diagnostics = diagnostics.concat(functionSigs);
     const cache = (0, cache_1.getCache)(textDocument.uri);
     const folder = path.dirname(vscode_uri_1.URI.parse(textDocument.uri).fsPath);
     if (!exclude.includes(folder)) {
@@ -51,9 +141,6 @@ async function validateTextDocument(textDocument) {
     //currentDocument = textDocument;
     const pattern = /\b[A-Z]{2,}\b/g;
     let m;
-    let problems = 0;
-    let diagnostics = [];
-    let errorSources = [];
     // for (const s of getComments(textDocument)) {
     // 	let r: Range = {
     // 		start: textDocument.positionAt(s.start),
@@ -127,14 +214,6 @@ async function validateTextDocument(textDocument) {
         (0, console_1.debug)(e);
         (0, console_1.debug)("Couldn't get labels?");
     }
-    // const mastCompilerErrors:string[] = await compileMission(textDocument.uri, textDocument.getText(), getCache(textDocument.uri).storyJson.sbslib);
-    // debug(mastCompilerErrors);
-    // .then((errors)=>{
-    // 	debug(errors);
-    // });
-    // const functionSigs = checkFunctionSignatures(textDocument);
-    // debug(functionSigs);
-    // diagnostics = diagnostics.concat(functionSigs);
     // Checking string errors
     ///////////////////////////////////////////////////////     Not sure if this is even applicable
     // let fstring = /[^"]".*\{.*\}.*"[^"]/g;
