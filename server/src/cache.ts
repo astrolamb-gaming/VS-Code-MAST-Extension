@@ -457,7 +457,7 @@ export class MissionCache {
 			const m = new MastFile(file, data);
 			this.missionMastModules.push(m);
 		}
-		debug("Finished loading: " + path.basename(file))
+		// debug("Finished loading: " + path.basename(file))
 	}
 
 	/**
@@ -785,7 +785,7 @@ export class MissionCache {
 	 * @param fileUri The uri of the file. 
 	 * @returns List of {@link LabelInfo LabelInfo} applicable to the current scope (including modules)
 	 */
-	getLabels(textDocument: TextDocument): LabelInfo[] {
+	getLabels(textDocument: TextDocument, thisFileOnly=false): LabelInfo[] {
 		let fileUri: string = fixFileName(textDocument.uri);
 		let li: LabelInfo[] = [];
 		//debug(this.mastFileInfo);
@@ -798,6 +798,11 @@ export class MissionCache {
 			li = li.concat(f.labelNames);
 		}
 		//debug(li);
+		if (thisFileOnly) {
+			li = li.filter((labelInfo)=>{
+				return labelInfo.srcFile === fileUri;
+			});
+		}
 		// Remove duplicates (should just be a bunch of END entries)
 		// Could also include labels that exist in another file
 		const arrUniq = [...new Map(li.map(v => [v.name, v])).values()]

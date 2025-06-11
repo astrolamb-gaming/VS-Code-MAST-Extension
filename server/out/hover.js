@@ -12,6 +12,7 @@ const globals_1 = require("./globals");
 const tokens_1 = require("./tokens/tokens");
 const variables_1 = require("./tokens/variables");
 const labels_1 = require("./tokens/labels");
+const path = require("path");
 function onHover(_pos, text) {
     if (text.languageId !== "mast") {
         return undefined;
@@ -115,6 +116,9 @@ function onHover(_pos, text) {
             }
             hoverText = info;
         }
+        return {
+            contents: hoverText
+        };
         //const func = classObj?.methods.find((value)=>{value.name===symbol});
         //hoverText = ""
     }
@@ -146,13 +150,18 @@ function onHover(_pos, text) {
         }
     }
     else {
-        (0, console_1.debug)("not class method or function");
+        // debug("not class method or function")
         // Check if it's a label
-        const mainLabels = (0, cache_1.getCache)(text.uri).getLabels(text);
+        (0, console_1.debug)("Checking if it's a label");
+        (0, console_1.debug)(path.basename(text.uri));
+        const mainLabels = (0, cache_1.getCache)(text.uri).getLabels(text, true);
+        (0, console_1.debug)(mainLabels);
         const mainLabelAtPos = (0, labels_1.getMainLabelAtPos)(text.offsetAt(_pos.position), mainLabels);
+        (0, console_1.debug)(mainLabelAtPos);
+        (0, console_1.debug)(mainLabelAtPos.subLabels);
         for (const sub of mainLabelAtPos.subLabels) {
             if (sub.name === symbol) {
-                (0, console_1.debug)(sub);
+                // debug(sub);
                 // hoverText = sub.comments;
                 return { contents: (0, labels_1.buildLabelDocs)(sub) };
             }
@@ -174,7 +183,7 @@ function onHover(_pos, text) {
             }
         }
     }
-    (0, console_1.debug)("something else");
+    // debug("something else")
     // Now we'll check for variables
     // for (const file of getCache(text.uri).mastFileCache) {
     // 	for (const v of file.variables) {
@@ -197,7 +206,7 @@ function onHover(_pos, text) {
     const hover = {
         contents: hoverText //str
     };
-    return hover;
+    return undefined;
 }
 function getCurrentLineFromTextDocument(_pos, text) {
     const pos = text.offsetAt(_pos);

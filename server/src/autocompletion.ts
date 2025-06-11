@@ -438,6 +438,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			if (fixFileName(labelNames[i].srcFile) !== fixFileName(text.uri) && labelNames[i].name === "END") continue;
 			ci.push({documentation: buildLabelDocs(labelNames[i]),label: labelNames[i].name, kind: CompletionItemKind.Event, labelDetails: {description: path.basename(labelNames[i].srcFile)}});
 		}
+		labelNames = cache.getLabels(text, true);
 		const lbl = getMainLabelAtPos(startOfLine,labelNames);
 		if (lbl === undefined) {
 			return ci;

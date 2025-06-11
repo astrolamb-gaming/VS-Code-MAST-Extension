@@ -412,6 +412,7 @@ function onCompletion(_textDocumentPosition, text) {
                 continue;
             ci.push({ documentation: (0, labels_1.buildLabelDocs)(labelNames[i]), label: labelNames[i].name, kind: vscode_languageserver_1.CompletionItemKind.Event, labelDetails: { description: path.basename(labelNames[i].srcFile) } });
         }
+        labelNames = cache.getLabels(text, true);
         const lbl = (0, labels_1.getMainLabelAtPos)(startOfLine, labelNames);
         if (lbl === undefined) {
             return ci;

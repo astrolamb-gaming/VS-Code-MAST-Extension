@@ -9,7 +9,6 @@ exports.isFunction = isFunction;
 exports.isClassMethod = isClassMethod;
 exports.getClassOfMethod = getClassOfMethod;
 exports.getWordRangeAtPosition = getWordRangeAtPosition;
-const console_1 = require("console");
 const comments_1 = require("../tokens/comments");
 var TokenType;
 (function (TokenType) {
@@ -116,7 +115,7 @@ function isClassMethod(line, token) {
     const start = line.indexOf(token);
     const end = start + token.length;
     // if (isFunction(line,token)) {
-    (0, console_1.debug)(line.substring(0, start));
+    // debug(line.substring(0,start));
     if (line.substring(0, start).trim().endsWith(".")) {
         return true;
     }

@@ -300,7 +300,7 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 	//const calledLabel : RegExp = /(^[ \t]*?(->|jump)[ \t]*?\w+)/gm;
 	const calledLabel : RegExp = /(?<=^[ \t]*(jump |->)[ \t]*)(\w+)/gm;
 	let m: RegExpExecArray | null;
-	const mainLabels : LabelInfo[] = getCache(textDocument.uri).getLabels(textDocument);//getLabelsInFile(text,textDocument.uri);
+	const mainLabels : LabelInfo[] = getCache(textDocument.uri).getLabels(textDocument, true);//getLabelsInFile(text,textDocument.uri);
 	///parseLabels(textDocument.getText(),textDocument.uri, true);
 	// const subLabels : LabelInfo[] = parseLabels(textDocument.getText(), textDocument.uri, false);
 	// // Add child labels to their parent
@@ -324,7 +324,7 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 		let found: boolean = false;
 
 		const ml: LabelInfo = getMainLabelAtPos(m.index,mainLabels);
-		
+		debug(ml);
 		// Check if the label is the main label
 		if (str === ml.name) {
 			continue;

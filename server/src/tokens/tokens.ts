@@ -136,7 +136,7 @@ export function isClassMethod(line:string,token:string) {
 	const start = line.indexOf(token);
 	const end = start + token.length;
 	// if (isFunction(line,token)) {
-	debug(line.substring(0,start));
+	// debug(line.substring(0,start));
 	if (line.substring(0,start).trim().endsWith(".")) {
 		return true;
 	}

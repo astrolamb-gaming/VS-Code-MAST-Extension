@@ -9,6 +9,8 @@ import { variableModifiers } from './tokens/variables';
 import { buildLabelDocs, getMainLabelAtPos } from './tokens/labels';
 import { getCurrentArgumentNames } from './autocompletion';
 import { Function } from './data/function';
+import path = require('path');
+import { fixFileName } from './fileFunctions';
 
 export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : Hover | undefined {
 	if (text.languageId !== "mast") {
@@ -120,6 +122,9 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 			}
 			hoverText = info;
 		}
+		return {
+			contents: hoverText
+		}
 
 
 		//const func = classObj?.methods.find((value)=>{value.name===symbol});
@@ -152,13 +157,19 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 			}
 		}
 	} else {
-		debug("not class method or function")
+		// debug("not class method or function")
 		// Check if it's a label
-		const mainLabels = getCache(text.uri).getLabels(text);
+		debug("Checking if it's a label");
+		debug(path.basename(text.uri));
+		const mainLabels = getCache(text.uri).getLabels(text, true);
+		debug(mainLabels);
+		
 		const mainLabelAtPos = getMainLabelAtPos(text.offsetAt(_pos.position),mainLabels);
+		debug(mainLabelAtPos)
+		debug(mainLabelAtPos.subLabels)
 		for (const sub of mainLabelAtPos.subLabels) {
 			if (sub.name === symbol) {
-				debug(sub);
+				// debug(sub);
 				// hoverText = sub.comments;
 				return {contents: buildLabelDocs(sub)}
 			}
@@ -180,7 +191,7 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 			}
 		}
 	}
-	debug("something else")
+	// debug("something else")
 
 	
 
@@ -209,7 +220,7 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 		contents: hoverText//str
 	}
 
-	return hover;
+	return undefined;
 }
 
 export function getCurrentLineFromTextDocument(_pos: Position, text: TextDocument) : string {
