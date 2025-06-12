@@ -304,7 +304,7 @@ function checkLabels(textDocument) {
         //debug(str);
         let found = false;
         const ml = getMainLabelAtPos(m.index, mainLabels);
-        (0, console_1.debug)(ml);
+        // debug(ml);
         // Check if the label is the main label
         if (str === ml.name) {
             continue;

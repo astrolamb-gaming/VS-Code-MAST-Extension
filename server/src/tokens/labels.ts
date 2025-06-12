@@ -324,7 +324,7 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 		let found: boolean = false;
 
 		const ml: LabelInfo = getMainLabelAtPos(m.index,mainLabels);
-		debug(ml);
+		// debug(ml);
 		// Check if the label is the main label
 		if (str === ml.name) {
 			continue;

@@ -58,7 +58,16 @@ export async function compileMastFile(textDocument: TextDocument): Promise<Diagn
 				lineContents = ma[3];
 				debug(lines[2]);
 				debug(lineContents);
-				let fileLine = textDocument.getText().substring(textDocument.offsetAt({line: lineNum, character: 0}),textDocument.offsetAt({line: lineNum + 1, character: 0})-1);
+				
+				let sPos = {line: lineNum, character: 0};
+				debug(sPos);
+				debug(textDocument.offsetAt(sPos));
+				let ePos = {line: lineNum + 1, character: 0};
+				debug(ePos);
+				let e = textDocument.offsetAt(ePos)-1;
+				debug(e);
+				let fileLine = textDocument.getText().substring(textDocument.offsetAt(sPos),e);
+				debug(fileLine);
 				chr = fileLine.indexOf(lineContents);
 				debug(chr);
 			}

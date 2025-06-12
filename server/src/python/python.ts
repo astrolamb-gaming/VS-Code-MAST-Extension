@@ -321,6 +321,6 @@ async function bigFile(options: Options, content: string): Promise<string[]> {
 		await sleep(100);
 	}
 	// debug(errors);
-	debug("Returning from python.ts")
+	debug("Returning from bigFile() python.ts")
 	return errors
 }

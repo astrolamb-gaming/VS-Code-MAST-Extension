@@ -302,7 +302,7 @@ async function bigFile(options, content) {
         await (0, exports.sleep)(100);
     }
     // debug(errors);
-    (0, console_1.debug)("Returning from python.ts");
+    (0, console_1.debug)("Returning from bigFile() python.ts");
     return errors;
 }
 //# sourceMappingURL=python.js.map
