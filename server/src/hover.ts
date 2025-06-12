@@ -159,14 +159,14 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 	} else {
 		// debug("not class method or function")
 		// Check if it's a label
-		debug("Checking if it's a label");
-		debug(path.basename(text.uri));
+		// debug("Checking if it's a label");
+		// debug(path.basename(text.uri));
 		const mainLabels = getCache(text.uri).getLabels(text, true);
-		debug(mainLabels);
+		// debug(mainLabels);
 		
 		const mainLabelAtPos = getMainLabelAtPos(text.offsetAt(_pos.position),mainLabels);
-		debug(mainLabelAtPos)
-		debug(mainLabelAtPos.subLabels)
+		// debug(mainLabelAtPos)
+		// debug(mainLabelAtPos.subLabels)
 		for (const sub of mainLabelAtPos.subLabels) {
 			if (sub.name === symbol) {
 				// debug(sub);
@@ -176,7 +176,7 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 		}
 		for (const main of mainLabels) {
 			if (main.name === symbol) {
-				debug(main);
+				// debug(main);
 				return {contents: buildLabelDocs(main)}
 			}
 		}

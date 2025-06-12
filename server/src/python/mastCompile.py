@@ -14,6 +14,7 @@ getData = False
 sbs_utilsPath = sys.argv[1] # Very important
 sbsPath = sys.argv[2] # Will not be important in the future - v1.0.2 does not require sbs
 mastFile = sys.argv[3] # Very important
+print(mastFile)
 
 # print(sbs_utilsPath)
 # print(sbsPath)
@@ -80,7 +81,38 @@ if not loaded:
 	class MyMast(MastStory):
 		def __init__(self, cmds=None, is_import=False):
 			super().__init__(cmds,is_import)
-			#print("My Mast")
+		def import_python_module_for_source(self, name, lib_name):
+			pass
+		def from_file2(self, file_name, root):
+			if root is None:
+				root = self # I am root
+
+			if self.lib_name is None and root.imported.get(file_name):
+				return
+			elif self.lib_name is not None and root.imported.get(f"{self.lib_name}::{file_name}"):
+				return
+			
+			if self.lib_name is None:
+				root.imported[file_name] = True
+			else: 
+				root.imported[f"{self.lib_name}::{file_name}"] = True
+
+			content = None
+			errors= None
+
+			print("From file file_name: "+file_name)
+			content, errors = self.content_from_lib_or_file(file_name)
+			# print(content)
+			if errors is not None:
+				print(errors)
+				return errors
+			if content is not None:
+				content = content.replace("\r","")
+				print("from_file2 content:")
+				# print(content)
+				errors = self.compile(content, file_name, root)
+			return errors
+            
 		def from_text(self, file_name, root, content: str):
 			""" Use this to compile text from a file that hasn't been saved, and therefore is not accessible by reading the file. """
 			if root is None:
@@ -101,26 +133,20 @@ if not loaded:
 				
 			if content is not None:
 				content = content.replace('\r','')
+				# print(content)
 				errors = self.compile(content, file_name, root)
-
-				# TODO: Might use this to check other files in folder
-				#if len(errors) == 0 and not self.is_import:
-				# 	addons = self.find_add_ons(".")
-				# 	for name in addons:
-				# 		errors = self.import_content("__init__.mast", root, name)
-				# 		if len(errors)>0:
-				# 			return errors
-
-				# 	imports = self.find_imports(".")
-				# 	for name in imports:
-				# 		errors = self.import_content(name, root, None)
-				# 		if len(errors)>0:
-				# 			return errors
 			
 			return errors
 	try:
 		mast = MyMast()
+		# print("from_text")
 		errors = mast.from_text(mastFile, None, content)
+		# print(errors)
+		# print("from_file")
+		# errors = mast.from_file2(mastFile, None)
+		if errors is None:
+			print("ERRORS IS NONE")
+		print(errors)
 	except TypeError as t:
 		print(t)
 		# Extract the traceback object
@@ -128,7 +154,10 @@ if not loaded:
 		# Format the traceback
 		stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
 		print(stack_trace)
-
+	except: 
+		exc_type, exc_value, exc_tb = sys.exc_info()
+		stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
+		print(stack_trace)
 	if errors is not None:
 		print(errors)
 		# for err in errors:

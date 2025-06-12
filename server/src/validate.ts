@@ -28,6 +28,7 @@ let errorInfo = /at (.*) Line (\d+) - '(.*)'/;
 let moduleRx = /module[ \t](.*)/;
 
 export async function compileMastFile(textDocument: TextDocument): Promise<Diagnostic[]> {
+	debug("Starting mast compile")
 	let ret: Diagnostic[] = [];
 	let cm: string[] = await compileMission(textDocument.uri, textDocument.getText(), getCache(textDocument.uri).storyJson)
 	debug(cm);
@@ -204,7 +205,7 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		message: 'Statement must end with a colon.',
 		relatedMessage: "Applies to: 'with', 'if', 'elif', 'else', 'while', 'for', 'on', and 'on change' blocks."
 	}
-	errorSources.push(with_colon);
+	// errorSources.push(with_colon);
 
 	let gui_colon: ErrorInstance = {
 		pattern: /gui\w*?\(\".*?:.*?\"\)/,

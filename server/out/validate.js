@@ -28,6 +28,7 @@ let errorOrExcept = /(Error|Exception):(.*)/;
 let errorInfo = /at (.*) Line (\d+) - '(.*)'/;
 let moduleRx = /module[ \t](.*)/;
 async function compileMastFile(textDocument) {
+    (0, console_1.debug)("Starting mast compile");
     let ret = [];
     let cm = await (0, python_1.compileMission)(textDocument.uri, textDocument.getText(), (0, cache_1.getCache)(textDocument.uri).storyJson);
     (0, console_1.debug)(cm);
@@ -189,7 +190,7 @@ async function validateTextDocument(textDocument) {
         message: 'Statement must end with a colon.',
         relatedMessage: "Applies to: 'with', 'if', 'elif', 'else', 'while', 'for', 'on', and 'on change' blocks."
     };
-    errorSources.push(with_colon);
+    // errorSources.push(with_colon);
     let gui_colon = {
         pattern: /gui\w*?\(\".*?:.*?\"\)/,
         severity: vscode_languageserver_1.DiagnosticSeverity.Warning,

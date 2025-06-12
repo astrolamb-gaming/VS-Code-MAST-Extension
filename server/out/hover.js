@@ -12,7 +12,6 @@ const globals_1 = require("./globals");
 const tokens_1 = require("./tokens/tokens");
 const variables_1 = require("./tokens/variables");
 const labels_1 = require("./tokens/labels");
-const path = require("path");
 function onHover(_pos, text) {
     if (text.languageId !== "mast") {
         return undefined;
@@ -152,13 +151,13 @@ function onHover(_pos, text) {
     else {
         // debug("not class method or function")
         // Check if it's a label
-        (0, console_1.debug)("Checking if it's a label");
-        (0, console_1.debug)(path.basename(text.uri));
+        // debug("Checking if it's a label");
+        // debug(path.basename(text.uri));
         const mainLabels = (0, cache_1.getCache)(text.uri).getLabels(text, true);
-        (0, console_1.debug)(mainLabels);
+        // debug(mainLabels);
         const mainLabelAtPos = (0, labels_1.getMainLabelAtPos)(text.offsetAt(_pos.position), mainLabels);
-        (0, console_1.debug)(mainLabelAtPos);
-        (0, console_1.debug)(mainLabelAtPos.subLabels);
+        // debug(mainLabelAtPos)
+        // debug(mainLabelAtPos.subLabels)
         for (const sub of mainLabelAtPos.subLabels) {
             if (sub.name === symbol) {
                 // debug(sub);
@@ -168,7 +167,7 @@ function onHover(_pos, text) {
         }
         for (const main of mainLabels) {
             if (main.name === symbol) {
-                (0, console_1.debug)(main);
+                // debug(main);
                 return { contents: (0, labels_1.buildLabelDocs)(main) };
             }
         }
