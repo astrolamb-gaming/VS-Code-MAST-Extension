@@ -759,6 +759,7 @@ class MissionCache {
      * @returns List of {@link LabelInfo LabelInfo} applicable to the current scope (including modules)
      */
     getLabels(textDocument, thisFileOnly = false) {
+        (0, console_1.debug)(this.mastFileCache);
         let fileUri = (0, fileFunctions_1.fixFileName)(textDocument.uri);
         let li = [];
         //debug(this.mastFileInfo);

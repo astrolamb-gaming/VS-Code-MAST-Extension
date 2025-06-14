@@ -158,6 +158,7 @@ function buildLabelDocs(label) {
     if (val === "") {
         val = "No information specified for the '" + label.name + "' label.";
     }
+    val = "`" + label.name + "` is defined in `" + path.dirname(label.srcFile).replace(/.*?\/missions\//, "") + "/" + path.basename(label.srcFile) + "`  \n" + val;
     let docs = {
         kind: "markdown",
         value: val
@@ -281,7 +282,7 @@ function checkLabels(textDocument) {
     //const calledLabel : RegExp = /(^[ \t]*?(->|jump)[ \t]*?\w+)/gm;
     const calledLabel = /(?<=^[ \t]*(jump |->)[ \t]*)(\w+)/gm;
     let m;
-    const mainLabels = (0, cache_1.getCache)(textDocument.uri).getLabels(textDocument, true); //getLabelsInFile(text,textDocument.uri);
+    let mainLabels = (0, cache_1.getCache)(textDocument.uri).getLabels(textDocument, true); //getLabelsInFile(text,textDocument.uri);
     ///parseLabels(textDocument.getText(),textDocument.uri, true);
     // const subLabels : LabelInfo[] = parseLabels(textDocument.getText(), textDocument.uri, false);
     // // Add child labels to their parent
@@ -320,6 +321,7 @@ function checkLabels(textDocument) {
             if (found)
                 continue;
         }
+        mainLabels = (0, cache_1.getCache)(textDocument.uri).getLabels(textDocument, false);
         // If the label is not a main label, nor a sub-label of the main label,
         // then we need to see if it exists at all.
         for (const main of mainLabels) {

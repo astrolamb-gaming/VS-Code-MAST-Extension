@@ -171,6 +171,7 @@ export function buildLabelDocs(label:LabelInfo): MarkupContent {
 	if (val === "") {
 		val = "No information specified for the '" + label.name + "' label.";
 	}
+	val = "`"+ label.name + "` is defined in `" + path.dirname(label.srcFile).replace(/.*?\/missions\//,"") + "/" + path.basename(label.srcFile) + "`  \n" + val;
 	let docs:MarkupContent = {
 		kind: "markdown",
 		value: val
@@ -300,7 +301,7 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 	//const calledLabel : RegExp = /(^[ \t]*?(->|jump)[ \t]*?\w+)/gm;
 	const calledLabel : RegExp = /(?<=^[ \t]*(jump |->)[ \t]*)(\w+)/gm;
 	let m: RegExpExecArray | null;
-	const mainLabels : LabelInfo[] = getCache(textDocument.uri).getLabels(textDocument, true);//getLabelsInFile(text,textDocument.uri);
+	let mainLabels : LabelInfo[] = getCache(textDocument.uri).getLabels(textDocument, true);//getLabelsInFile(text,textDocument.uri);
 	///parseLabels(textDocument.getText(),textDocument.uri, true);
 	// const subLabels : LabelInfo[] = parseLabels(textDocument.getText(), textDocument.uri, false);
 	// // Add child labels to their parent
@@ -338,6 +339,8 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 			}
 			if (found) continue;
 		}
+
+		mainLabels = getCache(textDocument.uri).getLabels(textDocument, false);
 
 		// If the label is not a main label, nor a sub-label of the main label,
 		// then we need to see if it exists at all.

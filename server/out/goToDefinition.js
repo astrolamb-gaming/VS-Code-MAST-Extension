@@ -95,7 +95,7 @@ async function onDefinition(doc, pos) {
             }
         }
         // Now let's check over all the labels, to see if it's a label. This will be most useful for most people I think.
-        const mainLabels = (0, cache_1.getCache)(doc.uri).getLabels(doc);
+        let mainLabels = (0, cache_1.getCache)(doc.uri).getLabels(doc, true);
         const mainLabelAtPos = (0, labels_1.getMainLabelAtPos)(doc.offsetAt(pos), mainLabels);
         for (const sub of mainLabelAtPos.subLabels) {
             if (sub.name === symbol) {
@@ -107,6 +107,7 @@ async function onDefinition(doc, pos) {
                 return loc;
             }
         }
+        mainLabels = (0, cache_1.getCache)(doc.uri).getLabels(doc, false);
         for (const main of mainLabels) {
             if (main.name === symbol) {
                 (0, console_1.debug)(main);

@@ -100,7 +100,7 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 			}
 		}
 		// Now let's check over all the labels, to see if it's a label. This will be most useful for most people I think.
-		const mainLabels = getCache(doc.uri).getLabels(doc);
+		let mainLabels = getCache(doc.uri).getLabels(doc,true);
 		const mainLabelAtPos = getMainLabelAtPos(doc.offsetAt(pos),mainLabels);
 		for (const sub of mainLabelAtPos.subLabels) {
 			if (sub.name === symbol) {
@@ -112,6 +112,7 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 				return loc
 			}
 		}
+		mainLabels = getCache(doc.uri).getLabels(doc,false);
 		for (const main of mainLabels) {
 			if (main.name === symbol) {
 				debug(main);
