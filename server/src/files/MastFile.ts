@@ -9,6 +9,7 @@ import { parsePrefabs } from '../tokens/prefabs';
 import { getRolesForFile, getInventoryKeysForFile } from '../tokens/roles';
 import { Variable, parseVariables } from '../tokens/variables';
 import { Word, parseWords } from '../tokens/words';
+import { sleep } from '../python/python';
 
 
 /**
@@ -27,6 +28,8 @@ export class MastFile extends FileCache {
 	keys: string[] = [];
 	prefabs: LabelInfo[] = [];
 	words: Word[] = [];
+	inZip: boolean = false;
+	loaded: boolean = false;
 
 	constructor(uri: string, fileContents: string = "") {
 		//debug("building mast file");
@@ -36,6 +39,7 @@ export class MastFile extends FileCache {
 			// If the contents are aleady read, we parse and move on. Don't need to read or parse again.
 			if (fileContents !== "") {
 				//debug("parsing, has contents");
+				this.inZip = true;
 				this.parse(fileContents);
 				return;
 			} else {
@@ -57,16 +61,23 @@ export class MastFile extends FileCache {
 	}
 
 	parse(text: string) {
+		this.loaded = false;
 		// debug("parsing mast file: " + this.uri)
 		const textDocument: TextDocument = TextDocument.create(this.uri, "mast", 1, text);
 		this.labelNames = parseLabelsInFile(text, this.uri);
+		debug(this.labelNames)
 		this.prefabs = parsePrefabs(this.labelNames);
 		// TODO: Parse variables, etc
 		//this.variables = getVariableNamesInDoc(textDocument);
 		this.variables = parseVariables(textDocument); //
 		this.roles = getRolesForFile(text);
 		this.keys = getInventoryKeysForFile(text);
-		this.words = parseWords(textDocument);
+		if (this.inZip) {
+			this.words = [];
+		} else {
+			this.words = parseWords(textDocument);
+		}
+		this.loaded = true;
 	}
 
 	getVariableNames() {
@@ -94,4 +105,14 @@ export class MastFile extends FileCache {
 		return [];
 	}
 
+	getLabels() {
+		return this.labelNames;
+	}
+
+	async awaitLoaded() {
+		while(!this.loaded) {
+			await sleep(50);
+		}
+		return;
+	}
 }

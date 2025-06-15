@@ -12,6 +12,7 @@ const prefabs_1 = require("../tokens/prefabs");
 const roles_1 = require("../tokens/roles");
 const variables_1 = require("../tokens/variables");
 const words_1 = require("../tokens/words");
+const python_1 = require("../python/python");
 /**
  * Represents a mast file.
  * Contains all the information about that specific file, including its referenced
@@ -29,10 +30,13 @@ class MastFile extends data_1.FileCache {
         this.keys = [];
         this.prefabs = [];
         this.words = [];
+        this.inZip = false;
+        this.loaded = false;
         if (path.extname(uri) === ".mast") {
             // If the contents are aleady read, we parse and move on. Don't need to read or parse again.
             if (fileContents !== "") {
                 //debug("parsing, has contents");
+                this.inZip = true;
                 this.parse(fileContents);
                 return;
             }
@@ -56,16 +60,24 @@ class MastFile extends data_1.FileCache {
         }
     }
     parse(text) {
+        this.loaded = false;
         // debug("parsing mast file: " + this.uri)
         const textDocument = vscode_languageserver_textdocument_1.TextDocument.create(this.uri, "mast", 1, text);
         this.labelNames = (0, labels_1.parseLabelsInFile)(text, this.uri);
+        (0, console_1.debug)(this.labelNames);
         this.prefabs = (0, prefabs_1.parsePrefabs)(this.labelNames);
         // TODO: Parse variables, etc
         //this.variables = getVariableNamesInDoc(textDocument);
         this.variables = (0, variables_1.parseVariables)(textDocument); //
         this.roles = (0, roles_1.getRolesForFile)(text);
         this.keys = (0, roles_1.getInventoryKeysForFile)(text);
-        this.words = (0, words_1.parseWords)(textDocument);
+        if (this.inZip) {
+            this.words = [];
+        }
+        else {
+            this.words = (0, words_1.parseWords)(textDocument);
+        }
+        this.loaded = true;
     }
     getVariableNames() {
         let arr = [];
@@ -90,6 +102,15 @@ class MastFile extends data_1.FileCache {
             }
         }
         return [];
+    }
+    getLabels() {
+        return this.labelNames;
+    }
+    async awaitLoaded() {
+        while (!this.loaded) {
+            await (0, python_1.sleep)(50);
+        }
+        return;
     }
 }
 exports.MastFile = MastFile;
