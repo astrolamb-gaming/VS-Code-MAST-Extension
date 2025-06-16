@@ -772,7 +772,7 @@ class MissionCache {
         let li = [];
         //debug(this.mastFileInfo);
         for (const f of this.mastFileCache) {
-            if (thisFileOnly || fileUri === f.uri) {
+            if (!thisFileOnly || fileUri === f.uri) {
                 li = li.concat(f.labelNames);
             }
         }
@@ -792,14 +792,21 @@ class MissionCache {
      * @param doc
      * @param pos
      */
-    getLabelsAtPos(doc, pos) {
+    getLabelsAtPos(doc, pos, thisFileOnly = false) {
         // const labels: LabelInfo[] = this.getLabels(doc);
         if (doc.languageId !== "mast")
             return [];
         const labels = this.getMastFile(doc.uri).labelNames;
+        (0, console_1.debug)(labels);
         const main = (0, labels_1.getMainLabelAtPos)(pos, labels);
         const subs = main.subLabels;
-        const ret = this.getLabels(doc).concat(subs);
+        let ret;
+        if (thisFileOnly) {
+            ret = labels.concat(subs);
+        }
+        else {
+            ret = this.getLabels(doc).concat(subs);
+        }
         return ret;
     }
     /**
@@ -1008,18 +1015,18 @@ class MissionCache {
     // }
     isLoaded() {
         let all = this.sbsLoaded && this.storyJsonLoaded && this.pyInfoLoaded;
-        (0, console_1.debug)("Loaded status:");
-        (0, console_1.debug)(this.sbsLoaded);
-        (0, console_1.debug)(this.storyJsonLoaded);
-        (0, console_1.debug)(this.pyInfoLoaded);
+        // debug("Loaded status:");
+        // debug(this.sbsLoaded);
+        // debug(this.storyJsonLoaded);
+        // debug(this.pyInfoLoaded);
         return all;
     }
     async awaitLoaded() {
         while (!(this.sbsLoaded && this.storyJsonLoaded && this.pyInfoLoaded)) {
-            (0, console_1.debug)("Loaded status:");
-            (0, console_1.debug)(this.sbsLoaded);
-            (0, console_1.debug)(this.storyJsonLoaded);
-            (0, console_1.debug)(this.pyInfoLoaded);
+            // debug("Loaded status:");
+            // debug(this.sbsLoaded);
+            // debug(this.storyJsonLoaded);
+            // debug(this.pyInfoLoaded);
             await (0, python_1.sleep)(100);
         }
         (0, server_1.showProgressBar)(false);

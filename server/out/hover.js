@@ -153,8 +153,11 @@ function onHover(_pos, text) {
         // Check if it's a label
         // debug("Checking if it's a label");
         // debug(path.basename(text.uri));
-        const mainLabels = (0, cache_1.getCache)(text.uri).getLabels(text, true);
-        // debug(mainLabels);
+        // const mainLabels = getCache(text.uri).getLabelsAtPos(text, text.offsetAt(_pos.position), false);
+        (0, console_1.debug)("Labels at Pos");
+        (0, console_1.debug)((0, cache_1.getCache)(text.uri).getLabelsAtPos(text, text.offsetAt(_pos.position), true));
+        const mainLabels = (0, cache_1.getCache)(text.uri).getLabels(text, false);
+        (0, console_1.debug)(mainLabels);
         const mainLabelAtPos = (0, labels_1.getMainLabelAtPos)(text.offsetAt(_pos.position), mainLabels);
         // debug(mainLabelAtPos)
         // debug(mainLabelAtPos.subLabels)

@@ -800,7 +800,7 @@ export class MissionCache {
 		let li: LabelInfo[] = [];
 		//debug(this.mastFileInfo);
 		for (const f of this.mastFileCache) {
-			if (thisFileOnly || fileUri === f.uri) {
+			if (!thisFileOnly || fileUri === f.uri) {
 				li = li.concat(f.labelNames);
 			}
 		}
@@ -822,13 +822,19 @@ export class MissionCache {
 	 * @param doc 
 	 * @param pos 
 	 */
-	getLabelsAtPos(doc:TextDocument, pos:integer): LabelInfo[] {
+	getLabelsAtPos(doc:TextDocument, pos:integer, thisFileOnly:boolean=false): LabelInfo[] {
 		// const labels: LabelInfo[] = this.getLabels(doc);
 		if (doc.languageId !== "mast") return [];
 		const labels = this.getMastFile(doc.uri).labelNames;
+		debug(labels);
 		const main = getMainLabelAtPos(pos,labels);
 		const subs = main.subLabels;
-		const ret = this.getLabels(doc).concat(subs);
+		let ret;
+		if (thisFileOnly) {
+			ret = labels.concat(subs);
+		} else {
+			ret = this.getLabels(doc).concat(subs);
+		}
 		return ret;
 	}
 
@@ -1048,19 +1054,19 @@ export class MissionCache {
 	// }
 	isLoaded() {
 		let all = this.sbsLoaded && this.storyJsonLoaded && this.pyInfoLoaded;
-		debug("Loaded status:");
-		debug(this.sbsLoaded);
-		debug(this.storyJsonLoaded);
-		debug(this.pyInfoLoaded);
+		// debug("Loaded status:");
+		// debug(this.sbsLoaded);
+		// debug(this.storyJsonLoaded);
+		// debug(this.pyInfoLoaded);
 		return all;
 	}
 
 	async awaitLoaded() {
 		while (!(this.sbsLoaded && this.storyJsonLoaded && this.pyInfoLoaded)) {
-			debug("Loaded status:");
-			debug(this.sbsLoaded);
-			debug(this.storyJsonLoaded);
-			debug(this.pyInfoLoaded);
+			// debug("Loaded status:");
+			// debug(this.sbsLoaded);
+			// debug(this.storyJsonLoaded);
+			// debug(this.pyInfoLoaded);
 			await sleep(100);
 		}
 		showProgressBar(false);
