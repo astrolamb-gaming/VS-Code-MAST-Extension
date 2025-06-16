@@ -377,18 +377,14 @@ function checkLabels(textDocument) {
         // 		}
         // 	}
         // }
-        (0, console_1.debug)("----------------Start------------------");
-        (0, console_1.debug)(str);
-        (0, console_1.debug)(textDocument.uri);
-        (0, console_1.debug)(m.index);
-        (0, console_1.debug)(textDocument.positionAt(m.index));
-        let labelLoc = getLabelLocation(str, textDocument, textDocument.positionAt(m.index));
-        (0, console_1.debug)(labelLoc);
-        (0, console_1.debug)("-----------------END-----------------");
-        // if (labelLoc === undefined) {
-        // 	extraDebug = true;
-        // 	getLabelLocation(str,textDocument,textDocument.positionAt(m.index));
-        // }
+        // debug("----------------Start------------------")
+        // debug(str);
+        // debug(textDocument.uri);
+        // debug(m.index)
+        // debug(textDocument.positionAt(m.index))
+        // let labelLoc = getLabelLocation(str, textDocument, textDocument.positionAt(m.index))
+        // debug(labelLoc);
+        // debug("-----------------END-----------------")
         // Label not found in file
         if (!found) {
             const d = {
@@ -596,25 +592,26 @@ function getLabelMetadataKeys(label) {
 }
 let extraDebug = false;
 function getLabelLocation(symbol, doc, pos) {
-    (0, console_1.debug)("Getting location of label: `" + symbol + "` in\n" + doc.uri + " at:");
-    (0, console_1.debug)(pos);
+    // debug("Getting location of label: `" + symbol + "` in\n" + doc.uri + " at:")
+    // debug(pos)
     // Now let's check over all the labels, to see if it's a label. This will be most useful for most people I think.
-    let mainLabels = (0, cache_1.getCache)(doc.uri).getLabels(doc, true);
-    const mainLabelAtPos = getMainLabelAtPos(doc.offsetAt(pos), mainLabels);
-    for (const sub of mainLabelAtPos.subLabels) {
-        if (sub.name === symbol) {
-            (0, console_1.debug)(sub);
-            const loc = {
-                uri: (0, fileFunctions_1.fileFromUri)(sub.srcFile),
-                range: sub.range
-            };
-            return loc;
-        }
-    }
+    // let mainLabels = getCache(doc.uri).getLabels(doc,true);
+    let mainLabels = (0, cache_1.getCache)(doc.uri).getLabelsAtPos(doc, doc.offsetAt(pos), false);
+    // const mainLabelAtPos = getMainLabelAtPos(doc.offsetAt(pos),mainLabels);
+    // for (const sub of mainLabelAtPos.subLabels) {
+    // 	if (sub.name === symbol) {
+    // 		debug(sub);
+    // 		const loc:Location = {
+    // 			uri: fileFromUri(sub.srcFile),
+    // 			range: sub.range
+    // 		}
+    // 		return loc
+    // 	}
+    // }
     mainLabels = (0, cache_1.getCache)(doc.uri).getLabels(doc, false);
     for (const main of mainLabels) {
         if (main.name === symbol) {
-            (0, console_1.debug)(main);
+            // debug(main);
             const loc = {
                 uri: (0, fileFunctions_1.fileFromUri)(main.srcFile),
                 range: main.range

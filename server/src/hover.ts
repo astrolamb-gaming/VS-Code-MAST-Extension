@@ -162,24 +162,24 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 		// debug("Checking if it's a label");
 		// debug(path.basename(text.uri));
 
-		// const mainLabels = getCache(text.uri).getLabelsAtPos(text, text.offsetAt(_pos.position), false);
+		const mainLabels = getCache(text.uri).getLabelsAtPos(text, text.offsetAt(_pos.position), false);
 
-		debug("Labels at Pos")
-		debug(getCache(text.uri).getLabelsAtPos(text,text.offsetAt(_pos.position),true));
+		// debug("Labels at Pos")
+		// debug(getCache(text.uri).getLabelsAtPos(text,text.offsetAt(_pos.position),true));
 
-		const mainLabels = getCache(text.uri).getLabels(text, false);
-		debug(mainLabels);
+		// const mainLabels = getCache(text.uri).getLabels(text, false);
+		// debug(mainLabels);
 		
-		const mainLabelAtPos = getMainLabelAtPos(text.offsetAt(_pos.position),mainLabels);
-		// debug(mainLabelAtPos)
-		// debug(mainLabelAtPos.subLabels)
-		for (const sub of mainLabelAtPos.subLabels) {
-			if (sub.name === symbol) {
-				// debug(sub);
-				// hoverText = sub.comments;
-				return {contents: buildLabelDocs(sub)}
-			}
-		}
+		// const mainLabelAtPos = getMainLabelAtPos(text.offsetAt(_pos.position),mainLabels);
+		// // debug(mainLabelAtPos)
+		// // debug(mainLabelAtPos.subLabels)
+		// for (const sub of mainLabelAtPos.subLabels) {
+		// 	if (sub.name === symbol) {
+		// 		// debug(sub);
+		// 		// hoverText = sub.comments;
+		// 		return {contents: buildLabelDocs(sub)}
+		// 	}
+		// }
 		for (const main of mainLabels) {
 			if (main.name === symbol) {
 				// debug(main);

@@ -100,7 +100,7 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 			}
 		}
 		let loc = getLabelLocation(symbol, doc, pos);
-		debug(loc);
+		// debug(loc);
 		return loc;
 	}
 

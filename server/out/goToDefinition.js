@@ -95,7 +95,7 @@ async function onDefinition(doc, pos) {
             }
         }
         let loc = (0, labels_1.getLabelLocation)(symbol, doc, pos);
-        (0, console_1.debug)(loc);
+        // debug(loc);
         return loc;
     }
     // let start: Position = {line: pos.line, character: 1}

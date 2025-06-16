@@ -23,13 +23,18 @@ export interface Variable {
 }
 
 export let variables: CompletionItem[] = [];
-export function getVariableNamesInDoc(doc: TextDocument) {
+/**
+ * 
+ * @param doc 
+ * @returns A list of strings, each string is a variable name.
+ */
+export function getVariableNamesInDoc(doc: TextDocument): string[] {
 	let vars: string[] = [];
-	const variableRX = /^[\t ]*(default[ \t]+)?((shared|assigned|client|temp)\s+)?[a-zA-Z_]\w*[\t ]*(?==[^=])/gm;
+	const variableRX = /^[\t ]*(default[ \t]+)?((shared|assigned|client|temp)[ \t]+)?([a-zA-Z_]\w*)[\t ]*(?==[^=])/gm;
 	const text = doc.getText();
 	let m: RegExpExecArray | null;
 	while (m = variableRX.exec(text)) {
-		const v = m[0].replace(/(shared|assigned|client|temp|default)/g,"").trim();
+		const v = m[4];//.replace(/(shared|assigned|client|temp|default)/g,"").trim();
 		if (!vars.includes(v)) {
 			vars.push(v);
 		}
@@ -38,13 +43,18 @@ export function getVariableNamesInDoc(doc: TextDocument) {
 	return vars;
 }
 
+/**
+ * 
+ * @param doc 
+ * @returns A list of {@link Variable Variable}s
+ */
 export function parseVariables(doc: TextDocument): Variable[] {
 	let ret: Variable[] = [];
-	const variableRX = /^[\t ]*(default[ \t]+)?((shared|assigned|client|temp)\s+)?[a-zA-Z_]\w*[\t ]*(?==[^=])/gm;
+	const variableRX = /^[\t ]*(default[ \t]+)?((shared|assigned|client|temp)[ \t]+)?([a-zA-Z_]\w*)[\t ]*(?==[^=])/gm;
 	const text = doc.getText();
 	let m: RegExpExecArray | null;
 	while (m = variableRX.exec(text)) {
-		const v = m[0].replace(/(shared|assigned|client|temp|default)/g,"").trim();
+		const v = m[4];//.replace(/(shared|assigned|client|temp|default)/g,"").trim();
 		const start = m[0].indexOf(v) + m.index;
 		const end = start + m[0].length;
 		const range: Range = { start: doc.positionAt(start), end: doc.positionAt(end)}

@@ -28,10 +28,10 @@ let errorInfo = /at (.*) Line (\d+) - '(.*)'/;
 let moduleRx = /module[ \t](.*)/;
 
 export async function compileMastFile(textDocument: TextDocument): Promise<Diagnostic[]> {
-	debug("Starting mast compile")
+	// debug("Starting mast compile")
 	let ret: Diagnostic[] = [];
 	let cm: string[] = await compileMission(textDocument.uri, textDocument.getText(), getCache(textDocument.uri).storyJson)
-	debug(cm);
+	// debug(cm);
 	let ma: RegExpMatchArray | null;
 	for (const e of cm) {
 		// let 
@@ -112,7 +112,7 @@ export async function compileMastFile(textDocument: TextDocument): Promise<Diagn
 }
 
 export async function validateTextDocument(textDocument: TextDocument): Promise<Diagnostic[]> {
-	debug("Starting validation")
+	// debug("Starting validation")
 	if (textDocument.languageId === "py") {
 		getCache(textDocument.uri).updateFileInfo(textDocument);
 		return [];

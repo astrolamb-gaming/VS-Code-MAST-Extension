@@ -28,10 +28,10 @@ let errorOrExcept = /(Error|Exception):(.*)/;
 let errorInfo = /at (.*) Line (\d+) - '(.*)'/;
 let moduleRx = /module[ \t](.*)/;
 async function compileMastFile(textDocument) {
-    (0, console_1.debug)("Starting mast compile");
+    // debug("Starting mast compile")
     let ret = [];
     let cm = await (0, python_1.compileMission)(textDocument.uri, textDocument.getText(), (0, cache_1.getCache)(textDocument.uri).storyJson);
-    (0, console_1.debug)(cm);
+    // debug(cm);
     let ma;
     for (const e of cm) {
         // let 
@@ -108,7 +108,7 @@ async function compileMastFile(textDocument) {
     return ret;
 }
 async function validateTextDocument(textDocument) {
-    (0, console_1.debug)("Starting validation");
+    // debug("Starting validation")
     if (textDocument.languageId === "py") {
         (0, cache_1.getCache)(textDocument.uri).updateFileInfo(textDocument);
         return [];

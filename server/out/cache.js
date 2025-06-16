@@ -797,7 +797,6 @@ class MissionCache {
         if (doc.languageId !== "mast")
             return [];
         const labels = this.getMastFile(doc.uri).labelNames;
-        (0, console_1.debug)(labels);
         const main = (0, labels_1.getMainLabelAtPos)(pos, labels);
         const subs = main.subLabels;
         let ret;

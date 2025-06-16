@@ -428,7 +428,7 @@ exports.connection.onDefinition(async (params) => {
     let def = undefined;
     if (document !== undefined) {
         def = await (0, goToDefinition_1.onDefinition)(document, params.position);
-        (0, console_1.debug)(def);
+        // debug(def);
     }
     return def;
 });
@@ -439,7 +439,7 @@ exports.connection.onReferences(async (params) => {
     let def = undefined;
     if (document !== undefined) {
         def = await (0, references_1.onReferences)(document, params);
-        (0, console_1.debug)(def);
+        // debug(def);
     }
     return def;
 });

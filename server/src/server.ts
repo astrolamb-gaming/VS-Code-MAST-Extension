@@ -560,7 +560,7 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | u
 	let def = undefined;
 	if (document !== undefined) {
 		def = await onDefinition(document,params.position);
-		debug(def);
+		// debug(def);
 	}
 	return def;
 });
@@ -572,7 +572,7 @@ connection.onReferences(async (params:ReferenceParams): Promise<Location[] | und
 	let def = undefined;
 	if (document !== undefined) {
 		def = await onReferences(document, params);
-		debug(def);
+		// debug(def);
 	}
 	return def;
 });
