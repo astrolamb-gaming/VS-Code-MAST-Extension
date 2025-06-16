@@ -65,7 +65,7 @@ export class MastFile extends FileCache {
 		// debug("parsing mast file: " + this.uri)
 		const textDocument: TextDocument = TextDocument.create(this.uri, "mast", 1, text);
 		this.labelNames = parseLabelsInFile(text, this.uri);
-		debug(this.labelNames)
+		// debug(this.labelNames)
 		this.prefabs = parsePrefabs(this.labelNames);
 		// TODO: Parse variables, etc
 		//this.variables = getVariableNamesInDoc(textDocument);

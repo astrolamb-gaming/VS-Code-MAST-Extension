@@ -108,6 +108,7 @@ async function compileMastFile(textDocument) {
     return ret;
 }
 async function validateTextDocument(textDocument) {
+    (0, console_1.debug)("Starting validation");
     if (textDocument.languageId === "py") {
         (0, cache_1.getCache)(textDocument.uri).updateFileInfo(textDocument);
         return [];
@@ -125,6 +126,7 @@ async function validateTextDocument(textDocument) {
     // debug(functionSigs);
     // diagnostics = diagnostics.concat(functionSigs);
     const cache = (0, cache_1.getCache)(textDocument.uri);
+    await cache.awaitLoaded();
     const folder = path.dirname(vscode_uri_1.URI.parse(textDocument.uri).fsPath);
     if (!exclude.includes(folder)) {
         cache.checkForInitFolder(folder).then((res) => {

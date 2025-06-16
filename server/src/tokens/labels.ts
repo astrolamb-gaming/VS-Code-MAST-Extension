@@ -1,11 +1,11 @@
-import { Diagnostic, DiagnosticSeverity, integer, MarkupContent, Position, Range } from 'vscode-languageserver';
+import { Diagnostic, DiagnosticSeverity, integer, Location, MarkupContent, Position, Range } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { relatedMessage } from '../errorChecking';
 import { debug } from 'console';
 import { getCache } from '../cache';
 import { URI } from 'vscode-uri';
 import path = require('path');
-import { fixFileName } from '../fileFunctions';
+import { fileFromUri, fixFileName } from '../fileFunctions';
 import { isInComment, isInYaml } from './comments';
 import { start } from 'repl';
 import { getCurrentLineFromTextDocument } from '../hover';
@@ -399,6 +399,17 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 		// 		}
 		// 	}
 		// }
+		debug(str);
+		debug(textDocument.uri);
+		debug(m.index)
+		debug(textDocument.getText().substring(m.index, m.index + 20));
+		debug(textDocument.positionAt(m.index))
+		let labelLoc = getLabelLocation(str, textDocument, textDocument.positionAt(m.index))
+		debug(labelLoc);
+		if (labelLoc === undefined) {
+			extraDebug = true;
+			getLabelLocation(str,textDocument,textDocument.positionAt(m.index));
+		}
 
 		// Label not found in file
 		if (!found) {
@@ -621,4 +632,32 @@ export function getLabelMetadataKeys(label:LabelInfo) {
 	// debug(arrUniq);
 	debug(keys);
 	return keys;
+}
+
+let extraDebug = false;
+export function getLabelLocation(symbol:string, doc:TextDocument, pos:Position) {
+	// Now let's check over all the labels, to see if it's a label. This will be most useful for most people I think.
+	let mainLabels = getCache(doc.uri).getLabels(doc,true);
+	const mainLabelAtPos = getMainLabelAtPos(doc.offsetAt(pos),mainLabels);
+	for (const sub of mainLabelAtPos.subLabels) {
+		if (sub.name === symbol) {
+			debug(sub);
+			const loc:Location = {
+				uri: fileFromUri(sub.srcFile),
+				range: sub.range
+			}
+			return loc
+		}
+	}
+	mainLabels = getCache(doc.uri).getLabels(doc,false);
+	for (const main of mainLabels) {
+		if (main.name === symbol) {
+			debug(main);
+			const loc:Location = {
+				uri: fileFromUri(main.srcFile),
+				range: main.range
+			}
+			return loc
+		}
+	}
 }

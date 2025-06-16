@@ -112,6 +112,7 @@ export async function compileMastFile(textDocument: TextDocument): Promise<Diagn
 }
 
 export async function validateTextDocument(textDocument: TextDocument): Promise<Diagnostic[]> {
+	debug("Starting validation")
 	if (textDocument.languageId === "py") {
 		getCache(textDocument.uri).updateFileInfo(textDocument);
 		return [];
@@ -133,6 +134,7 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 
 
 	const cache = getCache(textDocument.uri);
+	await cache.awaitLoaded();
 	const folder = path.dirname(URI.parse(textDocument.uri).fsPath);
 	if (!exclude.includes(folder)) {
 		cache.checkForInitFolder(folder).then((res)=>{

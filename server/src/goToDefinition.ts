@@ -8,7 +8,7 @@ import { isClassMethod, isFunction } from './tokens/tokens';
 import { getCache } from './cache';
 import { documents, sendToClient } from './server';
 import { URI } from 'vscode-uri';
-import { getMainLabelAtPos } from './tokens/labels';
+import { getLabelLocation, getMainLabelAtPos } from './tokens/labels';
 import { getVariableNamesInDoc, parseVariables } from './tokens/variables';
 import { Function } from './data/function';
 
@@ -99,30 +99,9 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 				}
 			}
 		}
-		// Now let's check over all the labels, to see if it's a label. This will be most useful for most people I think.
-		let mainLabels = getCache(doc.uri).getLabels(doc,true);
-		const mainLabelAtPos = getMainLabelAtPos(doc.offsetAt(pos),mainLabels);
-		for (const sub of mainLabelAtPos.subLabels) {
-			if (sub.name === symbol) {
-				debug(sub);
-				const loc:Location = {
-					uri: fileFromUri(sub.srcFile),
-					range: sub.range
-				}
-				return loc
-			}
-		}
-		mainLabels = getCache(doc.uri).getLabels(doc,false);
-		for (const main of mainLabels) {
-			if (main.name === symbol) {
-				debug(main);
-				const loc:Location = {
-					uri: fileFromUri(main.srcFile),
-					range: main.range
-				}
-				return loc
-			}
-		}
+		let loc = getLabelLocation(symbol, doc, pos);
+		debug(loc);
+		return loc;
 	}
 
 	

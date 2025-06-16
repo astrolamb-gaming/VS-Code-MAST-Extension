@@ -96,13 +96,13 @@ export class MissionCache {
 		this.missionName = path.basename(this.missionURI);
 		this.storyJson = new StoryJson(path.join(this.missionURI,"story.json"));
 
-		this.load().then(async ()=>{
-			await sleep(100);
-			// showProgressBar(false);
-			debug("Starting python")
-			initializePython(path.join(this.missionURI,"story.json"))	
+		// this.load().then(async ()=>{
+		// 	await sleep(100);
+		// 	// showProgressBar(false);
+		// 	debug("Starting python")
+		// 	initializePython(path.join(this.missionURI,"story.json"))	
 			
-		});
+		// });
 	}
 
 	async load() {
@@ -172,7 +172,7 @@ export class MissionCache {
 		});
 		//this.checkForInitFolder(this.missionURI);
 		debug("Number of py files: "+this.pyFileCache.length);
-		await this.isLoaded();
+		await this.awaitLoaded();
 		debug("Everything is laoded")
 		
 	}
@@ -290,7 +290,7 @@ export class MissionCache {
 		// this.pyFileCache.push(builtInFunctions);
 		debug("buitins added")
 		// showProgressBar(false);
-		this.pyInfoLoaded = true;
+		// this.pyInfoLoaded = true;
 	}
 
 	async checkForInitFolder(folder:string) : Promise<boolean> {
@@ -790,28 +790,27 @@ export class MissionCache {
 	}
 	
 	/**
-	 * @param fileUri The uri of the file. 
+	 * @param textDocument the current {@link TextDocument TextDocument}
+	 * @param thisFileOnly if true, returns only labels in the current file. Default is false.
 	 * @returns List of {@link LabelInfo LabelInfo} applicable to the current scope (including modules)
 	 */
 	getLabels(textDocument: TextDocument, thisFileOnly=false): LabelInfo[] {
-		debug(this.mastFileCache)
+		// debug(this.mastFileCache)
 		let fileUri: string = fixFileName(textDocument.uri);
 		let li: LabelInfo[] = [];
 		//debug(this.mastFileInfo);
 		for (const f of this.mastFileCache) {
+			if (thisFileOnly || fileUri === f.uri) {
 				li = li.concat(f.labelNames);
+			}
 		}
+		if (thisFileOnly) return li;
 
 		// This gets stuff from LegendaryMissions, if the current file isn't LegendaryMissions itself.
 		for (const f of this.missionMastModules) {
 			li = li.concat(f.labelNames);
 		}
-		//debug(li);
-		if (thisFileOnly) {
-			li = li.filter((labelInfo)=>{
-				return labelInfo.srcFile === fileUri;
-			});
-		}
+
 		// Remove duplicates (should just be a bunch of END entries)
 		// Could also include labels that exist in another file
 		const arrUniq = [...new Map(li.map(v => [v.name, v])).values()]
@@ -976,6 +975,8 @@ export class MissionCache {
 	 */
 	getMastFile(uri:string): MastFile {
 		uri = fixFileName(uri);
+		// debug(uri);
+		// if (uri.endsWith("server_console.mast")) debug(" THIS FILE")
 		for (const m of this.mastFileCache) {
 			if (m.uri === fixFileName(uri)) {
 				return m;
@@ -1045,9 +1046,21 @@ export class MissionCache {
 
 	// 	}
 	// }
+	isLoaded() {
+		let all = this.sbsLoaded && this.storyJsonLoaded && this.pyInfoLoaded;
+		debug("Loaded status:");
+		debug(this.sbsLoaded);
+		debug(this.storyJsonLoaded);
+		debug(this.pyInfoLoaded);
+		return all;
+	}
 
-	async isLoaded() {
-		while (!this.sbsLoaded || !this.storyJsonLoaded || !this.pyInfoLoaded) {
+	async awaitLoaded() {
+		while (!(this.sbsLoaded && this.storyJsonLoaded && this.pyInfoLoaded)) {
+			debug("Loaded status:");
+			debug(this.sbsLoaded);
+			debug(this.storyJsonLoaded);
+			debug(this.pyInfoLoaded);
 			await sleep(100);
 		}
 		showProgressBar(false);
@@ -1225,6 +1238,7 @@ export function getCache(name:string, reloadCache:boolean = false): MissionCache
 	if (ret === undefined) {
 		ret = new MissionCache(name);
 		caches.push(ret);
+		ret.load();
 	}
 	return ret;
 }

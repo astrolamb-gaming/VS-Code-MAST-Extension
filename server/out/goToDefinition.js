@@ -94,30 +94,9 @@ async function onDefinition(doc, pos) {
                 }
             }
         }
-        // Now let's check over all the labels, to see if it's a label. This will be most useful for most people I think.
-        let mainLabels = (0, cache_1.getCache)(doc.uri).getLabels(doc, true);
-        const mainLabelAtPos = (0, labels_1.getMainLabelAtPos)(doc.offsetAt(pos), mainLabels);
-        for (const sub of mainLabelAtPos.subLabels) {
-            if (sub.name === symbol) {
-                (0, console_1.debug)(sub);
-                const loc = {
-                    uri: (0, fileFunctions_1.fileFromUri)(sub.srcFile),
-                    range: sub.range
-                };
-                return loc;
-            }
-        }
-        mainLabels = (0, cache_1.getCache)(doc.uri).getLabels(doc, false);
-        for (const main of mainLabels) {
-            if (main.name === symbol) {
-                (0, console_1.debug)(main);
-                const loc = {
-                    uri: (0, fileFunctions_1.fileFromUri)(main.srcFile),
-                    range: main.range
-                };
-                return loc;
-            }
-        }
+        let loc = (0, labels_1.getLabelLocation)(symbol, doc, pos);
+        (0, console_1.debug)(loc);
+        return loc;
     }
     // let start: Position = {line: pos.line, character: 1}
     // let end: Position = {line: pos.line, character: 5}

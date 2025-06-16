@@ -300,14 +300,10 @@ documents.onDidClose(e => {
 connection.languages.diagnostics.on(async (params) => {
 	//TODO: get info from other files in same directory
 	const document = documents.get(params.textDocument.uri);
-	// connection.workspace.getWorkspaceFolders().then((value:WorkspaceFolder[] | null) => {
-	// 	if (value !== null) {
-	// 		value[0].uri
-	// 	}
-	// })
-	
+
 	if (document !== undefined) {
-		
+		let cache = getCache(params.textDocument.uri);
+		await cache.awaitLoaded();
 		getVariableNamesInDoc(document);
 		let [val, comp]: Diagnostic[][] = await Promise.all([validateTextDocument(document), compileMastFile(document)]);
 		const ret = val.concat(comp);
@@ -402,7 +398,7 @@ connection.onSignatureHelp(async (_textDocPos: SignatureHelpParams): Promise<Sig
 	// }
 	const document = documents.get(_textDocPos.textDocument.uri);
 	if (document === undefined) return undefined;
-	await getCache(document.uri).isLoaded();
+	await getCache(document.uri).awaitLoaded();
 	if (_textDocPos.textDocument.uri.endsWith(".py")) return undefined;
 	const text = documents.get(_textDocPos.textDocument.uri);
 	if (text === undefined) {
@@ -414,7 +410,7 @@ connection.onSignatureHelp(async (_textDocPos: SignatureHelpParams): Promise<Sig
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
 	async (_textDocumentPosition: TextDocumentPositionParams): Promise<CompletionItem[] | undefined> => {
-		await getCache(_textDocumentPosition.textDocument.uri).isLoaded();
+		await getCache(_textDocumentPosition.textDocument.uri).awaitLoaded();
 		if (_textDocumentPosition.textDocument.uri.endsWith("json")) {
 			debug("THIS IS A JSON FILE");
 			return getGlobals().libModuleCompletionItems;
@@ -467,7 +463,7 @@ export function updateLabelNames(li: LabelInfo[]) {
 // );
 
 connection.onHover(async (_textDocumentPosition: TextDocumentPositionParams): Promise<Hover | undefined> => {
-	await getCache(_textDocumentPosition.textDocument.uri).isLoaded();
+	await getCache(_textDocumentPosition.textDocument.uri).awaitLoaded();
 	const text = documents.get(_textDocumentPosition.textDocument.uri);
 	if (text === undefined) {
 		debug("Undefined");
@@ -556,7 +552,10 @@ connection.onNotification("custom/storyJsonResponse",(response)=>{
 
 // connection.onDefinition((params: DefinitionParams): HandlerResult<Definition | LocationLink[] | null | undefined, void>=>{
 connection.onDefinition(async (params: DefinitionParams): Promise<Definition | undefined> =>{
-	await getCache(params.textDocument.uri).isLoaded();
+	let cache = getCache(params.textDocument.uri);
+	await cache.awaitLoaded();
+	if (!cache.isLoaded()) debug("NOT LOADED YET")
+
 	const document = documents.get(params.textDocument.uri);
 	let def = undefined;
 	if (document !== undefined) {
@@ -568,7 +567,7 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | u
 
 connection.onReferences(async (params:ReferenceParams): Promise<Location[] | undefined> => {
 	// debug("Trying to find word refs....")
-	await getCache(params.textDocument.uri).isLoaded();
+	await getCache(params.textDocument.uri).awaitLoaded();
 	const document = documents.get(params.textDocument.uri);
 	let def = undefined;
 	if (document !== undefined) {

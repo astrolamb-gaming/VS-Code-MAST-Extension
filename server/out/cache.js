@@ -83,12 +83,12 @@ class MissionCache {
         this.missionLibFolder = path.join(parent, "__lib__");
         this.missionName = path.basename(this.missionURI);
         this.storyJson = new storyJson_1.StoryJson(path.join(this.missionURI, "story.json"));
-        this.load().then(async () => {
-            await (0, python_1.sleep)(100);
-            // showProgressBar(false);
-            (0, console_1.debug)("Starting python");
-            (0, python_1.initializePython)(path.join(this.missionURI, "story.json"));
-        });
+        // this.load().then(async ()=>{
+        // 	await sleep(100);
+        // 	// showProgressBar(false);
+        // 	debug("Starting python")
+        // 	initializePython(path.join(this.missionURI,"story.json"))	
+        // });
     }
     async load() {
         (0, console_1.debug)("Starting MissionCache.load()");
@@ -156,7 +156,7 @@ class MissionCache {
         });
         //this.checkForInitFolder(this.missionURI);
         (0, console_1.debug)("Number of py files: " + this.pyFileCache.length);
-        await this.isLoaded();
+        await this.awaitLoaded();
         (0, console_1.debug)("Everything is laoded");
     }
     async loadPythonGlobals(globals) {
@@ -270,7 +270,7 @@ class MissionCache {
         // this.pyFileCache.push(builtInFunctions);
         (0, console_1.debug)("buitins added");
         // showProgressBar(false);
-        this.pyInfoLoaded = true;
+        // this.pyInfoLoaded = true;
     }
     async checkForInitFolder(folder) {
         // if (this.ingoreInitFileMissing) return;
@@ -762,26 +762,25 @@ class MissionCache {
         return words;
     }
     /**
-     * @param fileUri The uri of the file.
+     * @param textDocument the current {@link TextDocument TextDocument}
+     * @param thisFileOnly if true, returns only labels in the current file. Default is false.
      * @returns List of {@link LabelInfo LabelInfo} applicable to the current scope (including modules)
      */
     getLabels(textDocument, thisFileOnly = false) {
-        (0, console_1.debug)(this.mastFileCache);
+        // debug(this.mastFileCache)
         let fileUri = (0, fileFunctions_1.fixFileName)(textDocument.uri);
         let li = [];
         //debug(this.mastFileInfo);
         for (const f of this.mastFileCache) {
-            li = li.concat(f.labelNames);
+            if (thisFileOnly || fileUri === f.uri) {
+                li = li.concat(f.labelNames);
+            }
         }
+        if (thisFileOnly)
+            return li;
         // This gets stuff from LegendaryMissions, if the current file isn't LegendaryMissions itself.
         for (const f of this.missionMastModules) {
             li = li.concat(f.labelNames);
-        }
-        //debug(li);
-        if (thisFileOnly) {
-            li = li.filter((labelInfo) => {
-                return labelInfo.srcFile === fileUri;
-            });
         }
         // Remove duplicates (should just be a bunch of END entries)
         // Could also include labels that exist in another file
@@ -940,6 +939,8 @@ class MissionCache {
      */
     getMastFile(uri) {
         uri = (0, fileFunctions_1.fixFileName)(uri);
+        // debug(uri);
+        // if (uri.endsWith("server_console.mast")) debug(" THIS FILE")
         for (const m of this.mastFileCache) {
             if (m.uri === (0, fileFunctions_1.fixFileName)(uri)) {
                 return m;
@@ -1005,8 +1006,20 @@ class MissionCache {
     // 	for (const p of this.missionPyModules) {
     // 	}
     // }
-    async isLoaded() {
-        while (!this.sbsLoaded || !this.storyJsonLoaded || !this.pyInfoLoaded) {
+    isLoaded() {
+        let all = this.sbsLoaded && this.storyJsonLoaded && this.pyInfoLoaded;
+        (0, console_1.debug)("Loaded status:");
+        (0, console_1.debug)(this.sbsLoaded);
+        (0, console_1.debug)(this.storyJsonLoaded);
+        (0, console_1.debug)(this.pyInfoLoaded);
+        return all;
+    }
+    async awaitLoaded() {
+        while (!(this.sbsLoaded && this.storyJsonLoaded && this.pyInfoLoaded)) {
+            (0, console_1.debug)("Loaded status:");
+            (0, console_1.debug)(this.sbsLoaded);
+            (0, console_1.debug)(this.storyJsonLoaded);
+            (0, console_1.debug)(this.pyInfoLoaded);
             await (0, python_1.sleep)(100);
         }
         (0, server_1.showProgressBar)(false);
@@ -1176,6 +1189,7 @@ function getCache(name, reloadCache = false) {
     if (ret === undefined) {
         ret = new MissionCache(name);
         caches.push(ret);
+        ret.load();
     }
     return ret;
 }

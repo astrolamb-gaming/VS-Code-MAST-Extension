@@ -8,6 +8,7 @@ exports.checkForDuplicateLabelsInList = checkForDuplicateLabelsInList;
 exports.checkLabels = checkLabels;
 exports.getMainLabelAtPos = getMainLabelAtPos;
 exports.getLabelMetadataKeys = getLabelMetadataKeys;
+exports.getLabelLocation = getLabelLocation;
 const vscode_languageserver_1 = require("vscode-languageserver");
 const vscode_languageserver_textdocument_1 = require("vscode-languageserver-textdocument");
 const errorChecking_1 = require("../errorChecking");
@@ -376,6 +377,17 @@ function checkLabels(textDocument) {
         // 		}
         // 	}
         // }
+        (0, console_1.debug)(str);
+        (0, console_1.debug)(textDocument.uri);
+        (0, console_1.debug)(m.index);
+        (0, console_1.debug)(textDocument.getText().substring(m.index, m.index + 20));
+        (0, console_1.debug)(textDocument.positionAt(m.index));
+        let labelLoc = getLabelLocation(str, textDocument, textDocument.positionAt(m.index));
+        (0, console_1.debug)(labelLoc);
+        if (labelLoc === undefined) {
+            extraDebug = true;
+            getLabelLocation(str, textDocument, textDocument.positionAt(m.index));
+        }
         // Label not found in file
         if (!found) {
             const d = {
@@ -580,5 +592,32 @@ function getLabelMetadataKeys(label) {
     // debug(arrUniq);
     (0, console_1.debug)(keys);
     return keys;
+}
+let extraDebug = false;
+function getLabelLocation(symbol, doc, pos) {
+    // Now let's check over all the labels, to see if it's a label. This will be most useful for most people I think.
+    let mainLabels = (0, cache_1.getCache)(doc.uri).getLabels(doc, true);
+    const mainLabelAtPos = getMainLabelAtPos(doc.offsetAt(pos), mainLabels);
+    for (const sub of mainLabelAtPos.subLabels) {
+        if (sub.name === symbol) {
+            (0, console_1.debug)(sub);
+            const loc = {
+                uri: (0, fileFunctions_1.fileFromUri)(sub.srcFile),
+                range: sub.range
+            };
+            return loc;
+        }
+    }
+    mainLabels = (0, cache_1.getCache)(doc.uri).getLabels(doc, false);
+    for (const main of mainLabels) {
+        if (main.name === symbol) {
+            (0, console_1.debug)(main);
+            const loc = {
+                uri: (0, fileFunctions_1.fileFromUri)(main.srcFile),
+                range: main.range
+            };
+            return loc;
+        }
+    }
 }
 //# sourceMappingURL=labels.js.map
