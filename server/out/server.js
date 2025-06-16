@@ -23,6 +23,7 @@ const variables_1 = require("./tokens/variables");
 const globals_1 = require("./globals");
 const validate_1 = require("./validate");
 const goToDefinition_1 = require("./goToDefinition");
+const cache_1 = require("./cache");
 const references_1 = require("./references");
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -282,11 +283,15 @@ exports.connection.onDidChangeWatchedFiles(_change => {
 /**
  * Triggered when ending a function name with an open parentheses, e.g. "functionName( "
  */
-exports.connection.onSignatureHelp((_textDocPos) => {
+exports.connection.onSignatureHelp(async (_textDocPos) => {
     //debug(functionData.length);
     // if (!_textDocPos.textDocument.uri.endsWith("mast")) {
     // 	return;
     // }
+    const document = exports.documents.get(_textDocPos.textDocument.uri);
+    if (document === undefined)
+        return undefined;
+    await (0, cache_1.getCache)(document.uri).isLoaded();
     if (_textDocPos.textDocument.uri.endsWith(".py"))
         return undefined;
     const text = exports.documents.get(_textDocPos.textDocument.uri);
@@ -296,7 +301,8 @@ exports.connection.onSignatureHelp((_textDocPos) => {
     return (0, signatureHelp_1.onSignatureHelp)(_textDocPos, text);
 });
 // This handler provides the initial list of the completion items.
-exports.connection.onCompletion((_textDocumentPosition) => {
+exports.connection.onCompletion(async (_textDocumentPosition) => {
+    await (0, cache_1.getCache)(_textDocumentPosition.textDocument.uri).isLoaded();
     if (_textDocumentPosition.textDocument.uri.endsWith("json")) {
         (0, console_1.debug)("THIS IS A JSON FILE");
         return (0, globals_1.getGlobals)().libModuleCompletionItems;
@@ -345,7 +351,8 @@ function updateLabelNames(li) {
 // 		return item;
 // 	}
 // );
-exports.connection.onHover((_textDocumentPosition) => {
+exports.connection.onHover(async (_textDocumentPosition) => {
+    await (0, cache_1.getCache)(_textDocumentPosition.textDocument.uri).isLoaded();
     const text = exports.documents.get(_textDocumentPosition.textDocument.uri);
     if (text === undefined) {
         (0, console_1.debug)("Undefined");
@@ -414,22 +421,25 @@ exports.connection.onNotification("custom/storyJsonResponse", (response) => {
 // 	  end: { line: 2, character: 6 }
 // 	});
 //   });
-exports.connection.onDefinition((params, token, workDoneProgress, resultProgress) => {
+// connection.onDefinition((params: DefinitionParams): HandlerResult<Definition | LocationLink[] | null | undefined, void>=>{
+exports.connection.onDefinition(async (params) => {
+    await (0, cache_1.getCache)(params.textDocument.uri).isLoaded();
     const document = exports.documents.get(params.textDocument.uri);
     let def = undefined;
     if (document !== undefined) {
-        def = (0, goToDefinition_1.onDefinition)(document, params.position);
-        def.then((loc) => { (0, console_1.debug)(loc); });
+        def = await (0, goToDefinition_1.onDefinition)(document, params.position);
+        (0, console_1.debug)(def);
     }
     return def;
 });
-exports.connection.onReferences((params) => {
+exports.connection.onReferences(async (params) => {
     // debug("Trying to find word refs....")
+    await (0, cache_1.getCache)(params.textDocument.uri).isLoaded();
     const document = exports.documents.get(params.textDocument.uri);
     let def = undefined;
     if (document !== undefined) {
-        def = (0, references_1.onReferences)(document, params);
-        def.then((locs) => { (0, console_1.debug)(locs); });
+        def = await (0, references_1.onReferences)(document, params);
+        (0, console_1.debug)(def);
     }
     return def;
 });

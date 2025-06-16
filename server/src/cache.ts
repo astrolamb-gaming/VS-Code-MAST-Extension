@@ -77,6 +77,12 @@ export class MissionCache {
 	resourceLabels: IRouteLabel[] = [];
 	styleDefinitions: string[] = [];
 
+	// Variables to check if the cache has finished loading
+	storyJsonLoaded = false;
+	pyInfoLoaded = false;
+	missionFilesLoaded = false;
+	sbsLoaded = false;
+
 	constructor(workspaceUri: string) {
 		//debug(workspaceUri);
 
@@ -92,7 +98,7 @@ export class MissionCache {
 
 		this.load().then(async ()=>{
 			await sleep(100);
-			showProgressBar(false);
+			// showProgressBar(false);
 			debug("Starting python")
 			initializePython(path.join(this.missionURI,"story.json"))	
 			
@@ -112,26 +118,29 @@ export class MissionCache {
 		this.mediaLabels = [];
 		this.mastFileCache = [];
 		this.storyJson = new StoryJson(path.join(this.missionURI,"story.json"));
-		let storyJsonDone = false;
+		this.storyJsonLoaded = false;
+		this.sbsLoaded = false;
 		this.storyJson.readFile()
 			.then(()=>{
 				showProgressBar(true);
 				this.modulesLoaded().then(()=>{
 					debug("Modules loaded for " + this.missionName);
 					// showProgressBar(false);
-					storyJsonDone = true;
+					this.storyJsonLoaded = true;
 
 					// Now we do the python checks for the MastGlobals that don't exist already
+					let globals: string[][] = [];
 					for (const p of this.pyFileCache) {
 						if (p.globals.length > 0) {
-							this.loadPythonGlobals(p.globals).then((info)=>{
-								debug("Loaded globals")
-							});
+							globals = globals.concat(p.globals)
 						}
 					}
+					this.loadPythonGlobals(globals).then((info)=>{
+						debug("Loaded globals")
+						this.pyInfoLoaded = true;
+					});
 				})
 			});
-		let sbsLoaded = false;
 		loadSbs().then((p)=>{
 			showProgressBar(true);
 			if (p !== null) {
@@ -141,8 +150,8 @@ export class MissionCache {
 				// this.missionClasses = this.missionClasses.concat(p.classes);
 			}
 			debug("Finished loading sbs_utils for " + this.missionName);
-			showProgressBar(false);
-			sbsLoaded = true;
+			// showProgressBar(false);
+			this.sbsLoaded = true;
 		});
 		this.checkForCacheUpdates();
 		debug(this.missionURI)
@@ -163,9 +172,7 @@ export class MissionCache {
 		});
 		//this.checkForInitFolder(this.missionURI);
 		debug("Number of py files: "+this.pyFileCache.length);
-		while (!sbsLoaded || !storyJsonDone) {
-			await sleep(100);
-		}
+		await this.isLoaded();
 		debug("Everything is laoded")
 		
 	}
@@ -282,7 +289,8 @@ export class MissionCache {
 		// this.pyFileCache.push(builtIns);
 		// this.pyFileCache.push(builtInFunctions);
 		debug("buitins added")
-		showProgressBar(false);
+		// showProgressBar(false);
+		this.pyInfoLoaded = true;
 	}
 
 	async checkForInitFolder(folder:string) : Promise<boolean> {
@@ -580,7 +588,7 @@ export class MissionCache {
 				}
 			}
 		}
-		showProgressBar(false);
+		// showProgressBar(false);
 	}
 
 	/**
@@ -1037,6 +1045,13 @@ export class MissionCache {
 
 	// 	}
 	// }
+
+	async isLoaded() {
+		while (!this.sbsLoaded || !this.storyJsonLoaded || !this.pyInfoLoaded) {
+			await sleep(100);
+		}
+		showProgressBar(false);
+	}
 
 }
 

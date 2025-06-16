@@ -307,6 +307,7 @@ connection.languages.diagnostics.on(async (params) => {
 	// })
 	
 	if (document !== undefined) {
+		
 		getVariableNamesInDoc(document);
 		let [val, comp]: Diagnostic[][] = await Promise.all([validateTextDocument(document), compileMastFile(document)]);
 		const ret = val.concat(comp);
@@ -394,11 +395,14 @@ connection.onDidChangeWatchedFiles(_change => {
 /**
  * Triggered when ending a function name with an open parentheses, e.g. "functionName( "
  */
-connection.onSignatureHelp((_textDocPos: SignatureHelpParams): SignatureHelp | undefined =>{
+connection.onSignatureHelp(async (_textDocPos: SignatureHelpParams): Promise<SignatureHelp | undefined> =>{
 	//debug(functionData.length);
 	// if (!_textDocPos.textDocument.uri.endsWith("mast")) {
 	// 	return;
 	// }
+	const document = documents.get(_textDocPos.textDocument.uri);
+	if (document === undefined) return undefined;
+	await getCache(document.uri).isLoaded();
 	if (_textDocPos.textDocument.uri.endsWith(".py")) return undefined;
 	const text = documents.get(_textDocPos.textDocument.uri);
 	if (text === undefined) {
@@ -409,7 +413,8 @@ connection.onSignatureHelp((_textDocPos: SignatureHelpParams): SignatureHelp | u
 
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
-	(_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] | undefined => {
+	async (_textDocumentPosition: TextDocumentPositionParams): Promise<CompletionItem[] | undefined> => {
+		await getCache(_textDocumentPosition.textDocument.uri).isLoaded();
 		if (_textDocumentPosition.textDocument.uri.endsWith("json")) {
 			debug("THIS IS A JSON FILE");
 			return getGlobals().libModuleCompletionItems;
@@ -461,7 +466,8 @@ export function updateLabelNames(li: LabelInfo[]) {
 // 	}
 // );
 
-connection.onHover((_textDocumentPosition: TextDocumentPositionParams): Hover | undefined => {
+connection.onHover(async (_textDocumentPosition: TextDocumentPositionParams): Promise<Hover | undefined> => {
+	await getCache(_textDocumentPosition.textDocument.uri).isLoaded();
 	const text = documents.get(_textDocumentPosition.textDocument.uri);
 	if (text === undefined) {
 		debug("Undefined");
@@ -548,23 +554,26 @@ connection.onNotification("custom/storyJsonResponse",(response)=>{
 // 	});
 //   });
 
-connection.onDefinition((params: DefinitionParams,token: CancellationToken,workDoneProgress:WorkDoneProgressReporter,resultProgress:ResultProgressReporter<LocationLink[] | Location[]> | undefined): HandlerResult<Definition | LocationLink[] | null | undefined, void>=>{
+// connection.onDefinition((params: DefinitionParams): HandlerResult<Definition | LocationLink[] | null | undefined, void>=>{
+connection.onDefinition(async (params: DefinitionParams): Promise<Definition | undefined> =>{
+	await getCache(params.textDocument.uri).isLoaded();
 	const document = documents.get(params.textDocument.uri);
 	let def = undefined;
 	if (document !== undefined) {
-		def = onDefinition(document,params.position);
-		def.then((loc)=>{debug(loc)});
+		def = await onDefinition(document,params.position);
+		debug(def);
 	}
 	return def;
 });
 
-connection.onReferences((params:ReferenceParams): Promise<Location[] | undefined> | undefined => {
+connection.onReferences(async (params:ReferenceParams): Promise<Location[] | undefined> => {
 	// debug("Trying to find word refs....")
+	await getCache(params.textDocument.uri).isLoaded();
 	const document = documents.get(params.textDocument.uri);
 	let def = undefined;
 	if (document !== undefined) {
-		def = onReferences(document, params);
-		def.then((locs)=>{debug(locs)});
+		def = await onReferences(document, params);
+		debug(def);
 	}
 	return def;
 });

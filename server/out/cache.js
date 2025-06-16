@@ -70,6 +70,11 @@ class MissionCache {
          */
         this.resourceLabels = [];
         this.styleDefinitions = [];
+        // Variables to check if the cache has finished loading
+        this.storyJsonLoaded = false;
+        this.pyInfoLoaded = false;
+        this.missionFilesLoaded = false;
+        this.sbsLoaded = false;
         this.resourceLabels = (0, routeLabels_1.loadResourceLabels)();
         this.mediaLabels = this.mediaLabels.concat((0, routeLabels_1.loadMediaLabels)());
         this.missionURI = (0, fileFunctions_1.getMissionFolder)(workspaceUri);
@@ -80,7 +85,7 @@ class MissionCache {
         this.storyJson = new storyJson_1.StoryJson(path.join(this.missionURI, "story.json"));
         this.load().then(async () => {
             await (0, python_1.sleep)(100);
-            (0, server_1.showProgressBar)(false);
+            // showProgressBar(false);
             (0, console_1.debug)("Starting python");
             (0, python_1.initializePython)(path.join(this.missionURI, "story.json"));
         });
@@ -98,25 +103,28 @@ class MissionCache {
         this.mediaLabels = [];
         this.mastFileCache = [];
         this.storyJson = new storyJson_1.StoryJson(path.join(this.missionURI, "story.json"));
-        let storyJsonDone = false;
+        this.storyJsonLoaded = false;
+        this.sbsLoaded = false;
         this.storyJson.readFile()
             .then(() => {
             (0, server_1.showProgressBar)(true);
             this.modulesLoaded().then(() => {
                 (0, console_1.debug)("Modules loaded for " + this.missionName);
                 // showProgressBar(false);
-                storyJsonDone = true;
+                this.storyJsonLoaded = true;
                 // Now we do the python checks for the MastGlobals that don't exist already
+                let globals = [];
                 for (const p of this.pyFileCache) {
                     if (p.globals.length > 0) {
-                        this.loadPythonGlobals(p.globals).then((info) => {
-                            (0, console_1.debug)("Loaded globals");
-                        });
+                        globals = globals.concat(p.globals);
                     }
                 }
+                this.loadPythonGlobals(globals).then((info) => {
+                    (0, console_1.debug)("Loaded globals");
+                    this.pyInfoLoaded = true;
+                });
             });
         });
-        let sbsLoaded = false;
         loadSbs().then((p) => {
             (0, server_1.showProgressBar)(true);
             if (p !== null) {
@@ -126,8 +134,8 @@ class MissionCache {
                 // this.missionClasses = this.missionClasses.concat(p.classes);
             }
             (0, console_1.debug)("Finished loading sbs_utils for " + this.missionName);
-            (0, server_1.showProgressBar)(false);
-            sbsLoaded = true;
+            // showProgressBar(false);
+            this.sbsLoaded = true;
         });
         this.checkForCacheUpdates();
         (0, console_1.debug)(this.missionURI);
@@ -148,9 +156,7 @@ class MissionCache {
         });
         //this.checkForInitFolder(this.missionURI);
         (0, console_1.debug)("Number of py files: " + this.pyFileCache.length);
-        while (!sbsLoaded || !storyJsonDone) {
-            await (0, python_1.sleep)(100);
-        }
+        await this.isLoaded();
         (0, console_1.debug)("Everything is laoded");
     }
     async loadPythonGlobals(globals) {
@@ -263,7 +269,8 @@ class MissionCache {
         // this.pyFileCache.push(builtIns);
         // this.pyFileCache.push(builtInFunctions);
         (0, console_1.debug)("buitins added");
-        (0, server_1.showProgressBar)(false);
+        // showProgressBar(false);
+        this.pyInfoLoaded = true;
     }
     async checkForInitFolder(folder) {
         // if (this.ingoreInitFileMissing) return;
@@ -567,7 +574,7 @@ class MissionCache {
                 }
             }
         }
-        (0, server_1.showProgressBar)(false);
+        // showProgressBar(false);
     }
     /**
      * Gets all route labels in scope for the given cache.
@@ -993,6 +1000,16 @@ class MissionCache {
         }
         // this.pyFileCache.push(p);
         return p;
+    }
+    // addMissionPyFile(py:PyFile) {
+    // 	for (const p of this.missionPyModules) {
+    // 	}
+    // }
+    async isLoaded() {
+        while (!this.sbsLoaded || !this.storyJsonLoaded || !this.pyInfoLoaded) {
+            await (0, python_1.sleep)(100);
+        }
+        (0, server_1.showProgressBar)(false);
     }
 }
 exports.MissionCache = MissionCache;
