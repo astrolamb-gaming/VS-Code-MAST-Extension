@@ -523,6 +523,8 @@ class MissionCache {
      * The only real use for this now is when loading the initial cache info.
      */
     checkForCacheUpdates() {
+        this.missionFilesLoaded = false;
+        (0, server_1.showProgressBar)(true);
         // First check for any files that have been deleted
         const files = (0, fileFunctions_1.getFilesInDir)(this.missionURI);
         let found = false;
@@ -575,6 +577,7 @@ class MissionCache {
             }
         }
         // showProgressBar(false);
+        this.missionFilesLoaded = true;
     }
     /**
      * Gets all route labels in scope for the given cache.
@@ -1013,7 +1016,7 @@ class MissionCache {
     // 	}
     // }
     isLoaded() {
-        let all = this.sbsLoaded && this.storyJsonLoaded && this.pyInfoLoaded;
+        let all = this.sbsLoaded && this.storyJsonLoaded && this.pyInfoLoaded && this.missionFilesLoaded;
         // debug("Loaded status:");
         // debug(this.sbsLoaded);
         // debug(this.storyJsonLoaded);
@@ -1021,7 +1024,7 @@ class MissionCache {
         return all;
     }
     async awaitLoaded() {
-        while (!(this.sbsLoaded && this.storyJsonLoaded && this.pyInfoLoaded)) {
+        while (!(this.sbsLoaded && this.storyJsonLoaded && this.pyInfoLoaded && this.missionFilesLoaded)) {
             // debug("Loaded status:");
             // debug(this.sbsLoaded);
             // debug(this.storyJsonLoaded);

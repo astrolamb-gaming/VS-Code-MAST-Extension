@@ -59,6 +59,11 @@ class MastFile extends data_1.FileCache {
             // Send notification to client?
         }
     }
+    // async asTextDocument(): Promise<TextDocument> {
+    // 	let contents = await readFile(this.uri);
+    // 	let doc: TextDocument = TextDocument.create(this.uri, path.extname(this.uri), 1, contents);
+    // 	return doc;
+    // }
     parse(text) {
         this.loaded = false;
         // debug("parsing mast file: " + this.uri)

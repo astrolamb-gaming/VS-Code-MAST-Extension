@@ -10,6 +10,7 @@ import { getRolesForFile, getInventoryKeysForFile } from '../tokens/roles';
 import { Variable, parseVariables } from '../tokens/variables';
 import { Word, parseWords } from '../tokens/words';
 import { sleep } from '../python/python';
+import { getFileContents, readFile } from '../fileFunctions';
 
 
 /**
@@ -59,6 +60,12 @@ export class MastFile extends FileCache {
 			// Send notification to client?
 		}
 	}
+
+	// async asTextDocument(): Promise<TextDocument> {
+	// 	let contents = await readFile(this.uri);
+	// 	let doc: TextDocument = TextDocument.create(this.uri, path.extname(this.uri), 1, contents);
+	// 	return doc;
+	// }
 
 	parse(text: string) {
 		this.loaded = false;

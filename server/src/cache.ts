@@ -545,6 +545,8 @@ export class MissionCache {
 	 * The only real use for this now is when loading the initial cache info.
 	 */
 	checkForCacheUpdates() {
+		this.missionFilesLoaded = false;
+		showProgressBar(true);
 		// First check for any files that have been deleted
 		const files = getFilesInDir(this.missionURI);
 		let found = false;
@@ -589,6 +591,7 @@ export class MissionCache {
 			}
 		}
 		// showProgressBar(false);
+		this.missionFilesLoaded = true;
 	}
 
 	/**
@@ -1052,7 +1055,7 @@ export class MissionCache {
 	// 	}
 	// }
 	isLoaded() {
-		let all = this.sbsLoaded && this.storyJsonLoaded && this.pyInfoLoaded;
+		let all = this.sbsLoaded && this.storyJsonLoaded && this.pyInfoLoaded && this.missionFilesLoaded;
 		// debug("Loaded status:");
 		// debug(this.sbsLoaded);
 		// debug(this.storyJsonLoaded);
@@ -1061,7 +1064,7 @@ export class MissionCache {
 	}
 
 	async awaitLoaded() {
-		while (!(this.sbsLoaded && this.storyJsonLoaded && this.pyInfoLoaded)) {
+		while (!(this.sbsLoaded && this.storyJsonLoaded && this.pyInfoLoaded && this.missionFilesLoaded)) {
 			// debug("Loaded status:");
 			// debug(this.sbsLoaded);
 			// debug(this.storyJsonLoaded);

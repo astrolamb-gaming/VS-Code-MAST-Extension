@@ -9,6 +9,7 @@ import { fileFromUri, fixFileName } from '../fileFunctions';
 import { isInComment, isInYaml } from './comments';
 import { start } from 'repl';
 import { getCurrentLineFromTextDocument } from '../hover';
+import { documents } from '../server';
 
 
 export interface LabelInfo {
@@ -235,7 +236,9 @@ export function checkForDuplicateLabelsInList(textDocument:TextDocument, labels:
 			}
 			if (labels[i].name === labels[j].name) {
 				if (labels[i].start === labels[j].start) continue;
-				debug(labels[i].name + " is used more than once");
+				// debug(labels[i].name + " is used more than once");
+				// debug(labels[i])
+				// debug(labels[j])
 				const d: Diagnostic = {
 					range: {
 						start: textDocument.positionAt(labels[i].start),
@@ -246,9 +249,11 @@ export function checkForDuplicateLabelsInList(textDocument:TextDocument, labels:
 					source: "mast",
 					
 				}
-				const s = textDocument.positionAt(labels[j].start);
+				// let file = fileFromUri(labels[j].srcFile);
+				// debug(file);
+				
 				let message = (subLabels) ? "The inline label \""+ labels[i].name + "\" is already used inside this parent label" : "The label \"" + labels[i].name + "\" is already used in this file";
-				message += " at Line " + s.line + ", Character " + s.character;
+				
 				if (!subLabels) {
 					let f:string;
 					if (labels[j].srcFile !== textDocument.uri) {
@@ -256,9 +261,24 @@ export function checkForDuplicateLabelsInList(textDocument:TextDocument, labels:
 					} else {
 						f = "this file.";
 					}
-					message = "The label \"" + labels[j].name + "\" is already defined in " + f + " at Line " + s.line + ", Character " + s.character;
+					message = "The label \"" + labels[j].name + "\" is already defined in " + f;
 				}
+				d.relatedInformation = [];
 				d.relatedInformation = relatedMessage(textDocument,d.range, message);
+
+				const s = labels[j].range.start;
+				// s.character = 1;
+				message += " at Line " + s.line + ", Character " + s.character;
+				
+				if (d.relatedInformation === undefined) d.relatedInformation = [];
+				d.relatedInformation.push({
+					location: {
+						uri: fileFromUri(labels[j].srcFile),
+						range: labels[j].range
+					},
+					message: '<-- Label also defined here.'
+				});
+				
 				diagnostics.push(d);
 			}
 		}
@@ -301,7 +321,7 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 	//const calledLabel : RegExp = /(^[ \t]*?(->|jump)[ \t]*?\w+)/gm;
 	const calledLabel : RegExp = /(?<=^[ \t]*(jump |->)[ \t]*)(\w+)/gm;
 	let m: RegExpExecArray | null;
-	let mainLabels : LabelInfo[] = getCache(textDocument.uri).getLabels(textDocument, true);//getLabelsInFile(text,textDocument.uri);
+	let mainLabels : LabelInfo[] = getCache(textDocument.uri).getLabels(textDocument, false);//getLabelsInFile(text,textDocument.uri);
 	///parseLabels(textDocument.getText(),textDocument.uri, true);
 	// const subLabels : LabelInfo[] = parseLabels(textDocument.getText(), textDocument.uri, false);
 	// // Add child labels to their parent
@@ -340,8 +360,8 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 			if (found) continue;
 		}
 
-		mainLabels = getCache(textDocument.uri).getLabels(textDocument, false);
-
+		// mainLabels = getCache(textDocument.uri).getLabels(textDocument, false);
+		
 		// If the label is not a main label, nor a sub-label of the main label,
 		// then we need to see if it exists at all.
 		for (const main of mainLabels) {
@@ -425,6 +445,7 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 		}
 	}
 	const dups = checkForDuplicateLabelsInList(textDocument,mainLabels);
+	// const susb = checkForDuplicateLabelsInList(textDocument,ml)
 	diagnostics = diagnostics.concat(dups);
 	//debug(diagnostics);
 	diagnostics = diagnostics.concat(findBadLabels(textDocument));
