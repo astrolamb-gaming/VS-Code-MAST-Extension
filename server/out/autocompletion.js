@@ -397,7 +397,7 @@ function onCompletion(_textDocumentPosition, text) {
         }
     }
     // Handle label autocompletion
-    let jump = /(->|jump)[ \t]*?/;
+    let jump = /(->|jump)[ \t]*[^\t ]*$/m;
     // if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (") || iStr.endsWith("objective_add(") || iStr.endsWith("brain_add(")) {
     if (jump.test(iStr)) {
         let labelNames = cache.getLabels(text);

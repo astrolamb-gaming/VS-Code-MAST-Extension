@@ -56,20 +56,20 @@ export async function compileMastFile(textDocument: TextDocument): Promise<Diagn
 				errFile = ma[1];
 				lineNum = parseFloat(ma[2]) - 1;
 				lineContents = ma[3];
-				debug(lines[2]);
-				debug(lineContents);
+				// debug(lines[2]);
+				// debug(lineContents);
 				
 				let sPos = {line: lineNum, character: 0};
-				debug(sPos);
-				debug(textDocument.offsetAt(sPos));
+				// debug(sPos);
+				// debug(textDocument.offsetAt(sPos));
 				let ePos = {line: lineNum + 1, character: 0};
-				debug(ePos);
+				// debug(ePos);
 				let e = textDocument.offsetAt(ePos)-1;
-				debug(e);
+				// debug(e);
 				let fileLine = textDocument.getText().substring(textDocument.offsetAt(sPos),e);
-				debug(fileLine);
+				// debug(fileLine);
 				chr = fileLine.indexOf(lineContents);
-				debug(chr);
+				// debug(chr);
 			}
 			ma = lines[3].match(moduleRx);
 			if (ma !== null) {

@@ -139,6 +139,8 @@ if not loaded:
 			return errors
 	try:
 		mast = MyMast()
+		Mast.include_code = True
+		print(mast.include_code)
 		# print("from_text")
 		errors = mast.from_text(mastFile, None, content)
 		# print(errors)
