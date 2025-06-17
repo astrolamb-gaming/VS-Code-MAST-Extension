@@ -302,16 +302,24 @@ connection.languages.diagnostics.on(async (params) => {
 	const document = documents.get(params.textDocument.uri);
 
 	if (document !== undefined) {
-		let cache = getCache(params.textDocument.uri);
-		await cache.awaitLoaded();
-		getVariableNamesInDoc(document);
-		let [val, comp]: Diagnostic[][] = await Promise.all([validateTextDocument(document), compileMastFile(document)]);
-		const ret = val.concat(comp);
-		return {
-			kind: DocumentDiagnosticReportKind.Full,
-			items: ret
-			// items: await validateTextDocument(document)
-		} satisfies DocumentDiagnosticReport;
+		try {
+			let cache = getCache(params.textDocument.uri);
+			await cache.awaitLoaded();
+			getVariableNamesInDoc(document);
+			let [val, comp]: Diagnostic[][] = await Promise.all([validateTextDocument(document), compileMastFile(document)]);
+			const ret = val.concat(comp);
+			return {
+				kind: DocumentDiagnosticReportKind.Full,
+				items: ret
+				// items: await validateTextDocument(document)
+			} satisfies DocumentDiagnosticReport;
+		} catch(e) {
+			debug(e);
+			return {
+				kind: DocumentDiagnosticReportKind.Full,
+				items: []
+			} satisfies DocumentDiagnosticReport;
+		}
 	} else {
 		// We don't know the document. We can either try to read it from disk
 		// or we don't report problems for it.

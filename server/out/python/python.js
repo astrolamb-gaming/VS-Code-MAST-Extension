@@ -175,7 +175,8 @@ async function getGlobalFunctions(sj) {
 async function compileMission(mastFile, content, sj) {
     mastFile = (0, fileFunctions_1.fixFileName)(mastFile);
     let errors = [];
-    const o = buildOptions(sj, [mastFile, content]);
+    // const o =  buildOptions(sj, [mastFile, content]);
+    const o = buildOptions(sj, [mastFile]);
     if (o === null)
         return [];
     //errors = await runScript(basicOptions);
@@ -274,18 +275,34 @@ exports.sleep = sleep;
 async function bigFile(options, content) {
     let errors = [];
     let compiled = false;
+    (0, console_1.debug)(options);
     let myscript = new python_shell_1.PythonShell('mastCompile.py', options);
+    (0, console_1.debug)("python shell started");
     var results = [];
     // debug(options);
     // debug(content);
     myscript.send(content);
+    // let lines = content.split("\n");
+    // for (const l of lines) {
+    // 	myscript.send(l);
+    // }
     myscript.on('message', (message) => {
         //debug(message);
         if (message !== "[]") { // if there's errors, parse them
-            let mj = message.replace(/[\[\]]/g, "");
-            let errs = mj.split("', '");
-            errors = errors.concat(errs);
-            // debug(errors);
+            if (message.startsWith("Debug: ")) {
+                (0, console_1.debug)("Python Debugger:");
+                (0, console_1.debug)(message.replace("Debug: ", ""));
+            }
+            else if (message.startsWith("Exception: ")) {
+                (0, console_1.debug)("Python Exception:");
+                (0, console_1.debug)(message.replace("Exception: ", ""));
+            }
+            else {
+                let mj = message.replace(/[\[\]]/g, "");
+                let errs = mj.split("', '");
+                errors = errors.concat(errs);
+                // debug(errors);
+            }
         }
     });
     // end the input stream and allow the process to exit

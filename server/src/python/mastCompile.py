@@ -3,6 +3,11 @@ from inspect import *
 import traceback
 import sys
 
+def debug(info):
+	print("Debug: " + info)
+def exception(info):
+	print("Except: \n" + info)
+
 # PYTHONPATH=/path/to/myArchive.zip python -m [filename without extension] [args]
 
 content = ""
@@ -14,7 +19,7 @@ getData = False
 sbs_utilsPath = sys.argv[1] # Very important
 sbsPath = sys.argv[2] # Will not be important in the future - v1.0.2 does not require sbs
 mastFile = sys.argv[3] # Very important
-print(mastFile)
+debug(mastFile)
 
 # print(sbs_utilsPath)
 # print(sbsPath)
@@ -25,9 +30,14 @@ try:
 	
 	content = sys.argv[4] # Very important
 except Exception as e:
-
-	content = sys.stdin.read().replace("\r","")
-	lines = content.split("\n")
+	try:
+		content = sys.stdin.read().replace("\r","")
+		# lines = content.split("\n")
+	except:
+		# print("Issue with content?")
+		exc_type, exc_value, exc_tb = sys.exc_info()
+		stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
+		exception(stack_trace)
 sys.path.append(sbsPath)
 sys.path.append(sbs_utilsPath)
 
@@ -74,7 +84,7 @@ if not loaded:
 	except:
 		exc_type, exc_value, exc_tb = sys.exc_info()
 		stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
-		print(stack_trace)
+		exception(stack_trace)
 		# import sys
 		# sys.exit(0)
 
@@ -100,7 +110,7 @@ if not loaded:
 			content = None
 			errors= None
 
-			print("From file file_name: "+file_name)
+			debug("From file file_name: "+file_name)
 			content, errors = self.content_from_lib_or_file(file_name)
 			# print(content)
 			if errors is not None:
@@ -108,7 +118,7 @@ if not loaded:
 				return errors
 			if content is not None:
 				content = content.replace("\r","")
-				print("from_file2 content:")
+				# debug("from_file2 content:")
 				# print(content)
 				errors = self.compile(content, file_name, root)
 			return errors
@@ -140,32 +150,32 @@ if not loaded:
 	try:
 		mast = MyMast()
 		Mast.include_code = True
-		print(mast.include_code)
+		# print(mast.include_code)
 		# print("from_text")
 		errors = mast.from_text(mastFile, None, content)
 		# print(errors)
 		# print("from_file")
 		# errors = mast.from_file2(mastFile, None)
 		if errors is None:
-			print("ERRORS IS NONE")
-		print(errors)
+			debug("ERRORS IS NONE")
+		# print(errors)
 	except TypeError as t:
-		print(t)
+		debug(t)
 		# Extract the traceback object
 		exc_type, exc_value, exc_tb = sys.exc_info()
 		# Format the traceback
 		stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
-		print(stack_trace)
+		exception(stack_trace)
 	except: 
 		exc_type, exc_value, exc_tb = sys.exc_info()
 		stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
-		print(stack_trace)
+		exception(stack_trace)
 	if errors is not None:
 		print(errors)
 		# for err in errors:
 		# 	print(err)
 	else:
-		print("No Errors")
+		debug("No Errors")
 	
 # except ModuleNotFoundError as e: 
 # 	print(e)

@@ -24,8 +24,9 @@ let exception = "\nException: {e}";
 let exceptRX = /\nException: (.*)/;
 */
 let errorOrExcept = /(Error|Exception):(.*)/;
-let errorInfo = /at (.*) Line (\d+) - '(.*)'/;
+let errorInfo = /at (.*) Line (\d+) (- '(.*)')?/;
 let moduleRx = /module[ \t](.*)/;
+let newlineIndex = /at first newline index\nat (.*) Line (\d+) \nmodule (\w+)\n\n/;
 
 export async function compileMastFile(textDocument: TextDocument): Promise<Diagnostic[]> {
 	// debug("Starting mast compile")
@@ -38,6 +39,7 @@ export async function compileMastFile(textDocument: TextDocument): Promise<Diagn
 		let m = e.replace(/\\n/g,"\n").replace(/\\'/g,"\'")
 		m = m.replace(/\(\<string\>\, line 1\)/g,"");
 		const lines = m.split("\n");
+		debug(lines);
 		let errorText: string = "";
 		let errType: string = "";
 		let errFile: string = "";
@@ -52,10 +54,11 @@ export async function compileMastFile(textDocument: TextDocument): Promise<Diagn
 				errorText  = ma[2].trim();
 			}
 			ma = lines[2].match(errorInfo);
+			// debug(ma);
 			if (ma !== null) {
 				errFile = ma[1];
 				lineNum = parseFloat(ma[2]) - 1;
-				lineContents = ma[3];
+				if (ma[4] !== undefined) lineContents = ma[4];
 				// debug(lines[2]);
 				// debug(lineContents);
 				
@@ -77,6 +80,7 @@ export async function compileMastFile(textDocument: TextDocument): Promise<Diagn
 					module = ma[1];
 				}
 			} 
+			
 			let message = errorText + "  in:\n`" + lineContents + "`\n";
 			let endPos = textDocument.positionAt(textDocument.offsetAt({line: lineNum+1, character: 0})-1);
 			const r: Range = {
@@ -216,7 +220,7 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		message: 'Statement must end with a colon.',
 		relatedMessage: "Applies to: 'with', 'if', 'elif', 'else', 'while', 'for', 'on', and 'on change' blocks."
 	}
-	// errorSources.push(with_colon);
+	errorSources.push(with_colon);
 
 	let gui_colon: ErrorInstance = {
 		pattern: /gui\w*?\(\".*?:.*?\"\)/,

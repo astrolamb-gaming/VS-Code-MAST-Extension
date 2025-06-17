@@ -224,16 +224,25 @@ exports.connection.languages.diagnostics.on(async (params) => {
     //TODO: get info from other files in same directory
     const document = exports.documents.get(params.textDocument.uri);
     if (document !== undefined) {
-        let cache = (0, cache_1.getCache)(params.textDocument.uri);
-        await cache.awaitLoaded();
-        (0, variables_1.getVariableNamesInDoc)(document);
-        let [val, comp] = await Promise.all([(0, validate_1.validateTextDocument)(document), (0, validate_1.compileMastFile)(document)]);
-        const ret = val.concat(comp);
-        return {
-            kind: node_1.DocumentDiagnosticReportKind.Full,
-            items: ret
-            // items: await validateTextDocument(document)
-        };
+        try {
+            let cache = (0, cache_1.getCache)(params.textDocument.uri);
+            await cache.awaitLoaded();
+            (0, variables_1.getVariableNamesInDoc)(document);
+            let [val, comp] = await Promise.all([(0, validate_1.validateTextDocument)(document), (0, validate_1.compileMastFile)(document)]);
+            const ret = val.concat(comp);
+            return {
+                kind: node_1.DocumentDiagnosticReportKind.Full,
+                items: ret
+                // items: await validateTextDocument(document)
+            };
+        }
+        catch (e) {
+            (0, console_1.debug)(e);
+            return {
+                kind: node_1.DocumentDiagnosticReportKind.Full,
+                items: []
+            };
+        }
     }
     else {
         // We don't know the document. We can either try to read it from disk

@@ -178,7 +178,8 @@ export async function getGlobalFunctions(sj:StoryJson): Promise<string[]> {
 export async function compileMission(mastFile: string, content: string, sj:StoryJson): Promise<string[]> {
 	mastFile = fixFileName(mastFile);
 	let errors: string[] = [];
-	const o =  buildOptions(sj, [mastFile, content]);
+	// const o =  buildOptions(sj, [mastFile, content]);
+	const o = buildOptions(sj, [mastFile]);
 	if (o === null) return [];
 	//errors = await runScript(basicOptions);
 	errors = await bigFile(o, content);
@@ -288,22 +289,36 @@ async function bigFile(options: Options, content: string): Promise<string[]> {
 	let errors: string[] = [];
 	let compiled = false;
 
+	debug(options)
 	let myscript = new PythonShell('mastCompile.py', options);
-	
+	debug("python shell started")
 	var results: string[] = [];
 
 	// debug(options);
 	// debug(content);
 	myscript.send(content);
+	// let lines = content.split("\n");
+	// for (const l of lines) {
+	// 	myscript.send(l);
+	// }
 
 	myscript.on('message', (message:string) => {
 
 		//debug(message);
 		if (message !== "[]") { // if there's errors, parse them
-			let mj = message.replace(/[\[\]]/g, "");
-			let errs = mj.split("', '");
-			errors = errors.concat(errs);
-			// debug(errors);
+			if (message.startsWith("Debug: ")) {
+				debug("Python Debugger:")
+				debug(message.replace("Debug: ", ""));
+			}
+			else if (message.startsWith("Exception: ")) {
+				debug("Python Exception:");
+				debug(message.replace("Exception: ",""));
+			} else {
+				let mj = message.replace(/[\[\]]/g, "");
+				let errs = mj.split("', '");
+				errors = errors.concat(errs);
+				// debug(errors);
+			}
 		}
 	});
 

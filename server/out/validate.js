@@ -25,8 +25,9 @@ let exception = "\nException: {e}";
 let exceptRX = /\nException: (.*)/;
 */
 let errorOrExcept = /(Error|Exception):(.*)/;
-let errorInfo = /at (.*) Line (\d+) - '(.*)'/;
+let errorInfo = /at (.*) Line (\d+) (- '(.*)')?/;
 let moduleRx = /module[ \t](.*)/;
+let newlineIndex = /at first newline index\nat (.*) Line (\d+) \nmodule (\w+)\n\n/;
 async function compileMastFile(textDocument) {
     // debug("Starting mast compile")
     let ret = [];
@@ -38,6 +39,7 @@ async function compileMastFile(textDocument) {
         let m = e.replace(/\\n/g, "\n").replace(/\\'/g, "\'");
         m = m.replace(/\(\<string\>\, line 1\)/g, "");
         const lines = m.split("\n");
+        (0, console_1.debug)(lines);
         let errorText = "";
         let errType = "";
         let errFile = "";
@@ -52,10 +54,12 @@ async function compileMastFile(textDocument) {
                 errorText = ma[2].trim();
             }
             ma = lines[2].match(errorInfo);
+            // debug(ma);
             if (ma !== null) {
                 errFile = ma[1];
                 lineNum = parseFloat(ma[2]) - 1;
-                lineContents = ma[3];
+                if (ma[4] !== undefined)
+                    lineContents = ma[4];
                 // debug(lines[2]);
                 // debug(lineContents);
                 let sPos = { line: lineNum, character: 0 };
@@ -200,7 +204,7 @@ async function validateTextDocument(textDocument) {
         message: 'Statement must end with a colon.',
         relatedMessage: "Applies to: 'with', 'if', 'elif', 'else', 'while', 'for', 'on', and 'on change' blocks."
     };
-    // errorSources.push(with_colon);
+    errorSources.push(with_colon);
     let gui_colon = {
         pattern: /gui\w*?\(\".*?:.*?\"\)/,
         severity: vscode_languageserver_1.DiagnosticSeverity.Warning,

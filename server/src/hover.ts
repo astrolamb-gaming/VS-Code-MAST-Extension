@@ -83,8 +83,8 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 				for (const m of co.methods) {
 					if(m.name === symbol) {
 						hoverText = m.buildCompletionItem().detail;// + "\n\n" + m.completionItem.documentation;
-						debug(hoverText)
-						debug(m.documentation as string);
+						// debug(hoverText)
+						// debug(m.documentation as string);
 						// let mc: MarkupContent = {
 						// 	kind: "markdown",
 						// 	value: "```javascript\n" + m.buildFunctionDetails() + "\n```\n```text\n\n" + (m.documentation as string) + "\n```\n"
