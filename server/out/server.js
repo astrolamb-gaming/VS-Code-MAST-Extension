@@ -119,9 +119,9 @@ exports.connection.onInitialize((params) => {
         // 	}
         // }
         // debug("Cache loaded")
-        (0, globals_1.initializeGlobals)().then(() => {
-            (0, console_1.debug)("Global data compiled");
-        });
+        // initializeGlobals().then(()=>{
+        // 	debug("Global data compiled");
+        // })
     }
     else {
         (0, console_1.debug)("No Workspace folders");
@@ -221,9 +221,15 @@ exports.documents.onDidClose(e => {
     documentSettings.delete(e.document.uri);
 });
 exports.connection.languages.diagnostics.on(async (params) => {
+    let ret = {
+        kind: node_1.DocumentDiagnosticReportKind.Full,
+        items: []
+    };
     //TODO: get info from other files in same directory
     const document = exports.documents.get(params.textDocument.uri);
     if (document !== undefined) {
+        if (document.languageId !== "mast")
+            return ret;
         try {
             let cache = (0, cache_1.getCache)(params.textDocument.uri);
             await cache.awaitLoaded();
@@ -241,10 +247,7 @@ exports.connection.languages.diagnostics.on(async (params) => {
         }
         catch (e) {
             (0, console_1.debug)(e);
-            return {
-                kind: node_1.DocumentDiagnosticReportKind.Full,
-                items: []
-            };
+            return ret;
         }
     }
     else {
@@ -255,34 +258,6 @@ exports.connection.languages.diagnostics.on(async (params) => {
             items: []
         };
     }
-});
-// The content of a text document has changed. This event is emitted
-// when the text document first opened or when its content has changed.
-// 
-//
-/**
- * {@link TextDocument TextDocument}
- * {@link TextDocumentChangeEvent TextDocumentChangeEvent}
- */
-// documents.onDidChangeContent(change => {
-// 	try {
-// 		//debug("onDidChangeContent");
-// 		validateTextDocument(change.document);
-// 	} catch (e) {
-// 		debug(e);
-// 		console.error(e);
-// 	}
-// });
-exports.connection.onDidChangeTextDocument((params) => {
-    (0, console_1.debug)("OnDidChangetextDocument");
-    let changes = params.contentChanges;
-    (0, console_1.debug)(changes);
-    throw new Error;
-    // for (const c of changes) {
-    // }
-    // The content of a text document did change in VS Code.
-    // params.uri uniquely identifies the document.
-    // params.contentChanges describe the content changes to the document.
 });
 exports.connection.onDidChangeWatchedFiles(_change => {
     // Monitored files have change in VSCode
@@ -300,9 +275,9 @@ exports.connection.onSignatureHelp(async (_textDocPos) => {
     const document = exports.documents.get(_textDocPos.textDocument.uri);
     if (document === undefined)
         return undefined;
-    await (0, cache_1.getCache)(document.uri).awaitLoaded();
-    if (_textDocPos.textDocument.uri.endsWith(".py"))
+    if (!_textDocPos.textDocument.uri.endsWith(".mast"))
         return undefined;
+    await (0, cache_1.getCache)(document.uri).awaitLoaded();
     const text = exports.documents.get(_textDocPos.textDocument.uri);
     if (text === undefined) {
         return undefined;
@@ -311,21 +286,30 @@ exports.connection.onSignatureHelp(async (_textDocPos) => {
 });
 // This handler provides the initial list of the completion items.
 exports.connection.onCompletion(async (_textDocumentPosition) => {
-    await (0, cache_1.getCache)(_textDocumentPosition.textDocument.uri).awaitLoaded();
     if (_textDocumentPosition.textDocument.uri.endsWith("json")) {
         (0, console_1.debug)("THIS IS A JSON FILE");
-        return (0, globals_1.getGlobals)().libModuleCompletionItems;
+        let g = (0, globals_1.getGlobals)();
+        if (g !== undefined) {
+            return g.libModuleCompletionItems;
+        }
+        else {
+            await (0, globals_1.initializeGlobals)();
+            return (0, globals_1.getGlobals)()?.libModuleCompletionItems;
+        }
     }
     if (_textDocumentPosition.textDocument.uri.endsWith("__init__.mast")) {
         (0, console_1.debug)("Can't get completions from __init__.mast file");
     }
     if (_textDocumentPosition.textDocument.uri.endsWith(".py"))
         return undefined;
+    if (!_textDocumentPosition.textDocument.uri.endsWith(".mast"))
+        return undefined;
     const text = exports.documents.get(_textDocumentPosition.textDocument.uri);
     if (text === undefined) {
         return [];
     }
     try {
+        await (0, cache_1.getCache)(_textDocumentPosition.textDocument.uri).awaitLoaded();
         let ci = (0, autocompletion_1.onCompletion)(_textDocumentPosition, text);
         // for (const c of ci) {
         // 	debug(c.documentation);
@@ -361,12 +345,14 @@ function updateLabelNames(li) {
 // 	}
 // );
 exports.connection.onHover(async (_textDocumentPosition) => {
-    await (0, cache_1.getCache)(_textDocumentPosition.textDocument.uri).awaitLoaded();
+    if (!_textDocumentPosition.textDocument.uri.endsWith(".mast"))
+        return undefined;
     const text = exports.documents.get(_textDocumentPosition.textDocument.uri);
     if (text === undefined) {
         (0, console_1.debug)("Undefined");
         return undefined;
     }
+    await (0, cache_1.getCache)(_textDocumentPosition.textDocument.uri).awaitLoaded();
     return (0, hover_1.onHover)(_textDocumentPosition, text);
 });
 // connection.onRequest("textDocument/semanticTokens/full", (params: SemanticTokensParams) => {
@@ -432,13 +418,16 @@ exports.connection.onNotification("custom/storyJsonResponse", (response) => {
 //   });
 // connection.onDefinition((params: DefinitionParams): HandlerResult<Definition | LocationLink[] | null | undefined, void>=>{
 exports.connection.onDefinition(async (params) => {
-    let cache = (0, cache_1.getCache)(params.textDocument.uri);
-    await cache.awaitLoaded();
-    if (!cache.isLoaded())
-        (0, console_1.debug)("NOT LOADED YET");
+    if (!params.textDocument.uri.endsWith(".mast")) {
+        return undefined;
+    }
     const document = exports.documents.get(params.textDocument.uri);
     let def = undefined;
     if (document !== undefined) {
+        let cache = (0, cache_1.getCache)(params.textDocument.uri);
+        await cache.awaitLoaded();
+        if (!cache.isLoaded())
+            (0, console_1.debug)("NOT LOADED YET");
         def = await (0, goToDefinition_1.onDefinition)(document, params.position);
         // debug(def);
     }
@@ -446,6 +435,9 @@ exports.connection.onDefinition(async (params) => {
 });
 exports.connection.onReferences(async (params) => {
     // debug("Trying to find word refs....")
+    if (!params.textDocument.uri.endsWith(".mast")) {
+        return undefined;
+    }
     await (0, cache_1.getCache)(params.textDocument.uri).awaitLoaded();
     const document = exports.documents.get(params.textDocument.uri);
     let def = undefined;

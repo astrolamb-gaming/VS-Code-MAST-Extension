@@ -5,7 +5,7 @@ import path = require('path');
 import * as fs from 'fs';
 import { getCache, MissionCache } from '../cache';
 import { integer } from 'vscode-languageserver';
-import { getGlobals } from '../globals';
+import { getGlobals, initializeGlobals } from '../globals';
 import { StoryJson } from '../data/storyJson';
 
 let pyPath = "";
@@ -99,7 +99,11 @@ export async function getSpecificGlobals(cache: MissionCache, globals: any) {
 	// }
 
 	// let sbs = path.join(scriptPath, "sbs.zip");
-	let libFolder = path.join(getGlobals().artemisDir,"data","missions");
+	let g = getGlobals();
+	if (g === undefined) {
+		g = await initializeGlobals();
+	}
+	let libFolder = path.join(g.artemisDir,"data","missions");
 	const sbs_utils = path.join(libFolder,"__lib__",cache.storyJson.sbslib[0]);
 	
 
@@ -179,7 +183,8 @@ export async function compileMission(mastFile: string, content: string, sj:Story
 	mastFile = fixFileName(mastFile);
 	let errors: string[] = [];
 	// const o =  buildOptions(sj, [mastFile, content]);
-	const artDir = getGlobals().artemisDir;
+	let g = await initializeGlobals();
+	const artDir = g.artemisDir;
 	const o = buildOptions(sj, [artDir, mastFile]);
 	if (o === null) return [];
 	//errors = await runScript(basicOptions);

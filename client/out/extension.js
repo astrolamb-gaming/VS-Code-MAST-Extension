@@ -141,7 +141,7 @@ function activate(context) {
         updateStatusBarItem(show);
     });
     context.subscriptions.push(prog);
-    updateStatusBarItem(true);
+    // updateStatusBarItem(true);
     const storyJsonListener = client.onNotification('custom/storyJson', (message) => {
         debug("Story Json Notification recieved");
         //window.showQuickPick([{label:"One"},{label:"Two"}]);

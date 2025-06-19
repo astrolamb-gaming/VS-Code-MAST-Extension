@@ -22,11 +22,11 @@ export class ShipData {
 	constructor(artemisDir: string) {
 		this.artemisDir = artemisDir;
 		if (artemisDir === "") return;
-		try {
-			this.load();
-		} catch(e) {
-			debug(e);
-		}
+		// try {
+		// 	this.load();
+		// } catch(e) {
+		// 	debug(e);
+		// }
 	}
 
 	load() {
@@ -199,7 +199,8 @@ export class ShipData {
 		return ci;
 	}
 	getCompletionItemsForShips(): CompletionItem[] {
-		let ci: CompletionItem[] = getGlobals().artFiles;
+		let g = getGlobals();
+		let ci: CompletionItem[] = g.artFiles;
 		for (const c of ci) {
 			const ship: any = this.getShipInfoFromKey(c.label);
 			debug(ship);

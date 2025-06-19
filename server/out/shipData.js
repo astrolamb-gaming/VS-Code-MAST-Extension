@@ -22,12 +22,11 @@ class ShipData {
         this.artemisDir = artemisDir;
         if (artemisDir === "")
             return;
-        try {
-            this.load();
-        }
-        catch (e) {
-            (0, console_1.debug)(e);
-        }
+        // try {
+        // 	this.load();
+        // } catch(e) {
+        // 	debug(e);
+        // }
     }
     load() {
         const file = path.join(this.artemisDir, "data", "shipData.json");
@@ -195,7 +194,8 @@ class ShipData {
         return ci;
     }
     getCompletionItemsForShips() {
-        let ci = (0, globals_1.getGlobals)().artFiles;
+        let g = (0, globals_1.getGlobals)();
+        let ci = g.artFiles;
         for (const c of ci) {
             const ship = this.getShipInfoFromKey(c.label);
             (0, console_1.debug)(ship);

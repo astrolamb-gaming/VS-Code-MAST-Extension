@@ -185,7 +185,7 @@ export function activate(context: ExtensionContext) {
 
 	});
 	context.subscriptions.push(prog);
-	updateStatusBarItem(true);
+	// updateStatusBarItem(true);
 
 
 

@@ -160,6 +160,7 @@ class MissionCache {
         (0, console_1.debug)("Everything is laoded");
     }
     async loadPythonGlobals(globals) {
+        let go = await (0, globals_1.initializeGlobals)();
         (0, server_1.showProgressBar)(true);
         let sigParser = /'(.*?)'/g;
         let globalInfo = [];
@@ -171,7 +172,7 @@ class MissionCache {
                 continue;
             }
             if (g[0] === "data_dir") {
-                globalInfo.push([g[0], path.join((0, globals_1.getGlobals)().artemisDir, "data")]);
+                globalInfo.push([g[0], path.join(go.artemisDir, "data")]);
                 continue;
             }
             // Add all other names to the list to check globals in python
@@ -333,7 +334,10 @@ class MissionCache {
         if (exports.testingPython)
             return;
         const uri = this.missionURI;
-        const globals = (0, globals_1.getGlobals)();
+        let globals = (0, globals_1.getGlobals)();
+        if (globals === undefined) {
+            globals = await (0, globals_1.initializeGlobals)();
+        }
         (0, console_1.debug)(uri);
         if (uri.includes("sbs_utils")) {
             (0, console_1.debug)("sbs nope");
@@ -352,7 +356,7 @@ class MissionCache {
                     if (this.storyJson.getModuleBaseName(zip).toLowerCase().includes(m.toLowerCase())) {
                         found = true;
                         // Here we refer to the mission instead of the zip
-                        const missionFolder = path.join((0, globals_1.getGlobals)().artemisDir, "data", "missions", m);
+                        const missionFolder = path.join(globals.artemisDir, "data", "missions", m);
                         const files = (0, fileFunctions_1.getFilesInDir)(missionFolder, true);
                         for (const f of files) {
                             if (f.endsWith(".py") || f.endsWith(".mast")) {

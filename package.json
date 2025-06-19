@@ -75,7 +75,7 @@
 				"editor.foldingStrategy":"indentation",
 				"editor.wordSeparators": "`~!@#$%^&*()-=+[{]}\\|;:'\",.<>?",
 				"editor.tabSize": 4,
-				"editor.insertSpaces": false,
+				"editor.insertSpaces": true,
 				"editor.detectIndentation": true,
 				"editor.autoIndent": "advanced"
 			},

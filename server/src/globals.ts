@@ -22,23 +22,39 @@ interface WidgetStyleString {
 
 export class Globals {
 	currentFile: string = "";
-	skyboxes: CompletionItem[];
-	music: CompletionItem[];
-	data_set_entries: DataSetItem[];
+	skyboxes: CompletionItem[] = [];
+	music: CompletionItem[] = [];
+	data_set_entries: DataSetItem[] = [];
 	widget_stylestrings: WidgetStyleString[] = [];
-	blob_items: CompletionItem[];
-	libModules: string[];
-	libModuleCompletionItems: CompletionItem[];
+	blob_items: CompletionItem[] = [];
+	libModules: string[] = [];
+	libModuleCompletionItems: CompletionItem[] = [];
 	shipData: ShipData;
 	artemisDir: string = "";
 	artFiles: CompletionItem[] = [];
+	/**
+	 * 0: Not loaded
+	 * 1: Loading but not complete
+	 * 2: Loaded
+	 */
+	loadingState = 0;
 	constructor() {
 		showProgressBar(true);
 		const thisDir = path.resolve("../");
 		const adir = getArtemisDirFromChild(thisDir);
 		debug("Artemis Directory: ");
 		debug(adir);
-		if (adir ===  null) {
+		if (adir) {
+			this.artemisDir = adir;
+		} else {
+			this.artemisDir = "";
+		}
+		this.shipData = new ShipData(this.artemisDir);
+	}
+
+	loadGlobals() {
+		this.loadingState = 1;
+		if (this.artemisDir ===  null) {
 			// Do something, throw an error, whatever it takes, artemis dir not found
 			this.skyboxes = [];
 			this.music = [];
@@ -51,17 +67,18 @@ export class Globals {
 			debug("Artemis directory not found. Global information not loaded.");
 			artemisDirNotFoundError();
 		} else {
-			// Valid artemis dir has been found
-			this.artemisDir = adir;
 			this.skyboxes = this.findSkyboxes();
 			this.music = this.findMusic();
 			this.blob_items = [];
 			// this.data_set_entries is not populated here, since loadObjectDataDocumentation() has a promise in it. 
 			// That promise then populates the field when complete.
 			this.data_set_entries = this.loadObjectDataDocumentation();
+			debug("Loading libs");
 			this.libModules = this.loadLibs();
+			debug("Done loading libs.")
 			this.libModuleCompletionItems = [];
-			this.shipData = new ShipData(adir);
+			this.shipData = new ShipData(this.artemisDir);
+			debug("Getting ship data")
 			for (const lib of this.libModules) {
 				const ci: CompletionItem = {
 					label: path.basename(lib),
@@ -69,9 +86,12 @@ export class Globals {
 				}
 				this.libModuleCompletionItems.push(ci);
 			}
+			debug("ship data gotten")
 			this.artFiles = this.findArtFiles(true);
+			debug("art files gotten")
 		}
-		showProgressBar(false);
+		this.loadingState = 2;
+		// showProgressBar(false);
 	}
 
 	private loadLibs(): string[] {
@@ -154,6 +174,7 @@ export class Globals {
 						//debug(this.blob_items);
 						//console.log(this.blob_items)
 					});
+					debug("Done reading object data docs")
 				}
 			}
 		}
@@ -309,27 +330,37 @@ export class Globals {
 	getAllMissions(): string[] {
 		return getFolders(path.join(this.artemisDir,"data","missions"));
 	}
+	async awaitLoading() {
+		while (this.loadingState !== 2) {
+			if (this.loadingState === 0) {
+				this.loadGlobals();
+			}
+			await sleep(50);
+		}
+		return this;
+	}
 }
 let globals: Globals;
 // sleep(100).then(()=>{
 // 	globals = new Globals();
 // })
 
-export async function initializeGlobals() {
+export async function initializeGlobals(): Promise<Globals> {
+	debug("Initializing globals")
+	if (globals !== undefined) {
+		return await globals.awaitLoading();
+	}
 	globals = new Globals();
+	// globals.loadGlobals();
+	return await globals.awaitLoading();
 }
 
 
-export function getGlobals() {
+export function getGlobals(): Globals {
 	if (globals === null || globals === undefined) {
-		try {
-			// globals = new Globals();
-			sleep(100);
-			return getGlobals();
-		} catch (e) {
-			debug(e);
-			debug("Error getting Globals information");
-		}
+		debug("Error getting Globals information - Globals not loaded");
+		globals = new Globals();
+		globals.loadGlobals();
 	}
 	return globals;
 }

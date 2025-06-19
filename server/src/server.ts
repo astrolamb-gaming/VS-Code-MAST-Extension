@@ -178,9 +178,9 @@ connection.onInitialize((params: InitializeParams) => {
 		// }
 		// debug("Cache loaded")
 		
-		initializeGlobals().then(()=>{
-			debug("Global data compiled");
-		})
+		// initializeGlobals().then(()=>{
+		// 	debug("Global data compiled");
+		// })
 	} else {
 		debug("No Workspace folders");
 	}
@@ -298,10 +298,15 @@ documents.onDidClose(e => {
 });
 
 connection.languages.diagnostics.on(async (params) => {
+	let ret = {
+		kind: DocumentDiagnosticReportKind.Full,
+		items: []
+	} satisfies DocumentDiagnosticReport;
 	//TODO: get info from other files in same directory
 	const document = documents.get(params.textDocument.uri);
 
 	if (document !== undefined) {
+		if (document.languageId !== "mast") return ret;
 		try {
 			let cache = getCache(params.textDocument.uri);
 			await cache.awaitLoaded();
@@ -319,10 +324,7 @@ connection.languages.diagnostics.on(async (params) => {
 			} satisfies DocumentDiagnosticReport;
 		} catch(e) {
 			debug(e);
-			return {
-				kind: DocumentDiagnosticReportKind.Full,
-				items: []
-			} satisfies DocumentDiagnosticReport;
+			return ret;
 		}
 	} else {
 		// We don't know the document. We can either try to read it from disk
@@ -353,18 +355,20 @@ connection.languages.diagnostics.on(async (params) => {
 // });
 
 
-connection.onDidChangeTextDocument((params) => {
-	debug("OnDidChangetextDocument");
-	let changes = params.contentChanges;
-	debug(changes);
-	throw new Error;
-	// for (const c of changes) {
+
+// // This doesn't seem to work. IDK why.
+// connection.onDidChangeTextDocument((params) => {
+// 	debug("OnDidChangetextDocument");
+// 	let changes = params.contentChanges;
+// 	debug(changes);
+// 	throw new Error;
+// 	// for (const c of changes) {
 		
-	// }
-    // The content of a text document did change in VS Code.
-    // params.uri uniquely identifies the document.
-    // params.contentChanges describe the content changes to the document.
-});
+// 	// }
+//     // The content of a text document did change in VS Code.
+//     // params.uri uniquely identifies the document.
+//     // params.contentChanges describe the content changes to the document.
+// });
 
 
 export interface ErrorInstance {
@@ -410,8 +414,8 @@ connection.onSignatureHelp(async (_textDocPos: SignatureHelpParams): Promise<Sig
 	// }
 	const document = documents.get(_textDocPos.textDocument.uri);
 	if (document === undefined) return undefined;
+	if (!_textDocPos.textDocument.uri.endsWith(".mast")) return undefined;
 	await getCache(document.uri).awaitLoaded();
-	if (_textDocPos.textDocument.uri.endsWith(".py")) return undefined;
 	const text = documents.get(_textDocPos.textDocument.uri);
 	if (text === undefined) {
 		return undefined;
@@ -422,20 +426,27 @@ connection.onSignatureHelp(async (_textDocPos: SignatureHelpParams): Promise<Sig
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
 	async (_textDocumentPosition: TextDocumentPositionParams): Promise<CompletionItem[] | undefined> => {
-		await getCache(_textDocumentPosition.textDocument.uri).awaitLoaded();
 		if (_textDocumentPosition.textDocument.uri.endsWith("json")) {
 			debug("THIS IS A JSON FILE");
-			return getGlobals().libModuleCompletionItems;
+			let g = getGlobals();
+			if (g !== undefined) {
+				return g.libModuleCompletionItems;
+			} else {
+				await initializeGlobals();
+				return getGlobals()?.libModuleCompletionItems;
+			}
 		}
 		if (_textDocumentPosition.textDocument.uri.endsWith("__init__.mast")) {
 			debug("Can't get completions from __init__.mast file");
 		}
 		if (_textDocumentPosition.textDocument.uri.endsWith(".py")) return undefined;
+		if (!_textDocumentPosition.textDocument.uri.endsWith(".mast")) return undefined;
 		const text = documents.get(_textDocumentPosition.textDocument.uri);
 		if (text === undefined) {
 			return [];
 		}
 		try {
+			await getCache(_textDocumentPosition.textDocument.uri).awaitLoaded();
 			let ci: CompletionItem[] = onCompletion(_textDocumentPosition,text);
 			// for (const c of ci) {
 			// 	debug(c.documentation);
@@ -475,12 +486,13 @@ export function updateLabelNames(li: LabelInfo[]) {
 // );
 
 connection.onHover(async (_textDocumentPosition: TextDocumentPositionParams): Promise<Hover | undefined> => {
-	await getCache(_textDocumentPosition.textDocument.uri).awaitLoaded();
+	if (!_textDocumentPosition.textDocument.uri.endsWith(".mast")) return undefined;
 	const text = documents.get(_textDocumentPosition.textDocument.uri);
 	if (text === undefined) {
 		debug("Undefined");
 		return undefined;
 	}
+	await getCache(_textDocumentPosition.textDocument.uri).awaitLoaded();
 	return onHover(_textDocumentPosition,text);
 });
 
@@ -564,21 +576,27 @@ connection.onNotification("custom/storyJsonResponse",(response)=>{
 
 // connection.onDefinition((params: DefinitionParams): HandlerResult<Definition | LocationLink[] | null | undefined, void>=>{
 connection.onDefinition(async (params: DefinitionParams): Promise<Definition | undefined> =>{
-	let cache = getCache(params.textDocument.uri);
-	await cache.awaitLoaded();
-	if (!cache.isLoaded()) debug("NOT LOADED YET")
-
+	if (!params.textDocument.uri.endsWith(".mast")) {
+		return undefined;
+	}
 	const document = documents.get(params.textDocument.uri);
 	let def = undefined;
 	if (document !== undefined) {
+		let cache = getCache(params.textDocument.uri);
+		await cache.awaitLoaded();
+		if (!cache.isLoaded()) debug("NOT LOADED YET")
 		def = await onDefinition(document,params.position);
 		// debug(def);
 	}
+	
 	return def;
 });
 
 connection.onReferences(async (params:ReferenceParams): Promise<Location[] | undefined> => {
 	// debug("Trying to find word refs....")
+	if (!params.textDocument.uri.endsWith(".mast")) {
+		return undefined;
+	}
 	await getCache(params.textDocument.uri).awaitLoaded();
 	const document = documents.get(params.textDocument.uri);
 	let def = undefined;

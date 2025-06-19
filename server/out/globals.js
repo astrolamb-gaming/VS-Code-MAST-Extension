@@ -16,15 +16,37 @@ const python_1 = require("./python/python");
 class Globals {
     constructor() {
         this.currentFile = "";
+        this.skyboxes = [];
+        this.music = [];
+        this.data_set_entries = [];
         this.widget_stylestrings = [];
+        this.blob_items = [];
+        this.libModules = [];
+        this.libModuleCompletionItems = [];
         this.artemisDir = "";
         this.artFiles = [];
+        /**
+         * 0: Not loaded
+         * 1: Loading but not complete
+         * 2: Loaded
+         */
+        this.loadingState = 0;
         (0, server_1.showProgressBar)(true);
         const thisDir = path.resolve("../");
         const adir = (0, fileFunctions_1.getArtemisDirFromChild)(thisDir);
         (0, console_1.debug)("Artemis Directory: ");
         (0, console_1.debug)(adir);
-        if (adir === null) {
+        if (adir) {
+            this.artemisDir = adir;
+        }
+        else {
+            this.artemisDir = "";
+        }
+        this.shipData = new shipData_1.ShipData(this.artemisDir);
+    }
+    loadGlobals() {
+        this.loadingState = 1;
+        if (this.artemisDir === null) {
             // Do something, throw an error, whatever it takes, artemis dir not found
             this.skyboxes = [];
             this.music = [];
@@ -38,17 +60,18 @@ class Globals {
             artemisDirNotFoundError();
         }
         else {
-            // Valid artemis dir has been found
-            this.artemisDir = adir;
             this.skyboxes = this.findSkyboxes();
             this.music = this.findMusic();
             this.blob_items = [];
             // this.data_set_entries is not populated here, since loadObjectDataDocumentation() has a promise in it. 
             // That promise then populates the field when complete.
             this.data_set_entries = this.loadObjectDataDocumentation();
+            (0, console_1.debug)("Loading libs");
             this.libModules = this.loadLibs();
+            (0, console_1.debug)("Done loading libs.");
             this.libModuleCompletionItems = [];
-            this.shipData = new shipData_1.ShipData(adir);
+            this.shipData = new shipData_1.ShipData(this.artemisDir);
+            (0, console_1.debug)("Getting ship data");
             for (const lib of this.libModules) {
                 const ci = {
                     label: path.basename(lib),
@@ -56,9 +79,12 @@ class Globals {
                 };
                 this.libModuleCompletionItems.push(ci);
             }
+            (0, console_1.debug)("ship data gotten");
             this.artFiles = this.findArtFiles(true);
+            (0, console_1.debug)("art files gotten");
         }
-        (0, server_1.showProgressBar)(false);
+        this.loadingState = 2;
+        // showProgressBar(false);
     }
     loadLibs() {
         let libs = [];
@@ -137,6 +163,7 @@ class Globals {
                         //debug(this.blob_items);
                         //console.log(this.blob_items)
                     });
+                    (0, console_1.debug)("Done reading object data docs");
                 }
             }
         }
@@ -292,6 +319,15 @@ class Globals {
     getAllMissions() {
         return (0, fileFunctions_1.getFolders)(path.join(this.artemisDir, "data", "missions"));
     }
+    async awaitLoading() {
+        while (this.loadingState !== 2) {
+            if (this.loadingState === 0) {
+                this.loadGlobals();
+            }
+            await (0, python_1.sleep)(50);
+        }
+        return this;
+    }
 }
 exports.Globals = Globals;
 let globals;
@@ -299,19 +335,19 @@ let globals;
 // 	globals = new Globals();
 // })
 async function initializeGlobals() {
+    (0, console_1.debug)("Initializing globals");
+    if (globals !== undefined) {
+        return await globals.awaitLoading();
+    }
     globals = new Globals();
+    // globals.loadGlobals();
+    return await globals.awaitLoading();
 }
 function getGlobals() {
     if (globals === null || globals === undefined) {
-        try {
-            // globals = new Globals();
-            (0, python_1.sleep)(100);
-            return getGlobals();
-        }
-        catch (e) {
-            (0, console_1.debug)(e);
-            (0, console_1.debug)("Error getting Globals information");
-        }
+        (0, console_1.debug)("Error getting Globals information - Globals not loaded");
+        globals = new Globals();
+        globals.loadGlobals();
     }
     return globals;
 }

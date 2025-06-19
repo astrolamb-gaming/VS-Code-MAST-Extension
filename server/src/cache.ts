@@ -11,7 +11,7 @@ import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } fro
 import { fixFileName, getFileContents, getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readZipArchive } from './fileFunctions';
 import { connection, showProgressBar as showProgressBar } from './server';
 import { URI } from 'vscode-uri';
-import { getGlobals } from './globals';
+import { getGlobals, initializeGlobals } from './globals';
 import * as os from 'os';
 import { Variable } from './tokens/variables';
 import { getMusicFiles } from './resources/audioFiles';
@@ -176,6 +176,7 @@ export class MissionCache {
 		
 	}
 	async loadPythonGlobals(globals: string[][]) {
+		let go = await initializeGlobals();
 		showProgressBar(true);
 		let sigParser = /'(.*?)'/g;
 		let globalInfo: any = [];
@@ -187,7 +188,7 @@ export class MissionCache {
 				continue;
 			}
 			if (g[0] === "data_dir") {
-				globalInfo.push([g[0], path.join(getGlobals().artemisDir,"data")]);
+				globalInfo.push([g[0], path.join(go.artemisDir,"data")]);
 				continue;
 			}
 
@@ -353,7 +354,10 @@ export class MissionCache {
 	async modulesLoaded() {
 		if (testingPython) return;
 		const uri = this.missionURI;
-		const globals = getGlobals();
+		let globals = getGlobals();
+		if (globals === undefined) {
+			globals = await initializeGlobals();
+		}
 		debug(uri);
 		if (uri.includes("sbs_utils")) {
 			debug("sbs nope");
@@ -372,7 +376,7 @@ export class MissionCache {
 					if (this.storyJson.getModuleBaseName(zip).toLowerCase().includes(m.toLowerCase())) {
 						found = true;
 						// Here we refer to the mission instead of the zip
-						const missionFolder = path.join(getGlobals().artemisDir,"data","missions",m);
+						const missionFolder = path.join(globals.artemisDir,"data","missions",m);
 						const files = getFilesInDir(missionFolder,true);
 						for (const f of files) {
 							if (f.endsWith(".py")|| f.endsWith(".mast")) {

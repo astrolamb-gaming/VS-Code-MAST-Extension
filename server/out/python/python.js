@@ -99,7 +99,11 @@ async function getSpecificGlobals(cache, globals) {
     // 	//debug(pyPath);
     // }
     // let sbs = path.join(scriptPath, "sbs.zip");
-    let libFolder = path.join((0, globals_1.getGlobals)().artemisDir, "data", "missions");
+    let g = (0, globals_1.getGlobals)();
+    if (g === undefined) {
+        g = await (0, globals_1.initializeGlobals)();
+    }
+    let libFolder = path.join(g.artemisDir, "data", "missions");
     const sbs_utils = path.join(libFolder, "__lib__", cache.storyJson.sbslib[0]);
     // const o: Options = {
     // 	pythonPath: path.join(pyPath,"python.exe"),
@@ -176,7 +180,8 @@ async function compileMission(mastFile, content, sj) {
     mastFile = (0, fileFunctions_1.fixFileName)(mastFile);
     let errors = [];
     // const o =  buildOptions(sj, [mastFile, content]);
-    const artDir = (0, globals_1.getGlobals)().artemisDir;
+    let g = await (0, globals_1.initializeGlobals)();
+    const artDir = g.artemisDir;
     const o = buildOptions(sj, [artDir, mastFile]);
     if (o === null)
         return [];
