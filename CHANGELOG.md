@@ -7,11 +7,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ### To-DO and WIP
 
 * Add more info about shipdata entries to the art arguments for space objects
-
+* Get mast complier errors from the compiler itself, so the game doesn't have to be running to check for compiler errors.
 
 ### 0.12.0
 
-* Add mast compiler errors - uses the actual mast compiler to compile the file on the fly for error checking
 * Add python built-in module information based off of mast_globals.py, so it is forward-compatible
 * Fixed a pretty big issue where multiple copies of information for each file was being stored in memory
 * Add lifeform support (i.e. LIEFORM_ID)

@@ -30,8 +30,12 @@ let moduleRx = /module[ \t](.*)/;
 let newlineIndex = /at first newline index\nat (.*) Line (\d+) \nmodule (\w+)\n\n/;
 async function compileMastFile(textDocument) {
     // debug("Starting mast compile")
+    // return [];
     let ret = [];
-    let cm = await (0, python_1.compileMission)(textDocument.uri, textDocument.getText(), (0, cache_1.getCache)(textDocument.uri).storyJson);
+    const cache = (0, cache_1.getCache)(textDocument.uri);
+    // const file = fixFileName(textDocument.uri);
+    const file = cache.missionURI + "/story.mast";
+    let cm = await (0, python_1.compileMission)(file, textDocument.getText(), cache.storyJson);
     // debug(cm);
     let ma;
     for (const e of cm) {

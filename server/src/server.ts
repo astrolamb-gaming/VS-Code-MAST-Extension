@@ -98,7 +98,7 @@ connection.onInitialize((params: InitializeParams) => {
 	//pyTypings = pyTypings.concat(parseTyping(fs.readFileSync("sbs.pyi","utf-8")));
 	//debug(JSON.stringify(pyTypings));
 	const capabilities = params.capabilities;
-
+	
 	// Does the client support the `workspace/configuration` request?
 	// If not, we fall back using global settings.
 	hasConfigurationCapability = !!(
@@ -306,8 +306,12 @@ connection.languages.diagnostics.on(async (params) => {
 			let cache = getCache(params.textDocument.uri);
 			await cache.awaitLoaded();
 			getVariableNamesInDoc(document);
-			let [val, comp]: Diagnostic[][] = await Promise.all([validateTextDocument(document), compileMastFile(document)]);
-			const ret = val.concat(comp);
+			debug("Validating....");
+			// let [val, comp]: Diagnostic[][] = await Promise.all([validateTextDocument(document), compileMastFile(document)]);
+			// const ret = val.concat(comp);
+			let ret: Diagnostic[] = await validateTextDocument(document);
+			
+			debug("Validation complete.");
 			return {
 				kind: DocumentDiagnosticReportKind.Full,
 				items: ret

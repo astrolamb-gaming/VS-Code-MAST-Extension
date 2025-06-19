@@ -179,7 +179,8 @@ export async function compileMission(mastFile: string, content: string, sj:Story
 	mastFile = fixFileName(mastFile);
 	let errors: string[] = [];
 	// const o =  buildOptions(sj, [mastFile, content]);
-	const o = buildOptions(sj, [mastFile]);
+	const artDir = getGlobals().artemisDir;
+	const o = buildOptions(sj, [artDir, mastFile]);
 	if (o === null) return [];
 	//errors = await runScript(basicOptions);
 	errors = await bigFile(o, content);
@@ -308,11 +309,11 @@ async function bigFile(options: Options, content: string): Promise<string[]> {
 		if (message !== "[]") { // if there's errors, parse them
 			if (message.startsWith("Debug: ")) {
 				debug("Python Debugger:")
-				debug(message.replace("Debug: ", ""));
+				debug("    " + message.replace("Debug: ", ""));
 			}
 			else if (message.startsWith("Exception: ")) {
 				debug("Python Exception:");
-				debug(message.replace("Exception: ",""));
+				debug("    " + message.replace("Exception: ",""));
 			} else {
 				let mj = message.replace(/[\[\]]/g, "");
 				let errs = mj.split("', '");

@@ -18,7 +18,6 @@ Includes:
 	* Proper f-string usage
 	* Checks if label names are overriden by a variable name
 	* Some possible syntax errors
-	* MAST Compiler errors and exceptions are shown, provided by the actual compiler (so you don't need to run the game to get those errors!)
 * Autocompletion and hover information for applicable functions within the sbs and sbs_utils packages, as well as built-in python functions
 * Autocompletion for variables etc in current file and files in scope
 	- NOTE: It's very difficult to determine the type of a variable programmatically for python (and, therefore, MAST). The extension can't really do it, so you'll have to keep track of what each variable represents.
@@ -31,7 +30,7 @@ Includes:
 	* Can update all to latest version, or manually update
 * In mission folders, checks for `__init__.mast` in the folder you're working in. If it doesn't exist, will promt with an option to auto-generate the file, with all .mast and .py files included automatically.
 * Autocompletion of filenames for `__init__.mast`
-* Checks or root artemis directory existence - most functionality requires the opened folder to be in the artemis mission directory
+* Checks for root artemis directory existence - most functionality requires the opened folder to be in the artemis mission directory
 
 ## Requirements
 

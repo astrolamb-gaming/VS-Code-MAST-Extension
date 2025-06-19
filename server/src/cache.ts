@@ -18,8 +18,7 @@ import { getMusicFiles } from './resources/audioFiles';
 import { Function, Parameter } from "./data/function";
 import { ClassObject } from './data/class';
 import { StoryJson } from './data/storyJson';
-import { compileMission, getGlobalFunctions, getSpecificGlobals, initializePython, sleep } from './python/python';
-import { Func } from 'mocha';
+import { getSpecificGlobals, sleep } from './python/python';
 import { loadStyleDefs } from './data/styles';
 import { Word } from './tokens/words';
 

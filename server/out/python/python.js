@@ -176,7 +176,8 @@ async function compileMission(mastFile, content, sj) {
     mastFile = (0, fileFunctions_1.fixFileName)(mastFile);
     let errors = [];
     // const o =  buildOptions(sj, [mastFile, content]);
-    const o = buildOptions(sj, [mastFile]);
+    const artDir = (0, globals_1.getGlobals)().artemisDir;
+    const o = buildOptions(sj, [artDir, mastFile]);
     if (o === null)
         return [];
     //errors = await runScript(basicOptions);
@@ -291,11 +292,11 @@ async function bigFile(options, content) {
         if (message !== "[]") { // if there's errors, parse them
             if (message.startsWith("Debug: ")) {
                 (0, console_1.debug)("Python Debugger:");
-                (0, console_1.debug)(message.replace("Debug: ", ""));
+                (0, console_1.debug)("    " + message.replace("Debug: ", ""));
             }
             else if (message.startsWith("Exception: ")) {
                 (0, console_1.debug)("Python Exception:");
-                (0, console_1.debug)(message.replace("Exception: ", ""));
+                (0, console_1.debug)("    " + message.replace("Exception: ", ""));
             }
             else {
                 let mj = message.replace(/[\[\]]/g, "");

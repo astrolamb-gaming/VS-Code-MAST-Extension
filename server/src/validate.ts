@@ -30,8 +30,12 @@ let newlineIndex = /at first newline index\nat (.*) Line (\d+) \nmodule (\w+)\n\
 
 export async function compileMastFile(textDocument: TextDocument): Promise<Diagnostic[]> {
 	// debug("Starting mast compile")
+	// return [];
 	let ret: Diagnostic[] = [];
-	let cm: string[] = await compileMission(textDocument.uri, textDocument.getText(), getCache(textDocument.uri).storyJson)
+	const cache = getCache(textDocument.uri); 
+	// const file = fixFileName(textDocument.uri);
+	const file = cache.missionURI+"/story.mast";
+	let cm: string[] = await compileMission(file, textDocument.getText(), cache.storyJson)
 	// debug(cm);
 	let ma: RegExpMatchArray | null;
 	for (const e of cm) {

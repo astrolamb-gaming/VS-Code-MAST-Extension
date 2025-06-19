@@ -228,8 +228,11 @@ exports.connection.languages.diagnostics.on(async (params) => {
             let cache = (0, cache_1.getCache)(params.textDocument.uri);
             await cache.awaitLoaded();
             (0, variables_1.getVariableNamesInDoc)(document);
-            let [val, comp] = await Promise.all([(0, validate_1.validateTextDocument)(document), (0, validate_1.compileMastFile)(document)]);
-            const ret = val.concat(comp);
+            (0, console_1.debug)("Validating....");
+            // let [val, comp]: Diagnostic[][] = await Promise.all([validateTextDocument(document), compileMastFile(document)]);
+            // const ret = val.concat(comp);
+            let ret = await (0, validate_1.validateTextDocument)(document);
+            (0, console_1.debug)("Validation complete.");
             return {
                 kind: node_1.DocumentDiagnosticReportKind.Full,
                 items: ret
