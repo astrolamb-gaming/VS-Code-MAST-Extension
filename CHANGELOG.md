@@ -6,8 +6,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ### To-DO and WIP
 
-* Add more info about shipdata entries to the art arguments for space objects
-* Get mast complier errors from the compiler itself, so the game doesn't have to be running to check for compiler errors.
+* TODO: Add more info about shipdata entries to the art arguments for space objects
+* WIP: Get mast complier errors from the compiler itself, so the game doesn't have to be running to check for compiler errors.
 
 ### 0.12.0
 
@@ -20,6 +20,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * Better hover information generation, including for class methods
 * Show warning for code block starts that should have a colon if the colon isn't present (e.g. `if`, `with`, etc)
 * Add `behave_id` options to autocomplete for applicable function parameters (i.e. spawns)
+* Fix issue where projects without mast files would still try to load the extension.
 
 ### 0.11.0
 
