@@ -33,6 +33,8 @@ exports.documents = new node_1.TextDocuments(vscode_languageserver_textdocument_
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = true;
 exports.hasDiagnosticRelatedInformationCapability = false;
+let allowMultipleCaches = true;
+let cacheTimeout = 0;
 exports.labelNames = [];
 // let functionData : SignatureInformation[] = [];
 // export function appendFunctionData(si: SignatureInformation) {functionData.push(si);}
@@ -56,6 +58,10 @@ exports.connection.onInitialize((params) => {
     exports.hasDiagnosticRelatedInformationCapability = !!(capabilities.textDocument &&
         capabilities.textDocument.publishDiagnostics &&
         capabilities.textDocument.publishDiagnostics.relatedInformation);
+    if (capabilities.workspace && capabilities.workspace.configuration) {
+        (0, console_1.debug)("Config true!!!");
+        capabilities.workspace.configuration;
+    }
     //debugStrs += capabilities.textDocument?.documentLink + "\n";
     const result = {
         capabilities: {
@@ -128,7 +134,7 @@ exports.connection.onInitialize((params) => {
     }
     return result;
 });
-exports.connection.onInitialized(() => {
+exports.connection.onInitialized(async () => {
     (0, console_1.debug)("Initialized");
     if (hasConfigurationCapability) {
         // Register for all configuration changes.
@@ -139,6 +145,10 @@ exports.connection.onInitialized(() => {
             exports.connection.console.log('Workspace folder change event received.');
         });
     }
+    // Get config information
+    let mastConfig = await exports.connection.workspace.getConfiguration("mastLanguageServer");
+    allowMultipleCaches = mastConfig.allowMultipleCaches;
+    cacheTimeout = mastConfig.cacheTimeout;
     // connection.workspace.getWorkspaceFolders().then((folders)=>{
     // 	debug(folders);
     // 	// progressUpdate(100);
@@ -179,7 +189,11 @@ exports.connection.onExecuteCommand(async (params) => {
 // The global settings, used when the `workspace/configuration` request is not supported by the client.
 // Please note that this is not the case when using this server with the client provided in this example
 // but could happen with other clients.
-const defaultSettings = { maxNumberOfProblems: 1000 };
+const defaultSettings = {
+    maxNumberOfProblems: 1000,
+    allowMultipleCaches: true,
+    cacheTimout: 0
+};
 let globalSettings = defaultSettings;
 // Cache the settings of all open documents
 const documentSettings = new Map();

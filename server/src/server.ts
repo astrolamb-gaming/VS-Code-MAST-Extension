@@ -74,6 +74,8 @@ export const documents = new TextDocuments(TextDocument);
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = true;
 export let hasDiagnosticRelatedInformationCapability = false;
+let allowMultipleCaches = true;
+let cacheTimeout = 0;
 export let labelNames : LabelInfo[] = [];
 
 // let functionData : SignatureInformation[] = [];
@@ -112,6 +114,10 @@ connection.onInitialize((params: InitializeParams) => {
 		capabilities.textDocument.publishDiagnostics &&
 		capabilities.textDocument.publishDiagnostics.relatedInformation
 	);
+	if (capabilities.workspace && capabilities.workspace.configuration) {
+		debug("Config true!!!");
+		capabilities.workspace.configuration;
+	}
 	//debugStrs += capabilities.textDocument?.documentLink + "\n";
 
 	const result: InitializeResult = {
@@ -187,7 +193,7 @@ connection.onInitialize((params: InitializeParams) => {
 	return result;
 });
 
-connection.onInitialized(() => {
+connection.onInitialized(async () => {
 
 	debug("Initialized");
 	
@@ -201,6 +207,11 @@ connection.onInitialized(() => {
 		});
 
 	}
+	
+	// Get config information
+	let mastConfig = await connection.workspace.getConfiguration("mastLanguageServer")
+	allowMultipleCaches = mastConfig.allowMultipleCaches;
+	cacheTimeout = mastConfig.cacheTimeout;
 	
 	// connection.workspace.getWorkspaceFolders().then((folders)=>{
 	// 	debug(folders);
@@ -243,18 +254,24 @@ connection.onExecuteCommand(async (params) => {
 });
 
 // The example settings
-interface ExampleSettings {
+interface MAST_Settings {
 	maxNumberOfProblems: number;
+	allowMultipleCaches: boolean;
+	cacheTimout: number;
 }
 
 // The global settings, used when the `workspace/configuration` request is not supported by the client.
 // Please note that this is not the case when using this server with the client provided in this example
 // but could happen with other clients.
-const defaultSettings: ExampleSettings = { maxNumberOfProblems: 1000 };
-let globalSettings: ExampleSettings = defaultSettings;
+const defaultSettings: MAST_Settings = { 
+	maxNumberOfProblems: 1000,
+	allowMultipleCaches: true,
+	cacheTimout: 0	
+};
+let globalSettings: MAST_Settings = defaultSettings;
 
 // Cache the settings of all open documents
-const documentSettings = new Map<string, Thenable<ExampleSettings>>();
+const documentSettings = new Map<string, Thenable<MAST_Settings>>();
 
 connection.onDidChangeConfiguration(change => {
 	if (hasConfigurationCapability) {
@@ -271,7 +288,7 @@ connection.onDidChangeConfiguration(change => {
 	connection.languages.diagnostics.refresh();
 });
 
-export function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
+export function getDocumentSettings(resource: string): Thenable<MAST_Settings> {
 	if (!hasConfigurationCapability) {
 		return Promise.resolve(globalSettings);
 	}

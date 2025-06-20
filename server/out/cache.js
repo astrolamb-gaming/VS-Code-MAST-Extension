@@ -75,6 +75,7 @@ class MissionCache {
         this.pyInfoLoaded = false;
         this.missionFilesLoaded = false;
         this.sbsLoaded = false;
+        this.lastAccessed = 0;
         this.resourceLabels = (0, routeLabels_1.loadResourceLabels)();
         this.mediaLabels = this.mediaLabels.concat((0, routeLabels_1.loadMediaLabels)());
         this.missionURI = (0, fileFunctions_1.getMissionFolder)(workspaceUri);
@@ -1196,6 +1197,7 @@ function getCache(name, reloadCache = false) {
         if (cache.missionName === name || cache.missionURI === mf) {
             if (reloadCache)
                 cache.load();
+            cache.lastAccessed = new Date().getTime();
             return cache;
         }
     }
@@ -1204,7 +1206,22 @@ function getCache(name, reloadCache = false) {
         caches.push(ret);
         ret.load();
     }
+    ret.lastAccessed = new Date().getTime();
     return ret;
+}
+/**
+ * If the cache hasn't been accessed in awhile, garbage collect the cache.
+ * TODO: Make this a user-customizable option.
+ */
+function cacheGC() {
+    setTimeout(() => {
+        for (const c of caches) {
+            if (new Date().getTime() - c.lastAccessed > 1000 * 60 * 7) { // 7 minutes
+                const index = caches.indexOf(c, 0);
+                caches.splice(index, 1);
+            }
+        }
+    }, 1000 * 60 * 5); // 5 minutes
 }
 function saveZipTempFile(uri, contents) {
     const tempPath = (0, fileFunctions_1.fixFileName)(path.join(os.tmpdir(), "cosmosModules", uri));

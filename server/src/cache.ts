@@ -5,7 +5,7 @@ import { MastFile } from './files/MastFile';
 import { PyFile } from './files/PyFile';
 import { parseLabelsInFile, LabelInfo, getMainLabelAtPos } from './tokens/labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { debug } from 'console';
+import { debug, time } from 'console';
 import { parse, RX } from './rx';
 import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } from './tokens/routeLabels';
 import { fixFileName, getFileContents, getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readZipArchive } from './fileFunctions';
@@ -81,6 +81,7 @@ export class MissionCache {
 	pyInfoLoaded = false;
 	missionFilesLoaded = false;
 	sbsLoaded = false;
+	lastAccessed: integer = 0;
 
 	constructor(workspaceUri: string) {
 		//debug(workspaceUri);
@@ -1243,6 +1244,7 @@ export function getCache(name:string, reloadCache:boolean = false): MissionCache
 	for (const cache of caches) {
 		if (cache.missionName === name || cache.missionURI === mf) {
 			if (reloadCache) cache.load();
+			cache.lastAccessed = new Date().getTime();
 			return cache;
 		}
 	}
@@ -1251,7 +1253,26 @@ export function getCache(name:string, reloadCache:boolean = false): MissionCache
 		caches.push(ret);
 		ret.load();
 	}
+	ret.lastAccessed = new Date().getTime();
 	return ret;
+}
+
+
+
+/**
+ * If the cache hasn't been accessed in awhile, garbage collect the cache.
+ * TODO: Make this a user-customizable option.
+ */
+function cacheGC() {
+	setTimeout(()=>{
+		for (const c of caches) {
+			if (new Date().getTime() - c.lastAccessed > 1000 * 60 * 7) { // 7 minutes
+				const index = caches.indexOf(c, 0);
+				caches.splice(index, 1)
+			}
+		}
+
+	}, 1000 * 60 * 5) // 5 minutes
 }
 
 function saveZipTempFile(uri:string, contents:string) : string{

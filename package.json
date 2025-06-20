@@ -221,13 +221,13 @@
 			"type": "object",
 			"title": "Example configuration",
 			"properties": {
-				"languageServerExample.maxNumberOfProblems": {
+				"mastLanguageServer.maxNumberOfProblems": {
 					"scope": "resource",
 					"type": "number",
 					"default": 100,
 					"description": "Controls the maximum number of problems produced by the server."
 				},
-				"languageServerExample.trace.server": {
+				"mastLanguageServer.trace.server": {
 					"scope": "window",
 					"type": "string",
 					"enum": [
@@ -237,6 +237,16 @@
 					],
 					"default": "off",
 					"description": "Traces the communication between VS Code and the language server."
+				},
+				"mastLanguageServer.allowMultipleCaches": {
+					"type": "boolean",
+					"default": true,
+					"description": "If true, will cache all applicable files for every mission that is opened during the session. If false, only the files for the currently active mission will be cached."
+				},
+				"mastLanguageServer.cacheTimout": {
+					"type": "number",
+					"default": 0,
+					"description": "If not zero, the cache will expire to clear memory after the specified number (in minutes)."
 				}
 			}
 		}
