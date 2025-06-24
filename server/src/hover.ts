@@ -1,7 +1,7 @@
 import { debug } from 'console';
 import { Hover, integer, Location, MarkupContent, Position, TextDocumentPositionParams } from 'vscode-languageserver';
-import { TextDocument } from 'vscode-languageserver-textdocument';
-import { isInComment, isInString } from './tokens/comments';
+import { Range, TextDocument } from 'vscode-languageserver-textdocument';
+import { CRange, isInComment, isInString } from './tokens/comments';
 import { getCache } from './cache';
 import { getGlobals } from './globals';
 import { getClassOfMethod, isClassMethod, isFunction } from './tokens/tokens';
@@ -18,6 +18,7 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 	}
 	//return {contents:""}
 	const docPos = text.offsetAt(_pos.position);
+	// debug("Char: " + _pos.position.character)
 
 	// Get Hover Range
 	const pos : integer = text.offsetAt(_pos.position);
@@ -65,10 +66,11 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 	//hover.contents = symbol;
 	
 	let hoverText: string|MarkupContent|undefined = symbol;
-	if (isClassMethod(hoveredLine, symbol)) {
-		debug("class method")
+	// debug(hoveredLine);
+	if (isClassMethod(hoveredLine, _pos.position.character)) {
+		// debug("class method")
 		const c = getClassOfMethod(hoveredLine,symbol);
-		debug(c);
+		// debug(c);
 		const classObj = cache.getClasses();
 		const otherFunctions: Function[] = [];
 		let found = false;
@@ -275,29 +277,55 @@ function getHoveredSymbolOld(str: string, pos: integer): string {
  * @param pos The position in the string where you're hovering. Get this from {@link TextDocumentPositionParams TextDocumentPositionParams}.{@link Position Position}.character
  */
 export function getHoveredSymbol(str: string, pos: integer): string {
+	let res = "";
+	let range = getHoveredWordRange(str,pos);
+	res = str.substring(range.start, range.end);
+	// let regexCounter = 0;
+	// while (m = words.exec(str)) {
+		
+	// 	//const start = str.indexOf(m[0]);
+	// 	const start = m.index;
+	// 	const end = start + m[0].length;
+	// 	if (pos >= start && pos <= end) {
+	// 		res = str.substring(start,end);
+	// 		// If it's a route, we're done here.
+	// 		if (getHoveredRoute(res)) break;
+	// 		// If it's not a route, but it doesn't contain slashes, then we're good.
+	// 		if (res.match(/[a-zA-Z_]\w*/)) break;
+	// 		// Otherwise, we'll just ignore this and move on.
+	// 	}
+	// 	regexCounter += 1;
+	// 	if (regexCounter > 10) {
+	// 		break;
+	// 	}
+	// }
+	return res;
+}
+
+export function getHoveredWordRange(str:string, pos: integer): CRange {
+	const r: CRange = {
+		start: 0,
+		end: 0
+	}
 	const words : RegExp = /[a-zA-Z_/]\w*/g;
 	let m: RegExpExecArray | null;
 	let res = "";
-	let regexCounter = 0;
 	while (m = words.exec(str)) {
-		
 		//const start = str.indexOf(m[0]);
 		const start = m.index;
 		const end = start + m[0].length;
 		if (pos >= start && pos <= end) {
-			res = str.substring(start,end);
-			// If it's a route, we're done here.
-			if (getHoveredRoute(res)) break;
-			// If it's not a route, but it doesn't contain slashes, then we're good.
-			if (res.match(/[a-zA-Z_]\w*/)) break;
-			// Otherwise, we'll just ignore this and move on.
-		}
-		regexCounter += 1;
-		if (regexCounter > 10) {
-			break;
+			// res = str.substring(start,end);
+			r.start = start;
+			r.end = end;
+			// // If it's a route, we're done here.
+			// if (getHoveredRoute(res)) break;
+			// // If it's not a route, but it doesn't contain slashes, then we're good.
+			// if (res.match(/[a-zA-Z_]\w*/)) break;
+			// // Otherwise, we'll just ignore this and move on.
 		}
 	}
-	return res;
+	return r;
 }
 
 export function getHoveredRoute(str: string) {

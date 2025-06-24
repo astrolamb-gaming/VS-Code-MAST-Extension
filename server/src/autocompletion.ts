@@ -709,7 +709,7 @@ export function getCurrentArgumentNames(iStr:string, doc:TextDocument): string[]
 	const paramNumber = arr.length-1;
 	let methods:Function[]=[];
 	debug(func);
-	if (isClassMethod(wholeFunc,func)) {
+	if (isClassMethod(wholeFunc,fstart)) {
 		debug("class method")
 		methods = getCache(doc.uri).getPossibleMethods(func);
 	} else {

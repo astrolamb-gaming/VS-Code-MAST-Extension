@@ -3,6 +3,7 @@ import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 import * as fs from 'fs';
 import { integer, Position } from 'vscode-languageserver';
 import { CRange, getComments, getStrings } from '../tokens/comments';
+import { getHoveredWordRange } from '../hover';
 
 // export function getAllTokens(textDocument: TextDocument) {
 // 	let variables = getVariablesInFile(textDocument);
@@ -132,12 +133,15 @@ export function isFunction(line:string,token:string) {
  * @param token 
  * @returns 
  */
-export function isClassMethod(line:string,token:string) {
-	const start = line.indexOf(token);
-	const end = start + token.length;
+export function isClassMethod(line:string,pos:integer) {
+	let r = getHoveredWordRange(line, pos);
+	// const start = line.indexOf(token);
+	// const end = start + token.length;
+
+
 	// if (isFunction(line,token)) {
 	// debug(line.substring(0,start));
-	if (line.substring(0,start).trim().endsWith(".")) {
+	if (line.substring(0,r.start).trim().endsWith(".")) {
 		return true;
 	}
 	// }

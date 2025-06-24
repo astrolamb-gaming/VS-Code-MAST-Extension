@@ -1107,6 +1107,7 @@ async function loadTypings(): Promise<void> {
 }
 
 async function loadSbs(): Promise<PyFile|null>{
+	// return null;
 	if (testingPython) return null;
 	let gh: string = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/typings/sbs/__init__.pyi";
 	// Testing fake bad url

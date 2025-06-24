@@ -677,7 +677,7 @@ function getCurrentArgumentNames(iStr, doc) {
     const paramNumber = arr.length - 1;
     let methods = [];
     (0, console_1.debug)(func);
-    if ((0, tokens_1.isClassMethod)(wholeFunc, func)) {
+    if ((0, tokens_1.isClassMethod)(wholeFunc, fstart)) {
         (0, console_1.debug)("class method");
         methods = (0, cache_1.getCache)(doc.uri).getPossibleMethods(func);
     }

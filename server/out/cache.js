@@ -1064,6 +1064,7 @@ async function loadTypings() {
     }
 }
 async function loadSbs() {
+    // return null;
     if (exports.testingPython)
         return null;
     let gh = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/typings/sbs/__init__.pyi";

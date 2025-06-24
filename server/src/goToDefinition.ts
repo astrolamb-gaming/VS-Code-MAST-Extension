@@ -3,7 +3,7 @@ import { fileFromUri, fixFileName, readFile } from './fileFunctions';
 import { getComments, isInComment, isInString, isInYaml } from './tokens/comments';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
-import { getCurrentLineFromTextDocument, getHoveredSymbol } from './hover';
+import { getCurrentLineFromTextDocument, getHoveredSymbol, getHoveredWordRange } from './hover';
 import { isClassMethod, isFunction } from './tokens/tokens';
 import { getCache } from './cache';
 import { documents, sendToClient } from './server';
@@ -11,6 +11,7 @@ import { URI } from 'vscode-uri';
 import { getLabelLocation, getMainLabelAtPos } from './tokens/labels';
 import { getVariableNamesInDoc, parseVariables } from './tokens/variables';
 import { Function } from './data/function';
+import { asClasses, replaceNames } from './data';
 
 export async function onDefinition(doc:TextDocument,pos:Position): Promise<Location | undefined> {
 	// parseVariables(doc);
@@ -26,7 +27,8 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 
 	let hoveredLine = getCurrentLineFromTextDocument(pos, doc);
 	debug(hoveredLine);
-	const symbol = getHoveredSymbol(hoveredLine, pos.character);
+	const range = getHoveredWordRange(hoveredLine, pos.character);
+	const symbol = hoveredLine.substring(range.start,range.end);
 	debug(symbol);
 	// Now we determine what type of symbol it is.
 	// TODO: Expand on this.
@@ -37,10 +39,11 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 
 	// First, let's check if it has a period in front of it
 	const s = hoveredLine.indexOf(symbol);
-	const icm = isClassMethod(hoveredLine,symbol);
+	const icm = isClassMethod(hoveredLine,pos.character);
+	debug("Is class method: " + icm);
 	const isFunc = isFunction(hoveredLine,symbol);
 	// Apparently the given position is based off of the last character
-	if (s <= pos.character && pos.character <= s + symbol.length) {
+	// if (s <= pos.character && pos.character <= s + symbol.length) {
 		if (icm) {
 			// First, we'll check if it's a class function
 			// Get the class name
@@ -50,7 +53,8 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 			// TODO: Implement definitions for the sbs/sbs_utils stuff
 			// 		Will need to figure out a way to convert the uri
 			// for (const p of getCache(doc.uri).pyFileCache) {//.missionClasses) {
-			for (const c of getCache(doc.uri).getClasses()) {
+			const classes = getCache(doc.uri).getClasses()
+			for (const c of classes) {
 				if (c.name === className) {
 					for (const f of c.methods) {
 						if (f.name === symbol) {
@@ -72,6 +76,29 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 							}
 						}
 					}
+				}
+			}
+			
+
+			for (const c of classes) {
+				// debug(c.name);
+				if (asClasses.includes(c.name)) continue;
+				if (c.name.includes("Route")) continue;
+				if (c.name === "event") continue;
+				// if (c.name === "sim") continue;
+				for (const m of c.methods) {
+					// Don't want to include constructors, this is for properties
+					if (m.functionType === "constructor") continue;
+					if (m.name === symbol) {
+						const loc:Location = m.location;
+						loc.uri = fileFromUri(loc.uri);
+						return loc;
+					}
+					// // If it's sim, convert back to simulation for this.
+					// let className = c.name;
+					// for (const cn of replaceNames) {
+					// 	if (className === cn[1]) className = cn[0];
+					// }
 				}
 			}
 		}
@@ -102,7 +129,7 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 		let loc = getLabelLocation(symbol, doc, pos);
 		// debug(loc);
 		return loc;
-	}
+	// }
 
 	
 

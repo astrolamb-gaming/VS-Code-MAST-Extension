@@ -10,6 +10,7 @@ exports.isClassMethod = isClassMethod;
 exports.getClassOfMethod = getClassOfMethod;
 exports.getWordRangeAtPosition = getWordRangeAtPosition;
 const comments_1 = require("../tokens/comments");
+const hover_1 = require("../hover");
 var TokenType;
 (function (TokenType) {
     TokenType[TokenType["VARIABLE"] = 0] = "VARIABLE";
@@ -111,12 +112,13 @@ function isFunction(line, token) {
  * @param token
  * @returns
  */
-function isClassMethod(line, token) {
-    const start = line.indexOf(token);
-    const end = start + token.length;
+function isClassMethod(line, pos) {
+    let r = (0, hover_1.getHoveredWordRange)(line, pos);
+    // const start = line.indexOf(token);
+    // const end = start + token.length;
     // if (isFunction(line,token)) {
     // debug(line.substring(0,start));
-    if (line.substring(0, start).trim().endsWith(".")) {
+    if (line.substring(0, r.start).trim().endsWith(".")) {
         return true;
     }
     // }
