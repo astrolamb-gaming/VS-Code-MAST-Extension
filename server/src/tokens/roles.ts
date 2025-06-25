@@ -54,12 +54,12 @@ export function getRolesAsCompletionItem(roles: string[]) {
 }
 
 export function getInventoryKeysForFile(text:string) {
-	let regex:RegExp = /inventory_value\(\w+,(?<val>([\"\']))([^\"\']*)\k<val>(,.*)?\)/g;
+	let regex:RegExp = /((((get|set|remove)_)?(shared_)?inventory_value)|(inventory_set))\(.*?,(?<val>([\"\']))([^\"\'\n\r]*)\k<val>(,.*)?\)/g;
 	let m: RegExpExecArray | null;
 	let keys: string[]=[];
 	while (m = regex.exec(text)) {
 		if (m[3]!== undefined) {
-			keys.push(m[3]);
+			keys.push(m[9]);
 		}
 	}
 	keys = [...new Set(keys)];

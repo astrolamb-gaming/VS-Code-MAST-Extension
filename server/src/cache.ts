@@ -905,7 +905,7 @@ export class MissionCache {
 	 * @param name Name of the method or function
 	 * @returns Associated {@link SignatureInformation}
 	 */
-	getSignatureOfMethod(name: string): SignatureInformation | undefined {
+	getSignatureOfMethod(name: string, isClassMethod: boolean=false): SignatureInformation | undefined {
 		for (const p of this.missionPyModules) {
 			for (const f of p.defaultFunctions) {
 				// for (const f of this.missionDefaultFunctions) {
@@ -914,10 +914,12 @@ export class MissionCache {
 				}
 			}
 		}
-		for (const c of this.missionClasses) {
-			for (const m of c.methods) {
-				if (m.name === name) {
-					return m.buildSignatureInformation();
+		if (isClassMethod) {
+			for (const c of this.missionClasses) {
+				for (const m of c.methods) {
+					if (m.name === name) {
+						return m.buildSignatureInformation();
+					}
 				}
 			}
 		}
@@ -927,10 +929,12 @@ export class MissionCache {
 					return f.buildSignatureInformation();
 				}
 			}
-			for (const c of m.classes) {
-				for (const f of c.methods) {
-					if (f.name === name) {
-						return f.buildSignatureInformation();
+			if (isClassMethod) {
+				for (const c of m.classes) {
+					for (const f of c.methods) {
+						if (f.name === name) {
+							return f.buildSignatureInformation();
+						}
 					}
 				}
 			}
@@ -970,12 +974,15 @@ export class MissionCache {
 		folder = fixFileName(folder);
 		let keys: string[] = [];
 		const ini = getInitContents(folder);
-		debug(ini);
+		// debug(ini);
+		// debug(this.mastFileCache.length)
 		for (const m of this.mastFileCache) {
-			debug(folder);
-			if (ini.includes(path.basename(m.uri))) {
+			// if (ini.includes(path.basename(m.uri))) {
 				keys = keys.concat(m.keys);
-			}
+			// }
+		}
+		for (const m of this.missionMastModules) {
+			keys = keys.concat(m.keys);
 		}
 		return keys;
 	}
@@ -987,13 +994,12 @@ export class MissionCache {
 	 */
 	getMastFile(uri:string): MastFile {
 		uri = fixFileName(uri);
-		// debug(uri);
-		// if (uri.endsWith("server_console.mast")) debug(" THIS FILE")
 		for (const m of this.mastFileCache) {
-			if (m.uri === fixFileName(uri)) {
+			if (m.uri === uri) {
 				return m;
 			}
 		}
+		// debug("Creating Mast File: " + uri);
 		const m: MastFile = new MastFile(uri);
 		this.mastFileCache.push(m);
 		return m;

@@ -253,6 +253,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 					}
 				}
 				if (a === "behave_id") {
+					// TODO: Someday there will be a master list of these and we will need to reference that instead
 					let behaves = [
 						"behav_npcship",
 						"behav_typhon",

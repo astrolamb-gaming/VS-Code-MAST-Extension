@@ -6,6 +6,7 @@ const console_1 = require("console");
 const cache_1 = require("./cache");
 const comments_1 = require("./tokens/comments");
 const hover_1 = require("./hover");
+const tokens_1 = require("./tokens/tokens");
 function onSignatureHelp(_textDocPos, text) {
     let sh = {
         signatures: []
@@ -24,8 +25,10 @@ function onSignatureHelp(_textDocPos, text) {
     const pos = text.offsetAt(_textDocPos.position);
     const startOfLine = pos - _textDocPos.position.character;
     const iStr = t.substring(startOfLine, pos);
+    const line = (0, hover_1.getCurrentLineFromTextDocument)(_textDocPos.position, text);
     // Calculate which parameter is the active one
     const func = getCurrentMethodName(iStr);
+    (0, console_1.debug)(func);
     if (func === "")
         return;
     const fstart = iStr.lastIndexOf(func);
@@ -35,7 +38,8 @@ function onSignatureHelp(_textDocPos, text) {
     const arr = wholeFunc.split(",");
     sh.activeParameter = arr.length - 1;
     // Check for the current function name and get SignatureInformation for that function.
-    let sig = (0, cache_1.getCache)(text.uri).getSignatureOfMethod(func);
+    let sig = (0, cache_1.getCache)(text.uri).getSignatureOfMethod(func, (0, tokens_1.isClassMethod)(line, _textDocPos.position.character));
+    (0, console_1.debug)(sig);
     if (sig !== undefined) {
         sh.signatures.push(sig);
     }

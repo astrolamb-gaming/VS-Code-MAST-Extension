@@ -51,12 +51,12 @@ function getRolesAsCompletionItem(roles) {
     return ci;
 }
 function getInventoryKeysForFile(text) {
-    let regex = /inventory_value\(\w+,(?<val>([\"\']))([^\"\']*)\k<val>(,.*)?\)/g;
+    let regex = /((((get|set|remove)_)?(shared_)?inventory_value)|(inventory_set))\(.*?,(?<val>([\"\']))([^\"\'\n\r]*)\k<val>(,.*)?\)/g;
     let m;
     let keys = [];
     while (m = regex.exec(text)) {
         if (m[3] !== undefined) {
-            keys.push(m[3]);
+            keys.push(m[9]);
         }
     }
     keys = [...new Set(keys)];

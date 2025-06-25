@@ -3,7 +3,8 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
 import { getCache } from './cache';
 import { CRange, replaceRegexMatchWithUnderscore } from './tokens/comments';
-import { getHoveredSymbol } from './hover';
+import { getCurrentLineFromTextDocument, getHoveredSymbol, getHoveredWordRange } from './hover';
+import { isClassMethod } from './tokens/tokens';
 
 export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocument): SignatureHelp | undefined {
 	let sh : SignatureHelp = {
@@ -23,11 +24,13 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 	const pos : integer = text.offsetAt(_textDocPos.position);
 	const startOfLine : integer = pos - _textDocPos.position.character;
 	const iStr : string = t.substring(startOfLine,pos);
-
+	const line = getCurrentLineFromTextDocument(_textDocPos.position,text);
 	// Calculate which parameter is the active one
 	const func = getCurrentMethodName(iStr);
+	debug(func)
 	if (func === "") return;
 	const fstart = iStr.lastIndexOf(func);
+	
 	let wholeFunc = iStr.substring(fstart,iStr.length);
 	let obj = /{.*?(}|$)/gm;
 	wholeFunc = wholeFunc.replace(obj, "_")
@@ -35,7 +38,8 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 	sh.activeParameter = arr.length - 1;
 
 	// Check for the current function name and get SignatureInformation for that function.
-	let sig = getCache(text.uri).getSignatureOfMethod(func);
+	let sig = getCache(text.uri).getSignatureOfMethod(func,isClassMethod(line, _textDocPos.position.character));
+	debug(sig)
 	if (sig !== undefined) {
 		sh.signatures.push(sig);
 	}

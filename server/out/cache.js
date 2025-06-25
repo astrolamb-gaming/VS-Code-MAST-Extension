@@ -875,7 +875,7 @@ class MissionCache {
      * @param name Name of the method or function
      * @returns Associated {@link SignatureInformation}
      */
-    getSignatureOfMethod(name) {
+    getSignatureOfMethod(name, isClassMethod = false) {
         for (const p of this.missionPyModules) {
             for (const f of p.defaultFunctions) {
                 // for (const f of this.missionDefaultFunctions) {
@@ -884,10 +884,12 @@ class MissionCache {
                 }
             }
         }
-        for (const c of this.missionClasses) {
-            for (const m of c.methods) {
-                if (m.name === name) {
-                    return m.buildSignatureInformation();
+        if (isClassMethod) {
+            for (const c of this.missionClasses) {
+                for (const m of c.methods) {
+                    if (m.name === name) {
+                        return m.buildSignatureInformation();
+                    }
                 }
             }
         }
@@ -897,10 +899,12 @@ class MissionCache {
                     return f.buildSignatureInformation();
                 }
             }
-            for (const c of m.classes) {
-                for (const f of c.methods) {
-                    if (f.name === name) {
-                        return f.buildSignatureInformation();
+            if (isClassMethod) {
+                for (const c of m.classes) {
+                    for (const f of c.methods) {
+                        if (f.name === name) {
+                            return f.buildSignatureInformation();
+                        }
                     }
                 }
             }
@@ -937,12 +941,15 @@ class MissionCache {
         folder = (0, fileFunctions_1.fixFileName)(folder);
         let keys = [];
         const ini = (0, fileFunctions_1.getInitContents)(folder);
-        (0, console_1.debug)(ini);
+        // debug(ini);
+        // debug(this.mastFileCache.length)
         for (const m of this.mastFileCache) {
-            (0, console_1.debug)(folder);
-            if (ini.includes(path.basename(m.uri))) {
-                keys = keys.concat(m.keys);
-            }
+            // if (ini.includes(path.basename(m.uri))) {
+            keys = keys.concat(m.keys);
+            // }
+        }
+        for (const m of this.missionMastModules) {
+            keys = keys.concat(m.keys);
         }
         return keys;
     }
@@ -953,13 +960,12 @@ class MissionCache {
      */
     getMastFile(uri) {
         uri = (0, fileFunctions_1.fixFileName)(uri);
-        // debug(uri);
-        // if (uri.endsWith("server_console.mast")) debug(" THIS FILE")
         for (const m of this.mastFileCache) {
-            if (m.uri === (0, fileFunctions_1.fixFileName)(uri)) {
+            if (m.uri === uri) {
                 return m;
             }
         }
+        // debug("Creating Mast File: " + uri);
         const m = new MastFile_1.MastFile(uri);
         this.mastFileCache.push(m);
         return m;
