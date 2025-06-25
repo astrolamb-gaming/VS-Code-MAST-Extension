@@ -247,6 +247,11 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 					}
 					return ci;
 				}
+				if (a === "key") {
+					if (func.endsWith("data_set_value")) {
+						return getGlobals().blob_items;
+					}
+				}
 				if (a === "behave_id") {
 					let behaves = [
 						"behav_npcship",
