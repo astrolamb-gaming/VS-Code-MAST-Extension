@@ -467,6 +467,7 @@ export class MissionCache {
 			//debug("Building file: " + file);
 			if (file.includes("sbs_utils")) return;
 			const m = new MastFile(file, data);
+			m.inZip = true;
 			this.missionMastModules.push(m);
 		}
 		// debug("Finished loading: " + path.basename(file))
@@ -478,10 +479,10 @@ export class MissionCache {
 	 */
 	updateFileInfo(doc: TextDocument) {
 		if (doc.languageId === "mast") {
-			debug("Updating " + doc.uri);
+			// debug("Updating " + doc.uri);
 			this.getMastFile(doc.uri).parse(doc.getText());
 		} else if (doc.languageId === "py") {
-			debug("Updating " + doc.uri);
+			// debug("Updating " + doc.uri);
 			this.getPyFile(doc.uri).parseWholeFile(doc.getText());
 		}
 	}

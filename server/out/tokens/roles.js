@@ -55,10 +55,11 @@ function getInventoryKeysForFile(text) {
     let m;
     let keys = [];
     while (m = regex.exec(text)) {
-        if (m[3] !== undefined) {
+        if (m[9] !== undefined) {
             keys.push(m[9]);
         }
     }
+    // filters out any duplicates
     keys = [...new Set(keys)];
     return keys;
 }
