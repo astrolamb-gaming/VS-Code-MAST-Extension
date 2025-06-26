@@ -7,10 +7,10 @@ import { getCache } from '../cache';
 // TODO: Add these to autocomplete and hover
 export const variableModifiers: string[][] = [
 	["default", "`default` means that if the variable is not already defined, define it. Otherwise, skip. So it does not overwrite if it exists."],
-	["shared","Variables with this modifier are used by the server and all clients"],
-	// TODO: what do assigned and temp do to variables?
+	["shared","Variables with this modifier are used by the server and all clients. It is a per MAST instance"],
+	// TODO: what do assigned and temp do to variables? See mast_node.py, class Scope for deets on these
 	["assigned",""],
-	["client","Variables with the `client` modifier are only used by the client."],
+	["client","Variables with the `client` modifier are only used by the client, as handled by the scheduler."],
 	["temp",""]
 ]
 
