@@ -909,10 +909,6 @@ export class MissionCache {
 	getSignatureOfMethod(name: string, isClassMethod: boolean=false): SignatureInformation | undefined {
 		if (isClassMethod) {
 			for (const c of this.getClasses()) {
-				if (c.name === "sbs") {
-					debug("THIS IS SBS");
-					debug(c.methods)
-				}
 				for (const f of c.methods) {
 					if (f.name === name) {
 						return f.buildSignatureInformation();
