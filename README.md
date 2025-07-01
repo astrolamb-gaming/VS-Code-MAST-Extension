@@ -3,10 +3,11 @@
 An extension for developing missions for [Artemis Cosmos](https://www.artemisspaceshipbridge.com/#/).
 It is intended to facilitate developing mission scripts using the [MAST language](https://artemis-sbs.github.io/sbs_utils/mast/).
 
-MAST references:
-[sbs_utils repository](https://github.com/artemis-sbs/sbs_utils)
-[LegendaryMissions repository](https://github.com/artemis-sbs/LegendaryMissions)
-[Artemis Cosmos bug reporting](https://github.com/artemis-sbs/LegendaryMissions/issues)
+MAST references:  
+[sbs_utils repository](https://github.com/artemis-sbs/sbs_utils)  
+[LegendaryMissions repository](https://github.com/artemis-sbs/LegendaryMissions)  
+[MAST Starter repository](https://github.com/artemis-sbs/mast_starter)  
+[Artemis Cosmos bug reporting](https://github.com/artemis-sbs/LegendaryMissions/issues)  
 
 ## Features
 
