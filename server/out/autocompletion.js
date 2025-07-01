@@ -217,6 +217,22 @@ function onCompletion(_textDocumentPosition, text) {
                     }
                     return ci;
                 }
+                if (a === "descriptorString") {
+                    if (func.includes("particle")) {
+                        for (const arg of (0, globals_1.getGlobals)().widget_stylestrings) {
+                            if (arg.function === "particle_event") {
+                                const item = {
+                                    label: arg.name,
+                                    kind: vscode_languageserver_1.CompletionItemKind.Text,
+                                    insertText: arg.name + ": ",
+                                    documentation: arg.docs
+                                };
+                                ci.push(item);
+                            }
+                        }
+                        return ci;
+                    }
+                }
                 if (a === "art_id" || a === "art") {
                     // ci = getGlobals().shipData.getCompletionItemsForShips();
                     ci = [];

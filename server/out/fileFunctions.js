@@ -4,6 +4,7 @@ exports.findSubfolderByName = findSubfolderByName;
 exports.getFolders = getFolders;
 exports.getFileContents = getFileContents;
 exports.readFile = readFile;
+exports.readFileSync = readFileSync;
 exports.getFilesInDir = getFilesInDir;
 exports.getInitFileInFolder = getInitFileInFolder;
 exports.readAllFilesIn = readAllFilesIn;
@@ -57,20 +58,25 @@ async function getFileContents(dir) {
     return entries.text();
 }
 /**
- * Use to read a local file.
+ * Use to read a local file ansyncronously
  * Use getFileContents() to get the contents of a file from the web.
  * @param dir
  * @returns
  */
 async function readFile(dir) {
     dir = fixFileName(dir);
-    //let ret: string = "";
-    // const d = fs.readFileSync(dir, "utf-8").then( (err,data)=>{
-    // 	if (err) {
-    // 		debug("error reading file: " + dir + "\n" + err);
-    // 	}
-    // 	ret = data;
-    // });
+    // const ret = fs.readFileSync(dir, "utf-8");
+    const ret = fs.readFileSync(dir, "utf-8");
+    return ret;
+}
+/**
+ * Use to read a local file syncronously
+ * Use getFileContents() to get the contents of a file from the web.
+ * @param dir
+ * @returns
+ */
+function readFileSync(dir) {
+    dir = fixFileName(dir);
     const ret = fs.readFileSync(dir, "utf-8");
     return ret;
 }

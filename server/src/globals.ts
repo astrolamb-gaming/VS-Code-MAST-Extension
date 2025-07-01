@@ -1,5 +1,5 @@
 import { debug } from 'console';
-import { findSubfolderByName, fixFileName, getArtemisDirFromChild, getFilesInDir, getFolders, readFile } from './fileFunctions';
+import { findSubfolderByName, fixFileName, getArtemisDirFromChild, getFilesInDir, getFolders, readFile, readFileSync } from './fileFunctions';
 import path = require('path');
 import fs = require('fs');
 import os = require('os');
@@ -19,6 +19,10 @@ interface WidgetStyleString {
 	name: string,
 	docs: string
 }
+interface FaceFile {
+	shortName: string,
+	fileName: string
+}
 
 export class Globals {
 	currentFile: string = "";
@@ -32,12 +36,14 @@ export class Globals {
 	shipData: ShipData;
 	artemisDir: string = "";
 	artFiles: CompletionItem[] = [];
+	faceArtFiles: FaceFile[] = [];
 	/**
 	 * 0: Not loaded
 	 * 1: Loading but not complete
 	 * 2: Loaded
 	 */
 	loadingState = 0;
+	
 	constructor() {
 		showProgressBar(true);
 		const thisDir = path.resolve("../");
@@ -88,6 +94,8 @@ export class Globals {
 			}
 			debug("ship data gotten")
 			this.artFiles = this.findArtFiles(true);
+			this.faceArtFiles = this.loadFaceArt();
+			debug(this.faceArtFiles)
 			debug("art files gotten")
 		}
 		this.loadingState = 2;
@@ -191,6 +199,22 @@ export class Globals {
 
 	isCurrentFile(f:string): boolean {
 		return fixFileName(f) === f;
+	}
+
+	private loadFaceArt(): FaceFile[] {
+		let ret: FaceFile[] = [];
+		const allFaceFiles = path.join(this.artemisDir, "data", "graphics", "allFaceFiles.txt");
+		let faceInfo = readFileSync(allFaceFiles);
+		let line = /(\w+)[ \t]+([\w-]+)/gm;
+		let m: RegExpExecArray | null;
+		while (m = line.exec(faceInfo)) {
+			const ff: FaceFile = {
+				shortName: m[1],
+				fileName: m[2]
+			}
+			ret.push(ff);
+		}
+		return ret;
 	}
 
 	private findArtFiles(byID:boolean): CompletionItem[] {

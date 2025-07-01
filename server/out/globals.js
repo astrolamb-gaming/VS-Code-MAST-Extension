@@ -25,6 +25,7 @@ class Globals {
         this.libModuleCompletionItems = [];
         this.artemisDir = "";
         this.artFiles = [];
+        this.faceArtFiles = [];
         /**
          * 0: Not loaded
          * 1: Loading but not complete
@@ -81,6 +82,8 @@ class Globals {
             }
             (0, console_1.debug)("ship data gotten");
             this.artFiles = this.findArtFiles(true);
+            this.faceArtFiles = this.loadFaceArt();
+            (0, console_1.debug)(this.faceArtFiles);
             (0, console_1.debug)("art files gotten");
         }
         this.loadingState = 2;
@@ -177,6 +180,21 @@ class Globals {
     }
     isCurrentFile(f) {
         return (0, fileFunctions_1.fixFileName)(f) === f;
+    }
+    loadFaceArt() {
+        let ret = [];
+        const allFaceFiles = path.join(this.artemisDir, "data", "graphics", "allFaceFiles.txt");
+        let faceInfo = (0, fileFunctions_1.readFileSync)(allFaceFiles);
+        let line = /(\w+)[ \t]+([\w-]+)/gm;
+        let m;
+        while (m = line.exec(faceInfo)) {
+            const ff = {
+                shortName: m[1],
+                fileName: m[2]
+            };
+            ret.push(ff);
+        }
+        return ret;
     }
     findArtFiles(byID) {
         let ret = [];

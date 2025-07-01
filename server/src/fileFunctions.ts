@@ -47,24 +47,26 @@ export async function getFileContents(dir: string): Promise<string> {
 }
 
 /**
- * Use to read a local file.
+ * Use to read a local file ansyncronously
  * Use getFileContents() to get the contents of a file from the web.
  * @param dir 
  * @returns 
  */
 export async function readFile(dir: string): Promise<string> {
 	dir = fixFileName(dir);
-	//let ret: string = "";
-	
-	// const d = fs.readFileSync(dir, "utf-8").then( (err,data)=>{
-	// 	if (err) {
-	// 		debug("error reading file: " + dir + "\n" + err);
-	// 	}
-	// 	ret = data;
-	// });
-
+	// const ret = fs.readFileSync(dir, "utf-8");
 	const ret = fs.readFileSync(dir, "utf-8");
-	
+	return ret;
+}
+/**
+ * Use to read a local file syncronously
+ * Use getFileContents() to get the contents of a file from the web.
+ * @param dir 
+ * @returns 
+ */
+export function readFileSync(dir:string): string {
+	dir = fixFileName(dir);
+	const ret = fs.readFileSync(dir, "utf-8");
 	return ret;
 }
 
