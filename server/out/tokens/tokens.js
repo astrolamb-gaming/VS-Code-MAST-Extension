@@ -114,14 +114,9 @@ function isFunction(line, token) {
  */
 function isClassMethod(line, pos) {
     let r = (0, hover_1.getHoveredWordRange)(line, pos);
-    // const start = line.indexOf(token);
-    // const end = start + token.length;
-    // if (isFunction(line,token)) {
-    // debug(line.substring(0,start));
     if (line.substring(0, r.start).trim().endsWith(".")) {
         return true;
     }
-    // }
     return false;
 }
 function getClassOfMethod(line, token) {
@@ -132,7 +127,6 @@ function getClassOfMethod(line, token) {
     let m;
     while (m = className.exec(line)) {
         const c = m[0];
-        //debug(c);
         return c;
     }
 }

@@ -877,6 +877,19 @@ class MissionCache {
      * @returns Associated {@link SignatureInformation}
      */
     getSignatureOfMethod(name, isClassMethod = false) {
+        if (isClassMethod) {
+            for (const c of this.getClasses()) {
+                if (c.name === "sbs") {
+                    (0, console_1.debug)("THIS IS SBS");
+                    (0, console_1.debug)(c.methods);
+                }
+                for (const f of c.methods) {
+                    if (f.name === name) {
+                        return f.buildSignatureInformation();
+                    }
+                }
+            }
+        }
         for (const p of this.missionPyModules) {
             for (const f of p.defaultFunctions) {
                 // for (const f of this.missionDefaultFunctions) {

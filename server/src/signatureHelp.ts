@@ -33,13 +33,17 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 	
 	let wholeFunc = iStr.substring(fstart,iStr.length);
 	let obj = /{.*?(}|$)/gm;
-	wholeFunc = wholeFunc.replace(obj, "_")
+	// Here we get rid of some things that could cause parsing issues.
+	// We replace fstrings and nested functions with _, and anythnig within quotes to just empty quotes.
+	// This eliminates commas that mess with the current parameter, as well as functions etc in fstrings
+	wholeFunc = wholeFunc.replace(obj, "_").replace(/\".*?\"/,'""');
 	const arr = wholeFunc.split(",");
 	sh.activeParameter = arr.length - 1;
+	let isClassMethodRes = isClassMethod(line, fstart);
 
 	// Check for the current function name and get SignatureInformation for that function.
-	let sig = getCache(text.uri).getSignatureOfMethod(func,isClassMethod(line, _textDocPos.position.character));
-	debug(sig)
+	let sig = getCache(text.uri).getSignatureOfMethod(func,isClassMethodRes);
+	// debug(sig)
 	if (sig !== undefined) {
 		sh.signatures.push(sig);
 	}

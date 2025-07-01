@@ -135,16 +135,9 @@ export function isFunction(line:string,token:string) {
  */
 export function isClassMethod(line:string,pos:integer) {
 	let r = getHoveredWordRange(line, pos);
-	// const start = line.indexOf(token);
-	// const end = start + token.length;
-
-
-	// if (isFunction(line,token)) {
-	// debug(line.substring(0,start));
 	if (line.substring(0,r.start).trim().endsWith(".")) {
 		return true;
 	}
-	// }
 	return false;
 }
 export function getClassOfMethod(line:string,token:string) {
@@ -155,7 +148,6 @@ export function getClassOfMethod(line:string,token:string) {
 	let m: RegExpExecArray | null;
 	while(m = className.exec(line)) {
 		const c = m[0];
-		//debug(c);
 		return c;
 	}
 

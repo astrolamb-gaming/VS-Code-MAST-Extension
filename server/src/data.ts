@@ -22,6 +22,8 @@ export const asClasses = ["sbs","math","random"];
 /**
  * This accounts for modules that prepend the class name to the function name.
  * E.g. names.random_kralien_name() would become names_random_kralien_name()
+ * In theory this is not longer in use. Instead this should happen due to the check in {@link PyFile PyFile} for if it's a global
+ * Need to verify if it's doing this properly.
  */
 export const prepend = ["ship_data","names","scatter"];
 
@@ -63,7 +65,7 @@ export class FileCache {
 
 
 /**
- * 
+ * Gets the comments and weighted strings associated with the label at the provided position.
  * @param text 
  * @param pos 
  * @returns 
