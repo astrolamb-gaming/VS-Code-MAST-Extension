@@ -12,6 +12,7 @@ const vscode_1 = require("vscode");
 const vscode = require("vscode");
 const fs = require("fs");
 const node_1 = require("vscode-languageclient/node");
+const webview_1 = require("./webview");
 let mainProgress;
 let myStatusBarItem;
 let statusBarItemText = "";
@@ -21,6 +22,7 @@ let client;
 let outputChannel;
 outputChannel = vscode_1.window.createOutputChannel("MAST Client Output", { log: true });
 debug("Output channel created");
+// #region <--------------------- child_process checking... ---------------------->
 (function () {
     debug("Startings");
     var childProcess = require("child_process");
@@ -35,6 +37,7 @@ debug("Output channel created");
     }
     childProcess.spawn = mySpawn;
 })();
+// #endregion
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 exports.sleep = sleep;
 function activate(context) {
@@ -70,6 +73,7 @@ function activate(context) {
             }
         }
     };
+    // #region <--------------- Folding Provider Region - Not Used.... ---------------------->
     // const disposable = vscode.languages.registerFoldingRangeProvider('mast', {
     //     provideFoldingRanges(document, context, token) {
     //         //console.log('folding range invoked'); // comes here on every character edit
@@ -104,8 +108,21 @@ function activate(context) {
     //     }
     // });
     // context.subscriptions.push(vscode.languages.registerCompletionItemProvider(GO_MODE, new GoCompletionItemProvider(), ".", "\""));
+    // #endregion
     // Create the language client and start the client.
     client = new node_1.LanguageClient('MAST-Language-Server', 'MAST Language Server', serverOptions, clientOptions);
+    // #region <--------------------- Ship and Face Webview Region ------------------------>
+    const ships = client.onNotification('custom/ships', (folder) => {
+        (0, webview_1.generateShipWebview)(context, folder);
+    });
+    // context.subscriptions.push(
+    // 	vscode.commands.registerCommand('faces.start', () => {
+    // 		generateShipWebview(context, )
+    // 	})
+    // );
+    context.subscriptions.push(ships);
+    // #endregion
+    // #region <----------------- Progress Bar Region -------------------->
     // create a new status bar item that we can now manage
     myStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 200);
     // myStatusBarItem.command = myCommandId;
@@ -120,28 +137,11 @@ function activate(context) {
     context.subscriptions.push(prog1);
     let statusBarStatus = true;
     const prog = client.onNotification('custom/progressNotif', (show) => {
-        // debug("Progressing....  " + increment);
-        // window.withProgress({
-        // 	location: vscode.ProgressLocation.Notification,
-        // 	title: "Loading data...",
-        // 	cancellable: true
-        // },(progress, token) => {
-        // 	mainProgress = progress;
-        // 	token.onCancellationRequested(() => {
-        // 		console.log("User canceled the long running operation");
-        // 	});
-        // 	progress.report({message: "Loading data...", increment: increment})
-        // 	const p = new Promise<void>(resolve => {
-        // 		setTimeout(() => {
-        // 			resolve();
-        // 		}, 5000);
-        // 	});
-        // 	return p;
-        // })
         updateStatusBarItem(show);
     });
     context.subscriptions.push(prog);
     // updateStatusBarItem(true);
+    // #endregion
     const storyJsonListener = client.onNotification('custom/storyJson', (message) => {
         debug("Story Json Notification recieved");
         //window.showQuickPick([{label:"One"},{label:"Two"}]);

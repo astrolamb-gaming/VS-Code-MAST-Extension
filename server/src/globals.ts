@@ -5,7 +5,7 @@ import fs = require('fs');
 import os = require('os');
 import sharp = require('sharp');
 import { CompletionItem, CompletionItemLabelDetails, CompletionItemKind, SignatureInformation, MarkupContent } from 'vscode-languageserver';
-import { connection, notifyClient, showProgressBar } from './server';
+import { connection, notifyClient, sendToClient, showProgressBar } from './server';
 import { ShipData } from './shipData';
 import { sleep } from './python/python';
 
@@ -52,6 +52,7 @@ export class Globals {
 		debug(adir);
 		if (adir) {
 			this.artemisDir = adir;
+			sendToClient("ships", this.artemisDir)
 		} else {
 			this.artemisDir = "";
 		}
