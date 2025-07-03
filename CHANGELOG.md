@@ -9,6 +9,11 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * TODO: Add more info about shipdata entries to the art arguments for space objects
 * WIP: Get mast complier errors from the compiler itself, so the game doesn't have to be running to check for compiler errors.
 
+### 0.13.0
+* Add blob values for get/set_data_set_value functions
+* Fix issues with signature determination for some functions
+* Update sbs particle function descriptorString autocompletions based on widget_stylestring_documentation.txt
+
 ### 0.12.0
 
 * Add python built-in module information based off of mast_globals.py, so it is forward-compatible
