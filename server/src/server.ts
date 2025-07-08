@@ -576,6 +576,11 @@ connection.onNotification("custom/storyJsonResponse",(response)=>{
 	}
 });
 
+// Useful for debugging the client
+connection.onNotification("custom/debug", (response) => {
+	debug(response);
+})
+
 
 // connection.onDocumentOnTypeFormatting((params:DocumentOnTypeFormattingParams,token:CancellationToken): HandlerResult<TextEdit[] | null | undefined, void> =>{
 // 	const te: TextEdit[] = [];

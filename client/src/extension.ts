@@ -290,6 +290,11 @@ function mydebug(str:any) {
 	console.log(str);
 }
 
-function debug(str:any) {
+export function debug(str:any) {
 	outputChannel.appendLine(str);
+	if (client) {
+		client.sendNotification("custom/debug", str);
+	} else {
+		outputChannel.appendLine("client not initialized")
+	}
 }

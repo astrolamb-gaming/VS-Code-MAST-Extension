@@ -52,7 +52,8 @@ export class Globals {
 		debug(adir);
 		if (adir) {
 			this.artemisDir = adir;
-			sendToClient("ships", this.artemisDir)
+			// TODO: load webview info after globals are gotten?
+			// sendToClient("ships", this.artemisDir)
 		} else {
 			this.artemisDir = "";
 		}

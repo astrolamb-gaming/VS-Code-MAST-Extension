@@ -7,6 +7,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.sleep = void 0;
 exports.activate = activate;
 exports.deactivate = deactivate;
+exports.debug = debug;
 const path = require("path");
 const vscode_1 = require("vscode");
 const vscode = require("vscode");
@@ -232,5 +233,11 @@ function mydebug(str) {
 }
 function debug(str) {
     outputChannel.appendLine(str);
+    if (client) {
+        client.sendNotification("custom/debug", str);
+    }
+    else {
+        outputChannel.appendLine("client not initialized");
+    }
 }
 //# sourceMappingURL=extension.js.map

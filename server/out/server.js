@@ -419,6 +419,10 @@ exports.connection.onNotification("custom/storyJsonResponse", (response) => {
             break;
     }
 });
+// Useful for debugging the client
+exports.connection.onNotification("custom/debug", (response) => {
+    (0, console_1.debug)(response);
+});
 // connection.onDocumentOnTypeFormatting((params:DocumentOnTypeFormattingParams,token:CancellationToken): HandlerResult<TextEdit[] | null | undefined, void> =>{
 // 	const te: TextEdit[] = [];
 // 	params.
