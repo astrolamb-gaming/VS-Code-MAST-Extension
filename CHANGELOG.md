@@ -12,6 +12,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ### 0.14.0
 * Add icon to autocompete information for functions with the icon_index parameter
 * Fix for use of `#region....#endregion` for collapseable code blocks
+* Fix autocompletion for named arguments in function calls
 
 ### 0.13.0
 * Add blob values for get/set_data_set_value functions
