@@ -41,6 +41,9 @@ class Function {
         const isPromise = /(@awaitable)/;
         this.name = (0, class_1.getRegExMatch)(raw, functionName).replace("def ", "").replace("(", "").trim();
         let params = (0, class_1.getRegExMatch)(raw, functionParam).replace(/\(|\)/g, "").replace(/self(.*?,|.*?$)/m, "").replace(/^[\t ]*#.*?(\n|$)/gm, "").replace(/\n\s*\n/g, "\n").trim();
+        if (params.endsWith(",")) {
+            params = params.substring(0, params.length - 1);
+        }
         this.rawParams = params;
         let comments = (0, class_1.getRegExMatch)(raw, comment).replace("\"\"\"", "").replace("\"\"\"", "");
         this.documentation = comments;
