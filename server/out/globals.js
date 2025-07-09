@@ -13,6 +13,7 @@ const vscode_languageserver_1 = require("vscode-languageserver");
 const server_1 = require("./server");
 const shipData_1 = require("./shipData");
 const python_1 = require("./python/python");
+const iconSets_1 = require("./resources/iconSets");
 class Globals {
     constructor() {
         this.currentFile = "";
@@ -26,6 +27,7 @@ class Globals {
         this.artemisDir = "";
         this.artFiles = [];
         this.faceArtFiles = [];
+        this.gridIcons = [];
         /**
          * 0: Not loaded
          * 1: Loading but not complete
@@ -85,6 +87,8 @@ class Globals {
             (0, console_1.debug)("ship data gotten");
             this.artFiles = this.findArtFiles(true);
             this.faceArtFiles = this.loadFaceArt();
+            (0, iconSets_1.parseIconSet)(path.join(this.artemisDir, "data", "graphics", "grid-icon-sheet.png"), 128);
+            // this.gridIcons = getGridIcons();
             (0, console_1.debug)(this.faceArtFiles);
             (0, console_1.debug)("art files gotten");
         }

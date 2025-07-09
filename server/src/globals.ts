@@ -8,6 +8,7 @@ import { CompletionItem, CompletionItemLabelDetails, CompletionItemKind, Signatu
 import { connection, notifyClient, sendToClient, showProgressBar } from './server';
 import { ShipData } from './shipData';
 import { sleep } from './python/python';
+import { getGridIcons, parseIconSet } from './resources/iconSets';
 
 interface DataSetItem {
 	name: string,
@@ -37,6 +38,7 @@ export class Globals {
 	artemisDir: string = "";
 	artFiles: CompletionItem[] = [];
 	faceArtFiles: FaceFile[] = [];
+	gridIcons: CompletionItem[] = [];
 	/**
 	 * 0: Not loaded
 	 * 1: Loading but not complete
@@ -97,6 +99,8 @@ export class Globals {
 			debug("ship data gotten")
 			this.artFiles = this.findArtFiles(true);
 			this.faceArtFiles = this.loadFaceArt();
+			parseIconSet(path.join(this.artemisDir,"data","graphics","grid-icon-sheet.png"),128);
+			// this.gridIcons = getGridIcons();
 			debug(this.faceArtFiles)
 			debug("art files gotten")
 		}
