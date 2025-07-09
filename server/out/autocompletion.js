@@ -580,6 +580,22 @@ function onCompletion(_textDocumentPosition, text) {
                     }
                 }
             }
+            if (arg === "icon_index") {
+                let iconList = (0, globals_1.getGlobals)().gridIcons;
+                for (const i of iconList) {
+                    const docs = {
+                        kind: "markdown",
+                        value: "![" + path.basename(i.filePath) + "](/" + i.filePath + ")"
+                    };
+                    const item = {
+                        label: i.index,
+                        documentation: docs,
+                        kind: vscode_languageserver_1.CompletionItemKind.File
+                    };
+                    ci.push(item);
+                }
+                return ci;
+            }
         }
     }
     //debug(ci.length);

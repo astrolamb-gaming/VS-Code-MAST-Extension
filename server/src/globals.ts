@@ -20,6 +20,10 @@ interface WidgetStyleString {
 	name: string,
 	docs: string
 }
+export interface IconIndex {
+	index: string,
+	filePath: string
+}
 interface FaceFile {
 	shortName: string,
 	fileName: string
@@ -38,7 +42,7 @@ export class Globals {
 	artemisDir: string = "";
 	artFiles: CompletionItem[] = [];
 	faceArtFiles: FaceFile[] = [];
-	gridIcons: CompletionItem[] = [];
+	gridIcons: IconIndex[] = [];
 	/**
 	 * 0: Not loaded
 	 * 1: Loading but not complete
@@ -100,7 +104,8 @@ export class Globals {
 			this.artFiles = this.findArtFiles(true);
 			this.faceArtFiles = this.loadFaceArt();
 			parseIconSet(path.join(this.artemisDir,"data","graphics","grid-icon-sheet.png"),128);
-			// this.gridIcons = getGridIcons();
+			debug("Grid Icon Sheet parsed")
+			this.gridIcons = getGridIcons();
 			debug(this.faceArtFiles)
 			debug("art files gotten")
 		}

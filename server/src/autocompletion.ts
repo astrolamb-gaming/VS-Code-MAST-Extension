@@ -1,5 +1,5 @@
 import { debug } from 'console';
-import { CompletionItem, CompletionItemKind, integer, SignatureInformation, TextDocumentPositionParams } from 'vscode-languageserver';
+import { CompletionItem, CompletionItemKind, integer, MarkupContent, SignatureInformation, TextDocumentPositionParams } from 'vscode-languageserver';
 import { buildLabelDocs, getLabelMetadataKeys, getMainLabelAtPos } from './tokens/labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { asClasses, replaceNames } from './data';
@@ -604,6 +604,22 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 						return ci;
 					}
 				}
+			}
+			if (arg === "icon_index") {
+				let iconList = getGlobals().gridIcons;
+				for (const i of iconList) {
+					const docs: MarkupContent = {
+						kind: "markdown",
+						value: "![" + path.basename(i.filePath) + "](/" + i.filePath + ")"
+					}
+					const item: CompletionItem = {
+						label: i.index,
+						documentation: docs,
+						kind: CompletionItemKind.File			
+					}
+					ci.push(item);
+				}
+				return ci;
 			}
 		}
 	}

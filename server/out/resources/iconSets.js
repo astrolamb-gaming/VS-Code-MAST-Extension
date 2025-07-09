@@ -49,18 +49,18 @@ async function parseIconSet(setPath, iconSize) {
     }
     return ret;
 }
-function getGridIcons(gridIconSheetPath) {
+function getGridIcons() {
     let items = [];
-    let gridFolder = path.join(iconTempPath, "grid_icon_sheet");
+    let gridFolder = path.join(iconTempPath, "grid-icon-sheet");
+    let files = (0, fileFunctions_1.getFilesInDir)(gridFolder);
+    for (const f of files) {
+        const ii = {
+            index: path.basename(f).replace(".png", ""),
+            filePath: f
+        };
+        items.push(ii);
+    }
     return items;
-}
-function getIndexFromFileName(fName) {
-    fName = fName.replace(".png", "");
-    let arr = fName.split("_");
-    let x = parseInt(arr[0]) + 1;
-    let y = parseInt(arr[1]) + 1;
-    let index = x * y - 1;
-    return index;
 }
 // Function to split an image into tiles
 async function splitImageIntoTiles(imagePath, tileWidth, tileHeight, outputDir) {
@@ -79,10 +79,11 @@ async function splitImageIntoTiles(imagePath, tileWidth, tileHeight, outputDir) 
             // If the file is empty (no icon actually inside it), then delete it.
             // The number 165 applies to tiles of size 128x128.
             // TODO: Confirm if this number applies to other sizes.
+            if (tileHeight !== 128) {
+                (0, console_1.debug)(fs.statSync(tilePath).size);
+            }
             if (fs.statSync(tilePath).size === 165) {
-                await fs.rm(tilePath, () => {
-                    (0, console_1.debug)("Deleted " + tileIndex);
-                });
+                await fs.rmSync(tilePath, { force: true });
             }
             tileIndex++;
         }
