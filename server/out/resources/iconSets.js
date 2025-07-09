@@ -10,44 +10,14 @@ const fileFunctions_1 = require("../fileFunctions");
 const console_1 = require("console");
 const iconTempPath = path.join(os.tmpdir(), "cosmosImages", "iconSets");
 async function parseIconSet(setPath, iconSize) {
-    let ret = [];
     let outPath = path.join(iconTempPath, path.basename(setPath).replace(".png", ""));
-    // if (!fs.existsSync(outPath)){
-    // 	fs.mkdirSync(outPath);
-    // }
     let resolvedPath = path.resolve(setPath);
-    resolvedPath = resolvedPath.replace("\\", path.sep);
-    (0, console_1.debug)(setPath);
-    (0, console_1.debug)(resolvedPath);
-    outPath = path.resolve(outPath);
-    (0, console_1.debug)(outPath);
-    (0, console_1.debug)(fs.existsSync(resolvedPath));
-    (0, console_1.debug)(fs.existsSync(outPath));
     try {
         await splitImageIntoTiles(resolvedPath, iconSize, iconSize, outPath);
-        let files = (0, fileFunctions_1.getFilesInDir)(outPath);
-        (0, console_1.debug)(files);
-        // sharp(resolvedPath).png().tile({size:iconSize}).toFile(outPath).then((value)=>{
-        // 	debug(value);
-        // 	// // sharp(outPath)
-        // 	// outPath += "_files"
-        // 	// outPath = path.join(outPath,"12")
-        // 	// const files = getFilesInDir(outPath,false);
-        // 	// debug(outPath)
-        // 	// const sizes: number[] = []
-        // 	// for (const f of files) {
-        // 	// 	const size = fs.statSync(f).size;
-        // 	// 	debug(f);
-        // 	// 	debug(size);
-        // 	// }
-        // }).catch(error=>{
-        // 	debug(error);
-        // });
     }
     catch (e) {
         (0, console_1.debug)(e);
     }
-    return ret;
 }
 function getGridIcons() {
     let items = [];
@@ -79,9 +49,9 @@ async function splitImageIntoTiles(imagePath, tileWidth, tileHeight, outputDir) 
             // If the file is empty (no icon actually inside it), then delete it.
             // The number 165 applies to tiles of size 128x128.
             // TODO: Confirm if this number applies to other sizes.
-            if (tileHeight !== 128) {
-                (0, console_1.debug)(fs.statSync(tilePath).size);
-            }
+            // if (tileHeight !== 128) {
+            // 	debug(fs.statSync(tilePath).size);
+            // }
             if (fs.statSync(tilePath).size === 165) {
                 await fs.rmSync(tilePath, { force: true });
             }
