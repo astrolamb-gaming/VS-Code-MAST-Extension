@@ -727,6 +727,15 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 
 export function getCurrentArgumentNames(iStr:string, doc:TextDocument): string[] {
 	let ret: string[] = [];
+	if (iStr.endsWith("=")) {
+		debug(iStr)
+		let name = /(?:[^\w])(\w+)=$/m;
+		let rm = iStr.match(name);
+		if (rm !== null) {
+			ret.push(rm[1]);
+			return ret;
+		}
+	}
 	const func = getCurrentMethodName(iStr);
 	const fstart = iStr.lastIndexOf(func);
 	let wholeFunc = iStr.substring(fstart,iStr.length);

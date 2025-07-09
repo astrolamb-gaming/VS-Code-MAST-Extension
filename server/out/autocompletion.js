@@ -695,6 +695,15 @@ function onCompletion(_textDocumentPosition, text) {
 }
 function getCurrentArgumentNames(iStr, doc) {
     let ret = [];
+    if (iStr.endsWith("=")) {
+        (0, console_1.debug)(iStr);
+        let name = /(?:[^\w])(\w+)=$/m;
+        let rm = iStr.match(name);
+        if (rm !== null) {
+            ret.push(rm[1]);
+            return ret;
+        }
+    }
     const func = (0, signatureHelp_1.getCurrentMethodName)(iStr);
     const fstart = iStr.lastIndexOf(func);
     let wholeFunc = iStr.substring(fstart, iStr.length);
