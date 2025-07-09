@@ -79,7 +79,7 @@ export function parseLabels(text: string, src: string, type: string = "main"): L
 			pos.line += 1;
 			const line = getCurrentLineFromTextDocument(pos,td).trim();
 			if (line.startsWith("\"") || line.startsWith("'")) {
-				comments += line.substring(1,line.length).trim() + "\n";
+				comments += line.substring(1,line.length).trim() + "  \n";
 			} else {
 				break;
 			}
@@ -165,7 +165,7 @@ function getMetadata(text:string):string {
 export function buildLabelDocs(label:LabelInfo): MarkupContent {
 	let val = "";
 	if (label.metadata !== "") {
-		val = label.comments + "\nDefault metadata:\n```\n" + label.metadata + "\n```\n"
+		val = label.comments + "\nDefault metadata:  \n```  \n" + label.metadata + "\n```\n"
 	} else {
 		val = label.comments;
 	}

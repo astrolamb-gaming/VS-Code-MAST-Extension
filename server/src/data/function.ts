@@ -78,7 +78,7 @@ export class Function implements IFunction {
 		this.parameters = [];
 		const functionName : RegExp = /(?:def\s)(.+?)(?:\()/gm; ///((def\s)(.+?)\()/gm; // Look for "def functionName(" to parse function names.
 		//let className : RegExp = /class (.+?):/gm; // Look for "class ClassName:" to parse class names.
-		const functionParam : RegExp = /\((.*?)\)/m; // Find parameters of function, if any.
+		const functionParam : RegExp = /\((.*?)\)/ms; // Find parameters of function, if any.
 		// Could replace functionParam regex with : (?:def\s.+?\()(.*?)(?:\)(:|\s*->))
 		const returnValue : RegExp = /->(.+?):/gm; // Get the return value (None, boolean, int, etc)
 		const comment : RegExp = /((\"){3,3}(.*?)(\"){3,3})|(\.\.\.)/gms;
@@ -90,7 +90,7 @@ export class Function implements IFunction {
 
 		this.name = getRegExMatch(raw, functionName).replace("def ","").replace("(","").trim();
 
-		let params = getRegExMatch(raw, functionParam).replace(/\(|\)/g,"").replace(/self(.*?,|.*?$)/m,"").trim();
+		let params = getRegExMatch(raw, functionParam).replace(/\(|\)/g,"").replace(/self(.*?,|.*?$)/m,"").replace(/^[\t ]*#.*?(\n|$)/gm,"").replace(/\n\s*\n/g,"\n").trim();
 		this.rawParams = params;
 
 		let comments = getRegExMatch(raw, comment).replace("\"\"\"","").replace("\"\"\"","");

@@ -69,7 +69,7 @@ function parseLabels(text, src, type = "main") {
             pos.line += 1;
             const line = (0, hover_1.getCurrentLineFromTextDocument)(pos, td).trim();
             if (line.startsWith("\"") || line.startsWith("'")) {
-                comments += line.substring(1, line.length).trim() + "\n";
+                comments += line.substring(1, line.length).trim() + "  \n";
             }
             else {
                 break;
@@ -151,7 +151,7 @@ function getMetadata(text) {
 function buildLabelDocs(label) {
     let val = "";
     if (label.metadata !== "") {
-        val = label.comments + "\nDefault metadata:\n```\n" + label.metadata + "\n```\n";
+        val = label.comments + "\nDefault metadata:  \n```  \n" + label.metadata + "\n```\n";
     }
     else {
         val = label.comments;
