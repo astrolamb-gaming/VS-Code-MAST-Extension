@@ -16,6 +16,6 @@ export function buildFaction(shortName:string,fileName:string) {
 
 	const kralien = path.resolve("G:/Artemis Installs/Cosmos-1-0-4/data/graphics/Krailen_Set.png");
 	let outPath = "G:/Test/Krailen_Set"
-	parseIconSet(kralien,512);
+	parseIconSet(kralien,512,true);
 	return [];
 }

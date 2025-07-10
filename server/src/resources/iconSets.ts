@@ -9,11 +9,11 @@ import { IconIndex } from '../globals';
 
 const iconTempPath = path.join(os.tmpdir(),"cosmosImages","iconSets");
 
-export async function parseIconSet(setPath:string, iconSize:integer) {
+export async function parseIconSet(setPath:string, iconSize:integer, isFace:boolean) {
 	let outPath = path.join(iconTempPath,path.basename(setPath).replace(".png",""));
 	let resolvedPath = path.resolve(setPath);
 	try {
-		await splitImageIntoTiles(resolvedPath, iconSize, iconSize, outPath);
+		await splitImageIntoTiles(resolvedPath, iconSize, iconSize, outPath, !isFace);
 	} catch (e) {
 		debug(e);
 	}
@@ -34,7 +34,7 @@ export function getGridIcons(): IconIndex[] {
 }
 
 // Function to split an image into tiles
-async function splitImageIntoTiles(imagePath:string, tileWidth:integer, tileHeight:integer, outputDir:string) {
+async function splitImageIntoTiles(imagePath:string, tileWidth:integer, tileHeight:integer, outputDir:string, useIndex=true) {
 	const metadata = await sharp(imagePath).metadata();
 	const { width, height } = metadata;
 
@@ -46,7 +46,12 @@ async function splitImageIntoTiles(imagePath:string, tileWidth:integer, tileHeig
 
   	for (let y = 0; y < height; y += tileHeight) {
 		for (let x = 0; x < width; x += tileWidth) {
-			let tilePath = outputDir + path.sep + tileIndex + ".png"; //path.join(outputDir,`tile_${tileIndex}`);
+			let tilePath = outputDir + path.sep; //path.join(outputDir,`tile_${tileIndex}`);
+			if (useIndex) {
+				tilePath = tilePath + tileIndex + ".png";
+			} else {
+				tilePath = tilePath + x + "_" + y + ".png";
+			}
 			await sharp(imagePath)
 				.extract({ left: x, top: y, width: tileWidth, height: tileHeight })
 				.toFile(tilePath);
