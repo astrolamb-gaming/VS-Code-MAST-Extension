@@ -1,4 +1,3 @@
-import { debug } from 'console';
 import { MarkupContent, CompletionItem, integer, Location, CompletionItemLabelDetails, CompletionItemKind } from 'vscode-languageserver';
 import { replaceNames } from '../data';
 import { Function } from './function';

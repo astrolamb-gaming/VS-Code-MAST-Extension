@@ -1,4 +1,3 @@
-import { TextDocument } from 'vscode-languageserver-textdocument';
 
 /**
  * Get all the style string attributes, e.g. 'area' and 'tag'

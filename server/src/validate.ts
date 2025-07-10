@@ -1,8 +1,8 @@
 import { debug } from 'console';
 import * as path from 'path';
-import { Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, Range } from 'vscode-languageserver';
+import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
 import { getCache } from './cache';
-import { parseComments, parseStrings, parseYamls, isInString, isInComment, getMatchesForRegex, parseSquareBrackets, getComments, getStrings, isInYaml } from './tokens/comments';
+import { parseComments, parseStrings, parseYamls, isInString, isInComment, parseSquareBrackets, isInYaml } from './tokens/comments';
 import { checkLastLine, findDiagnostic } from './errorChecking';
 import { checkLabels } from './tokens/labels';
 import { ErrorInstance, getDocumentSettings, hasDiagnosticRelatedInformationCapability } from './server';

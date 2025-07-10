@@ -20,49 +20,26 @@ import {
 	SignatureHelpParams,
 	Hover,
 	TextDocumentChangeEvent,
-	TextDocumentIdentifier,
 	Definition,
 	Location,
-	CancellationToken,
-	WorkDoneProgressReporter,
-	ResultProgressReporter,
-	LocationLink,
-	HandlerResult,
 	DefinitionParams,
-	ProgressType,
-	integer,
-	DocumentRangeFormattingRequest,
-	Disposable,
-	TextEdit,
-	DocumentOnTypeFormattingParams,
-	DocumentRangeFormattingParams,
-	DocumentSymbolParams,
-	SymbolInformation,
-	DocumentSymbol,
-	CodeAction,
-	CodeActionKind,
-	Command,
 	ReferenceParams,
 	Diagnostic
 
 } from 'vscode-languageserver/node';
-import { URI } from 'vscode-uri';
-import { Position, Range, TextDocument } from 'vscode-languageserver-textdocument';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 import { LabelInfo } from './tokens/labels';
 import { onCompletion } from './autocompletion';
 import { debug} from 'console';
 import { onHover } from './hover';
-import { getCurrentMethodName, onSignatureHelp } from './signatureHelp';
+import { onSignatureHelp } from './signatureHelp';
 import fs = require("fs");
 import { getVariableNamesInDoc } from './tokens/variables';
 import { getGlobals, initializeGlobals } from './globals';
-import { compileMastFile, validateTextDocument } from './validate';
-import path = require('path');
-import { compileMission, getGlobalFunctions, getTokenInfo, initializePython } from './python/python';
+import { validateTextDocument } from './validate';
 import { onDefinition } from './goToDefinition';
 import { getCache } from './cache';
 import { onReferences } from './references';
-import { fixFileName } from './fileFunctions';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.

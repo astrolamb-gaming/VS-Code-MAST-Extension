@@ -87,7 +87,7 @@ class Globals {
             (0, console_1.debug)("ship data gotten");
             this.artFiles = this.findArtFiles(true);
             this.faceArtFiles = this.loadFaceArt();
-            (0, iconSets_1.parseIconSet)(path.join(this.artemisDir, "data", "graphics", "grid-icon-sheet.png"), 128);
+            (0, iconSets_1.parseIconSet)(path.join(this.artemisDir, "data", "graphics", "grid-icon-sheet.png"), 128, false);
             (0, console_1.debug)("Grid Icon Sheet parsed");
             this.gridIcons = (0, iconSets_1.getGridIcons)();
             (0, console_1.debug)(this.faceArtFiles);

@@ -1,8 +1,6 @@
-import { debug } from 'console';
 import { CompletionItem, CompletionItemKind, CompletionItemLabelDetails, integer, Location, MarkupContent, ParameterInformation, SignatureInformation } from 'vscode-languageserver';
 import { getRegExMatch } from './class';
 import { getGlobals } from '../globals';
-import { Func } from 'mocha';
 
 
 /**

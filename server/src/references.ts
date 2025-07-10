@@ -1,8 +1,5 @@
 import { Location, Position, ReferenceParams } from 'vscode-languageserver';
 import { getCache } from './cache';
-import { getWordRangeAtPosition } from './tokens/words';
-import { documents } from './server';
-import { fileFromUri } from './fileFunctions';
 import { debug } from 'console';
 import { getCurrentLineFromTextDocument, getHoveredSymbol } from './hover';
 import { TextDocument } from 'vscode-languageserver-textdocument';

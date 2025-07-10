@@ -1,17 +1,14 @@
-import { DefinitionParams, integer, Location, Position, Range } from 'vscode-languageserver';
-import { fileFromUri, fixFileName, readFile } from './fileFunctions';
-import { getComments, isInComment, isInString, isInYaml } from './tokens/comments';
+import { integer, Location, Position, Range } from 'vscode-languageserver';
+import { fileFromUri, readFile } from './fileFunctions';
+import { isInComment, isInString } from './tokens/comments';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
 import { getCurrentLineFromTextDocument, getHoveredSymbol, getHoveredWordRange } from './hover';
 import { isClassMethod, isFunction } from './tokens/tokens';
 import { getCache } from './cache';
-import { documents, sendToClient } from './server';
 import { URI } from 'vscode-uri';
-import { getLabelLocation, getMainLabelAtPos } from './tokens/labels';
-import { getVariableNamesInDoc, parseVariables } from './tokens/variables';
-import { Function } from './data/function';
-import { asClasses, replaceNames } from './data';
+import { getLabelLocation } from './tokens/labels';
+import { asClasses } from './data';
 
 export async function onDefinition(doc:TextDocument,pos:Position): Promise<Location | undefined> {
 	// parseVariables(doc);

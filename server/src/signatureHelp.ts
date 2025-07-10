@@ -3,7 +3,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
 import { getCache } from './cache';
 import { CRange, replaceRegexMatchWithUnderscore } from './tokens/comments';
-import { getCurrentLineFromTextDocument, getHoveredSymbol, getHoveredWordRange } from './hover';
+import { getCurrentLineFromTextDocument, getHoveredSymbol } from './hover';
 import { isClassMethod } from './tokens/tokens';
 
 export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocument): SignatureHelp | undefined {
