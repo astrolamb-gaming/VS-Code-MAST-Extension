@@ -42,7 +42,7 @@ class Globals {
         if (adir) {
             this.artemisDir = adir;
             // TODO: load webview info after globals are gotten?
-            // sendToClient("ships", this.artemisDir)
+            (0, server_1.sendToClient)("ships", this.artemisDir);
         }
         else {
             this.artemisDir = "";

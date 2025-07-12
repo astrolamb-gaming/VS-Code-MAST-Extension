@@ -4,49 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Face Generator</title>
+    <script type="javascript" src="faces.js"></script>
+    <script type="javascript">
+    </script>
+    <style>
+        /* Example for possible way to overlay images
+        .double-image {
+            background-image: url(images/img1.png), url(images/img2.png);
+        }
+        */
+        .button {
+            width: 150;
+            height: 50;
+        }
+    </style>
 </head>
-<script type="javascript" src="faces.js"></script>
-<script type="javascript">
-
-    const vscode = acquireVsCodeApi();
-    window.addEventListener('message', event => {
-
-        const message = event.data; // The JSON data our extension sent
-        let data = JSON.parse(message);
-        console.log(message)
-        
-    });
-
-    function sendResult(res) {
-        vscode.postMessage({
-            command: 'face',
-            text: res
-        })
-    }
-
-    // Add stuff here if needed
-    console.log("HELLO")
-    sendResult("HELLO")
-    vscode.postMessage({
-        command: 'face',
-        text: "HELLO THERE"
-    })
-    
-</script>
-<style>
-    /* Example for possible way to overlay images
-    .double-image {
-        background-image: url(images/img1.png), url(images/img2.png);
-    }
-    */
-    .button {
-        width: 150;
-        height: 50;
-    }
-</style>
 <body>
     <div class="double-image"></div>
-    <button onclick="sendResult('test_button')" class="button"></button>
-    <input type="button" class="button" value="BUTTON">
+    <input id="button" type="button" class="button" value="BUTTON">
 </body>
 </html>

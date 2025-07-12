@@ -1,13 +1,9 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as os from 'os';
 import { debug } from './extension';
 import { WebviewPanel } from 'vscode';
-
-const cats = {
-  'Coding Cat': 'https://media.giphy.com/media/JIX9t2j0ZTN9S/giphy.gif',
-  'Compiling Cat': 'https://media.giphy.com/media/mlvseq9yvZhba/giphy.gif'
-};
 
 let panel: WebviewPanel | undefined = undefined;
 
@@ -19,7 +15,7 @@ export function generateShipWebview(context: vscode.ExtensionContext, datFolder:
 		panel = vscode.window.createWebviewPanel(
 			'faces',
 			'Face Generator',
-			vscode.ViewColumn.Beside,
+			vscode.ViewColumn.Two,
 			{
 				// Allows js scripts to run in the webview
 				enableScripts: true,
@@ -27,7 +23,12 @@ export function generateShipWebview(context: vscode.ExtensionContext, datFolder:
 				// Generates more overhead, but enables simpler persistence for more complicated webviews
 				// Long term, use this instead https://code.visualstudio.com/api/extension-guides/webview#serialization
 				// Shouldn't be too hard to implement
-				retainContextWhenHidden: true
+				retainContextWhenHidden: true,
+				localResourceRoots: [
+					vscode.Uri.joinPath(context.extensionUri, 'media'),
+					vscode.Uri.joinPath(vscode.Uri.file(os.tmpdir()),"cosmosImages"),
+					vscode.Uri.joinPath(vscode.Uri.file(datFolder))
+				]
 			}
 		);
 
@@ -49,10 +50,11 @@ export function generateShipWebview(context: vscode.ExtensionContext, datFolder:
 		const updateWebview = () => {
 
 			panel.title = "Face Generator";
-			panel.webview.html = getWebviewContent("Info to apply");
+			panel.webview.html = getWebviewContent("Info to apply").replace("BUTTON", datFolder);
 		};
 
 		updateWebview();
+		panel.webview.postMessage({"test":"this"})
 		// const interval = setInterval(updateWebview, 1000);
 
 		panel.onDidDispose(

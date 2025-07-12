@@ -5,7 +5,7 @@ import fs = require('fs');
 import os = require('os');
 import sharp = require('sharp');
 import { CompletionItem, CompletionItemLabelDetails, CompletionItemKind, MarkupContent } from 'vscode-languageserver';
-import { connection, showProgressBar } from './server';
+import { connection, sendToClient, showProgressBar } from './server';
 import { ShipData } from './shipData';
 import { sleep } from './python/python';
 import { getGridIcons, parseIconSet } from './resources/iconSets';
@@ -59,7 +59,7 @@ export class Globals {
 		if (adir) {
 			this.artemisDir = adir;
 			// TODO: load webview info after globals are gotten?
-			// sendToClient("ships", this.artemisDir)
+			sendToClient("ships", this.artemisDir)
 		} else {
 			this.artemisDir = "";
 		}
