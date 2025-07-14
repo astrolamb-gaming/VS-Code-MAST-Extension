@@ -10,6 +10,7 @@ import { getRolesForFile, getInventoryKeysForFile } from '../tokens/roles';
 import { Variable, parseVariables } from '../tokens/variables';
 import { Word, parseWords } from '../tokens/words';
 import { sleep } from '../python/python';
+import { getRoutesInFile } from '../tokens/routeLabels';
 
 
 /**
@@ -24,6 +25,7 @@ export class MastFile extends FileCache {
 	// TODO: Add support for holding label information for all files listed in __init__.mast in a given folder.
 	// TODO: Add system for tracking variables in a mast file
 	variables: Variable[] = [];
+	routes: string[] = [];
 	roles: string[] = [];
 	keys: string[] = [];
 	prefabs: LabelInfo[] = [];
@@ -78,6 +80,7 @@ export class MastFile extends FileCache {
 		this.variables = parseVariables(textDocument); //
 		this.roles = getRolesForFile(text);
 		this.keys = getInventoryKeysForFile(text);
+		this.routes = getRoutesInFile(textDocument);
 		if (this.inZip) {
 			this.words = [];
 		} else {

@@ -13,6 +13,7 @@ const roles_1 = require("../tokens/roles");
 const variables_1 = require("../tokens/variables");
 const words_1 = require("../tokens/words");
 const python_1 = require("../python/python");
+const routeLabels_1 = require("../tokens/routeLabels");
 /**
  * Represents a mast file.
  * Contains all the information about that specific file, including its referenced
@@ -26,6 +27,7 @@ class MastFile extends data_1.FileCache {
         // TODO: Add support for holding label information for all files listed in __init__.mast in a given folder.
         // TODO: Add system for tracking variables in a mast file
         this.variables = [];
+        this.routes = [];
         this.roles = [];
         this.keys = [];
         this.prefabs = [];
@@ -76,6 +78,7 @@ class MastFile extends data_1.FileCache {
         this.variables = (0, variables_1.parseVariables)(textDocument); //
         this.roles = (0, roles_1.getRolesForFile)(text);
         this.keys = (0, roles_1.getInventoryKeysForFile)(text);
+        this.routes = (0, routeLabels_1.getRoutesInFile)(textDocument);
         if (this.inZip) {
             this.words = [];
         }

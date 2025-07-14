@@ -327,7 +327,17 @@ function onCompletion(_textDocumentPosition, text) {
         // If this is a route label, but NOT anything after it, then we only return route labels
         if (!iStr.trim().includes(" ")) {
             (0, console_1.debug)("Getting regular route labels");
-            ci = cache.getRouteLabels(); //getRouteLabelAutocompletions(iStr);
+            let routes = cache.getRouteLabels(); //getRouteLabelAutocompletions(iStr);
+            routes = routes.concat(cache.getUsedRoutes());
+            for (const r of routes) {
+                let updatedRoute = r.replace(trimmed, "");
+                const c = {
+                    label: updatedRoute,
+                    kind: vscode_languageserver_1.CompletionItemKind.Event,
+                    labelDetails: { description: "Route Label" }
+                };
+                ci.push(c);
+            }
             return ci;
         }
         else {

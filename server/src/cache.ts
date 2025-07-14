@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { CompletionItem, integer, Location, SignatureInformation } from 'vscode-languageserver';
+import { CompletionItem, CompletionItemKind, integer, Location, SignatureInformation } from 'vscode-languageserver';
 import { MastFile } from './files/MastFile';
 import { PyFile } from './files/PyFile';
 import { parseLabelsInFile, LabelInfo, getMainLabelAtPos } from './tokens/labels';
@@ -601,17 +601,28 @@ export class MissionCache {
 
 	/**
 	 * Gets all route labels in scope for the given cache.
-	 * @returns A list of {@link CompletionItem CompletionItem}s
+	 * @returns A list of {@link string string}s
 	 */
-	getRouteLabels(): CompletionItem[] {
-		let ci: CompletionItem[] = [];
+	getRouteLabels(): string[] {
+		let str: string[] = [];
 		for (const r of this.routeLabels) {
-			ci.push(r.completionItem);
+			str.push(r.route);
 		}
-		debug(ci);
-		return ci;
+		debug(str);
+		return str;
 	}
 
+	getUsedRoutes(): string[] {
+		let str: string[] = []
+		for (const m of this.mastFileCache) {
+			str = str.concat(m.routes);
+		}
+		for (const m of this.missionMastModules) {
+			str = str.concat(m.routes);
+		}
+		return str;
+	}
+ 
 	/**
 	 * Gets all media labels in scope for the given cache.
 	 * @returns A list of {@link CompletionItem CompletionItem}s

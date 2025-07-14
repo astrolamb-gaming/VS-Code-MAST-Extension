@@ -587,15 +587,25 @@ class MissionCache {
     }
     /**
      * Gets all route labels in scope for the given cache.
-     * @returns A list of {@link CompletionItem CompletionItem}s
+     * @returns A list of {@link string string}s
      */
     getRouteLabels() {
-        let ci = [];
+        let str = [];
         for (const r of this.routeLabels) {
-            ci.push(r.completionItem);
+            str.push(r.route);
         }
-        (0, console_1.debug)(ci);
-        return ci;
+        (0, console_1.debug)(str);
+        return str;
+    }
+    getUsedRoutes() {
+        let str = [];
+        for (const m of this.mastFileCache) {
+            str = str.concat(m.routes);
+        }
+        for (const m of this.missionMastModules) {
+            str = str.concat(m.routes);
+        }
+        return str;
     }
     /**
      * Gets all media labels in scope for the given cache.

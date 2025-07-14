@@ -354,7 +354,17 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		// If this is a route label, but NOT anything after it, then we only return route labels
 		if (!iStr.trim().includes(" ")) {
 			debug("Getting regular route labels")
-			ci = cache.getRouteLabels();//getRouteLabelAutocompletions(iStr);
+			let routes = cache.getRouteLabels();//getRouteLabelAutocompletions(iStr);
+			routes = routes.concat(cache.getUsedRoutes());
+			for (const r of routes) {
+				let updatedRoute = r.replace(trimmed,"");
+				const c: CompletionItem = {
+					label: updatedRoute,
+					kind: CompletionItemKind.Event,
+					labelDetails: {description: "Route Label"}
+				}
+				ci.push(c);
+			}
 			return ci;
 		} else {
 			const route = iStr.trim().substring(0,iStr.trim().indexOf(" "));

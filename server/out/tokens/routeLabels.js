@@ -6,6 +6,7 @@ exports.loadResourceLabels = loadResourceLabels;
 exports.loadMediaLabels = loadMediaLabels;
 exports.getRouteLabelVars = getRouteLabelVars;
 exports.loadRouteLabels = loadRouteLabels;
+exports.getRoutesInFile = getRoutesInFile;
 exports.getRouteLabelAutocompletions = getRouteLabelAutocompletions;
 exports.checkEnableRoutes = checkEnableRoutes;
 const console_1 = require("console");
@@ -18,11 +19,11 @@ const resourceLabels = [];
 const supportedRoutes = [];
 const routeDefSource = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast_sbs/story_nodes/route_label.py";
 const mediaDefSource = "https://github.com/artemis-sbs/sbs_utils/blob/master/sbs_utils/procedural/media.py";
-const labelDetails = {
-    // Decided that this clutters up the UI too much. Same information is displayed in the CompletionItem details.
-    //detail: "(" + params + ")",
-    description: "Route Label"
-};
+// const labelDetails: CompletionItemLabelDetails = {
+// 	// Decided that this clutters up the UI too much. Same information is displayed in the CompletionItem details.
+// 	//detail: "(" + params + ")",
+// 	description: "Route Label"
+// }
 let skyboxes = [];
 function getSkyboxCompletionItems() {
     return skyboxes;
@@ -362,7 +363,6 @@ function loadRouteLabels(textData) {
                 const ci = {
                     label: label,
                     kind: vscode_languageserver_1.CompletionItemKind.Event,
-                    labelDetails: labelDetails,
                     documentation: docs
                 };
                 const ri = {
@@ -400,7 +400,6 @@ function loadRouteLabels(textData) {
                 const ci = {
                     label: label,
                     kind: vscode_languageserver_1.CompletionItemKind.Event,
-                    labelDetails: labelDetails,
                     documentation: docs
                 };
                 const ri = {
@@ -419,6 +418,15 @@ function loadRouteLabels(textData) {
     //debug(routeLabels);
     //throw new Error("Route Labels");
     return routeLabels;
+}
+function getRoutesInFile(doc) {
+    let routes = [];
+    let rx = /\/\/[\w\/]+/g;
+    let m;
+    while (m = rx.exec(doc.getText())) {
+        routes.push(m[0]);
+    }
+    return routes;
 }
 var IRouteLabelType;
 (function (IRouteLabelType) {

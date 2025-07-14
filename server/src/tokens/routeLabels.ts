@@ -10,11 +10,11 @@ const resourceLabels: IRouteLabel[] = [];
 const supportedRoutes: string[][] = [];
 const routeDefSource = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/sbs_utils/mast_sbs/story_nodes/route_label.py";
 const mediaDefSource = "https://github.com/artemis-sbs/sbs_utils/blob/master/sbs_utils/procedural/media.py";
-const labelDetails: CompletionItemLabelDetails = {
-	// Decided that this clutters up the UI too much. Same information is displayed in the CompletionItem details.
-	//detail: "(" + params + ")",
-	description: "Route Label"
-}
+// const labelDetails: CompletionItemLabelDetails = {
+// 	// Decided that this clutters up the UI too much. Same information is displayed in the CompletionItem details.
+// 	//detail: "(" + params + ")",
+// 	description: "Route Label"
+// }
 
 let skyboxes: CompletionItem[] = [];
 export function getSkyboxCompletionItems(): CompletionItem[] {
@@ -357,7 +357,6 @@ export function loadRouteLabels(textData:string): IRouteLabel[] {
 				const ci = {
 					label: label,
 					kind: CompletionItemKind.Event,
-					labelDetails: labelDetails,
 					documentation: docs
 				};
 				const ri: IRouteLabel = {
@@ -395,7 +394,6 @@ export function loadRouteLabels(textData:string): IRouteLabel[] {
 				const ci = {
 					label: label,
 					kind: CompletionItemKind.Event,
-					labelDetails: labelDetails,
 					documentation: docs
 				};
 				const ri: IRouteLabel = {
@@ -413,6 +411,16 @@ export function loadRouteLabels(textData:string): IRouteLabel[] {
 	//debug(routeLabels);
 	//throw new Error("Route Labels");
 	return routeLabels;
+}
+
+export function getRoutesInFile(doc: TextDocument): string[] {
+	let routes: string[] = [];
+	let rx = /\/\/[\w\/]+/g;
+	let m: RegExpExecArray | null;
+	while (m = rx.exec(doc.getText())) {
+		routes.push(m[0]);
+	}
+	return routes;
 }
 
 export interface IRouteLabel {
