@@ -36,7 +36,8 @@ export interface IFunction {
 export interface IParameter {
 	name: string,
 	type?: string,
-	documentation?: string | MarkupContent
+	documentation?: string | MarkupContent,
+	default?: string
 }
 
 export class Function implements IFunction {
@@ -382,11 +383,20 @@ export class Parameter implements IParameter {
 	name: string;
 	type?: string;
 	documentation?: string | MarkupContent | undefined;
+	default?: string;
 	constructor(raw: string, pos: integer, docs?: string) {
 		this.name = "";
 		this.documentation = (docs === undefined) ? "" : docs;
 		const pDef: string[] = raw.split(":");
-		this.name = pDef[0].trim();
+		const test = /(\w+)\=(\w+)/;
+		const match = pDef[0].trim().match(test);
+		if (match) {
+			this.name = match[1];
+			this.default = match[2];
+		} else {
+			this.name = pDef[0].trim();
+			this.default = "";
+		}
 		if (pDef.length === 1) {
 			this.type = "any?";
 		} else {

@@ -614,7 +614,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 						documentation: a.documentation,
 						labelDetails: {description: "Argument Name"},
 						sortText: "___"+name,
-						insertText: name + "="
+						insertText: name // TODO: Add '=' and trigger completions
 					}
 					if (test) {
 						c.detail = test[1];	

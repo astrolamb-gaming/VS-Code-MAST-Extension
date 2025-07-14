@@ -326,7 +326,16 @@ class Parameter {
         this.name = "";
         this.documentation = (docs === undefined) ? "" : docs;
         const pDef = raw.split(":");
-        this.name = pDef[0].trim();
+        const test = /(\w+)\=(\w+)/;
+        const match = pDef[0].trim().match(test);
+        if (match) {
+            this.name = match[1];
+            this.default = match[2];
+        }
+        else {
+            this.name = pDef[0].trim();
+            this.default = "";
+        }
         if (pDef.length === 1) {
             this.type = "any?";
         }

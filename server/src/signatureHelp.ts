@@ -11,15 +11,19 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 		signatures: []
 	}
 	//const text = documents.get(_textDocPos.textDocument.uri);
-	const t = text?.getText();
+	
 	if (text === undefined) {
 		debug("Document ref is undefined");
 		return sh;
 	}
+	const t = text.getText();
 	if (t === undefined) {
 		debug("Document text is undefined");
 		return sh;
 	}
+
+	const cache = getCache(text.uri);
+
 	// Calculate the position in the text's string value using the Position value.
 	const pos : integer = text.offsetAt(_textDocPos.position);
 	const startOfLine : integer = pos - _textDocPos.position.character;
@@ -33,16 +37,58 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 	
 	let wholeFunc = iStr.substring(fstart,iStr.length);
 	let obj = /{.*?(}|$)/gm;
-	// Here we get rid of some things that could cause parsing issues.
-	// We replace fstrings and nested functions with _, and anythnig within quotes to just empty quotes.
-	// This eliminates commas that mess with the current parameter, as well as functions etc in fstrings
-	wholeFunc = wholeFunc.replace(obj, "_").replace(/\".*?\"/,'""');
-	const arr = wholeFunc.split(",");
-	sh.activeParameter = arr.length - 1;
-	let isClassMethodRes = isClassMethod(line, fstart);
+	//TODO: I THINK this will handle nested functions... test later
+	// let obj = /(\w+\(.*\))|({.*?(}|$))/gm;
 
+	let isClassMethodRes = isClassMethod(line, fstart);
 	// Check for the current function name and get SignatureInformation for that function.
-	let sig = getCache(text.uri).getSignatureOfMethod(func,isClassMethodRes);
+	/**The {@link SignatureInformation SignatureInformation} for this function. */
+	let sig = cache.getSignatureOfMethod(func,isClassMethodRes);
+
+	/** Here we get rid of some things that could cause parsing issues.
+	 We replace fstrings and nested functions with _, and anythnig within quotes to just empty quotes.
+	 This eliminates commas that mess with the current parameter, as well as functions etc in fstrings */
+	wholeFunc = wholeFunc.replace(obj, "_").replace(/\".*?\"/,'""');
+
+	const test = /(\w+)\=/m;
+
+	/**The name of the current argument */
+	let arg = "";
+	const arr = wholeFunc.split(",");
+
+	/** The current array index */
+	const pNum = arr.length - 1;
+
+	// Check if there's a named argument
+	const match = arr[pNum].match(test);
+	if (match) {
+		// If a named arg is found, set the arg name
+		arg = match[1];
+	} else {
+		sh.activeParameter = pNum;
+		arg = arr[pNum];
+	}
+	
+	
+	
+	/**The {@link Function Function} in question */
+	let method = cache.getMethod(func);
+	
+	if (method) {
+		sig = method.buildSignatureInformation();
+		for (const p in method.parameters) {
+			const name = method.parameters[p].name;
+			if (name === arg) {
+				sh.activeParameter = parseInt(p);
+				if (sig) {
+					sh.signatures.push(sig);
+					return sh;
+				}
+			}
+		}
+	}
+
+	
 	// debug(sig)
 	if (sig !== undefined) {
 		sh.signatures.push(sig);
