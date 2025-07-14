@@ -322,9 +322,13 @@ export class Function implements IFunction {
 		if (this.parameters.length === 0 && this.functionType !== "property" && this.functionType !== "constant") {
 			insert = this.name + "()"
 		}
+		let name = this.name;
+		if (this.functionType !== "constant" && this.functionType !== "property") {
+			name = name + "()";
+		}
 
 		let ci : CompletionItem = {
-			label: this.name,
+			label: name,
 			kind: cik,
 			//command: { command: 'editor.action.triggerSuggest', title: 'Re-trigger completions...' },
 			documentation: docs,// this.documentation,

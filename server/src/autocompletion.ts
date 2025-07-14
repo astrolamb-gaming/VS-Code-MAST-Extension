@@ -17,7 +17,9 @@ import { Function } from './data/function';
 import { getCurrentLineFromTextDocument } from './hover';
 import { countMatches } from './rx';
 import { showProgressBar } from './server';
+import { blob } from 'stream/consumers';
 
+// https://stackoverflow.com/questions/78755236/how-can-i-prioritize-vs-code-extension-code-completion
 
 let currentLine = 0;
 
@@ -207,7 +209,14 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			const fstart = iStr.lastIndexOf(func);
 			const wholeFunc = iStr.substring(fstart,iStr.length);
 			const arr = wholeFunc.split(",");
-			const args = getCurrentArgumentNames(iStr,text);
+			let named = /(\w+)\=$/m;
+			let test = blobStr.match(named);
+			let args = [];
+			if (test) {
+				args = [test[1]];
+			} else {
+				args = getCurrentArgumentNames(iStr,text);
+			}
 			debug("Current function: " + func);
 			debug("arg: " + args);
 			for (const a of args) {
@@ -581,7 +590,43 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 
 	const cm = getCurrentMethodName(iStr)
 	if (isFunction(iStr, cm)) {
-		const args = getCurrentArgumentNames(iStr,text);
+		// Check for named argument
+		let named = /(\w+)\=$/m;
+		let test = iStr.match(named);
+		let args = [];
+		if (test) {
+			args = [test[1]];
+		} else {
+			args = getCurrentArgumentNames(iStr,text);
+
+			// Add the argument names
+			// Don't want to do this with a named argument
+			const argNames = cache.getMethod(cm);
+			if (argNames) {
+				debug(argNames.parameters)
+				let defaultVal = /\=(.*?)$/;
+				for (const a of argNames.parameters) {
+					const test = a.name.match(defaultVal);
+					const name = a.name.replace(defaultVal,"");
+					const c: CompletionItem = {
+						label: a.name,
+						kind: CompletionItemKind.TypeParameter,
+						documentation: a.documentation,
+						labelDetails: {description: "Argument Name"},
+						sortText: "___"+name,
+						insertText: name + "="
+					}
+					if (test) {
+						c.detail = test[1];	
+					}
+
+					debug(c);
+					ci.push(c);
+				}
+			}
+		}
+
+		// Get specific completions for each parameter
 		for (const a of args) {
 			let arg = a.replace(/=\w+/,"");
 			if (arg === "label") {
@@ -595,7 +640,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				}
 				const lbl = getMainLabelAtPos(startOfLine,labelNames);
 				if (lbl === undefined) {
-					return ci;
+					return [];
 				} else {
 					// Check for the parent label at this point (to get sublabels within the same parent)
 					if (lbl.srcFile === fixFileName(text.uri)) {

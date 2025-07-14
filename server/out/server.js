@@ -329,7 +329,7 @@ exports.connection.onCompletion(async (_textDocumentPosition) => {
         // 	debug(c.documentation);
         // }
         // TODO: This hides if there's a bunch of copies, which may be technically a bug, or impacting efficiency.
-        ci = [...new Map(ci.map(v => [v.label, v])).values()];
+        ci = [...new Map(ci.map(v => [v.insertText || v.label, v])).values()];
         return ci;
     }
     catch (e) {
