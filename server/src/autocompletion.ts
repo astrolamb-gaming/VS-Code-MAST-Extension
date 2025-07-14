@@ -164,6 +164,18 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// TODO: this doesn't account for f-strings....
 	if (countMatches(iStr,/[\"']/g) % 2 !== 0 || iStr.endsWith("\"") || iStr.endsWith("'") || isInString(text,pos)) {
 		debug("Is in string (probably)")
+		if (blobStr.endsWith("signal_emit(")) {
+			const signals = cache.getSignals();
+			for (const s of signals) {
+				const c: CompletionItem = {
+					label: s,
+					kind: CompletionItemKind.Event,
+					labelDetails: {description: "Signal Route Label"}
+				}
+				ci.push(c);
+			}
+			return ci;
+		}
 		if (!isTextInBracket(iStr,pos)) {
 			// Here we check for blob info
 			if (blobStr.endsWith(".set(") || blobStr.endsWith(".get(")) {
@@ -347,6 +359,19 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	}
 	if (trimmed.match(/sbs\.play_audio_file\([ \d\w]+\, */)) {
 		return cache.getMusicFiles();
+	}
+
+	if (trimmed.startsWith("//signal/") || trimmed.startsWith("//shared/singal/")) {
+		const signals = cache.getSignals();
+		for (const s of signals) {
+			const c: CompletionItem = {
+				label: s,
+				kind: CompletionItemKind.Event,
+				labelDetails: {description: "Signal Route Label"}
+			}
+			ci.push(c);
+		}
+		return ci;
 	}
 
 	// Route Label autocompletion

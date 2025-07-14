@@ -11,6 +11,7 @@ import { Variable, parseVariables } from '../tokens/variables';
 import { Word, parseWords } from '../tokens/words';
 import { sleep } from '../python/python';
 import { getRoutesInFile } from '../tokens/routeLabels';
+import { parseSignalsInFile } from '../tokens/signals';
 
 
 /**
@@ -26,6 +27,7 @@ export class MastFile extends FileCache {
 	// TODO: Add system for tracking variables in a mast file
 	variables: Variable[] = [];
 	routes: string[] = [];
+	signals: string[] = [];
 	roles: string[] = [];
 	keys: string[] = [];
 	prefabs: LabelInfo[] = [];
@@ -81,6 +83,7 @@ export class MastFile extends FileCache {
 		this.roles = getRolesForFile(text);
 		this.keys = getInventoryKeysForFile(text);
 		this.routes = getRoutesInFile(textDocument);
+		this.signals = parseSignalsInFile(textDocument);
 		if (this.inZip) {
 			this.words = [];
 		} else {

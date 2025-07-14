@@ -788,6 +788,22 @@ export class MissionCache {
 	}
 
 	/**
+	 * Get all signals used in the mission
+	 * @returns an array of {@link string string}s representing the signals used elsewhere in the mission
+	 */
+	getSignals(): string[] {
+		let ret: string[] = [];
+		for (const m of this.mastFileCache) {
+			ret = ret.concat(m.signals);
+		}
+		for (const m of this.missionMastModules) {
+			ret = ret.concat(m.signals);
+		}
+		ret = [...new Set(ret)]; // Don't want duplicates, I think...
+		return ret;
+	}
+
+	/**
 	 * Get all the words in scope
 	 * @returns a list of {@link Word Word}
 	 */

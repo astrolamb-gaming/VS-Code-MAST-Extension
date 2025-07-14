@@ -14,6 +14,7 @@ const variables_1 = require("../tokens/variables");
 const words_1 = require("../tokens/words");
 const python_1 = require("../python/python");
 const routeLabels_1 = require("../tokens/routeLabels");
+const signals_1 = require("../tokens/signals");
 /**
  * Represents a mast file.
  * Contains all the information about that specific file, including its referenced
@@ -28,6 +29,7 @@ class MastFile extends data_1.FileCache {
         // TODO: Add system for tracking variables in a mast file
         this.variables = [];
         this.routes = [];
+        this.signals = [];
         this.roles = [];
         this.keys = [];
         this.prefabs = [];
@@ -79,6 +81,7 @@ class MastFile extends data_1.FileCache {
         this.roles = (0, roles_1.getRolesForFile)(text);
         this.keys = (0, roles_1.getInventoryKeysForFile)(text);
         this.routes = (0, routeLabels_1.getRoutesInFile)(textDocument);
+        this.signals = (0, signals_1.parseSignalsInFile)(textDocument);
         if (this.inZip) {
             this.words = [];
         }

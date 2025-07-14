@@ -146,6 +146,18 @@ function onCompletion(_textDocumentPosition, text) {
     // TODO: this doesn't account for f-strings....
     if ((0, rx_1.countMatches)(iStr, /[\"']/g) % 2 !== 0 || iStr.endsWith("\"") || iStr.endsWith("'") || (0, comments_1.isInString)(text, pos)) {
         (0, console_1.debug)("Is in string (probably)");
+        if (blobStr.endsWith("signal_emit(")) {
+            const signals = cache.getSignals();
+            for (const s of signals) {
+                const c = {
+                    label: s,
+                    kind: vscode_languageserver_1.CompletionItemKind.Event,
+                    labelDetails: { description: "Signal Route Label" }
+                };
+                ci.push(c);
+            }
+            return ci;
+        }
         if (!(0, comments_1.isTextInBracket)(iStr, pos)) {
             // Here we check for blob info
             if (blobStr.endsWith(".set(") || blobStr.endsWith(".get(")) {
@@ -321,6 +333,18 @@ function onCompletion(_textDocumentPosition, text) {
     }
     if (trimmed.match(/sbs\.play_audio_file\([ \d\w]+\, */)) {
         return cache.getMusicFiles();
+    }
+    if (trimmed.startsWith("//signal/") || trimmed.startsWith("//shared/singal/")) {
+        const signals = cache.getSignals();
+        for (const s of signals) {
+            const c = {
+                label: s,
+                kind: vscode_languageserver_1.CompletionItemKind.Event,
+                labelDetails: { description: "Signal Route Label" }
+            };
+            ci.push(c);
+        }
+        return ci;
     }
     // Route Label autocompletion
     if (trimmed.startsWith("//")) {
