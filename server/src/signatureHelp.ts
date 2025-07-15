@@ -77,6 +77,16 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 	if (method) {
 		sig = method.buildSignatureInformation();
 		for (const p in method.parameters) {
+			let found = false;
+			for (const a of arr) {
+				// Exclude already listed args
+				debug(a);
+				debug(p);
+				if (a.split("=")[0].trim() === p) {
+					found = true;
+				}
+			}
+			if (found) continue;
 			const name = method.parameters[p].name;
 			if (name === arg) {
 				sh.activeParameter = parseInt(p);

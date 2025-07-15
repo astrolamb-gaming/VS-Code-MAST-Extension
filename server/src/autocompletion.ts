@@ -692,6 +692,43 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				}
 				return ci;
 			}
+			if (arg === "broad_type") {
+				const bits = [
+					{
+						name: "TERRAIN",
+						value: "0x01"
+					},
+					{
+						name: "NPC",
+						value: "0x10",
+					},
+					{
+						name: "PLAYER",
+						value: "0x20",
+					},
+					{
+						name: "ALL",
+						value: "0xffff",
+					},
+					{
+						name: "NPC_AND_PLAYER",
+						value: "0x30",
+					},
+					{
+						name: "DEFAULT",
+						value: "0xFFF0"
+					}
+				]
+				for (const bit of bits) {
+					const item: CompletionItem = {
+						label: bit.value + " -> " + bit.name,
+						insertText: bit.value.toString(),
+						kind: CompletionItemKind.EnumMember
+					}
+					ci.push(item);
+				}
+				return ci;
+			}
 		}
 	}
 //#endregion
