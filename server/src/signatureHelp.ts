@@ -94,6 +94,7 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 		sh.signatures.push(sig);
 	}
 
+//#region Testing
 	// This is just for testing
 	let p: ParameterInformation = {
 		label: "Parameter 1",
@@ -110,7 +111,7 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 	}
 	si.parameters?.push(p);
 	si.parameters?.push(p2);
-
+//#endregion
 	return sh;
 }
 

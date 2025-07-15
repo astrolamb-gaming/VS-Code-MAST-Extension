@@ -68,7 +68,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// 	debug(arg);
 	// }
 	
-
+//#region __init__.mast Completions
 	if (fixFileName(text.uri).endsWith("__init__.mast")) {
 		if (iStr.trim() === "") {
 			return [{label: "import", kind: CompletionItemKind.Keyword}]
@@ -90,7 +90,10 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	} else {
 		// debug("NOT an init file");
 	}
+//#endregion
 
+
+//#region YIELD Completions
 	if (iStr.trim().startsWith("yield")) {
 		const yieldRes = [
 			// TODO: Add usage descriptions as second parameter of these arrays
@@ -112,8 +115,9 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		}
 		return ci;
 	}
+//#endregion
 	
-	
+
 	// if (currentLine != _textDocumentPosition.position.line) {
 	// 	currentLine = _textDocumentPosition.position.line;
 	// 	// Here we can do any logic that doesn't need to be done every character change
@@ -136,6 +140,20 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 
 	// If we're inside a comment or a string, we don't want autocompletion.
 	if (isInComment(text,pos)) {
+		if (iStr.endsWith("#")) {
+			const regions = [
+				"region",
+				"endregion"
+			]
+			for (const r of regions) {
+				const c: CompletionItem = {
+					label: r,
+					kind: CompletionItemKind.Snippet
+				}
+				ci.push(c);
+			}
+			return ci;
+		}
 		debug("Is in Comment")
 		return ci;
 	}
@@ -158,7 +176,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// }
 
 
-
+//#region In-String Completions
 	// This is to get rid of " or ' at end so we don't have to check for both
 	const blobStr = iStr.substring(0,iStr.length-1);
 	// debug(blobStr)
@@ -314,42 +332,11 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				}
 			}
 
-			// if (sig !== undefined) {
-			// 	if (sig.parameters !== undefined) {
-			// 		for (const i in sig.parameters) {
-			// 			if (i !== ""+(arr.length-1)) continue;
-			// 			if (sig.parameters[i].label === "style") {
-			// 				for (const s of getGlobals().widget_stylestrings) {
-			// 					if (func === s.function) {
-			// 						const c = {
-			// 							label: s.name,
-			// 							//labelDetails: {detail: s.docs},
-			// 							documentation: s.docs,
-			// 							kind: CompletionItemKind.Text,
-			// 							insertText: s.name + ": "
-			// 						}
-			// 						if (c.label === "color") {
-			// 							c.insertText = c.insertText + "#"
-			// 						}
-			// 						ci.push(c)
-			// 					}
-			// 				}
-			// 			} else if (sig.parameters[i].label === "art_id") {
-			// 				// Get all possible art files
-			// 				return getGlobals().artFiles;
-			// 			} else if (sig.parameters[i].label === 'art') {
-			// 				return getGlobals().artFiles;
-			// 			}
-			// 		}
-			// 	}
-			// }
-			// getCompletionsForMethodParameters(iStr,"style",text,pos);
-
 			debug("Is in string");
 			return ci;
 		}
 	}
-
+//#endregion
 
 	// If we're defining a label, we don't want autocomplete.
 	// TODO: ++ labels should have specific names
@@ -359,6 +346,8 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 
 	let trimmed = iStr.trim();
 	
+
+//#region Route and Media Labels 
 	// Media labels only get the skybox names
 	if (iStr.endsWith("@media/skybox/")) {
 		return getGlobals().skyboxes;
@@ -370,6 +359,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		return cache.getMusicFiles();
 	}
 
+	// Get signal routes
 	if (trimmed.startsWith("//signal/") || trimmed.startsWith("//shared/singal/")) {
 		const signals = cache.getSignals();
 		for (const s of signals) {
@@ -418,7 +408,9 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		ci = cache.getMediaLabels();
 		return ci;
 	}
+//#endregion
 
+//#region COMMS Stuff
 
 	/**
  	* 	□ All
@@ -462,7 +454,9 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		ci.push(c);
 		return ci;
 	}
+//#endregion
 
+//#region Label Metadata Completions
 	// Check if there is a label at the end of these, which could include optional data
 	if ((trimmed.startsWith("+")||trimmed.startsWith("*")||trimmed.startsWith("jump")||trimmed.startsWith("->")) && !trimmed.endsWith(":")) {
 		let lbl = iStr.replace(/{.*?}/,"");
@@ -490,7 +484,9 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			}
 		}
 	}
+//#endregion
 
+//#region JUMP Completions
 	// Handle label autocompletion
 	let jump: RegExp = /(->|jump)[ \t]*[^\t ]*$/m;
 	// if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (") || iStr.endsWith("objective_add(") || iStr.endsWith("brain_add(")) {
@@ -522,24 +518,13 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			return ci;
 		}
 	}
-	
-
-	// if (iStr.endsWith("(")) {
-	// 	// const func: RegExp = /[\w. ]+?\(/g
-	// 	// let m: RegExpExecArray | null;
-	// 	// while (m = func.exec(iStr)) {
-		
-	// 	// }
-	// 	return ci;
-	// }
-
-
+//#endregion
 
 	debug("Checking getCompletions");
 	//debug(text.uri);
 	//debug(ci);
 	
-
+//#region Class, Method, and Function Completions
 	// Check if this is a class
 	if (iStr.endsWith(".")) {
 		debug("Getting Classes...");
@@ -589,6 +574,8 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	}
 
 	const cm = getCurrentMethodName(iStr)
+	let wholeFunc = iStr.substring(iStr.lastIndexOf(cm));
+	wholeFunc = wholeFunc.substring(wholeFunc.indexOf("("));
 	if (isFunction(iStr, cm)) {
 		// Check for named argument
 		let named = /(\w+)\=$/m;
@@ -606,6 +593,10 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				debug(argNames.parameters)
 				let defaultVal = /\=(.*?)$/;
 				for (const a of argNames.parameters) {
+					// If the argument is already used in the function call, don't include it
+					if (wholeFunc.includes(a.name+"=") || wholeFunc.includes(a.name+" =")) {
+						continue;
+					}
 					const test = a.name.match(defaultVal);
 					const name = a.name.replace(defaultVal,"");
 					const c: CompletionItem = {
@@ -703,10 +694,12 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			}
 		}
 	}
-
+//#endregion
 
 	//debug(ci.length);
-	ci = ci.concat(cache.getCompletions());
+	ci = ci.concat(cache.getCompletions()); // TODO: What does this even do?
+
+//#region Keywords and Variables
 	let keywords : string[] = [
 		// "def", // Pretty sure we can't define functions in a mast file
 		"async",
@@ -792,7 +785,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// debug(variables)
 	ci = ci.concat(variables);
 	// ci = ci.concat(cache.getMethods());
-	
+//#endregion
 
 
 	//debug(ci.length);

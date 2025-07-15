@@ -64,6 +64,7 @@ function onCompletion(_textDocumentPosition, text) {
     // 	let arg = getCurrentArgumentNames(iStr,text);
     // 	debug(arg);
     // }
+    //#region __init__.mast Completions
     if ((0, fileFunctions_1.fixFileName)(text.uri).endsWith("__init__.mast")) {
         if (iStr.trim() === "") {
             return [{ label: "import", kind: vscode_languageserver_1.CompletionItemKind.Keyword }];
@@ -87,6 +88,8 @@ function onCompletion(_textDocumentPosition, text) {
     else {
         // debug("NOT an init file");
     }
+    //#endregion
+    //#region YIELD Completions
     if (iStr.trim().startsWith("yield")) {
         const yieldRes = [
             // TODO: Add usage descriptions as second parameter of these arrays
@@ -108,6 +111,7 @@ function onCompletion(_textDocumentPosition, text) {
         }
         return ci;
     }
+    //#endregion
     // if (currentLine != _textDocumentPosition.position.line) {
     // 	currentLine = _textDocumentPosition.position.line;
     // 	// Here we can do any logic that doesn't need to be done every character change
@@ -124,6 +128,20 @@ function onCompletion(_textDocumentPosition, text) {
     //
     // If we're inside a comment or a string, we don't want autocompletion.
     if ((0, comments_1.isInComment)(text, pos)) {
+        if (iStr.endsWith("#")) {
+            const regions = [
+                "region",
+                "endregion"
+            ];
+            for (const r of regions) {
+                const c = {
+                    label: r,
+                    kind: vscode_languageserver_1.CompletionItemKind.Snippet
+                };
+                ci.push(c);
+            }
+            return ci;
+        }
         (0, console_1.debug)("Is in Comment");
         return ci;
     }
@@ -140,6 +158,7 @@ function onCompletion(_textDocumentPosition, text) {
     // 	debug("Updating strings...")
     // 	parseStrings(text);
     // }
+    //#region In-String Completions
     // This is to get rid of " or ' at end so we don't have to check for both
     const blobStr = iStr.substring(0, iStr.length - 1);
     // debug(blobStr)
@@ -292,46 +311,18 @@ function onCompletion(_textDocumentPosition, text) {
                     return ci;
                 }
             }
-            // if (sig !== undefined) {
-            // 	if (sig.parameters !== undefined) {
-            // 		for (const i in sig.parameters) {
-            // 			if (i !== ""+(arr.length-1)) continue;
-            // 			if (sig.parameters[i].label === "style") {
-            // 				for (const s of getGlobals().widget_stylestrings) {
-            // 					if (func === s.function) {
-            // 						const c = {
-            // 							label: s.name,
-            // 							//labelDetails: {detail: s.docs},
-            // 							documentation: s.docs,
-            // 							kind: CompletionItemKind.Text,
-            // 							insertText: s.name + ": "
-            // 						}
-            // 						if (c.label === "color") {
-            // 							c.insertText = c.insertText + "#"
-            // 						}
-            // 						ci.push(c)
-            // 					}
-            // 				}
-            // 			} else if (sig.parameters[i].label === "art_id") {
-            // 				// Get all possible art files
-            // 				return getGlobals().artFiles;
-            // 			} else if (sig.parameters[i].label === 'art') {
-            // 				return getGlobals().artFiles;
-            // 			}
-            // 		}
-            // 	}
-            // }
-            // getCompletionsForMethodParameters(iStr,"style",text,pos);
             (0, console_1.debug)("Is in string");
             return ci;
         }
     }
+    //#endregion
     // If we're defining a label, we don't want autocomplete.
     // TODO: ++ labels should have specific names
     if (iStr.trim().startsWith("--") || iStr.trim().startsWith("==") || iStr.trim().startsWith("++")) {
         return ci;
     }
     let trimmed = iStr.trim();
+    //#region Route and Media Labels 
     // Media labels only get the skybox names
     if (iStr.endsWith("@media/skybox/")) {
         return (0, globals_1.getGlobals)().skyboxes;
@@ -343,6 +334,7 @@ function onCompletion(_textDocumentPosition, text) {
     if (trimmed.match(/sbs\.play_audio_file\([ \d\w]+\, */)) {
         return cache.getMusicFiles();
     }
+    // Get signal routes
     if (trimmed.startsWith("//signal/") || trimmed.startsWith("//shared/singal/")) {
         const signals = cache.getSignals();
         for (const s of signals) {
@@ -392,6 +384,8 @@ function onCompletion(_textDocumentPosition, text) {
         ci = cache.getMediaLabels();
         return ci;
     }
+    //#endregion
+    //#region COMMS Stuff
     /**
     * 	□ All
         □ Scan
@@ -434,6 +428,8 @@ function onCompletion(_textDocumentPosition, text) {
         ci.push(c);
         return ci;
     }
+    //#endregion
+    //#region Label Metadata Completions
     // Check if there is a label at the end of these, which could include optional data
     if ((trimmed.startsWith("+") || trimmed.startsWith("*") || trimmed.startsWith("jump") || trimmed.startsWith("->")) && !trimmed.endsWith(":")) {
         let lbl = iStr.replace(/{.*?}/, "");
@@ -461,6 +457,8 @@ function onCompletion(_textDocumentPosition, text) {
             }
         }
     }
+    //#endregion
+    //#region JUMP Completions
     // Handle label autocompletion
     let jump = /(->|jump)[ \t]*[^\t ]*$/m;
     // if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (") || iStr.endsWith("objective_add(") || iStr.endsWith("brain_add(")) {
@@ -496,16 +494,11 @@ function onCompletion(_textDocumentPosition, text) {
             return ci;
         }
     }
-    // if (iStr.endsWith("(")) {
-    // 	// const func: RegExp = /[\w. ]+?\(/g
-    // 	// let m: RegExpExecArray | null;
-    // 	// while (m = func.exec(iStr)) {
-    // 	// }
-    // 	return ci;
-    // }
+    //#endregion
     (0, console_1.debug)("Checking getCompletions");
     //debug(text.uri);
     //debug(ci);
+    //#region Class, Method, and Function Completions
     // Check if this is a class
     if (iStr.endsWith(".")) {
         (0, console_1.debug)("Getting Classes...");
@@ -559,6 +552,8 @@ function onCompletion(_textDocumentPosition, text) {
         return ci;
     }
     const cm = (0, signatureHelp_1.getCurrentMethodName)(iStr);
+    let wholeFunc = iStr.substring(iStr.lastIndexOf(cm));
+    wholeFunc = wholeFunc.substring(wholeFunc.indexOf("("));
     if ((0, tokens_1.isFunction)(iStr, cm)) {
         // Check for named argument
         let named = /(\w+)\=$/m;
@@ -576,6 +571,10 @@ function onCompletion(_textDocumentPosition, text) {
                 (0, console_1.debug)(argNames.parameters);
                 let defaultVal = /\=(.*?)$/;
                 for (const a of argNames.parameters) {
+                    // If the argument is already used in the function call, don't include it
+                    if (wholeFunc.includes(a.name + "=") || wholeFunc.includes(a.name + " =")) {
+                        continue;
+                    }
                     const test = a.name.match(defaultVal);
                     const name = a.name.replace(defaultVal, "");
                     const c = {
@@ -675,8 +674,10 @@ function onCompletion(_textDocumentPosition, text) {
             }
         }
     }
+    //#endregion
     //debug(ci.length);
-    ci = ci.concat(cache.getCompletions());
+    ci = ci.concat(cache.getCompletions()); // TODO: What does this even do?
+    //#region Keywords and Variables
     let keywords = [
         // "def", // Pretty sure we can't define functions in a mast file
         "async",
@@ -761,6 +762,7 @@ function onCompletion(_textDocumentPosition, text) {
     // debug(variables)
     ci = ci.concat(variables);
     // ci = ci.concat(cache.getMethods());
+    //#endregion
     //debug(ci.length);
     //ci = ci.concat(defaultFunctionCompletionItems);
     for (const m of cache.getMethods()) {

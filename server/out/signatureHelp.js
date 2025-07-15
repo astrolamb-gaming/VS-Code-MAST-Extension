@@ -80,6 +80,7 @@ function onSignatureHelp(_textDocPos, text) {
     if (sig !== undefined) {
         sh.signatures.push(sig);
     }
+    //#region Testing
     // This is just for testing
     let p = {
         label: "Parameter 1",
@@ -96,6 +97,7 @@ function onSignatureHelp(_textDocPos, text) {
     };
     si.parameters?.push(p);
     si.parameters?.push(p2);
+    //#endregion
     return sh;
 }
 /**
