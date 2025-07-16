@@ -73,9 +73,21 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 	
 	/**The {@link Function Function} in question */
 	let method = cache.getMethod(func);
+
+	// TODO:
+	// - Keep copy of arg list from param list
+	// - If the arg is not yet named,
+	// - remove any arg that is already used in the function def
+	// - Use the index of the first arg as the active sig
 	
 	if (method) {
 		sig = method.buildSignatureInformation();
+		let usedArgs = [];
+		for (const p of method.parameters) {
+			if (wholeFunc.includes(p.name + "=") || wholeFunc.includes(p.name + " =")) {
+				usedArgs.push(p.name);
+			}
+		}
 		for (const p in method.parameters) {
 			let found = false;
 			for (const a of arr) {

@@ -1015,7 +1015,7 @@ export class MissionCache {
 		// debug(this.mastFileCache.length)
 		for (const m of this.mastFileCache) {
 			// if (ini.includes(path.basename(m.uri))) {
-				keys = keys.concat(m.keys);
+			keys = keys.concat(m.keys);
 			// }
 		}
 		for (const m of this.missionMastModules) {

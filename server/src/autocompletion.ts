@@ -216,6 +216,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			// Now for inventory keys
 			if (getCurrentMethodName(iStr).includes("inventory")) {
 				let keys = cache.getKeys(text.uri);
+				debug(keys);
 				ci = getKeysAsCompletionItem(keys);
 				return ci;
 			}
@@ -374,9 +375,10 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	}
 
 	// Route Label autocompletion
-	if(trimmed.startsWith("//")) {
+	if(trimmed.includes("//")) {
+		let route = trimmed.substring(trimmed.indexOf("//"));
 		// If this is a route label, but NOT anything after it, then we only return route labels
-		if (!iStr.trim().includes(" ")) {
+		if (!route.trim().includes(" ")) {
 			debug("Getting regular route labels")
 			let routes = cache.getRouteLabels();//getRouteLabelAutocompletions(iStr);
 			routes = routes.concat(cache.getUsedRoutes());
