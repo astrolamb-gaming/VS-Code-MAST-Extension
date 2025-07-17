@@ -21,6 +21,7 @@ const rx_1 = require("./rx");
 const server_1 = require("./server");
 // https://stackoverflow.com/questions/78755236/how-can-i-prioritize-vs-code-extension-code-completion
 let currentLine = 0;
+let routeCompletions = [];
 function onCompletion(_textDocumentPosition, text) {
     // return buildFaction("kra","Kralien_Set");
     (0, console_1.debug)("Staring onCompletion");
@@ -58,7 +59,10 @@ function onCompletion(_textDocumentPosition, text) {
     (0, console_1.debug)(line);
     const eStr = line.replace(iStr, "");
     (0, console_1.debug)(iStr);
-    (0, console_1.debug)(eStr);
+    // debug(eStr);
+    // if (iStr.endsWith("/") && !iStr.endsWith("//")) {
+    // 	return routeCompletions;
+    // }
     // debug(iStr);
     // if (iStr.includes("(")) {
     // 	let arg = getCurrentArgumentNames(iStr,text);
@@ -311,6 +315,27 @@ function onCompletion(_textDocumentPosition, text) {
                     }
                     return ci;
                 }
+                if (a === "label" || a === "path") {
+                    const start = iStr.indexOf("//");
+                    let route = "";
+                    // If it starts with '//' then get routes
+                    if (start > -1) {
+                        route = iStr.substring(start);
+                        const routes = cache.getUsedRoutes(route);
+                        for (const r of routes) {
+                            const c = {
+                                label: r,
+                                kind: vscode_languageserver_1.CompletionItemKind.Event
+                            };
+                            ci.push(c);
+                        }
+                        return ci;
+                    }
+                    // Otherwise, just use regular labels
+                    const labels = cache.getLabels(text);
+                    const main = (0, labels_1.getMainLabelAtPos)(pos, labels);
+                    return (0, labels_1.getLabelsAsCompletionItems)(text, labels, main).concat(ci);
+                }
             }
             (0, console_1.debug)("Is in string");
             return ci;
@@ -354,8 +379,7 @@ function onCompletion(_textDocumentPosition, text) {
         // If this is a route label, but NOT anything after it, then we only return route labels
         if (!route.trim().includes(" ")) {
             (0, console_1.debug)("Getting regular route labels");
-            let routes = cache.getRouteLabels(); //getRouteLabelAutocompletions(iStr);
-            routes = routes.concat(cache.getUsedRoutes());
+            let routes = cache.getUsedRoutes(route);
             for (const r of routes) {
                 let updatedRoute = r.replace(trimmed, "");
                 const c = {
@@ -465,36 +489,35 @@ function onCompletion(_textDocumentPosition, text) {
     let jump = /(->|jump)[ \t]*[^\t ]*$/m;
     // if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (") || iStr.endsWith("objective_add(") || iStr.endsWith("brain_add(")) {
     if (jump.test(iStr)) {
-        let labelNames = cache.getLabels(text);
-        //debug(labelNames);
-        // Iterate over parent label info objects
-        for (const i in labelNames) {
-            if (labelNames[i].name === "main")
-                continue;
-            if (labelNames[i].name.startsWith("//"))
-                continue;
-            if ((0, fileFunctions_1.fixFileName)(labelNames[i].srcFile) !== (0, fileFunctions_1.fixFileName)(text.uri) && labelNames[i].name === "END")
-                continue;
-            ci.push({ documentation: (0, labels_1.buildLabelDocs)(labelNames[i]), label: labelNames[i].name, kind: vscode_languageserver_1.CompletionItemKind.Event, labelDetails: { description: path.basename(labelNames[i].srcFile) } });
-        }
-        labelNames = cache.getLabels(text, true);
-        const lbl = (0, labels_1.getMainLabelAtPos)(startOfLine, labelNames);
-        if (lbl === undefined) {
-            return ci;
-        }
-        else {
-            // Check for the parent label at this point (to get sublabels within the same parent)
-            if (lbl.srcFile === (0, fileFunctions_1.fixFileName)(text.uri)) {
-                (0, console_1.debug)("same file name!");
-                let subs = lbl.subLabels;
-                (0, console_1.debug)(lbl.name);
-                (0, console_1.debug)(subs);
-                for (const i in subs) {
-                    ci.push({ documentation: (0, labels_1.buildLabelDocs)(subs[i]), label: subs[i].name, kind: vscode_languageserver_1.CompletionItemKind.Event, labelDetails: { description: "Sub-label of: " + lbl.name } });
-                }
-            }
-            return ci;
-        }
+        const labels = cache.getLabels(text);
+        const main = (0, labels_1.getMainLabelAtPos)(pos, labels);
+        return (0, labels_1.getLabelsAsCompletionItems)(text, labels, main);
+        // let labelNames = cache.getLabels(text);
+        // //debug(labelNames);
+        // // Iterate over parent label info objects
+        // for (const i in labelNames) {
+        // 	if (labelNames[i].name === "main") continue;
+        // 	if (labelNames[i].name.startsWith("//")) continue;
+        // 	if (fixFileName(labelNames[i].srcFile) !== fixFileName(text.uri) && labelNames[i].name === "END") continue;
+        // 	ci.push({documentation: buildLabelDocs(labelNames[i]),label: labelNames[i].name, kind: CompletionItemKind.Event, labelDetails: {description: path.basename(labelNames[i].srcFile)}});
+        // }
+        // labelNames = cache.getLabels(text, true);
+        // const lbl = getMainLabelAtPos(startOfLine,labelNames);
+        // if (lbl === undefined) {
+        // 	return ci;
+        // } else {
+        // 	// Check for the parent label at this point (to get sublabels within the same parent)
+        // 	if (lbl.srcFile === fixFileName(text.uri)) {
+        // 		debug("same file name!");
+        // 		let subs = lbl.subLabels;
+        // 		debug(lbl.name);
+        // 		debug(subs);
+        // 		for (const i in subs) {
+        // 			ci.push({documentation: buildLabelDocs(subs[i]),label: subs[i].name, kind: CompletionItemKind.Event, labelDetails: {description: "Sub-label of: " + lbl.name}});
+        // 		}
+        // 	}
+        // 	return ci;
+        // }
     }
     //#endregion
     (0, console_1.debug)("Checking getCompletions");

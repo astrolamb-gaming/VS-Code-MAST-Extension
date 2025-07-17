@@ -612,13 +612,22 @@ export class MissionCache {
 		return str;
 	}
 
-	getUsedRoutes(): string[] {
-		let str: string[] = []
+	getUsedRoutes(routeStart:string): string[] {
+		let str: string[] = this.getRouteLabels();
 		for (const m of this.mastFileCache) {
 			str = str.concat(m.routes);
 		}
 		for (const m of this.missionMastModules) {
 			str = str.concat(m.routes);
+		}
+		if (routeStart !== "") {
+			let ret = str;
+			str = [];
+			for (const s of ret) {
+				if (s.startsWith(routeStart)) {
+					str.push(s.replace(routeStart,""));
+				}
+			}
 		}
 		return str;
 	}

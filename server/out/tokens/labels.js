@@ -9,6 +9,7 @@ exports.checkLabels = checkLabels;
 exports.getMainLabelAtPos = getMainLabelAtPos;
 exports.getLabelMetadataKeys = getLabelMetadataKeys;
 exports.getLabelLocation = getLabelLocation;
+exports.getLabelsAsCompletionItems = getLabelsAsCompletionItems;
 const vscode_languageserver_1 = require("vscode-languageserver");
 const vscode_languageserver_textdocument_1 = require("vscode-languageserver-textdocument");
 const errorChecking_1 = require("../errorChecking");
@@ -635,5 +636,37 @@ function getLabelLocation(symbol, doc, pos) {
             return loc;
         }
     }
+}
+function getLabelsAsCompletionItems(text, labelNames, lbl) {
+    let ci = [];
+    for (const i in labelNames) {
+        if (labelNames[i].name === "main")
+            continue;
+        if (labelNames[i].name.startsWith("//"))
+            continue;
+        if ((0, fileFunctions_1.fixFileName)(labelNames[i].srcFile) !== (0, fileFunctions_1.fixFileName)(text.uri) && labelNames[i].name === "END")
+            continue;
+        if (labelNames[i].type === "main") {
+            ci.push({ documentation: buildLabelDocs(labelNames[i]), label: labelNames[i].name, kind: vscode_languageserver_1.CompletionItemKind.Event, labelDetails: { description: path.basename(labelNames[i].srcFile) } });
+        }
+    }
+    labelNames = (0, cache_1.getCache)(text.uri).getLabels(text, true);
+    if (lbl === undefined) {
+        return ci;
+    }
+    else {
+        // Check for the parent label at this point (to get sublabels within the same parent)
+        if (lbl.srcFile === (0, fileFunctions_1.fixFileName)(text.uri)) {
+            (0, console_1.debug)("same file name!");
+            let subs = lbl.subLabels;
+            (0, console_1.debug)(lbl.name);
+            (0, console_1.debug)(subs);
+            for (const i in subs) {
+                ci.push({ documentation: buildLabelDocs(subs[i]), label: subs[i].name, kind: vscode_languageserver_1.CompletionItemKind.Event, labelDetails: { description: "Sub-label of: " + lbl.name } });
+            }
+        }
+        return ci;
+    }
+    return ci;
 }
 //# sourceMappingURL=labels.js.map

@@ -1,6 +1,6 @@
 import { debug } from 'console';
 import { CompletionItem, CompletionItemKind, integer, MarkupContent, SignatureInformation, TextDocumentPositionParams } from 'vscode-languageserver';
-import { buildLabelDocs, getLabelMetadataKeys, getMainLabelAtPos } from './tokens/labels';
+import { buildLabelDocs, getLabelMetadataKeys, getLabelsAsCompletionItems, getMainLabelAtPos } from './tokens/labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { asClasses, replaceNames } from './data';
 import { getRouteLabelVars } from './tokens/routeLabels';
@@ -22,6 +22,7 @@ import { blob } from 'stream/consumers';
 // https://stackoverflow.com/questions/78755236/how-can-i-prioritize-vs-code-extension-code-completion
 
 let currentLine = 0;
+let routeCompletions: CompletionItem[] = [];
 
 export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, text: TextDocument): CompletionItem[] {
 	// return buildFaction("kra","Kralien_Set");
@@ -61,7 +62,10 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	debug(line);
 	const eStr = line.replace(iStr,"");
 	debug(iStr)
-	debug(eStr);
+	// debug(eStr);
+	// if (iStr.endsWith("/") && !iStr.endsWith("//")) {
+	// 	return routeCompletions;
+	// }
 	// debug(iStr);
 	// if (iStr.includes("(")) {
 	// 	let arg = getCurrentArgumentNames(iStr,text);
@@ -331,6 +335,27 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 					}
 					return ci;
 				}
+				if (a === "label" || a === "path") {
+					const start = iStr.indexOf("//");
+					let route = "";
+					// If it starts with '//' then get routes
+					if (start > -1) {
+						route = iStr.substring(start);
+						const routes = cache.getUsedRoutes(route);
+						for (const r of routes) {
+							const c: CompletionItem = {
+								label: r,
+								kind: CompletionItemKind.Event
+							}
+							ci.push(c);
+						}
+						return ci;
+					}
+					// Otherwise, just use regular labels
+					const labels = cache.getLabels(text);
+					const main = getMainLabelAtPos(pos, labels);
+					return getLabelsAsCompletionItems(text, labels, main).concat(ci);
+				}
 			}
 
 			debug("Is in string");
@@ -380,8 +405,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		// If this is a route label, but NOT anything after it, then we only return route labels
 		if (!route.trim().includes(" ")) {
 			debug("Getting regular route labels")
-			let routes = cache.getRouteLabels();//getRouteLabelAutocompletions(iStr);
-			routes = routes.concat(cache.getUsedRoutes());
+			let routes = cache.getUsedRoutes(route);
 			for (const r of routes) {
 				let updatedRoute = r.replace(trimmed,"");
 				const c: CompletionItem = {
@@ -493,32 +517,37 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	let jump: RegExp = /(->|jump)[ \t]*[^\t ]*$/m;
 	// if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (") || iStr.endsWith("objective_add(") || iStr.endsWith("brain_add(")) {
 	if (jump.test(iStr)) {
-		let labelNames = cache.getLabels(text);
-		//debug(labelNames);
-		// Iterate over parent label info objects
-		for (const i in labelNames) {
-			if (labelNames[i].name === "main") continue;
-			if (labelNames[i].name.startsWith("//")) continue;
-			if (fixFileName(labelNames[i].srcFile) !== fixFileName(text.uri) && labelNames[i].name === "END") continue;
-			ci.push({documentation: buildLabelDocs(labelNames[i]),label: labelNames[i].name, kind: CompletionItemKind.Event, labelDetails: {description: path.basename(labelNames[i].srcFile)}});
-		}
-		labelNames = cache.getLabels(text, true);
-		const lbl = getMainLabelAtPos(startOfLine,labelNames);
-		if (lbl === undefined) {
-			return ci;
-		} else {
-			// Check for the parent label at this point (to get sublabels within the same parent)
-			if (lbl.srcFile === fixFileName(text.uri)) {
-				debug("same file name!");
-				let subs = lbl.subLabels;
-				debug(lbl.name);
-				debug(subs);
-				for (const i in subs) {
-					ci.push({documentation: buildLabelDocs(subs[i]),label: subs[i].name, kind: CompletionItemKind.Event, labelDetails: {description: "Sub-label of: " + lbl.name}});
-				}
-			}
-			return ci;
-		}
+
+		const labels = cache.getLabels(text);
+		const main = getMainLabelAtPos(pos, labels);
+		return getLabelsAsCompletionItems(text, labels, main);
+
+		// let labelNames = cache.getLabels(text);
+		// //debug(labelNames);
+		// // Iterate over parent label info objects
+		// for (const i in labelNames) {
+		// 	if (labelNames[i].name === "main") continue;
+		// 	if (labelNames[i].name.startsWith("//")) continue;
+		// 	if (fixFileName(labelNames[i].srcFile) !== fixFileName(text.uri) && labelNames[i].name === "END") continue;
+		// 	ci.push({documentation: buildLabelDocs(labelNames[i]),label: labelNames[i].name, kind: CompletionItemKind.Event, labelDetails: {description: path.basename(labelNames[i].srcFile)}});
+		// }
+		// labelNames = cache.getLabels(text, true);
+		// const lbl = getMainLabelAtPos(startOfLine,labelNames);
+		// if (lbl === undefined) {
+		// 	return ci;
+		// } else {
+		// 	// Check for the parent label at this point (to get sublabels within the same parent)
+		// 	if (lbl.srcFile === fixFileName(text.uri)) {
+		// 		debug("same file name!");
+		// 		let subs = lbl.subLabels;
+		// 		debug(lbl.name);
+		// 		debug(subs);
+		// 		for (const i in subs) {
+		// 			ci.push({documentation: buildLabelDocs(subs[i]),label: subs[i].name, kind: CompletionItemKind.Event, labelDetails: {description: "Sub-label of: " + lbl.name}});
+		// 		}
+		// 	}
+		// 	return ci;
+		// }
 	}
 //#endregion
 
