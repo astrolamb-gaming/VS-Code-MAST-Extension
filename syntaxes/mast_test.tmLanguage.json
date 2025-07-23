@@ -5,7 +5,7 @@
     "Once accepted there, we are happy to receive an update request."
   ],
   "version": "https://github.com/microsoft/TypeScript-TmLanguage/commit/48f608692aa6d6ad7bd65b478187906c798234a8",
-  "name": "TypeScript",
+  "name": "MAST",
   "scopeName": "source.mast",
   "patterns": [
     {"include": "#yaml"},
@@ -105,7 +105,7 @@
       "name": "style.definition",
       "patterns": [
         {
-          "match": "(=\\$\\w+)([^\\n\\r\\f#]*)",
+          "match": "(=\\$\\w+)([^\\n\\r\\f]*)",
           "captures": {
             "1": {"name": "style.definition.name"},
             "2": {"name": "style.definition.params"}
