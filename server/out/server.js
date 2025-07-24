@@ -467,6 +467,25 @@ exports.connection.onReferences(async (params) => {
     }
     return def;
 });
+// connection.onRenameRequest((params: RenameParams): HandlerResult<WorkspaceEdit | null | undefined, void>=>{
+// 	let uri = params.textDocument.uri
+// 	let edits: TextEdit[] = [];
+// 	let docEdit: TextDocumentEdit = {
+// 		textDocument: params.textDocument,
+// 		edits: []
+// 	}
+// 	let ret: WorkspaceEdit = {
+// 		documentChanges:
+// 	}
+// 	return ret;
+// })
+// connection.onPrepareRename((params: PrepareRenameParams): Range =>{
+// 	let ret: Range = {
+// 		start: undefined,
+// 		end: undefined
+// 	}
+// 	return ret;
+// })
 async function showProgressBar(visible) {
     sendToClient("progressNotif", visible);
 }

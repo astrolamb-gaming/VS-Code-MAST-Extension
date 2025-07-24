@@ -11,6 +11,7 @@ const cache_1 = require("./cache");
 const vscode_uri_1 = require("vscode-uri");
 const labels_1 = require("./tokens/labels");
 const data_1 = require("./data");
+const autocompletion_1 = require("./autocompletion");
 async function onDefinition(doc, pos) {
     // parseVariables(doc);
     // return;
@@ -125,7 +126,23 @@ async function onDefinition(doc, pos) {
     }
     let loc = (0, labels_1.getLabelLocation)(symbol, doc, pos);
     // debug(loc);
-    return loc;
+    if (loc)
+        return loc;
+    // Calculate the position in the text's string value using the Position value.
+    const posInt = doc.offsetAt(pos);
+    const startOfLine = posInt - pos.character;
+    const iStr = text.substring(startOfLine, posInt);
+    let args = (0, autocompletion_1.getCurrentArgumentNames)(hoveredLine, doc);
+    for (const a of args) {
+        if (a === "show" || a === "hide") {
+            let method = (0, cache_1.getCache)(doc.uri).getMethod(symbol);
+            if (!method)
+                continue;
+            const loc = method?.location;
+            loc.uri = (0, fileFunctions_1.fileFromUri)(loc.uri);
+            return loc;
+        }
+    }
     // }
     // let start: Position = {line: pos.line, character: 1}
     // let end: Position = {line: pos.line, character: 5}

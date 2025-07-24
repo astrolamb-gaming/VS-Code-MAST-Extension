@@ -740,8 +740,18 @@ class MissionCache {
     getVariableCompletionItems(doc) {
         // const parent = getParentFolder(URI.parse(file).fsPath);
         // const inits = getInitContents(fixFileName(doc?.uri));
+        let uri = "";
+        if (doc)
+            uri = (0, fileFunctions_1.fixFileName)(doc.uri);
         let ci = [];
         for (const m of this.mastFileCache) {
+            if (m.uri === uri) {
+                for (const v of m.getVariableNames()) {
+                    v.sortText = "__" + v.label;
+                    ci.push(v);
+                }
+                continue;
+            }
             ci = ci.concat(m.getVariableNames());
         }
         for (const m of this.missionMastModules) {

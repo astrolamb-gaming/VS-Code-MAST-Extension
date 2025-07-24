@@ -9,6 +9,7 @@ import { getCache } from './cache';
 import { URI } from 'vscode-uri';
 import { getLabelLocation } from './tokens/labels';
 import { asClasses } from './data';
+import { getCurrentArgumentNames } from './autocompletion';
 
 export async function onDefinition(doc:TextDocument,pos:Position): Promise<Location | undefined> {
 	// parseVariables(doc);
@@ -125,7 +126,22 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 		}
 		let loc = getLabelLocation(symbol, doc, pos);
 		// debug(loc);
-		return loc;
+		if (loc) return loc;
+
+		// Calculate the position in the text's string value using the Position value.
+		const posInt : integer = doc.offsetAt(pos);
+		const startOfLine : integer = posInt - pos.character;
+		const iStr : string = text.substring(startOfLine,posInt);
+		let args = getCurrentArgumentNames(hoveredLine, doc);
+		for (const a of args) {
+			if (a === "show" || a === "hide") {
+				let method = getCache(doc.uri).getMethod(symbol);
+				if (!method) continue;
+				const loc:Location = method?.location;
+				loc.uri = fileFromUri(loc.uri);
+				return loc;
+			}
+		}
 	// }
 
 	

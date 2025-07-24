@@ -24,10 +24,15 @@ import {
 	Location,
 	DefinitionParams,
 	ReferenceParams,
-	Diagnostic
+	Diagnostic,
+	RenameParams,
+	WorkspaceEdit,
+	HandlerResult,
+	PrepareRenameParams,
+	TextDocumentEdit
 
 } from 'vscode-languageserver/node';
-import { TextDocument } from 'vscode-languageserver-textdocument';
+import { Range, TextDocument, TextEdit } from 'vscode-languageserver-textdocument';
 import { LabelInfo } from './tokens/labels';
 import { onCompletion } from './autocompletion';
 import { debug} from 'console';
@@ -607,6 +612,27 @@ connection.onReferences(async (params:ReferenceParams): Promise<Location[] | und
 	}
 	return def;
 });
+
+// connection.onRenameRequest((params: RenameParams): HandlerResult<WorkspaceEdit | null | undefined, void>=>{
+// 	let uri = params.textDocument.uri
+// 	let edits: TextEdit[] = [];
+// 	let docEdit: TextDocumentEdit = {
+// 		textDocument: params.textDocument,
+// 		edits: []
+// 	}
+// 	let ret: WorkspaceEdit = {
+// 		documentChanges:
+// 	}
+// 	return ret;
+// })
+
+// connection.onPrepareRename((params: PrepareRenameParams): Range =>{
+// 	let ret: Range = {
+// 		start: undefined,
+// 		end: undefined
+// 	}
+// 	return ret;
+// })
 
 
 export async function showProgressBar(visible: boolean) {

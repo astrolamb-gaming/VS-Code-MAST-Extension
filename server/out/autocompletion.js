@@ -670,14 +670,15 @@ function onCompletion(_textDocumentPosition, text) {
                             const c = {
                                 label: k[0],
                                 kind: vscode_languageserver_1.CompletionItemKind.Text,
-                                insertText: "\"" + k[0] + "\":"
+                                insertText: "\"" + k[0] + "\":",
+                                sortText: "____" + label
                             };
                             if (k[1] !== "") {
                                 c.documentation = "Default value: " + k[1];
                             }
                             ci.push(c);
                         }
-                        return ci;
+                        // return ci;
                     }
                 }
             }
@@ -790,7 +791,8 @@ function onCompletion(_textDocumentPosition, text) {
             const c = {
                 label: s,
                 kind: vscode_languageserver_1.CompletionItemKind.EnumMember,
-                labelDetails: { description: "Route-specific Variable" }
+                labelDetails: { description: "Route-specific Variable" },
+                sortText: "__" + s
             };
             ci.push(c);
         }
@@ -803,7 +805,8 @@ function onCompletion(_textDocumentPosition, text) {
             const c = {
                 label: k[0],
                 kind: vscode_languageserver_1.CompletionItemKind.Text,
-                insertText: "\"" + k[0] + "\":"
+                insertText: "\"" + k[0] + "\":",
+                sortText: "__" + k[0]
             };
             if (k[1] !== "") {
                 c.documentation = "Default value: " + k[1];
