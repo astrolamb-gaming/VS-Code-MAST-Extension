@@ -47,10 +47,6 @@
 					"mast",
 					"Mast"
 				],
-				"filenames": [
-					"SConstruct",
-					"SConscript"
-				],
 				"firstLine": "# MAST File",
 				"configuration": "./language-configuration.json"
 			}

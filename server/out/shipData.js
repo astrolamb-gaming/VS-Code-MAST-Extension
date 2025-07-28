@@ -27,6 +27,9 @@ class ShipData {
         // } catch(e) {
         // 	debug(e);
         // }
+        fs.watch(artemisDir, (eventType, filename) => {
+            this.load();
+        });
     }
     load() {
         const file = path.join(this.artemisDir, "data", "shipData.json");

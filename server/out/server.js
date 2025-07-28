@@ -301,6 +301,11 @@ exports.connection.onSignatureHelp(async (_textDocPos) => {
 // This handler provides the initial list of the completion items.
 exports.connection.onCompletion(async (_textDocumentPosition) => {
     if (_textDocumentPosition.textDocument.uri.endsWith("json")) {
+        // We don't want to deal with json files aside from story.json at this point.
+        // TODO: Implement json autocompletion stuff for shipData.json?
+        if (_textDocumentPosition.textDocument.uri !== "story.json") {
+            return [];
+        }
         (0, console_1.debug)("THIS IS A JSON FILE");
         let g = (0, globals_1.getGlobals)();
         if (g !== undefined) {

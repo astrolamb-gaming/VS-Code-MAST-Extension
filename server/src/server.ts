@@ -426,6 +426,11 @@ connection.onSignatureHelp(async (_textDocPos: SignatureHelpParams): Promise<Sig
 connection.onCompletion(
 	async (_textDocumentPosition: TextDocumentPositionParams): Promise<CompletionItem[] | undefined> => {
 		if (_textDocumentPosition.textDocument.uri.endsWith("json")) {
+			// We don't want to deal with json files aside from story.json at this point.
+			// TODO: Implement json autocompletion stuff for shipData.json?
+			if (_textDocumentPosition.textDocument.uri !== "story.json") {
+				return [];
+			}
 			debug("THIS IS A JSON FILE");
 			let g = getGlobals();
 			if (g !== undefined) {
