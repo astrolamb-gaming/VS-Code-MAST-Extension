@@ -178,7 +178,7 @@ export class MissionCache {
 			// could be either 'rename' or 'change'. new file event and delete
 			// also generally emit 'rename'
 			// debug(filename);
-			if (eventType === "rename" || eventType === "change") {
+			if (eventType === "rename") {
 				if (filename?.endsWith(".py")) {
 					this.removePyFile(path.join(this.missionURI,filename));
 				}

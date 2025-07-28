@@ -89,6 +89,10 @@ export class Globals {
 			this.data_set_entries = this.loadObjectDataDocumentation();
 			debug("Loading libs");
 			this.libModules = this.loadLibs();
+			let libPath = path.join(this.artemisDir,'data','missions','__lib__')
+			fs.watch(libPath, (eventType, filename)=>{
+				this.libModules = this.loadLibs();
+			});
 			debug("Done loading libs.")
 			this.libModuleCompletionItems = [];
 			this.shipData = new ShipData(this.artemisDir);
@@ -103,6 +107,12 @@ export class Globals {
 			debug("ship data gotten")
 			this.artFiles = this.findArtFiles(true);
 			this.faceArtFiles = this.loadFaceArt();
+			const allFaceFiles = path.join(this.artemisDir, "data", "graphics", "allFaceFiles.txt");
+			fs.watch(allFaceFiles, (eventType, filename)=>{
+				if (eventType === "change") {
+					this.faceArtFiles = this.loadFaceArt();
+				}
+			});
 			parseIconSet(path.join(this.artemisDir,"data","graphics","grid-icon-sheet.png"),128,false);
 			debug("Grid Icon Sheet parsed")
 			this.gridIcons = getGridIcons();
