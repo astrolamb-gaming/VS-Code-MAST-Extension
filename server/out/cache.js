@@ -76,6 +76,7 @@ class MissionCache {
         this.missionFilesLoaded = false;
         this.sbsLoaded = false;
         this.lastAccessed = 0;
+        this.watchers = [];
         this.resourceLabels = (0, routeLabels_1.loadResourceLabels)();
         this.mediaLabels = this.mediaLabels.concat((0, routeLabels_1.loadMediaLabels)());
         this.missionURI = (0, fileFunctions_1.getMissionFolder)(workspaceUri);
@@ -90,6 +91,7 @@ class MissionCache {
         // 	debug("Starting python")
         // 	initializePython(path.join(this.missionURI,"story.json"))	
         // });
+        this.startWatchers();
     }
     async load() {
         (0, console_1.debug)("Starting MissionCache.load()");
@@ -140,13 +142,25 @@ class MissionCache {
         });
         this.checkForCacheUpdates();
         (0, console_1.debug)(this.missionURI);
-        fs.watch(this.missionURI, { "recursive": true }, (eventType, filename) => {
+        //this.checkForInitFolder(this.missionURI);
+        (0, console_1.debug)("Number of py files: " + this.pyFileCache.length);
+        await this.awaitLoaded();
+        (0, console_1.debug)("Everything is laoded");
+    }
+    /**
+     * Start file system watchers
+     * These enable cache reloading if story.json is changed, or if a mastlib/sbslib file is changed.
+     * Also handles deleted mast/py files.
+     * Does NOT handle new files, it will be added when it is opened.
+     */
+    startWatchers() {
+        let w = fs.watch(this.missionURI, { "recursive": true }, (eventType, filename) => {
             // debug("fs.watch() EVENT: ")
             // debug(eventType);
             // could be either 'rename' or 'change'. new file event and delete
             // also generally emit 'rename'
             // debug(filename);
-            if (eventType === "rename") {
+            if (eventType === "rename" || eventType === "change") {
                 if (filename?.endsWith(".py")) {
                     this.removePyFile(path.join(this.missionURI, filename));
                 }
@@ -154,11 +168,31 @@ class MissionCache {
                     this.removeMastFile(path.join(this.missionURI, filename));
                 }
             }
+            if (filename === "story.json" && eventType === "change") {
+                this.load();
+                this.awaitLoaded();
+            }
         });
-        //this.checkForInitFolder(this.missionURI);
-        (0, console_1.debug)("Number of py files: " + this.pyFileCache.length);
-        await this.awaitLoaded();
-        (0, console_1.debug)("Everything is laoded");
+        this.watchers.push(w);
+        // Watches for changes to the sbs_lib or mast_lib files
+        let libFolder = path.join((0, globals_1.getGlobals)().artemisDir, "data", "missions", "__lib__");
+        (0, console_1.debug)(libFolder);
+        let w2 = fs.watch(libFolder, {}, (eventType, filename) => {
+            // TODO: Only load the bits applicable for these files?
+            // More efficient to only reload what needs reloaded.
+            // As is, will need to reload the whole cache...
+            (0, console_1.debug)(filename + "  Changed");
+            // this.endWatchers();
+            this.load();
+            this.awaitLoaded();
+        });
+        this.watchers.push(w2);
+    }
+    endWatchers() {
+        for (const w of this.watchers) {
+            w.close();
+        }
+        this.watchers = [];
     }
     async loadPythonGlobals(globals) {
         let go = await (0, globals_1.initializeGlobals)();

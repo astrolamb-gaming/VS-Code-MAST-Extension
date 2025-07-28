@@ -103,6 +103,7 @@ export class MissionCache {
 		// 	initializePython(path.join(this.missionURI,"story.json"))	
 			
 		// });
+		this.startWatchers();
 	}
 
 	async load() {
@@ -155,13 +156,29 @@ export class MissionCache {
 		});
 		this.checkForCacheUpdates();
 		debug(this.missionURI)
-		fs.watch(this.missionURI, {"recursive": true}, (eventType, filename) => {
+		
+		//this.checkForInitFolder(this.missionURI);
+		debug("Number of py files: "+this.pyFileCache.length);
+		await this.awaitLoaded();
+		debug("Everything is laoded")
+		
+	}
+
+	watchers: fs.FSWatcher[] = [];
+	/**
+	 * Start file system watchers
+	 * These enable cache reloading if story.json is changed, or if a mastlib/sbslib file is changed.
+	 * Also handles deleted mast/py files.
+	 * Does NOT handle new files, it will be added when it is opened.
+	 */
+	startWatchers() {
+		let w = fs.watch(this.missionURI, {"recursive": true}, (eventType, filename) => {
 			// debug("fs.watch() EVENT: ")
 			// debug(eventType);
 			// could be either 'rename' or 'change'. new file event and delete
 			// also generally emit 'rename'
 			// debug(filename);
-			if (eventType === "rename") {
+			if (eventType === "rename" || eventType === "change") {
 				if (filename?.endsWith(".py")) {
 					this.removePyFile(path.join(this.missionURI,filename));
 				}
@@ -169,12 +186,31 @@ export class MissionCache {
 					this.removeMastFile(path.join(this.missionURI,filename));
 				}
 			}
+			if (filename ==="story.json" && eventType === "change") {
+				this.load();
+				this.awaitLoaded();
+			}
 		});
-		//this.checkForInitFolder(this.missionURI);
-		debug("Number of py files: "+this.pyFileCache.length);
-		await this.awaitLoaded();
-		debug("Everything is laoded")
-		
+		this.watchers.push(w);
+		// Watches for changes to the sbs_lib or mast_lib files
+		let libFolder = path.join(getGlobals().artemisDir, "data", "missions", "__lib__");
+		debug(libFolder);
+		let w2 = fs.watch(libFolder, {}, (eventType, filename) => {
+			// TODO: Only load the bits applicable for these files?
+			// More efficient to only reload what needs reloaded.
+			// As is, will need to reload the whole cache...
+			debug(filename + "  Changed")
+			// this.endWatchers();
+			this.load();
+			this.awaitLoaded();
+		});
+		this.watchers.push(w2);
+	}
+	endWatchers() {
+		for (const w of this.watchers) {
+			w.close();
+		}
+		this.watchers = [];
 	}
 	async loadPythonGlobals(globals: string[][]) {
 		let go = await initializeGlobals();
