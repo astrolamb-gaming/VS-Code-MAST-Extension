@@ -1,11 +1,13 @@
 import { MarkupContent, CompletionItem, integer, Location, CompletionItemLabelDetails, CompletionItemKind } from 'vscode-languageserver';
 import { replaceNames } from '../data';
 import { Function } from './function';
+import { Variable } from '../tokens/variables';
 
 export class ClassObject {
 	name: string;
 	parent?: string;
 	methods: Function[] = [];
+	properties: Variable[] = [];
 	constructorFunction?: Function;
 	documentation: string | MarkupContent;
 	sourceFile: string;
@@ -36,6 +38,7 @@ export class ClassObject {
 		// Parse functions
 		let functionSource = (this.name === "") ? sourceFile : this.name;
 		this.methods = parseFunctions(raw, functionSource, this.sourceFile);
+		this.properties = parseVariables(raw, functionSource, this.sourceFile);
 		for (const i in this.methods) {
 			// debug(this.methods[i]);
 			if (this.methods[i].functionType === "constructor") {
@@ -76,6 +79,19 @@ export class ClassObject {
 			insertText: this.name
 		}
 		return ci;
+	}
+
+	buildVariableCompletionItemList():CompletionItem[] {
+		let ret: CompletionItem[] = [];
+		for (const v of this.properties) {
+			const ci: CompletionItem = {
+				label: "[" + this.name + "]." + v.name,
+				kind: CompletionItemKind.Property,
+				insertText: v.name
+			}
+			ret.push(ci);
+		}
+		return ret;
 	}
 
 	
@@ -130,4 +146,56 @@ function parseFunctions(raw: string, source: string, sourceFile: string) {
 	// fList = [...new Map(fList.map(v => [v.startIndex, v])).values()]
 	// if (fList.length >= 0) debug(fList);
 	return fList;
+}
+
+function parseVariables(raw:string, source:string, sourceFile:string):Variable[] {
+	let ret: Variable[] =[];
+	let def = raw.indexOf("def");
+	raw = raw.substring(0,def);
+	let v = /^\s*(\w+)\s*(:\s*(\w+))?=.*$/gm;
+	let m: RegExpExecArray | null;
+	
+	while (m = v.exec(raw)) {
+		let type = ""
+		if (m[3]) type = m[3];
+		const newVar:Variable = {
+			name: m[1],
+			range: {
+				start: {
+					line: 0,
+					character: 0
+				},
+				end: {
+					line: 0,
+					character: 0
+				}
+			},
+			doc: '',
+			equals: '',
+			types: [type]
+		}
+		ret.push(newVar)
+	}
+
+	v = /self\.(\w+)\b/g;
+	while (m = v.exec(raw)) {
+		const newVar:Variable = {
+			name: m[1],
+			range: {
+				start: {
+					line: 0,
+					character: 0
+				},
+				end: {
+					line: 0,
+					character: 0
+				}
+			},
+			doc: '',
+			equals: '',
+			types: []
+		}
+		ret.push(newVar)
+	}
+	return ret;
 }

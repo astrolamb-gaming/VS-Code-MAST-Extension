@@ -1161,6 +1161,7 @@ export class MissionCache {
 		// debug(this.sbsLoaded);
 		// debug(this.storyJsonLoaded);
 		// debug(this.pyInfoLoaded);
+		if (all) showProgressBar(false);
 		return all;
 	}
 

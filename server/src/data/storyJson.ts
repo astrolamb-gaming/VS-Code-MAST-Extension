@@ -1,7 +1,7 @@
 import { debug } from 'console';
 import path = require('path');
 import { integer } from 'vscode-languageserver';
-import { getMissionFolder } from '../fileFunctions';
+import { getFileContents, getMissionFolder } from '../fileFunctions';
 import { getGlobals } from '../globals';
 import { connection, notifyClient, sendToClient, showProgressBar } from '../server';
 import fs = require('fs');
@@ -27,7 +27,6 @@ export class StoryJson {
 
 	constructor(uri: string) {
 		this.uri = uri;
-		showProgressBar(true);
 	}
 
 	getModuleBaseName(module:string) {
@@ -136,7 +135,12 @@ export class StoryJson {
 	 * Must be called after instantiating the object.
 	 */
 	async readFile() {
-		if (path.dirname(this.uri).endsWith("sbs_utils")) return;
+		showProgressBar(true);
+		if (path.dirname(this.uri).endsWith("sbs_utils")) return; // Why is this here? Not actually sure, but there must have been a reason...
+		if (!fs.existsSync(this.uri)) {
+			let generated = await this.storyJsonNotFoundError();
+			if (!generated) return;
+		}
 		try {
 			const data = fs.readFileSync(this.uri, "utf-8");
 			this.parseFile(data);
@@ -226,5 +230,32 @@ export class StoryJson {
 		} else if (ret.title === hide) {
 			// Add persistence setting to this
 		}
+	}
+
+	async storyJsonNotFoundError(): Promise<boolean> {
+		let generate = "Generate empty";
+		let gen_pop = "Generate/Populate"
+		let ignore = "Ignore"
+		let ret = await connection.window.showErrorMessage(
+			"`story.json` not found",
+			{title: generate},
+			{title: ignore},
+			//{title: hide} // TODO: Add this later!!!!!!
+		);
+		if (ret === undefined) return false;
+		if (ret.title === generate) {
+			// Create story.json
+			fs.writeFileSync(this.uri, "", {"encoding": "utf-8"});
+			return true;
+		} else if (ret.title === gen_pop) {
+			// Generate story.json from default settings - get from mast_starter?
+			let sjc = await getFileContents("https://raw.githubusercontent.com/artemis-sbs/mast_starter/refs/heads/main/story.json")
+			fs.writeFileSync(this.uri, sjc, {"encoding": "utf-8"});
+			return true;
+		} else if (ret.title === ignore) {
+			// Do nothing.
+			return false;
+		}
+		return false;
 	}
 }

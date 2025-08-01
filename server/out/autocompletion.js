@@ -573,6 +573,10 @@ function onCompletion(_textDocumentPosition, text) {
                 // (mc.documentation as MarkupContent).value = "_Method of class: " + className + "_\n" + (mc.documentation as MarkupContent).value;
                 ci.push(mc);
             }
+            // Add properties.
+            let props = c.buildVariableCompletionItemList();
+            (0, console_1.debug)(props);
+            ci = ci.concat(props);
         }
         return ci;
     }

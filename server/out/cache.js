@@ -1120,6 +1120,8 @@ class MissionCache {
         // debug(this.sbsLoaded);
         // debug(this.storyJsonLoaded);
         // debug(this.pyInfoLoaded);
+        if (all)
+            (0, server_1.showProgressBar)(false);
         return all;
     }
     async awaitLoaded() {

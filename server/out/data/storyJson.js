@@ -16,7 +16,6 @@ class StoryJson {
         this.regex = /\.v((\d+)\.(\d+)\.(\d+))\.(\d+\.)*(((mast|sbs)lib)|(zip))/;
         this.errorCheckIgnore = false;
         this.uri = uri;
-        (0, server_1.showProgressBar)(true);
     }
     getModuleBaseName(module) {
         const res = this.regex.exec(module);
@@ -125,8 +124,14 @@ class StoryJson {
      * Must be called after instantiating the object.
      */
     async readFile() {
+        (0, server_1.showProgressBar)(true);
         if (path.dirname(this.uri).endsWith("sbs_utils"))
-            return;
+            return; // Why is this here? Not actually sure, but there must have been a reason...
+        if (!fs.existsSync(this.uri)) {
+            let generated = await this.storyJsonNotFoundError();
+            if (!generated)
+                return;
+        }
         try {
             const data = fs.readFileSync(this.uri, "utf-8");
             this.parseFile(data);
@@ -215,6 +220,30 @@ class StoryJson {
         else if (ret.title === hide) {
             // Add persistence setting to this
         }
+    }
+    async storyJsonNotFoundError() {
+        let generate = "Generate empty";
+        let gen_pop = "Generate/Populate";
+        let ignore = "Ignore";
+        let ret = await server_1.connection.window.showErrorMessage("`story.json` not found", { title: generate }, { title: ignore });
+        if (ret === undefined)
+            return false;
+        if (ret.title === generate) {
+            // Create story.json
+            fs.writeFileSync(this.uri, "", { "encoding": "utf-8" });
+            return true;
+        }
+        else if (ret.title === gen_pop) {
+            // Generate story.json from default settings - get from mast_starter?
+            let sjc = await (0, fileFunctions_1.getFileContents)("https://raw.githubusercontent.com/artemis-sbs/mast_starter/refs/heads/main/story.json");
+            fs.writeFileSync(this.uri, sjc, { "encoding": "utf-8" });
+            return true;
+        }
+        else if (ret.title === ignore) {
+            // Do nothing.
+            return false;
+        }
+        return false;
     }
 }
 exports.StoryJson = StoryJson;

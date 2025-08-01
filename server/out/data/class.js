@@ -8,6 +8,7 @@ const function_1 = require("./function");
 class ClassObject {
     constructor(raw, sourceFile) {
         this.methods = [];
+        this.properties = [];
         this.startPos = 0;
         this.location = { uri: sourceFile, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } } };
         let className = /^class .+?:/gm; // Look for "class ClassName:" to parse class names.
@@ -27,6 +28,7 @@ class ClassObject {
         // Parse functions
         let functionSource = (this.name === "") ? sourceFile : this.name;
         this.methods = parseFunctions(raw, functionSource, this.sourceFile);
+        this.properties = parseVariables(raw, functionSource, this.sourceFile);
         for (const i in this.methods) {
             // debug(this.methods[i]);
             if (this.methods[i].functionType === "constructor") {
@@ -65,6 +67,18 @@ class ClassObject {
             insertText: this.name
         };
         return ci;
+    }
+    buildVariableCompletionItemList() {
+        let ret = [];
+        for (const v of this.properties) {
+            const ci = {
+                label: "[" + this.name + "]." + v.name,
+                kind: vscode_languageserver_1.CompletionItemKind.Property,
+                insertText: v.name
+            };
+            ret.push(ci);
+        }
+        return ret;
     }
 }
 exports.ClassObject = ClassObject;
@@ -107,5 +121,55 @@ function parseFunctions(raw, source, sourceFile) {
     // fList = [...new Map(fList.map(v => [v.startIndex, v])).values()]
     // if (fList.length >= 0) debug(fList);
     return fList;
+}
+function parseVariables(raw, source, sourceFile) {
+    let ret = [];
+    let def = raw.indexOf("def");
+    raw = raw.substring(0, def);
+    let v = /^\s*(\w+)\s*(:\s*(\w+))?=.*$/gm;
+    let m;
+    while (m = v.exec(raw)) {
+        let type = "";
+        if (m[3])
+            type = m[3];
+        const newVar = {
+            name: m[1],
+            range: {
+                start: {
+                    line: 0,
+                    character: 0
+                },
+                end: {
+                    line: 0,
+                    character: 0
+                }
+            },
+            doc: '',
+            equals: '',
+            types: [type]
+        };
+        ret.push(newVar);
+    }
+    v = /self\.(\w+)\b/g;
+    while (m = v.exec(raw)) {
+        const newVar = {
+            name: m[1],
+            range: {
+                start: {
+                    line: 0,
+                    character: 0
+                },
+                end: {
+                    line: 0,
+                    character: 0
+                }
+            },
+            doc: '',
+            equals: '',
+            types: []
+        };
+        ret.push(newVar);
+    }
+    return ret;
 }
 //# sourceMappingURL=class.js.map

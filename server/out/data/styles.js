@@ -9,6 +9,7 @@ exports.loadStyleDefs = loadStyleDefs;
  */
 function loadStyleDefs(file, text) {
     let ret = [];
+    // Could also/instead use mast/parsers.py
     if (file.endsWith("style.py") && file.includes("procedural")) {
         let pattern = /style_def\.get\([\"\'](.*)[\"\']\)/g;
         let m;
