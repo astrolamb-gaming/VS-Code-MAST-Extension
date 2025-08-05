@@ -253,6 +253,13 @@
           }
         },
         {
+          "match": "(on[ \t]+signal[ \t]+)([A-Za-z_]+)",
+          "captures": {
+            "1": {"name": "keyword.control.flow.signal.mast"},
+            "2": {"name": "label.route.mast"}
+          }
+        },
+        {
           "match": "on[ \t]+(change[ \t]*)?",
           "name": "keyword.control.flow.change.mast"
         }
