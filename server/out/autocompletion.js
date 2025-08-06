@@ -361,7 +361,7 @@ function onCompletion(_textDocumentPosition, text) {
         return cache.getMusicFiles();
     }
     // Get signal routes
-    if (trimmed.startsWith("//signal/") || trimmed.startsWith("//shared/singal/")) {
+    if (trimmed.startsWith("//signal/") || trimmed.startsWith("//shared/singal/") || trimmed.startsWith("on signal ")) {
         const signals = cache.getSignals();
         for (const s of signals) {
             const c = {
