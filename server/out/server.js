@@ -25,6 +25,8 @@ const validate_1 = require("./validate");
 const goToDefinition_1 = require("./goToDefinition");
 const cache_1 = require("./cache");
 const references_1 = require("./references");
+const renameSymbol_1 = require("./renameSymbol");
+const words_1 = require("./tokens/words");
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 exports.connection = (0, node_1.createConnection)(node_1.ProposedFeatures.all);
@@ -472,25 +474,21 @@ exports.connection.onReferences(async (params) => {
     }
     return def;
 });
-// connection.onRenameRequest((params: RenameParams): HandlerResult<WorkspaceEdit | null | undefined, void>=>{
-// 	let uri = params.textDocument.uri
-// 	let edits: TextEdit[] = [];
-// 	let docEdit: TextDocumentEdit = {
-// 		textDocument: params.textDocument,
-// 		edits: []
-// 	}
-// 	let ret: WorkspaceEdit = {
-// 		documentChanges:
-// 	}
-// 	return ret;
-// })
-// connection.onPrepareRename((params: PrepareRenameParams): Range =>{
-// 	let ret: Range = {
-// 		start: undefined,
-// 		end: undefined
-// 	}
-// 	return ret;
-// })
+exports.connection.onRenameRequest((params) => {
+    return (0, renameSymbol_1.onRenameRequest)(params);
+    // return ret;
+});
+exports.connection.onPrepareRename((params) => {
+    let doc = exports.documents.get(params.textDocument.uri);
+    if (!doc)
+        return;
+    let symbol = (0, words_1.getWordRangeAtPosition)(doc, params.position);
+    let ret = {
+        start: params.position,
+        end: doc.positionAt(doc.offsetAt(params.position) + symbol.length)
+    };
+    return ret;
+});
 async function showProgressBar(visible) {
     sendToClient("progressNotif", visible);
 }

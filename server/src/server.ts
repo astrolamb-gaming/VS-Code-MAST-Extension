@@ -36,7 +36,7 @@ import { Range, TextDocument, TextEdit } from 'vscode-languageserver-textdocumen
 import { LabelInfo } from './tokens/labels';
 import { onCompletion } from './autocompletion';
 import { debug} from 'console';
-import { onHover } from './hover';
+import { getCurrentLineFromTextDocument, getHoveredSymbol, onHover } from './hover';
 import { onSignatureHelp } from './signatureHelp';
 import fs = require("fs");
 import { getVariableNamesInDoc } from './tokens/variables';
@@ -45,6 +45,8 @@ import { validateTextDocument } from './validate';
 import { onDefinition } from './goToDefinition';
 import { getCache } from './cache';
 import { onReferences } from './references';
+import { onRenameRequest } from './renameSymbol';
+import { getWordRangeAtPosition } from './tokens/words';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -618,26 +620,21 @@ connection.onReferences(async (params:ReferenceParams): Promise<Location[] | und
 	return def;
 });
 
-// connection.onRenameRequest((params: RenameParams): HandlerResult<WorkspaceEdit | null | undefined, void>=>{
-// 	let uri = params.textDocument.uri
-// 	let edits: TextEdit[] = [];
-// 	let docEdit: TextDocumentEdit = {
-// 		textDocument: params.textDocument,
-// 		edits: []
-// 	}
-// 	let ret: WorkspaceEdit = {
-// 		documentChanges:
-// 	}
-// 	return ret;
-// })
+connection.onRenameRequest((params: RenameParams): HandlerResult<WorkspaceEdit | null | undefined, void>=>{
+	return onRenameRequest(params);
+	// return ret;
+})
 
-// connection.onPrepareRename((params: PrepareRenameParams): Range =>{
-// 	let ret: Range = {
-// 		start: undefined,
-// 		end: undefined
-// 	}
-// 	return ret;
-// })
+connection.onPrepareRename((params: PrepareRenameParams): Range | undefined =>{
+	let doc = documents.get(params.textDocument.uri);
+	if (!doc) return;
+	let symbol = getWordRangeAtPosition(doc, params.position);
+	let ret: Range = {
+		start: params.position,
+		end: doc.positionAt(doc.offsetAt(params.position) + symbol.length)
+	}
+	return ret;
+})
 
 
 export async function showProgressBar(visible: boolean) {
