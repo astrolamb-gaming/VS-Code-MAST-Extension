@@ -18,6 +18,7 @@ import { getCurrentLineFromTextDocument } from './hover';
 import { countMatches } from './rx';
 import { showProgressBar } from './server';
 import { blob } from 'stream/consumers';
+import { buildSignalInfoListAsCompletionItems } from './tokens/signals';
 
 // https://stackoverflow.com/questions/78755236/how-can-i-prioritize-vs-code-extension-code-completion
 
@@ -190,15 +191,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		debug("Is in string (probably)")
 		if (blobStr.endsWith("signal_emit(")) {
 			const signals = cache.getSignals();
-			for (const s of signals) {
-				const c: CompletionItem = {
-					label: s,
-					kind: CompletionItemKind.Event,
-					labelDetails: {description: "Signal Route Label"}
-				}
-				ci.push(c);
-			}
-			return ci;
+			return buildSignalInfoListAsCompletionItems(signals);
 		}
 		if (!isTextInBracket(iStr,pos)) {
 			// Here we check for blob info
@@ -386,17 +379,9 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	}
 
 	// Get signal routes
-	if (trimmed.startsWith("//signal/") || trimmed.startsWith("//shared/singal/") || trimmed.startsWith("on signal ")) {
+	if (trimmed.startsWith("//signal/") || trimmed.startsWith("//shared/singal/") || trimmed.startsWith("on signal")) {
 		const signals = cache.getSignals();
-		for (const s of signals) {
-			const c: CompletionItem = {
-				label: s,
-				kind: CompletionItemKind.Event,
-				labelDetails: {description: "Signal Route Label"}
-			}
-			ci.push(c);
-		}
-		return ci;
+		return buildSignalInfoListAsCompletionItems(signals);
 	}
 
 	// Route Label autocompletion
@@ -777,6 +762,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		// "def", // Pretty sure we can't define functions in a mast file
 		"async",
 		"on change",
+		"on signal",
 		"await",
 		"import",
 		"if",

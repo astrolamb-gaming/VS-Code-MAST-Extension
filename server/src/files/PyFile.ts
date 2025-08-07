@@ -8,6 +8,7 @@ import { ClassObject } from '../data/class';
 import { Function } from '../data/function';
 import { fixFileName } from '../fileFunctions';
 import { Word, parseWords } from '../tokens/words';
+import { parseSignalsInFile, SignalInfo } from '../tokens/signals';
 
 
 export class PyFile extends FileCache {
@@ -15,6 +16,7 @@ export class PyFile extends FileCache {
 	classes: ClassObject[] = [];
 	words: Word[] = [];
 	globalFiles: string[][] = [];
+	signals: SignalInfo[] = [];
 	globals: string[][] = [];
 	isGlobal: boolean = false;
 	constructor(uri: string, fileContents: string = "") {
@@ -60,6 +62,9 @@ export class PyFile extends FileCache {
 
 		const doc: TextDocument = TextDocument.create(this.uri, "py", 1, text);
 		this.words = parseWords(doc);
+		// debug(this.uri.replace("c:/Users/mholderbaum/Documents/Cosmos/Cosmos-1-1-3/data/missions/",""))
+		this.signals = parseSignalsInFile(doc);
+		// debug(this.signals)
 		// Iterate over all classes to get their indices
 		//classIndices.push(0);
 		while (m = blockStart.exec(text)) {

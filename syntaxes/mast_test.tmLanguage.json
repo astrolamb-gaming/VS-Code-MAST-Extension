@@ -253,10 +253,10 @@
           }
         },
         {
-          "match": "(on[ \t]+signal[ \t]+)([A-Za-z_]+)",
+          "match": "(on[ \t]+signal)([ \t]+([A-Za-z_]+))?",
           "captures": {
             "1": {"name": "keyword.control.flow.signal.mast"},
-            "2": {"name": "label.route.mast"}
+            "3": {"name": "label.route.mast"}
           }
         },
         {

@@ -22,6 +22,7 @@ const class_1 = require("./data/class");
 const storyJson_1 = require("./data/storyJson");
 const python_1 = require("./python/python");
 const styles_1 = require("./data/styles");
+const signals_1 = require("./tokens/signals");
 exports.testingPython = false;
 const includeNonProcedurals = [
     "scatter",
@@ -825,7 +826,14 @@ class MissionCache {
         for (const m of this.missionMastModules) {
             ret = ret.concat(m.signals);
         }
-        ret = [...new Set(ret)]; // Don't want duplicates, I think...
+        for (const p of this.pyFileCache) {
+            ret = ret.concat(p.signals);
+        }
+        for (const p of this.missionPyModules) {
+            ret = ret.concat(p.signals);
+        }
+        ret = (0, signals_1.mergeSignalInfo)(ret);
+        // ret = [...new Set(ret)]; // Don't want duplicates, I think...
         return ret;
     }
     /**

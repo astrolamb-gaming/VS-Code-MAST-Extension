@@ -10,6 +10,7 @@ const class_1 = require("../data/class");
 const function_1 = require("../data/function");
 const fileFunctions_1 = require("../fileFunctions");
 const words_1 = require("../tokens/words");
+const signals_1 = require("../tokens/signals");
 class PyFile extends data_1.FileCache {
     constructor(uri, fileContents = "") {
         // if (fileContents === "") debug("pyFile Contents empty for " + uri)
@@ -19,6 +20,7 @@ class PyFile extends data_1.FileCache {
         this.classes = [];
         this.words = [];
         this.globalFiles = [];
+        this.signals = [];
         this.globals = [];
         this.isGlobal = false;
         // If fileContents is NOT an empty string (e.g. if it's from a zipped folder), then all we do is parse the contents
@@ -62,6 +64,9 @@ class PyFile extends data_1.FileCache {
         let m;
         const doc = vscode_languageserver_textdocument_1.TextDocument.create(this.uri, "py", 1, text);
         this.words = (0, words_1.parseWords)(doc);
+        // debug(this.uri.replace("c:/Users/mholderbaum/Documents/Cosmos/Cosmos-1-1-3/data/missions/",""))
+        this.signals = (0, signals_1.parseSignalsInFile)(doc);
+        // debug(this.signals)
         // Iterate over all classes to get their indices
         //classIndices.push(0);
         while (m = blockStart.exec(text)) {

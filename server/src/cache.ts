@@ -21,6 +21,7 @@ import { StoryJson } from './data/storyJson';
 import { getSpecificGlobals, sleep } from './python/python';
 import { loadStyleDefs } from './data/styles';
 import { Word } from './tokens/words';
+import { mergeSignalInfo, SignalInfo } from './tokens/signals';
 
 export const testingPython = false;
 
@@ -845,15 +846,22 @@ export class MissionCache {
 	 * Get all signals used in the mission
 	 * @returns an array of {@link string string}s representing the signals used elsewhere in the mission
 	 */
-	getSignals(): string[] {
-		let ret: string[] = [];
+	getSignals(): SignalInfo[] {
+		let ret: SignalInfo[] = [];
 		for (const m of this.mastFileCache) {
 			ret = ret.concat(m.signals);
 		}
 		for (const m of this.missionMastModules) {
 			ret = ret.concat(m.signals);
 		}
-		ret = [...new Set(ret)]; // Don't want duplicates, I think...
+		for (const p of this.pyFileCache) {
+			ret = ret.concat(p.signals);
+		}
+		for (const p of this.missionPyModules) {
+			ret = ret.concat(p.signals)
+		}
+		ret = mergeSignalInfo(ret);
+		// ret = [...new Set(ret)]; // Don't want duplicates, I think...
 		return ret;
 	}
 

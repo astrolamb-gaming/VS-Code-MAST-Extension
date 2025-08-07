@@ -11,6 +11,7 @@ import { checkEnableRoutes } from './tokens/routeLabels';
 import { URI } from 'vscode-uri';
 import { fixFileName } from './fileFunctions';
 import { compileMission } from './python/python';
+import { checkForUnusedSignals } from './tokens/signals';
 
 let debugStrs : string = "";//Debug: ${workspaceFolder}\n";
 
@@ -339,7 +340,8 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	}
 	
 	const r = checkEnableRoutes(textDocument);
-	diagnostics = diagnostics.concat(r);
+	const sigs = checkForUnusedSignals(textDocument);
+	diagnostics = diagnostics.concat(r, sigs);
 	// return debugLabelValidation(textDocument);
 	return diagnostics;
 }

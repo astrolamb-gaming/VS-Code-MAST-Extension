@@ -14,6 +14,7 @@ const routeLabels_1 = require("./tokens/routeLabels");
 const vscode_uri_1 = require("vscode-uri");
 const fileFunctions_1 = require("./fileFunctions");
 const python_1 = require("./python/python");
+const signals_1 = require("./tokens/signals");
 let debugStrs = ""; //Debug: ${workspaceFolder}\n";
 let exclude = [];
 /*
@@ -311,7 +312,8 @@ async function validateTextDocument(textDocument) {
         }
     }
     const r = (0, routeLabels_1.checkEnableRoutes)(textDocument);
-    diagnostics = diagnostics.concat(r);
+    const sigs = (0, signals_1.checkForUnusedSignals)(textDocument);
+    diagnostics = diagnostics.concat(r, sigs);
     // return debugLabelValidation(textDocument);
     return diagnostics;
 }
