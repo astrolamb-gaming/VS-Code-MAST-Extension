@@ -165,7 +165,7 @@ function getMetadata(text:string):string {
 export function buildLabelDocs(label:LabelInfo): MarkupContent {
 	let val = "";
 	if (label.metadata !== "") {
-		val = label.comments + "\nDefault metadata:  \n```  \n" + label.metadata + "\n```\n"
+		val = label.comments + "\n\nDefault metadata:  \n```  \n" + label.metadata + "\n```\n"
 	} else {
 		val = label.comments;
 	}

@@ -152,7 +152,7 @@ function getMetadata(text) {
 function buildLabelDocs(label) {
     let val = "";
     if (label.metadata !== "") {
-        val = label.comments + "\nDefault metadata:  \n```  \n" + label.metadata + "\n```\n";
+        val = label.comments + "\n\nDefault metadata:  \n```  \n" + label.metadata + "\n```\n";
     }
     else {
         val = label.comments;
