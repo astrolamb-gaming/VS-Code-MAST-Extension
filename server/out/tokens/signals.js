@@ -6,9 +6,7 @@ exports.parseSignalsInFile = parseSignalsInFile;
 exports.checkForUnusedSignals = checkForUnusedSignals;
 const vscode_languageserver_1 = require("vscode-languageserver");
 const fileFunctions_1 = require("../fileFunctions");
-const console_1 = require("console");
 const cache_1 = require("../cache");
-const path = require("path");
 const comments_1 = require("./comments");
 /**
  * Call this after using concat() to merge a bunch of {@link SignalInfo SignalInfo} lists.
@@ -21,7 +19,7 @@ function mergeSignalInfo(sigs) {
     for (const s of sigs) {
         let sig = signals.get(s.name);
         if (!sig) {
-            (0, console_1.debug)("Adding sig: " + s.name);
+            // debug("Adding sig: " + s.name)
             sig = s;
             signals.set(s.name, s);
         }
@@ -99,15 +97,15 @@ function parseSignalsInFile(doc) {
     while (m = rx.exec(doc.getText())) {
         if (m[2]) {
             tryAddSignal(m[2], m.index + m[0].indexOf(m[2]), true);
-            (0, console_1.debug)("signal emitted: " + m[2] + "  in " + path.basename(doc.uri));
+            // debug("signal emitted: " + m[2] + "  in " + path.basename(doc.uri))
         }
         if (m[5]) {
             tryAddSignal(m[5], m.index + m[0].indexOf(m[5]), false);
-            (0, console_1.debug)("signal routed: " + m[5] + "  in " + path.basename(doc.uri));
+            // debug("signal routed: " + m[5] + "  in " + path.basename(doc.uri))
         }
         if (m[7]) {
             tryAddSignal(m[7], m.index + m[0].indexOf(m[7]), false);
-            (0, console_1.debug)("signal triggered: " + m[7] + "  in " + path.basename(doc.uri));
+            // debug("signal triggered: " + m[7] + "  in " + path.basename(doc.uri))
         }
     }
     //TODO: Need to evaluate if this is what I should do

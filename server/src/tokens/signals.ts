@@ -23,7 +23,7 @@ export function mergeSignalInfo(sigs: SignalInfo[]): SignalInfo[] {
 	for (const s of sigs) {
 		let sig = signals.get(s.name);
 		if (!sig) {
-			debug("Adding sig: " + s.name)
+			// debug("Adding sig: " + s.name)
 			sig = s;
 			signals.set(s.name, s)
 		} else {
@@ -96,15 +96,15 @@ export function parseSignalsInFile(doc: TextDocument) {
 	while (m = rx.exec(doc.getText())) {
 		if (m[2]) {
 			tryAddSignal(m[2], m.index + m[0].indexOf(m[2]), true)
-			debug("signal emitted: " + m[2] + "  in " + path.basename(doc.uri))
+			// debug("signal emitted: " + m[2] + "  in " + path.basename(doc.uri))
 		}
 		if (m[5]) {
 			tryAddSignal(m[5], m.index + m[0].indexOf(m[5]), false)
-			debug("signal routed: " + m[5] + "  in " + path.basename(doc.uri))
+			// debug("signal routed: " + m[5] + "  in " + path.basename(doc.uri))
 		}
 		if (m[7]) {
 			tryAddSignal(m[7], m.index + m[0].indexOf(m[7]), false)
-			debug("signal triggered: " + m[7] + "  in " + path.basename(doc.uri))
+			// debug("signal triggered: " + m[7] + "  in " + path.basename(doc.uri))
 		}
 	}
 	//TODO: Need to evaluate if this is what I should do

@@ -92,8 +92,8 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 			let found = false;
 			for (const a of arr) {
 				// Exclude already listed args
-				debug(a);
-				debug(p);
+				// debug(a);
+				// debug(p);
 				if (a.split("=")[0].trim() === p) {
 					found = true;
 				}
