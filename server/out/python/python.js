@@ -12,6 +12,7 @@ const console_1 = require("console");
 const path = require("path");
 const cache_1 = require("../cache");
 const globals_1 = require("../globals");
+const server_1 = require("../server");
 let pyPath = "";
 let scriptPath = "";
 let regularOptions;
@@ -114,21 +115,27 @@ async function getSpecificGlobals(cache, globals) {
     if (o === null)
         return [];
     (0, console_1.debug)("Running py shell");
-    let messages = await python_shell_1.PythonShell.run('mastGlobalInfo.py', o); //.then((messages: any)=>{
-    for (let m of messages) {
-        try {
-            // debug(m)
-            m = JSON.parse(m);
-            // debug(m)
+    try {
+        let messages = await python_shell_1.PythonShell.run('mastGlobalInfo.py', o); //.then((messages: any)=>{
+        for (let m of messages) {
+            try {
+                // debug(m)
+                m = JSON.parse(m);
+                // debug(m)
+            }
+            catch (e) {
+                // debug(e)
+            }
+            ret.push(m);
         }
-        catch (e) {
-            // debug(e)
-        }
-        ret.push(m);
+        console.log('finished');
+        //}).catch((e)=>{debug(e);});
+        // ret[0] = JSON.parse(ret[0])
     }
-    console.log('finished');
-    //}).catch((e)=>{debug(e);});
-    // ret[0] = JSON.parse(ret[0])
+    catch (e) {
+        (0, console_1.debug)(e);
+        (0, server_1.sendWarning)("Python shell error. You may need to rebuild sbs_utils.");
+    }
     return ret;
 }
 async function getGlobalFunctions(sj) {

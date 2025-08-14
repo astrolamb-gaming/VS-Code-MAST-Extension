@@ -7,6 +7,7 @@ import { getCache, MissionCache } from '../cache';
 import { integer } from 'vscode-languageserver';
 import { getGlobals, initializeGlobals } from '../globals';
 import { StoryJson } from '../data/storyJson';
+import { notifyClient, sendWarning } from '../server';
 
 let pyPath = "";
 let scriptPath = "";
@@ -114,7 +115,8 @@ export async function getSpecificGlobals(cache: MissionCache, globals: any) {
 	// }
 	const o = buildOptions(cache.storyJson, [globals]);
 	if (o === null) return [];
-	debug("Running py shell")
+	debug("Running py shell");
+	try {
 	let messages = await PythonShell.run('mastGlobalInfo.py', o);//.then((messages: any)=>{
 		for (let m of messages) {
 			try {
@@ -129,6 +131,10 @@ export async function getSpecificGlobals(cache: MissionCache, globals: any) {
 		console.log('finished');
 	//}).catch((e)=>{debug(e);});
 	// ret[0] = JSON.parse(ret[0])
+	} catch (e) {
+		debug(e);
+		sendWarning("Python shell error. You may need to rebuild sbs_utils.")
+	}
 	return ret;
 }
 

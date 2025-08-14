@@ -1181,6 +1181,7 @@ export class MissionCache {
 			// debug(this.pyInfoLoaded);
 			await sleep(100);
 		}
+		debug("Hiding progress bar")
 		showProgressBar(false);
 	}
 

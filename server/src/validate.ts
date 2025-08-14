@@ -219,7 +219,7 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	}
 
 	let with_colon: ErrorInstance = {
-		pattern: /^[ \t]*(((with|if|elif|while|for|on[ \t]+(change)?)[\t ]+)|(else))[^:]*?$/gm,
+		pattern: /^[ \t]*(((with|if|elif|while|for|on[ \t]+(change)?)[\t ]+)|(else))[^:\n]*?[ \t]*$/gm,
 		severity: DiagnosticSeverity.Error,
 		source: 'mast',
 		message: 'Statement must end with a colon.',

@@ -203,7 +203,7 @@ async function validateTextDocument(textDocument) {
         relatedMessage: ""
     };
     let with_colon = {
-        pattern: /^[ \t]*(((with|if|elif|while|for|on[ \t]+(change)?)[\t ]+)|(else))[^:]*?$/gm,
+        pattern: /^[ \t]*(((with|if|elif|while|for|on[ \t]+(change)?)[\t ]+)|(else))[^:\n]*?[ \t]*$/gm,
         severity: vscode_languageserver_1.DiagnosticSeverity.Error,
         source: 'mast',
         message: 'Statement must end with a colon.',

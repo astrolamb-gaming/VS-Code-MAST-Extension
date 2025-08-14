@@ -541,7 +541,10 @@ export async function notifyClient(message:string) {
 	connection.sendNotification("custom/mastNotif", message);
 }
 
-
+export async function sendWarning(message:string) {
+	debug("Sending to client: " + message);
+	connection.sendNotification("custom/warning", message);
+}
 
 export async function sendToClient(notifName: string, data: any) {
 	connection.sendNotification("custom/" + notifName, data);
@@ -571,6 +574,8 @@ connection.onNotification("custom/storyJsonResponse",(response)=>{
 connection.onNotification("custom/debug", (response) => {
 	debug(response);
 })
+
+
 
 
 // connection.onDocumentOnTypeFormatting((params:DocumentOnTypeFormattingParams,token:CancellationToken): HandlerResult<TextEdit[] | null | undefined, void> =>{

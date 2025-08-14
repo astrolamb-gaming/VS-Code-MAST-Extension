@@ -1140,6 +1140,7 @@ class MissionCache {
             // debug(this.pyInfoLoaded);
             await (0, python_1.sleep)(100);
         }
+        (0, console_1.debug)("Hiding progress bar");
         (0, server_1.showProgressBar)(false);
     }
 }

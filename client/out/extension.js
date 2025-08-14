@@ -155,6 +155,10 @@ function activate(context) {
     });
     context.subscriptions.push(prog);
     // updateStatusBarItem(true);
+    let warning = client.onNotification('custom/warning', (message) => {
+        vscode_1.window.showWarningMessage(message);
+    });
+    context.subscriptions.push(warning);
     // #endregion
     const storyJsonListener = client.onNotification('custom/storyJson', (message) => {
         debug("Story Json Notification recieved");

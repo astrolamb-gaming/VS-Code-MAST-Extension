@@ -204,6 +204,11 @@ export function activate(context: ExtensionContext) {
 	context.subscriptions.push(prog);
 	// updateStatusBarItem(true);
 
+	let warning = client.onNotification('custom/warning', (message)=>{
+		window.showWarningMessage(message);
+	})
+	context.subscriptions.push(warning);
+
 // #endregion
 
 	const storyJsonListener = client.onNotification('custom/storyJson', (message)=>{

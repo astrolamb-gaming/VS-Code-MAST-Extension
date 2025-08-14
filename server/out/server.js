@@ -5,6 +5,7 @@ exports.getDocumentSettings = getDocumentSettings;
 exports.updateLabelNames = updateLabelNames;
 exports.myDebug = myDebug;
 exports.notifyClient = notifyClient;
+exports.sendWarning = sendWarning;
 exports.sendToClient = sendToClient;
 exports.showProgressBar = showProgressBar;
 /* --------------------------------------------------------------------------------------------
@@ -407,6 +408,10 @@ function myDebug(str) {
 async function notifyClient(message) {
     (0, console_1.debug)("Sending to client: " + message);
     exports.connection.sendNotification("custom/mastNotif", message);
+}
+async function sendWarning(message) {
+    (0, console_1.debug)("Sending to client: " + message);
+    exports.connection.sendNotification("custom/warning", message);
 }
 async function sendToClient(notifName, data) {
     exports.connection.sendNotification("custom/" + notifName, data);
