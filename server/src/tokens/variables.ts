@@ -1,6 +1,6 @@
 import { CompletionItem, CompletionItemKind, Range } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { getCurrentLineFromTextDocument } from '../hover';
+import { getCurrentLineFromTextDocument } from '../requests/hover';
 import { debug } from 'console';
 import { getCache } from '../cache';
 

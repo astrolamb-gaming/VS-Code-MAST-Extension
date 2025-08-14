@@ -79,8 +79,9 @@ class Globals {
             });
             (0, console_1.debug)("Done loading libs.");
             this.libModuleCompletionItems = [];
-            this.shipData = new shipData_1.ShipData(this.artemisDir);
             (0, console_1.debug)("Getting ship data");
+            this.shipData = new shipData_1.ShipData(this.artemisDir);
+            (0, console_1.debug)("ship data gotten");
             for (const lib of this.libModules) {
                 const ci = {
                     label: path.basename(lib),
@@ -88,7 +89,6 @@ class Globals {
                 };
                 this.libModuleCompletionItems.push(ci);
             }
-            (0, console_1.debug)("ship data gotten");
             this.artFiles = this.findArtFiles(true);
             this.faceArtFiles = this.loadFaceArt();
             const allFaceFiles = path.join(this.artemisDir, "data", "graphics", "allFaceFiles.txt");

@@ -1,14 +1,14 @@
 import { integer, Location, Position, Range } from 'vscode-languageserver';
-import { fileFromUri, readFile } from './fileFunctions';
-import { isInComment, isInString } from './tokens/comments';
+import { fileFromUri, readFile } from '../fileFunctions';
+import { isInComment, isInString } from '../tokens/comments';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
 import { getCurrentLineFromTextDocument, getHoveredSymbol, getHoveredWordRange } from './hover';
-import { isClassMethod, isFunction } from './tokens/tokens';
-import { getCache } from './cache';
+import { isClassMethod, isFunction } from '../tokens/tokens';
+import { getCache } from '../cache';
 import { URI } from 'vscode-uri';
-import { getLabelLocation } from './tokens/labels';
-import { asClasses } from './data';
+import { getLabelLocation } from '../tokens/labels';
+import { asClasses } from '../data';
 import { getCurrentArgumentNames } from './autocompletion';
 
 export async function onDefinition(doc:TextDocument,pos:Position): Promise<Location | undefined> {

@@ -1,24 +1,24 @@
 import { debug } from 'console';
 import { CompletionItem, CompletionItemKind, integer, MarkupContent, SignatureInformation, TextDocumentPositionParams } from 'vscode-languageserver';
-import { buildLabelDocs, getLabelMetadataKeys, getLabelsAsCompletionItems, getMainLabelAtPos } from './tokens/labels';
+import { buildLabelDocs, getLabelMetadataKeys, getLabelsAsCompletionItems, getMainLabelAtPos } from './../tokens/labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { asClasses, replaceNames } from './data';
-import { getRouteLabelVars } from './tokens/routeLabels';
-import { isInComment, isInString, isInYaml, isTextInBracket, replaceRegexMatchWithUnderscore } from './tokens/comments';
-import { getCache } from './cache';
+import { asClasses, replaceNames } from './../data';
+import { getRouteLabelVars } from './../tokens/routeLabels';
+import { isInComment, isInString, isInYaml, isTextInBracket, replaceRegexMatchWithUnderscore } from './../tokens/comments';
+import { getCache } from './../cache';
 import path = require('path');
-import { fixFileName, getFilesInDir } from './fileFunctions';
-import { getGlobals } from './globals';
+import { fixFileName, getFilesInDir } from './../fileFunctions';
+import { getGlobals } from './../globals';
 import { getCurrentMethodName } from './signatureHelp';
-import { getKeysAsCompletionItem, getRolesAsCompletionItem, getRolesForFile } from './tokens/roles';
-import { variableModifiers } from './tokens/variables';
-import { isClassMethod, isFunction } from './tokens/tokens';
-import { Function } from './data/function';
+import { getKeysAsCompletionItem, getRolesAsCompletionItem, getRolesForFile } from './../tokens/roles';
+import { variableModifiers } from './../tokens/variables';
+import { isClassMethod, isFunction } from './../tokens/tokens';
+import { Function } from './../data/function';
 import { getCurrentLineFromTextDocument } from './hover';
-import { countMatches } from './rx';
-import { showProgressBar } from './server';
+import { countMatches } from './../rx';
+import { showProgressBar } from './../server';
 import { blob } from 'stream/consumers';
-import { buildSignalInfoListAsCompletionItems } from './tokens/signals';
+import { buildSignalInfoListAsCompletionItems } from './../tokens/signals';
 
 // https://stackoverflow.com/questions/78755236/how-can-i-prioritize-vs-code-extension-code-completion
 

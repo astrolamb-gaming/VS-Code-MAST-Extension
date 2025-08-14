@@ -32,7 +32,10 @@ class ShipData {
         });
     }
     load() {
-        const file = path.join(this.artemisDir, "data", "shipData.json");
+        let file = path.join(this.artemisDir, "data", "shipData.yaml");
+        if (!fs.existsSync(file)) {
+            file = path.join(this.artemisDir, "data", "shipData.json");
+        }
         this.filePath = file;
         if (file !== null) {
             (0, fileFunctions_1.readFile)(file).then((contents) => {

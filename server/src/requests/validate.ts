@@ -1,17 +1,17 @@
 import { debug } from 'console';
 import * as path from 'path';
 import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
-import { getCache } from './cache';
-import { parseComments, parseStrings, parseYamls, isInString, isInComment, parseSquareBrackets, isInYaml } from './tokens/comments';
-import { checkLastLine, findDiagnostic } from './errorChecking';
-import { checkLabels } from './tokens/labels';
-import { ErrorInstance, getDocumentSettings, hasDiagnosticRelatedInformationCapability } from './server';
+import { getCache } from './../cache';
+import { parseComments, parseStrings, parseYamls, isInString, isInComment, parseSquareBrackets, isInYaml } from './../tokens/comments';
+import { checkLastLine, findDiagnostic } from './../errorChecking';
+import { checkLabels } from './../tokens/labels';
+import { ErrorInstance, getDocumentSettings, hasDiagnosticRelatedInformationCapability } from './../server';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { checkEnableRoutes } from './tokens/routeLabels';
+import { checkEnableRoutes } from './../tokens/routeLabels';
 import { URI } from 'vscode-uri';
-import { fixFileName } from './fileFunctions';
-import { compileMission } from './python/python';
-import { checkForUnusedSignals } from './tokens/signals';
+import { fixFileName } from './../fileFunctions';
+import { compileMission } from './../python/python';
+import { checkForUnusedSignals } from './../tokens/signals';
 
 let debugStrs : string = "";//Debug: ${workspaceFolder}\n";
 

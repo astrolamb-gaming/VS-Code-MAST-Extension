@@ -15,18 +15,18 @@ exports.showProgressBar = showProgressBar;
 //// <reference path="../src/sbs.pyi" />
 const node_1 = require("vscode-languageserver/node");
 const vscode_languageserver_textdocument_1 = require("vscode-languageserver-textdocument");
-const autocompletion_1 = require("./autocompletion");
+const autocompletion_1 = require("./requests/autocompletion");
 const console_1 = require("console");
-const hover_1 = require("./hover");
-const signatureHelp_1 = require("./signatureHelp");
+const hover_1 = require("./requests/hover");
+const signatureHelp_1 = require("./requests/signatureHelp");
 const fs = require("fs");
 const variables_1 = require("./tokens/variables");
 const globals_1 = require("./globals");
-const validate_1 = require("./validate");
-const goToDefinition_1 = require("./goToDefinition");
+const validate_1 = require("./requests/validate");
+const goToDefinition_1 = require("./requests/goToDefinition");
 const cache_1 = require("./cache");
-const references_1 = require("./references");
-const renameSymbol_1 = require("./renameSymbol");
+const references_1 = require("./requests/references");
+const renameSymbol_1 = require("./requests/renameSymbol");
 const words_1 = require("./tokens/words");
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.

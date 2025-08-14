@@ -10,7 +10,7 @@ exports.isClassMethod = isClassMethod;
 exports.getClassOfMethod = getClassOfMethod;
 exports.getWordRangeAtPosition = getWordRangeAtPosition;
 const comments_1 = require("../tokens/comments");
-const hover_1 = require("../hover");
+const hover_1 = require("../requests/hover");
 var TokenType;
 (function (TokenType) {
     TokenType[TokenType["VARIABLE"] = 0] = "VARIABLE";

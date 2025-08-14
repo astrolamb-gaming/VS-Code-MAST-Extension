@@ -1,9 +1,9 @@
 import { Location, Position, ReferenceParams } from 'vscode-languageserver';
-import { getCache } from './cache';
+import { getCache } from './../cache';
 import { debug } from 'console';
 import { getCurrentLineFromTextDocument, getHoveredSymbol } from './hover';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { isInComment, isInString, isInYaml } from './tokens/comments';
+import { isInComment, isInString, isInYaml } from './../tokens/comments';
 
 export async function onReferences(doc: TextDocument, params:ReferenceParams): Promise<Location[] | undefined> {
 	debug("Trying to find word...");

@@ -1,8 +1,8 @@
 import { HandlerResult, RenameParams, TextDocumentEdit, TextEdit, WorkspaceEdit } from 'vscode-languageserver';
 import { getCurrentLineFromTextDocument, getHoveredSymbol } from './hover';
-import { documents } from './server';
-import { getLabelLocation, getMainLabelAtPos } from './tokens/labels';
-import { getCache } from './cache';
+import { documents } from './../server';
+import { getLabelLocation, getMainLabelAtPos } from './../tokens/labels';
+import { getCache } from './../cache';
 
 export function onRenameRequest(params: RenameParams): HandlerResult<WorkspaceEdit | null | undefined, void> {
 	let uri = params.textDocument.uri

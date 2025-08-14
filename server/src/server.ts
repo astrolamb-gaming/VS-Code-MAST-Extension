@@ -34,18 +34,18 @@ import {
 } from 'vscode-languageserver/node';
 import { Range, TextDocument, TextEdit } from 'vscode-languageserver-textdocument';
 import { LabelInfo } from './tokens/labels';
-import { onCompletion } from './autocompletion';
+import { onCompletion } from './requests/autocompletion';
 import { debug} from 'console';
-import { getCurrentLineFromTextDocument, getHoveredSymbol, onHover } from './hover';
-import { onSignatureHelp } from './signatureHelp';
+import { getCurrentLineFromTextDocument, getHoveredSymbol, onHover } from './requests/hover';
+import { onSignatureHelp } from './requests/signatureHelp';
 import fs = require("fs");
 import { getVariableNamesInDoc } from './tokens/variables';
 import { getGlobals, initializeGlobals } from './globals';
-import { validateTextDocument } from './validate';
-import { onDefinition } from './goToDefinition';
+import { validateTextDocument } from './requests/validate';
+import { onDefinition } from './requests/goToDefinition';
 import { getCache } from './cache';
-import { onReferences } from './references';
-import { onRenameRequest } from './renameSymbol';
+import { onReferences } from './requests/references';
+import { onRenameRequest } from './requests/renameSymbol';
 import { getWordRangeAtPosition } from './tokens/words';
 
 // Create a connection for the server, using Node's IPC as a transport.

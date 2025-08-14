@@ -3,7 +3,7 @@ import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 import * as fs from 'fs';
 import { integer, Position } from 'vscode-languageserver';
 import { CRange, getComments, getStrings } from '../tokens/comments';
-import { getHoveredWordRange } from '../hover';
+import { getHoveredWordRange } from '../requests/hover';
 
 // export function getAllTokens(textDocument: TextDocument) {
 // 	let variables = getVariablesInFile(textDocument);

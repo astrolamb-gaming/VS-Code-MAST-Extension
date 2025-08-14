@@ -1,16 +1,16 @@
 import { debug } from 'console';
 import { Hover, integer, Location, MarkupContent, Position, TextDocumentPositionParams } from 'vscode-languageserver';
 import { Range, TextDocument } from 'vscode-languageserver-textdocument';
-import { CRange, isInComment, isInString } from './tokens/comments';
-import { getCache } from './cache';
-import { getGlobals } from './globals';
-import { getClassOfMethod, isClassMethod, isFunction } from './tokens/tokens';
-import { variableModifiers } from './tokens/variables';
-import { buildLabelDocs, getMainLabelAtPos } from './tokens/labels';
+import { CRange, isInComment, isInString } from '../tokens/comments';
+import { getCache } from '../cache';
+import { getGlobals } from '../globals';
+import { getClassOfMethod, isClassMethod, isFunction } from '../tokens/tokens';
+import { variableModifiers } from '../tokens/variables';
+import { buildLabelDocs, getMainLabelAtPos } from '../tokens/labels';
 import { getCurrentArgumentNames } from './autocompletion';
-import { Function } from './data/function';
+import { Function } from '../data/function';
 import path = require('path');
-import { fixFileName } from './fileFunctions';
+import { fixFileName } from '../fileFunctions';
 
 export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : Hover | undefined {
 	if (text.languageId !== "mast") {

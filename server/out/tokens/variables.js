@@ -6,7 +6,7 @@ exports.parseVariables = parseVariables;
 exports.getVariablesAsCompletionItem = getVariablesAsCompletionItem;
 exports.getVariableAsCompletionItem = getVariableAsCompletionItem;
 const vscode_languageserver_1 = require("vscode-languageserver");
-const hover_1 = require("../hover");
+const hover_1 = require("../requests/hover");
 // TODO: Add these to autocomplete and hover
 exports.variableModifiers = [
     ["default", "`default` means that if the variable is not already defined, define it. Otherwise, skip. So it does not overwrite if it exists."],

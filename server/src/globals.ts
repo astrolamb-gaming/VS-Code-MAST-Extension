@@ -95,8 +95,9 @@ export class Globals {
 			});
 			debug("Done loading libs.")
 			this.libModuleCompletionItems = [];
-			this.shipData = new ShipData(this.artemisDir);
 			debug("Getting ship data")
+			this.shipData = new ShipData(this.artemisDir);
+			debug("ship data gotten")
 			for (const lib of this.libModules) {
 				const ci: CompletionItem = {
 					label: path.basename(lib),
@@ -104,7 +105,6 @@ export class Globals {
 				}
 				this.libModuleCompletionItems.push(ci);
 			}
-			debug("ship data gotten")
 			this.artFiles = this.findArtFiles(true);
 			this.faceArtFiles = this.loadFaceArt();
 			const allFaceFiles = path.join(this.artemisDir, "data", "graphics", "allFaceFiles.txt");

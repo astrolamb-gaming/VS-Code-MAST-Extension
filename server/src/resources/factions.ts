@@ -2,8 +2,8 @@ import { debug } from 'console';
 import path = require('path');
 import fs = require('fs');
 import sharp = require('sharp');
-import { getFilesInDir } from './fileFunctions';
-import { parseIconSet } from './resources/iconSets';
+import { getFilesInDir } from '../fileFunctions';
+import { parseIconSet } from './iconSets';
 
 export interface Faction {
 	short: string;

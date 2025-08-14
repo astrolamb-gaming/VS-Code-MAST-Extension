@@ -3,7 +3,7 @@ import { integer, Location, Position, Range } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { getCache } from '../cache';
 import { getComments, getStrings, isInComment, isInString } from './comments';
-import { getCurrentLineFromTextDocument } from '../hover';
+import { getCurrentLineFromTextDocument } from '../requests/hover';
 import { showProgressBar } from '../server';
 import { fileFromUri } from '../fileFunctions';
 

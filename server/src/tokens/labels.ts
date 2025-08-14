@@ -8,7 +8,7 @@ import path = require('path');
 import { fileFromUri, fixFileName } from '../fileFunctions';
 import { isInComment, isInYaml } from './comments';
 import { start } from 'repl';
-import { getCurrentLineFromTextDocument } from '../hover';
+import { getCurrentLineFromTextDocument } from '../requests/hover';
 import { documents } from '../server';
 
 

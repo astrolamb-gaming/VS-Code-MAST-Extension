@@ -19,7 +19,7 @@ const vscode_uri_1 = require("vscode-uri");
 const path = require("path");
 const fileFunctions_1 = require("../fileFunctions");
 const comments_1 = require("./comments");
-const hover_1 = require("../hover");
+const hover_1 = require("../requests/hover");
 var LabelType;
 (function (LabelType) {
     LabelType[LabelType["LABEL"] = 0] = "LABEL";
