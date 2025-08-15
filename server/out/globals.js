@@ -81,6 +81,7 @@ class Globals {
             this.libModuleCompletionItems = [];
             (0, console_1.debug)("Getting ship data");
             this.shipData = new shipData_1.ShipData(this.artemisDir);
+            this.shipData.load();
             (0, console_1.debug)("ship data gotten");
             for (const lib of this.libModules) {
                 const ci = {

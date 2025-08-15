@@ -308,6 +308,13 @@ async function validateTextDocument(textDocument) {
                     source: "mast extension"
                 };
                 diagnostics.push(d);
+                d = {
+                    range: label.range,
+                    message: "'" + v.name + "' is used as a variable. Don't override label names!",
+                    severity: vscode_languageserver_1.DiagnosticSeverity.Error,
+                    source: "mast extension"
+                };
+                diagnostics.push(d);
             }
         }
     }

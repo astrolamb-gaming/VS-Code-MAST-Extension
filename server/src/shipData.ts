@@ -54,7 +54,7 @@ export class ShipData {
 					this.shipDataJsonError(err);
 					this.roles = this.parseRolesText(contents);
 				}
-				// debug(this.data);
+				debug(this.data);
 				// debug(typeof this.data[0]);
 				this.fileExists = true;
 				
