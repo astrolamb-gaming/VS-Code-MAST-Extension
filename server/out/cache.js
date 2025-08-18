@@ -129,7 +129,7 @@ class MissionCache {
                 });
             });
         });
-        loadSbs().then((p) => {
+        loadSbs().then(async (p) => {
             (0, server_1.showProgressBar)(true);
             if (p !== null) {
                 this.addMissionPyFile(p);
@@ -140,6 +140,7 @@ class MissionCache {
             (0, console_1.debug)("Finished loading sbs_utils for " + this.missionName);
             // showProgressBar(false);
             this.sbsLoaded = true;
+            await this.awaitLoaded();
         });
         this.checkForCacheUpdates();
         (0, console_1.debug)(this.missionURI);
