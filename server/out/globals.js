@@ -20,6 +20,7 @@ class Globals {
         this.skyboxes = [];
         this.music = [];
         this.data_set_entries = [];
+        this.widgets = [];
         this.widget_stylestrings = [];
         this.blob_items = [];
         this.libModules = [];
@@ -140,6 +141,28 @@ class Globals {
                             lineNum += 1;
                         }
                         // debug(this.widget_stylestrings)
+                    });
+                }
+                // Load widget list
+                if (file.endsWith("GUIWidgetList.txt")) {
+                    (0, console_1.debug)("Loading GUIWidgetList.txt");
+                    (0, fileFunctions_1.readFile)(file).then((text) => {
+                        let widgets = [];
+                        const lines = text.split("\n");
+                        let lineNum = 0;
+                        for (const line of lines) {
+                            if (line.length < 8)
+                                continue; // Eight spaces are needed between the name and description.
+                            const spaces = line.indexOf("        ");
+                            const name = line.substring(0, spaces);
+                            const desc = line.substring(spaces + 8, line.length);
+                            const w = {
+                                name: name,
+                                docs: desc
+                            };
+                            widgets.push(w);
+                        }
+                        this.widgets = widgets;
                     });
                 }
                 // Now we get all the object_data options, used by blob.set() and blob.get()

@@ -329,6 +329,18 @@ function onCompletion(_textDocumentPosition, text) {
                     const main = (0, labels_1.getMainLabelAtPos)(pos, labels);
                     return (0, labels_1.getLabelsAsCompletionItems)(text, labels, main).concat(ci);
                 }
+                if (a === "widget") {
+                    const widgets = (0, globals_1.getGlobals)().widgets;
+                    for (const w of widgets) {
+                        const c = {
+                            label: w.name,
+                            kind: vscode_languageserver_1.CompletionItemKind.Text,
+                            documentation: w.docs
+                        };
+                        ci.push(c);
+                    }
+                    return ci;
+                }
             }
             (0, console_1.debug)("Is in string");
             return ci;

@@ -15,6 +15,10 @@ interface DataSetItem {
 	type: string,
 	docs: string
 }
+interface Widget {
+	name: string,
+	docs: string
+}
 interface WidgetStyleString {
 	function: string,
 	name: string,
@@ -34,6 +38,7 @@ export class Globals {
 	skyboxes: CompletionItem[] = [];
 	music: CompletionItem[] = [];
 	data_set_entries: DataSetItem[] = [];
+	widgets: Widget[] = [];
 	widget_stylestrings: WidgetStyleString[] = [];
 	blob_items: CompletionItem[] = [];
 	libModules: string[] = [];
@@ -162,6 +167,29 @@ export class Globals {
 						// debug(this.widget_stylestrings)
 					});
 				}
+
+				// Load widget list
+				if (file.endsWith("GUIWidgetList.txt")) {
+					debug("Loading GUIWidgetList.txt");
+					readFile(file).then((text)=>{
+						let widgets: Widget[] = [];
+						const lines = text.split("\n");
+						let lineNum = 0;
+						for (const line of lines) {
+							if (line.length < 8) continue; // Eight spaces are needed between the name and description.
+							const spaces = line.indexOf("        ");
+							const name = line.substring(0,spaces);
+							const desc = line.substring(spaces+8,line.length);
+							const w: Widget = {
+								name: name,
+								docs: desc
+							}
+							widgets.push(w);
+						}
+						this.widgets = widgets;
+					})
+				}
+
 				// Now we get all the object_data options, used by blob.set() and blob.get()
 				if (file.endsWith("object_data_documentation.txt")) {
 					debug("Reading file");

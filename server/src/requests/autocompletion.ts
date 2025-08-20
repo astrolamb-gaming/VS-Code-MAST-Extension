@@ -349,6 +349,18 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 					const main = getMainLabelAtPos(pos, labels);
 					return getLabelsAsCompletionItems(text, labels, main).concat(ci);
 				}
+				if (a === "widget") {
+					const widgets = getGlobals().widgets;
+					for (const w of widgets) {
+						const c: CompletionItem = {
+							label: w.name,
+							kind: CompletionItemKind.Text,
+							documentation: w.docs
+						}
+						ci.push(c);
+					}
+					return ci;
+				}
 			}
 
 			debug("Is in string");
