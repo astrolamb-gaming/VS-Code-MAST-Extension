@@ -11,10 +11,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 
 ### 0.15.0 In Progress
-* Implement hover, Go To Definition, and Find References for function names (like `len` instead of just `len()`)
+* Implement hover, Go To Definition, and Find References for function names (e.g. `len` instead of `len()`)
 * Refactor of Route checks to fix some related issues
-* Add Find References and Autocompletion for Signals (#33), as well as validation for if signals are emitted and used
-* Add function parameter names to autocompletion when inside a function (#32)
+* Add Find References and Autocompletion for Signals [#33](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues/33), as well as validation for if signals are emitted and used
+* Add function parameter names to autocompletion when inside a function [#32](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues/32)
 * Add broad_type value autocompletions
 * Fixes for route and label autocompletions
 * Fix for style definitions
@@ -24,7 +24,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 	- story.json
 	- Removed files
 	- shipData.json/.yaml
-* Add check for if `story.json` exists, if not prompts the user if one should be generated (previously the LSP would crash)
+* Add check for if `story.json` exists, if not prompts the user if one should be generated (previously the LSP would crash) [#38](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues/38)
 * Improve metadata information
 * Fix for issue where if sbs_utils was packaged with an error, the extension would crash
 * Add check for labels with same name as variable and vice versa

@@ -105,6 +105,7 @@ export async function getSpecificGlobals(cache: MissionCache, globals: any) {
 		g = await initializeGlobals();
 	}
 	let libFolder = path.join(g.artemisDir,"data","missions");
+	if (cache.storyJson.sbslib.length === 0) return ret;
 	const sbs_utils = path.join(libFolder,"__lib__",cache.storyJson.sbslib[0]);
 	
 

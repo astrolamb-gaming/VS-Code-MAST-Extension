@@ -105,6 +105,8 @@ async function getSpecificGlobals(cache, globals) {
         g = await (0, globals_1.initializeGlobals)();
     }
     let libFolder = path.join(g.artemisDir, "data", "missions");
+    if (cache.storyJson.sbslib.length === 0)
+        return ret;
     const sbs_utils = path.join(libFolder, "__lib__", cache.storyJson.sbslib[0]);
     // const o: Options = {
     // 	pythonPath: path.join(pyPath,"python.exe"),
