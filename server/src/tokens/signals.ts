@@ -124,7 +124,7 @@ export function checkForUnusedSignals(doc:TextDocument):Diagnostic[] {
 				if (fixFileName(doc.uri)!==fixFileName(loc.uri)) continue;
 				const d: Diagnostic = {
 					range: loc.range,
-					message: 'This signal is never emitted',
+					message: 'The signal '+ s.name + ' is never emitted',
 					severity: DiagnosticSeverity.Warning
 				}
 				ret.push(d);
@@ -135,7 +135,7 @@ export function checkForUnusedSignals(doc:TextDocument):Diagnostic[] {
 				if (fixFileName(doc.uri)!==fixFileName(loc.uri)) continue;
 				const d: Diagnostic = {
 					range: loc.range,
-					message: 'This signal is emitted but never used',
+					message: 'The signal '+ s.name + ' is emitted but never used',
 					severity: DiagnosticSeverity.Information
 				}
 				ret.push(d);

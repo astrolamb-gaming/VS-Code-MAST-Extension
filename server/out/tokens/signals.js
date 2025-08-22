@@ -125,7 +125,7 @@ function checkForUnusedSignals(doc) {
                     continue;
                 const d = {
                     range: loc.range,
-                    message: 'This signal is never emitted',
+                    message: 'The signal ' + s.name + ' is never emitted',
                     severity: vscode_languageserver_1.DiagnosticSeverity.Warning
                 };
                 ret.push(d);
@@ -137,7 +137,7 @@ function checkForUnusedSignals(doc) {
                     continue;
                 const d = {
                     range: loc.range,
-                    message: 'This signal is emitted but never used',
+                    message: 'The signal ' + s.name + ' is emitted but never used',
                     severity: vscode_languageserver_1.DiagnosticSeverity.Information
                 };
                 ret.push(d);

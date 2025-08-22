@@ -347,6 +347,7 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	}
 	
 	const r = checkEnableRoutes(textDocument);
+	debug(cache.getSignals())
 	const sigs = checkForUnusedSignals(textDocument);
 	diagnostics = diagnostics.concat(r, sigs);
 	// return debugLabelValidation(textDocument);

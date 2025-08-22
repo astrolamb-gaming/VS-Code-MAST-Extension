@@ -69,7 +69,7 @@
 				"editor.showFoldingControls": "always",
 				"editor.folding": true,
 				"editor.foldingStrategy":"auto",
-				"editor.wordSeparators": "`~!@#$%^&*()-=+[{]}\\|;:'\",.<>?",
+				"editor.wordSeparators": "`~!@#$%^&*()-=+[{]}\\|;:'\"\/,.<>?",
 				"editor.tabSize": 4,
 				"editor.insertSpaces": true,
 				"editor.detectIndentation": true,

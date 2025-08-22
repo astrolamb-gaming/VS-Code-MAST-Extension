@@ -17,8 +17,12 @@ export async function onReferences(doc: TextDocument, params:ReferenceParams): P
 
 	// If it's in a comment, or in a string but not in metadata, then return empty
 	if (isInComment(doc, doc.offsetAt(pos))) return locs;
-	const word = getHoveredSymbol(getCurrentLineFromTextDocument(pos, doc),pos.character);  //getWordRangeAtPosition(doc,pos);
+	let word = getHoveredSymbol(getCurrentLineFromTextDocument(pos, doc),pos.character);  //getWordRangeAtPosition(doc,pos);
+	if (word.startsWith("/")) {
+		word = word.substring(1,word.length);
+	}
 	// Check signals - which can be in a string.
+	debug(word);
 	let signals = getCache(doc.uri).getSignals();
 	for (const s of signals) {
 		if (word === s.name) {
