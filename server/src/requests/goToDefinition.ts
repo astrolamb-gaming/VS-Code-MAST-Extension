@@ -144,7 +144,13 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 		}
 	// }
 
-	
+	// Now we'll check for any instance where it COULD be a function name. Because Python.
+	let func = getCache(doc.uri).getMethod(symbol);
+	if (func) {
+		const loc:Location = func.location;
+		loc.uri = fileFromUri(loc.uri);
+		return loc;
+	}
 
 	
 

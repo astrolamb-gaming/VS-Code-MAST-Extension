@@ -199,6 +199,13 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 			}
 		}
 	}
+
+	// Now we'll check for any instance where it COULD be a function name. Because Python.
+	let func = getCache(text.uri).getMethod(symbol);
+	if (func) {
+		return {contents: func.buildMarkUpContent()}
+	}
+
 	// debug("something else")
 
 	

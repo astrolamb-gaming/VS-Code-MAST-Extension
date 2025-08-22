@@ -4,6 +4,7 @@ import { debug } from 'console';
 import { getCurrentLineFromTextDocument, getHoveredSymbol } from './hover';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { isInComment, isInString, isInYaml } from './../tokens/comments';
+import { fileFromUri } from '../fileFunctions';
 
 export async function onReferences(doc: TextDocument, params:ReferenceParams): Promise<Location[] | undefined> {
 	debug("Trying to find word...");
@@ -31,6 +32,15 @@ export async function onReferences(doc: TextDocument, params:ReferenceParams): P
 		}
 	}
 	if (isInString(doc,doc.offsetAt(pos)) && !isInYaml(doc,doc.offsetAt(pos))) return locs;
+
+	// Now we'll check for any instance where it COULD be a function name. Because Python.
+	let func = getCache(doc.uri).getMethod(word);
+	if (func) {
+		const loc:Location = func.location;
+		loc.uri = fileFromUri(loc.uri);
+		locs.push(loc);
+	}
+
 	// debug("getWOrdRange")
 	
 	// debug("Finding: " + word);

@@ -188,6 +188,11 @@ function onHover(_pos, text) {
             }
         }
     }
+    // Now we'll check for any instance where it COULD be a function name. Because Python.
+    let func = (0, cache_1.getCache)(text.uri).getMethod(symbol);
+    if (func) {
+        return { contents: func.buildMarkUpContent() };
+    }
     // debug("something else")
     // Now we'll check for variables
     // for (const file of getCache(text.uri).mastFileCache) {

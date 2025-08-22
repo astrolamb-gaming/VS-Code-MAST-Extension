@@ -9,6 +9,28 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * TODO: Add more info about shipdata entries to the art arguments for space objects
 * WIP: Get mast complier errors from the compiler itself, so the game doesn't have to be running to check for compiler errors.
 
+
+### 0.15.0 In Progress
+* Implement hover, Go To Definition, and Find References for function names (like `len` instead of just `len()`)
+* Refactor of Route checks to fix some related issues
+* Add Find References and Autocompletion for Signals (#33), as well as validation for if signals are emitted and used
+* Add function parameter names to autocompletion when inside a function (#32)
+* Add broad_type value autocompletions
+* Fixes for route and label autocompletions
+* Fix for style definitions
+* Variables in the current file and route variables are now the priority for autocompletion options
+* Added filesystem watcher, which triggers a cache or globals update when changes are made to the following:
+	- Lib Folder
+	- story.json
+	- Removed files
+	- shipData.json/.yaml
+* Add check for if `story.json` exists, if not prompts the user if one should be generated (previously the LSP would crash)
+* Improve metadata information
+* Fix for issue where if sbs_utils was packaged with an error, the extension would crash
+* Add check for labels with same name as variable and vice versa
+* Add Widget names to autocompletion
+
+
 ### 0.14.0
 * Add icon to autocompete information for functions with the icon_index parameter
 * Fix for use of `#region....#endregion` for collapseable code blocks

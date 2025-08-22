@@ -5,6 +5,7 @@ const cache_1 = require("./../cache");
 const console_1 = require("console");
 const hover_1 = require("./hover");
 const comments_1 = require("./../tokens/comments");
+const fileFunctions_1 = require("../fileFunctions");
 async function onReferences(doc, params) {
     (0, console_1.debug)("Trying to find word...");
     let locs = [];
@@ -32,6 +33,13 @@ async function onReferences(doc, params) {
     }
     if ((0, comments_1.isInString)(doc, doc.offsetAt(pos)) && !(0, comments_1.isInYaml)(doc, doc.offsetAt(pos)))
         return locs;
+    // Now we'll check for any instance where it COULD be a function name. Because Python.
+    let func = (0, cache_1.getCache)(doc.uri).getMethod(word);
+    if (func) {
+        const loc = func.location;
+        loc.uri = (0, fileFunctions_1.fileFromUri)(loc.uri);
+        locs.push(loc);
+    }
     // debug("getWOrdRange")
     // debug("Finding: " + word);
     const wordLocs = (0, cache_1.getCache)(params.textDocument.uri).getWordLocations(word);

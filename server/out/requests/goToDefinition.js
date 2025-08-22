@@ -144,6 +144,13 @@ async function onDefinition(doc, pos) {
         }
     }
     // }
+    // Now we'll check for any instance where it COULD be a function name. Because Python.
+    let func = (0, cache_1.getCache)(doc.uri).getMethod(symbol);
+    if (func) {
+        const loc = func.location;
+        loc.uri = (0, fileFunctions_1.fileFromUri)(loc.uri);
+        return loc;
+    }
     // let start: Position = {line: pos.line, character: 1}
     // let end: Position = {line: pos.line, character: 5}
     // let range: Range = {
