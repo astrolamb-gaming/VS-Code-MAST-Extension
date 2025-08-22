@@ -10,7 +10,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * WIP: Get mast complier errors from the compiler itself, so the game doesn't have to be running to check for compiler errors.
 
 
-### 0.15.0 In Progress
+### 0.15.0
 * Implement hover, Go To Definition, and Find References for function names (e.g. `len` instead of `len()`)
 * Refactor of Route checks to fix some related issues
 * Add Find References and Autocompletion for Signals [#33](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues/33), as well as validation for if signals are emitted and used
