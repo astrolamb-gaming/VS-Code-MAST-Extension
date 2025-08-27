@@ -139,7 +139,8 @@ connection.onInitialize((params: InitializeParams) => {
             //         tokenModifiers: ['declaration','documentation']
             //     }
             // }
-			referencesProvider: true
+			referencesProvider: true,
+			renameProvider: true
 		}
 	};
 	if (hasWorkspaceFolderCapability) {

@@ -5,7 +5,7 @@ const hover_1 = require("./hover");
 const server_1 = require("./../server");
 const labels_1 = require("./../tokens/labels");
 const cache_1 = require("./../cache");
-function onRenameRequest(params) {
+async function onRenameRequest(params) {
     let uri = params.textDocument.uri;
     let symbol_pos = params.position;
     let doc = server_1.documents.get(uri);
@@ -18,27 +18,26 @@ function onRenameRequest(params) {
     let label = (0, labels_1.getMainLabelAtPos)(doc.offsetAt(symbol_pos), mains);
     // if (!label) return;
     let labelContents = doc.getText().substring(label.start, label.end);
-    let find = new RegExp(replace);
+    let find = new RegExp(replace, "g");
     let edits = [];
     let m;
+    let count = 0;
     while (m = find.exec(labelContents)) {
         const te = {
             range: {
-                start: doc.positionAt(m.index),
-                end: doc.positionAt(m[0].length + m.index)
+                start: doc.positionAt(m.index + label.start),
+                end: doc.positionAt(m[0].length + m.index + label.start)
             },
             newText: params.newName
         };
         edits.push(te);
     }
-    // let docEdit: TextDocumentEdit = {
-    // 	textDocument: {uri: uri, version: 1},
-    // 	edits: edits
-    // }
+    let docEdit = {
+        textDocument: { uri: uri, version: null }, // We're just gonna mock the version...
+        edits: edits
+    };
     let ret = {
-        changes: {
-            uri: edits
-        }
+        documentChanges: [docEdit]
     };
     return ret;
 }

@@ -3,8 +3,9 @@ import { getCurrentLineFromTextDocument, getHoveredSymbol } from './hover';
 import { documents } from './../server';
 import { getLabelLocation, getMainLabelAtPos } from './../tokens/labels';
 import { getCache } from './../cache';
+import { debug } from 'console';
 
-export function onRenameRequest(params: RenameParams): HandlerResult<WorkspaceEdit | null | undefined, void> {
+export async function onRenameRequest(params: RenameParams): Promise<WorkspaceEdit|undefined> {
 	let uri = params.textDocument.uri
 	let symbol_pos = params.position;
 	let doc = documents.get(uri);
@@ -17,17 +18,18 @@ export function onRenameRequest(params: RenameParams): HandlerResult<WorkspaceEd
 	let label = getMainLabelAtPos(doc.offsetAt(symbol_pos), mains);
 	// if (!label) return;
 	let labelContents = doc.getText().substring(label.start, label.end);
-
-	let find = new RegExp(replace);
+	
+	let find = new RegExp(replace, "g");
 
 	let edits: TextEdit[] = [];
 
 	let m: RegExpExecArray|null;
+	let count = 0;
 	while (m = find.exec(labelContents)) {
 		const te: TextEdit = {
 			range: {
-				start: doc.positionAt(m.index),
-				end: doc.positionAt(m[0].length+m.index)
+				start: doc.positionAt(m.index + label.start),
+				end: doc.positionAt(m[0].length+m.index+label.start)
 			},
 			newText: params.newName
 		}
@@ -35,14 +37,12 @@ export function onRenameRequest(params: RenameParams): HandlerResult<WorkspaceEd
 	}
 
 	
-	// let docEdit: TextDocumentEdit = {
-	// 	textDocument: {uri: uri, version: 1},
-	// 	edits: edits
-	// }
+	let docEdit: TextDocumentEdit = {
+		textDocument: {uri: uri, version: null}, // We're just gonna mock the version...
+		edits: edits
+	}
 	let ret: WorkspaceEdit = {
-		changes: {
-			uri: edits
-		}
+		documentChanges: [docEdit]
 	}
 	return ret;
 }

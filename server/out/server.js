@@ -101,7 +101,8 @@ exports.connection.onInitialize((params) => {
             //         tokenModifiers: ['declaration','documentation']
             //     }
             // }
-            referencesProvider: true
+            referencesProvider: true,
+            renameProvider: true
         }
     };
     if (hasWorkspaceFolderCapability) {
