@@ -239,13 +239,15 @@ export class StoryJson {
 		let ret = await connection.window.showErrorMessage(
 			"`story.json` not found",
 			{title: generate},
+			{title: gen_pop},
 			{title: ignore},
 			//{title: hide} // TODO: Add this later!!!!!!
 		);
 		if (ret === undefined) return false;
 		if (ret.title === generate) {
 			// Create story.json
-			fs.writeFileSync(this.uri, "", {"encoding": "utf-8"});
+			let latest = path.basename(this.getLatestVersion("artemis-sbs.sbs_utils"));
+			fs.writeFileSync(this.uri, "{\n\t\"sbslib\": [\"" + latest + "\"],\n\t\"mastlib\": []\n}", {"encoding": "utf-8"});
 			return true;
 		} else if (ret.title === gen_pop) {
 			// Generate story.json from default settings - get from mast_starter?

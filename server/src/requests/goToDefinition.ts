@@ -124,8 +124,9 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 				}
 			}
 		}
+		debug(symbol);
 		let loc = getLabelLocation(symbol, doc, pos);
-		// debug(loc);
+		debug(loc);
 		if (loc) return loc;
 
 		// Calculate the position in the text's string value using the Position value.

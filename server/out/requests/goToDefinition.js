@@ -124,8 +124,9 @@ async function onDefinition(doc, pos) {
             }
         }
     }
+    (0, console_1.debug)(symbol);
     let loc = (0, labels_1.getLabelLocation)(symbol, doc, pos);
-    // debug(loc);
+    (0, console_1.debug)(loc);
     if (loc)
         return loc;
     // Calculate the position in the text's string value using the Position value.

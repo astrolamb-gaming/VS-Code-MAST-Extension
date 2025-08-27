@@ -40,7 +40,7 @@ function parseLabels(text, src, type = "main") {
     // }
     const routeLabel = /^([ \t]*)(\/{2,})(\w+)(\/\w+)*/gm;
     const mainLabel = /^([ \t]*)(={2,}[ \t]*[ \t]*)(\w+)([ \t]*(={2,})?)/gm;
-    const combined = /^([ \t]*)(((\/{2,})(\w+)(\/\w+)*)|((={2,}[ \t]*)(\w+)([ \t]*(={2,})?)))/gm;
+    const combined = /^([ \t]*)(((\/{2,})(\w+)(\/\w+)*)|((={2,}[ \t]*)(\w+)([ \t]*(={2,})?))|(@[\w\/]+))/gm;
     let definedLabel;
     if (type === "main") {
         definedLabel = combined;
@@ -90,6 +90,9 @@ function parseLabels(text, src, type = "main") {
         };
         if (m[0].trim().startsWith("//")) {
             li.type = "route";
+        }
+        else if (m[0].trim().startsWith("@")) {
+            li.type = "media";
         }
         labels.push(li);
     }
@@ -613,18 +616,27 @@ function getLabelLocation(symbol, doc, pos) {
     // debug(pos)
     // Now let's check over all the labels, to see if it's a label. This will be most useful for most people I think.
     // let mainLabels = getCache(doc.uri).getLabels(doc,true);
-    let mainLabels = (0, cache_1.getCache)(doc.uri).getLabelsAtPos(doc, doc.offsetAt(pos), false);
-    // const mainLabelAtPos = getMainLabelAtPos(doc.offsetAt(pos),mainLabels);
-    // for (const sub of mainLabelAtPos.subLabels) {
-    // 	if (sub.name === symbol) {
-    // 		debug(sub);
-    // 		const loc:Location = {
-    // 			uri: fileFromUri(sub.srcFile),
-    // 			range: sub.range
-    // 		}
-    // 		return loc
+    let mainLabels = (0, cache_1.getCache)(doc.uri).getLabelsAtPos(doc, doc.offsetAt(pos), true);
+    // debug(mainLabels)
+    // for (const l of mainLabels){
+    // 	if (l.name.startsWith("@")) {
+    // 		debug(l)
     // 	}
     // }
+    const mainLabelAtPos = getMainLabelAtPos(doc.offsetAt(pos), mainLabels);
+    (0, console_1.debug)("Main Label: " + mainLabelAtPos.name);
+    (0, console_1.debug)(symbol);
+    (0, console_1.debug)(mainLabelAtPos.subLabels);
+    for (const sub of mainLabelAtPos.subLabels) {
+        if (sub.name === symbol) {
+            (0, console_1.debug)(sub);
+            const loc = {
+                uri: (0, fileFunctions_1.fileFromUri)(sub.srcFile),
+                range: sub.range
+            };
+            return loc;
+        }
+    }
     mainLabels = (0, cache_1.getCache)(doc.uri).getLabels(doc, false);
     for (const main of mainLabels) {
         if (main.name === symbol) {

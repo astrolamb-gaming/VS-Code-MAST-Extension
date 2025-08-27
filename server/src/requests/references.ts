@@ -31,6 +31,14 @@ export async function onReferences(doc: TextDocument, params:ReferenceParams): P
 			return locs;
 		}
 	}
+
+	// Get references for labels
+	// TODO: Refactor labels to use a similar system as Signals
+	// let labels = getCache(doc.uri).getLabels(doc, false);
+	// for (const label of labels) {
+
+	// }
+
 	if (isInString(doc,doc.offsetAt(pos)) && !isInYaml(doc,doc.offsetAt(pos))) return locs;
 
 	// Now we'll check for any instance where it COULD be a function name. Because Python.

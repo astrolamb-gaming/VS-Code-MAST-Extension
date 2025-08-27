@@ -31,6 +31,11 @@ async function onReferences(doc, params) {
             return locs;
         }
     }
+    // Get references for labels
+    // TODO: Refactor labels to use a similar system as Signals
+    // let labels = getCache(doc.uri).getLabels(doc, false);
+    // for (const label of labels) {
+    // }
     if ((0, comments_1.isInString)(doc, doc.offsetAt(pos)) && !(0, comments_1.isInYaml)(doc, doc.offsetAt(pos)))
         return locs;
     // Now we'll check for any instance where it COULD be a function name. Because Python.

@@ -225,12 +225,13 @@ class StoryJson {
         let generate = "Generate empty";
         let gen_pop = "Generate/Populate";
         let ignore = "Ignore";
-        let ret = await server_1.connection.window.showErrorMessage("`story.json` not found", { title: generate }, { title: ignore });
+        let ret = await server_1.connection.window.showErrorMessage("`story.json` not found", { title: generate }, { title: gen_pop }, { title: ignore });
         if (ret === undefined)
             return false;
         if (ret.title === generate) {
             // Create story.json
-            fs.writeFileSync(this.uri, "", { "encoding": "utf-8" });
+            let latest = path.basename(this.getLatestVersion("artemis-sbs.sbs_utils"));
+            fs.writeFileSync(this.uri, "{\n\t\"sbslib\": [\"" + latest + "\"],\n\t\"mastlib\": []\n}", { "encoding": "utf-8" });
             return true;
         }
         else if (ret.title === gen_pop) {
