@@ -654,7 +654,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		// Get specific completions for each parameter
 		for (const a of args) {
 			let arg = a.replace(/=\w+/,"");
-			if (arg === "label") {
+			if (arg === "label" || arg === "on_press") {
 				let labelNames = cache.getLabels(text);
 				// Iterate over parent label info objects
 				for (const i in labelNames) {
@@ -772,46 +772,61 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	ci = ci.concat(cache.getCompletions()); // TODO: What does this even do?
 
 //#region Keywords and Variables
-	let keywords : string[] = [
-		// "def", // Pretty sure we can't define functions in a mast file
-		"async",
-		"on change",
-		"on signal",
-		"await",
-		"import",
-		"if",
-		"else",
-		"match",
-		"case",
-		"yield",
-		"pass",
-		"with",
+	//#region Line Start Keywords
+	if (trimmed.match(/[\t ]*\w*/)) {
+		let line_start_keywords : string[] = [
+			// "def", // Pretty sure we can't define functions in a mast file
+			"async",
+			"on change",
+			"on signal",
+			"await",
+			"import",
+			"if",
+			"else",
+			"match",
+			"case",
+			"yield",
+			"pass",
+			"with"
+		]
+		// Add keywords to completions
+		for (const key of line_start_keywords) {
+			let i: CompletionItem = {
+				label: key,
+				kind: CompletionItemKind.Keyword
+			}
+			ci.push(i);
+		}
+		for (const key of variableModifiers) {
+			let i: CompletionItem = {
+				label: key[0],
+				kind: CompletionItemKind.Keyword,
+				detail: key[1]
+			}
+			ci.push(i);
+		}
+		const metadata:CompletionItem = {
+			label: "metadata",
+			kind: CompletionItemKind.Variable,
+			insertText: "metadata: ```\n\n```"
+		}
+		ci.push(metadata);
+	}
+	//#endregion
+
+
+	let values = [
 		"None",
 		"True",
 		"False"
-	]
-	// Add keywords to completions
-	for (const key of keywords) {
+	];
+	for (const key of values) {
 		let i: CompletionItem = {
 			label: key,
 			kind: CompletionItemKind.Keyword
 		}
 		ci.push(i);
 	}
-	for (const key of variableModifiers) {
-		let i: CompletionItem = {
-			label: key[0],
-			kind: CompletionItemKind.Keyword,
-			detail: key[1]
-		}
-		ci.push(i);
-	}
-	const metadata:CompletionItem = {
-		label: "metadata",
-		kind: CompletionItemKind.Variable,
-		insertText: "metadata: ```\n\n```"
-	}
-	ci.push(metadata);
 
 	// Add Route-specific variables, e.g. COLLISION_ID or SCIENCE_TARGET
 	const lbl = getMainLabelAtPos(pos,cache.getMastFile(text.uri).labelNames);
@@ -837,7 +852,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			const c: CompletionItem = {
 				label: k[0],
 				kind: CompletionItemKind.Text,
-				insertText: "\"" + k[0] + "\":",
+				insertText: k[0],
 				sortText: "__" + k[0]
 			}
 			if (k[1] !== "") {
