@@ -8,7 +8,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug, time } from 'console';
 import { parse, RX } from './rx';
 import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } from './tokens/routeLabels';
-import { fixFileName, getFileContents, getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readZipArchive } from './fileFunctions';
+import { fixFileName, getFileContents, getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readFileSync, readZipArchive } from './fileFunctions';
 import { connection, showProgressBar as showProgressBar } from './server';
 import { URI } from 'vscode-uri';
 import { getGlobals, initializeGlobals } from './globals';
@@ -186,6 +186,15 @@ export class MissionCache {
 				}
 				if (filename?.endsWith(".mast")) {
 					this.removeMastFile(path.join(this.missionURI,filename));
+				}
+				return;
+			}
+			// Should only trigger when the py file is saved.
+			if (eventType === "change") {
+				if (filename?.endsWith(".py")) {
+					let text = readFileSync(filename);
+					let textDoc = TextDocument.create(filename, "py", 0, text);
+					this.updateFileInfo(textDoc);
 				}
 			}
 			if (filename ==="story.json" && eventType === "change") {

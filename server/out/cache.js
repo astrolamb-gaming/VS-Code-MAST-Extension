@@ -8,6 +8,7 @@ const path = require("path");
 const MastFile_1 = require("./files/MastFile");
 const PyFile_1 = require("./files/PyFile");
 const labels_1 = require("./tokens/labels");
+const vscode_languageserver_textdocument_1 = require("vscode-languageserver-textdocument");
 const console_1 = require("console");
 const rx_1 = require("./rx");
 const routeLabels_1 = require("./tokens/routeLabels");
@@ -168,6 +169,15 @@ class MissionCache {
                 }
                 if (filename?.endsWith(".mast")) {
                     this.removeMastFile(path.join(this.missionURI, filename));
+                }
+                return;
+            }
+            // Should only trigger when the py file is saved.
+            if (eventType === "change") {
+                if (filename?.endsWith(".py")) {
+                    let text = (0, fileFunctions_1.readFileSync)(filename);
+                    let textDoc = vscode_languageserver_textdocument_1.TextDocument.create(filename, "py", 0, text);
+                    this.updateFileInfo(textDoc);
                 }
             }
             if (filename === "story.json" && eventType === "change") {
