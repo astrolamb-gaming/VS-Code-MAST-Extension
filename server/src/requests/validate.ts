@@ -160,6 +160,7 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		maxNumberOfProblems = settings.maxNumberOfProblems;
 	}
 	// These all don't happen in cache.updateFileInfo() above, since this data is stored separately
+	// TODO: This probably SHOULD be on a per-doc basis
 	let squareBrackets = parseSquareBrackets(textDocument);
 	let strs = parseStrings(textDocument);
 	let comments = parseComments(textDocument);

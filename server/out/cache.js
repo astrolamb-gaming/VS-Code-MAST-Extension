@@ -1035,9 +1035,9 @@ class MissionCache {
      * @returns an array of strings representing all the inventory keys in scope
      */
     getKeys(folder) {
-        folder = (0, fileFunctions_1.fixFileName)(folder);
+        // folder = fixFileName(folder);
         let keys = [];
-        const ini = (0, fileFunctions_1.getInitContents)(folder);
+        // const ini = getInitContents(folder);
         // debug(ini);
         // debug(this.mastFileCache.length)
         for (const m of this.mastFileCache) {

@@ -152,6 +152,7 @@ async function validateTextDocument(textDocument) {
         maxNumberOfProblems = settings.maxNumberOfProblems;
     }
     // These all don't happen in cache.updateFileInfo() above, since this data is stored separately
+    // TODO: This probably SHOULD be on a per-doc basis
     let squareBrackets = (0, comments_1.parseSquareBrackets)(textDocument);
     let strs = (0, comments_1.parseStrings)(textDocument);
     let comments = (0, comments_1.parseComments)(textDocument);

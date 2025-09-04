@@ -251,6 +251,9 @@ function onCompletion(_textDocumentPosition, text) {
                         if (c.label.includes("color")) {
                             c.insertText = c.insertText + "#";
                         }
+                        if (c.label.includes("area")) {
+                            c.documentation = "Area Usage:\n\n `area: Left, Top, Right, Bottom;`";
+                        }
                         ci.push(c);
                     }
                     return ci;
