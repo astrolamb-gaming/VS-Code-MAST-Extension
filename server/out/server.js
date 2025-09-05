@@ -378,7 +378,14 @@ exports.connection.onHover(async (_textDocumentPosition) => {
         return undefined;
     }
     await (0, cache_1.getCache)(_textDocumentPosition.textDocument.uri).awaitLoaded();
-    return (0, hover_1.onHover)(_textDocumentPosition, text);
+    let h = (0, hover_1.onHover)(_textDocumentPosition, text);
+    // if (h) {
+    // 	debug(h);
+    // 	if (h.contents.value.includes("Assign")) {
+    // 		throw new Error("Assign");
+    // 	}
+    // }
+    return h;
 });
 // connection.onRequest("textDocument/semanticTokens/full", (params: SemanticTokensParams) => {
 //     // Implement your logic to provide semantic tokens for the given document here.

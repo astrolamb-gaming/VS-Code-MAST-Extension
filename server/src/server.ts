@@ -502,7 +502,14 @@ connection.onHover(async (_textDocumentPosition: TextDocumentPositionParams): Pr
 		return undefined;
 	}
 	await getCache(_textDocumentPosition.textDocument.uri).awaitLoaded();
-	return onHover(_textDocumentPosition,text);
+	let h = onHover(_textDocumentPosition,text);
+	// if (h) {
+	// 	debug(h);
+	// 	if (h.contents.value.includes("Assign")) {
+	// 		throw new Error("Assign");
+	// 	}
+	// }
+	return h;
 });
 
 // connection.onRequest("textDocument/semanticTokens/full", (params: SemanticTokensParams) => {

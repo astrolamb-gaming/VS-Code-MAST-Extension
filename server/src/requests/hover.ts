@@ -68,7 +68,7 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 	let hoverText: string|MarkupContent|undefined = symbol;
 	// debug(hoveredLine);
 	if (isClassMethod(hoveredLine, _pos.position.character)) {
-		// debug("class method")
+		debug("class method")
 		const c = getClassOfMethod(hoveredLine,symbol);
 		// debug(c);
 		const classObj = cache.getClasses();

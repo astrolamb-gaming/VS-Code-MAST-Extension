@@ -64,7 +64,7 @@ function onHover(_pos, text) {
     let hoverText = symbol;
     // debug(hoveredLine);
     if ((0, tokens_1.isClassMethod)(hoveredLine, _pos.position.character)) {
-        // debug("class method")
+        (0, console_1.debug)("class method");
         const c = (0, tokens_1.getClassOfMethod)(hoveredLine, symbol);
         // debug(c);
         const classObj = cache.getClasses();
