@@ -66,7 +66,14 @@ export async function readFile(dir: string): Promise<string> {
  */
 export function readFileSync(dir:string): string {
 	dir = fixFileName(dir);
-	const ret = fs.readFileSync(dir, "utf-8");
+	let ret = "";
+	try {
+		ret = fs.readFileSync(dir, "utf-8");
+	} catch (e) {
+		// debug(e);
+		console.trace("readFileSync")
+		console.error(e)
+	}
 	return ret;
 }
 

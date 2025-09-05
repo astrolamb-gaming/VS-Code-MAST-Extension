@@ -163,6 +163,10 @@ class MissionCache {
             // could be either 'rename' or 'change'. new file event and delete
             // also generally emit 'rename'
             // debug(filename);
+            if (!filename?.includes(".git")) {
+                (0, console_1.debug)(this.missionURI);
+                (0, console_1.debug)(filename);
+            }
             if (eventType === "rename") {
                 if (filename?.endsWith(".py")) {
                     this.removePyFile(path.join(this.missionURI, filename));
