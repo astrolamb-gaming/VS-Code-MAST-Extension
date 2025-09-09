@@ -432,7 +432,7 @@ export async function initializeGlobals(): Promise<Globals> {
 
 export function getGlobals(): Globals {
 	if (globals === null || globals === undefined) {
-		debug("Error getting Globals information - Globals not loaded");
+		debug("Globals not loaded yet - initializing globals.");
 		globals = new Globals();
 		globals.loadGlobals();
 	}

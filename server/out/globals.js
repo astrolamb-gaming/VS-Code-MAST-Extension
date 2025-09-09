@@ -404,7 +404,7 @@ async function initializeGlobals() {
 }
 function getGlobals() {
     if (globals === null || globals === undefined) {
-        (0, console_1.debug)("Error getting Globals information - Globals not loaded");
+        (0, console_1.debug)("Globals not loaded yet - initializing globals.");
         globals = new Globals();
         globals.loadGlobals();
     }

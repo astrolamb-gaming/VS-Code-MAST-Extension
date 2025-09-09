@@ -27,7 +27,7 @@ let routeCompletions: CompletionItem[] = [];
 
 export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, text: TextDocument): CompletionItem[] {
 	// return buildFaction("kra","Kralien_Set");
-	debug("Staring onCompletion");
+	// debug("Staring onCompletion");
 	const cache = getCache(text.uri);
 	// return getGlobals().artFiles;
 	// This updates the file's info with any new info from other files.
@@ -39,7 +39,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	}
 	
 	let ci : CompletionItem[] = [];
-	debug("Cache loaded.");
+	// debug("Cache loaded.");
 	const t = text?.getText();
 	if (text === undefined) {
 		debug("Document ref is undefined");
@@ -60,9 +60,9 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// const eStr: string = t.substring(pos, endOfLine);
 	// const line = iStr + eStr;
 	const line = getCurrentLineFromTextDocument(_textDocumentPosition.position, text)
-	debug(line);
+	// debug(line);
 	const eStr = line.replace(iStr,"");
-	debug(iStr)
+	// debug(iStr)
 	// debug(eStr);
 	// if (iStr.endsWith("/") && !iStr.endsWith("//")) {
 	// 	return routeCompletions;
@@ -826,15 +826,16 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	for (const key of values) {
 		let i: CompletionItem = {
 			label: key,
-			kind: CompletionItemKind.Keyword
+			kind: CompletionItemKind.Keyword,
+			sortText: "____" + key
 		}
 		ci.push(i);
 	}
 
 	// Add Route-specific variables, e.g. COLLISION_ID or SCIENCE_TARGET
 	const lbl = getMainLabelAtPos(pos,cache.getMastFile(text.uri).labelNames);
-	debug("Main label at pos: ");
-	debug(lbl)
+	// debug("Main label at pos: ");
+	// debug(lbl)
 	if (lbl.type === "route") {
 		// if (!iStr.trim().startsWith("//")) {
 			const vars = getRouteLabelVars(lbl.name);
@@ -874,7 +875,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	} catch(e) {
 		debug(e);
 	}
-	debug("Variables parsed.");
+	// debug("Variables parsed.");
 	// debug(variables)
 	ci = ci.concat(variables);
 	// ci = ci.concat(cache.getMethods());

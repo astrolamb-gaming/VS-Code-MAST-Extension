@@ -8,7 +8,6 @@ const path = require("path");
 const MastFile_1 = require("./files/MastFile");
 const PyFile_1 = require("./files/PyFile");
 const labels_1 = require("./tokens/labels");
-const vscode_languageserver_textdocument_1 = require("vscode-languageserver-textdocument");
 const console_1 = require("console");
 const rx_1 = require("./rx");
 const routeLabels_1 = require("./tokens/routeLabels");
@@ -25,14 +24,6 @@ const python_1 = require("./python/python");
 const styles_1 = require("./data/styles");
 const signals_1 = require("./tokens/signals");
 exports.testingPython = false;
-const includeNonProcedurals = [
-    "scatter",
-    "faces",
-    "names",
-    "vec.py",
-    "spaceobject.py",
-    "agent"
-];
 class MissionCache {
     constructor(workspaceUri) {
         //debug(workspaceUri);
@@ -77,6 +68,7 @@ class MissionCache {
         this.pyInfoLoaded = false;
         this.missionFilesLoaded = false;
         this.sbsLoaded = false;
+        this.awaitingReload = false;
         this.lastAccessed = 0;
         this.watchers = [];
         this.resourceLabels = (0, routeLabels_1.loadResourceLabels)();
@@ -93,9 +85,14 @@ class MissionCache {
         // 	debug("Starting python")
         // 	initializePython(path.join(this.missionURI,"story.json"))	
         // });
-        this.startWatchers();
+        // this.startWatchers();
     }
     async load() {
+        this.endWatchers();
+        this.storyJsonLoaded = false;
+        this.pyInfoLoaded = false;
+        this.missionFilesLoaded = false;
+        this.sbsLoaded = false;
         (0, console_1.debug)("Starting MissionCache.load()");
         (0, server_1.showProgressBar)(true);
         // (re)set all the arrays before (re)populating them.
@@ -108,47 +105,63 @@ class MissionCache {
         this.mediaLabels = [];
         this.mastFileCache = [];
         this.storyJson = new storyJson_1.StoryJson(path.join(this.missionURI, "story.json"));
-        this.storyJsonLoaded = false;
-        this.sbsLoaded = false;
-        this.storyJson.readFile()
-            .then(() => {
-            (0, server_1.showProgressBar)(true);
-            this.modulesLoaded().then(() => {
-                (0, console_1.debug)("Modules loaded for " + this.missionName);
-                // showProgressBar(false);
-                this.storyJsonLoaded = true;
-                // Now we do the python checks for the MastGlobals that don't exist already
-                let globals = [];
-                for (const p of this.pyFileCache) {
-                    if (p.globals.length > 0) {
-                        globals = globals.concat(p.globals);
-                    }
-                }
-                this.loadPythonGlobals(globals).then((info) => {
-                    (0, console_1.debug)("Loaded globals");
-                    this.pyInfoLoaded = true;
-                });
-            });
-        });
-        loadSbs().then(async (p) => {
-            (0, server_1.showProgressBar)(true);
-            if (p !== null) {
-                this.addMissionPyFile(p);
-                // this.missionPyModules.push(p);
-                // debug("addding " + p.uri);
-                // this.missionClasses = this.missionClasses.concat(p.classes);
+        await this.storyJson.readFile();
+        // .then(()=>{
+        (0, server_1.showProgressBar)(true);
+        (0, console_1.debug)("pyFileCache length: " + this.pyFileCache.length);
+        await this.modulesLoaded();
+        // .then(()=>{
+        (0, console_1.debug)("Modules loaded for " + this.missionName);
+        // showProgressBar(false);
+        this.storyJsonLoaded = true;
+        // Now we do the python checks for the MastGlobals that don't exist already
+        let globals = [];
+        for (const p of this.pyFileCache) {
+            if (p.globals.length > 0) {
+                globals = globals.concat(p.globals);
             }
-            (0, console_1.debug)("Finished loading sbs_utils for " + this.missionName);
-            // showProgressBar(false);
-            this.sbsLoaded = true;
-            await this.awaitLoaded();
-        });
+        }
+        await this.loadPythonGlobals(globals);
+        // .then((info)=>{
+        (0, console_1.debug)("Loaded globals");
+        this.pyInfoLoaded = true;
+        // });
+        (0, console_1.debug)("New pyFileCache length: " + this.pyFileCache.length);
+        // })
+        // });
+        let p = await loadSbs(); //.then(async (p)=>{
+        (0, server_1.showProgressBar)(true);
+        if (p !== null) {
+            this.addMissionPyFile(p);
+            // this.missionPyModules.push(p);
+            // debug("addding " + p.uri);
+            // this.missionClasses = this.missionClasses.concat(p.classes);
+        }
+        (0, console_1.debug)("Finished loading sbs_utils for " + this.missionName);
+        // showProgressBar(false);
+        this.sbsLoaded = true;
+        // await this.awaitLoaded();
+        // });
         this.checkForCacheUpdates();
         (0, console_1.debug)(this.missionURI);
         //this.checkForInitFolder(this.missionURI);
         (0, console_1.debug)("Number of py files: " + this.pyFileCache.length);
         await this.awaitLoaded();
         (0, console_1.debug)("Everything is laoded");
+        this.startWatchers();
+    }
+    /**
+     * Reload the cache after it's already been loaded to reset everything.
+     */
+    async reload() {
+        // Don't load until it's finished loading the first time
+        if (this.awaitingReload)
+            return;
+        this.awaitingReload = true;
+        (0, console_1.debug)("Awaiting loaded");
+        await this.awaitLoaded();
+        await this.load();
+        this.awaitingReload = false;
     }
     /**
      * Start file system watchers
@@ -163,10 +176,10 @@ class MissionCache {
             // could be either 'rename' or 'change'. new file event and delete
             // also generally emit 'rename'
             // debug(filename);
-            if (!filename?.includes(".git")) {
-                (0, console_1.debug)(this.missionURI);
-                (0, console_1.debug)(filename);
-            }
+            if (filename === null || filename.includes(".git") || filename.includes("__pycache__"))
+                return;
+            (0, console_1.debug)(this.missionURI);
+            (0, console_1.debug)(filename);
             if (eventType === "rename") {
                 if (filename?.endsWith(".py")) {
                     this.removePyFile(path.join(this.missionURI, filename));
@@ -179,14 +192,16 @@ class MissionCache {
             // Should only trigger when the py file is saved.
             if (eventType === "change") {
                 if (filename?.endsWith(".py")) {
-                    let text = (0, fileFunctions_1.readFileSync)(filename);
-                    let textDoc = vscode_languageserver_textdocument_1.TextDocument.create(filename, "py", 0, text);
-                    this.updateFileInfo(textDoc);
+                    // let text = readFileSync(filename);
+                    let file = path.join(this.missionURI, filename);
+                    let textDoc = server_1.documents.get(file);
+                    if (textDoc) {
+                        this.updateFileInfo(textDoc);
+                    }
                 }
             }
             if (filename === "story.json" && eventType === "change") {
-                this.load();
-                this.awaitLoaded();
+                this.reload();
             }
         });
         this.watchers.push(w);
@@ -197,10 +212,11 @@ class MissionCache {
             // TODO: Only load the bits applicable for these files?
             // More efficient to only reload what needs reloaded.
             // As is, will need to reload the whole cache...
-            (0, console_1.debug)(filename + "  Changed");
-            // this.endWatchers();
-            this.load();
-            this.awaitLoaded();
+            (0, console_1.debug)("Event Type: " + eventType);
+            if (eventType === "change") {
+                (0, console_1.debug)(filename + "  Changed\n\nHERE\n\n................");
+                this.reload();
+            }
         });
         this.watchers.push(w2);
     }
@@ -303,6 +319,7 @@ class MissionCache {
                 }
             }
         }
+        // This is built from the python shell
         const builtIns = new PyFile_1.PyFile("builtin.py", "");
         builtIns.classes = classes;
         builtIns.isGlobal = true;
@@ -322,7 +339,7 @@ class MissionCache {
         // this.pyFileCache.push(builtInFunctions);
         (0, console_1.debug)("buitins added");
         // showProgressBar(false);
-        // this.pyInfoLoaded = true;
+        this.pyInfoLoaded = true;
     }
     async checkForInitFolder(folder) {
         // if (this.ingoreInitFileMissing) return;
@@ -381,6 +398,10 @@ class MissionCache {
             (0, console_1.debug)(e);
         }
     }
+    /**
+     * Loads the zip/mastlib/sbslib file modules
+     * @returns Promise<void>
+     */
     async modulesLoaded() {
         if (exports.testingPython)
             return;
@@ -412,11 +433,11 @@ class MissionCache {
                         for (const f of files) {
                             if (f.endsWith(".py") || f.endsWith(".mast")) {
                                 (0, server_1.showProgressBar)(true);
-                                const data = (0, fileFunctions_1.readFile)(f).then((data) => {
-                                    (0, server_1.showProgressBar)(true);
-                                    // debug("Loading: " + path.basename(f));
-                                    this.handleZipData(data, f);
-                                });
+                                const data = await (0, fileFunctions_1.readFile)(f); //.then((data)=>{
+                                (0, server_1.showProgressBar)(true);
+                                // debug("Loading: " + path.basename(f));
+                                this.handleZipData(data, f);
+                                // });
                             }
                         }
                     }
@@ -459,6 +480,7 @@ class MissionCache {
      * @returns
      */
     handleZipData(data, file = "") {
+        // debug("Beginning to load zip data for: " + file);
         if (file.endsWith("__init__.mast") || file.endsWith("__init__.py") || file.includes("mock")) {
             // Do nothing
         }
@@ -540,36 +562,55 @@ class MissionCache {
         // 	//// Don't want non-sbs_utils stuff in the py file cache
         // 	debug("ERROR: Py file added to wrong part of cache: " + p.uri);
         // }
-        this.pyFileCache.push(p);
-        this.sbsGlobals = this.sbsGlobals.concat(p.globalFiles);
-        // debug(this.sbsGlobals)
+        // let test = false;
+        // if (p.uri.includes("ship_data")) {
+        // 	test = true;
+        // }
         for (const f of this.pyFileCache) {
-            const file = f.uri.replace(/\//g, ".").replace(/\\/g, ".");
-            // debug(file);
-            if (f.isGlobal)
-                continue; /// This will prevent global logic from happening more than once per file.
-            for (const g of this.sbsGlobals) {
-                if (g[0] === "sbs") {
-                    // if (f.uri.includes("sbs.py"))
-                    // Treat sbs differently
-                    continue;
+            if ((0, fileFunctions_1.fixFileName)(f.uri) === (0, fileFunctions_1.fixFileName)(p.uri)) {
+                // if (test) debug("Cancelling???");
+                return;
+            }
+        }
+        // ONly trigger when there are defined globals
+        if (p.globalFiles.length > 0) {
+            this.sbsGlobals = this.sbsGlobals.concat(p.globalFiles);
+            // Update all existing py files if they are globals
+            for (const g of p.globalFiles) {
+                for (const f of this.pyFileCache) {
+                    this.tryApplyFileAsGlobal(p, g);
                 }
-                if (file.includes(g[0])) {
-                    // debug(g[0]);
-                    // debug("Adding " + f.uri + " as a global")
-                    f.isGlobal = true;
-                    if (g[1] !== "") {
-                        // TODO: Update function names with prepend
-                        const newDefaults = [];
-                        for (const func of f.defaultFunctions) {
-                            const n = func.copy();
-                            n.name = g[1] + "_" + func.name;
-                            newDefaults.push(n);
-                        }
-                        f.defaultFunctions = newDefaults;
-                        // debug(f.defaultFunctions);
-                    }
+            }
+        }
+        // ALWAYS go over the existing globals for the new file
+        for (const g of this.sbsGlobals) {
+            this.tryApplyFileAsGlobal(p, g);
+        }
+        this.pyFileCache.push(p);
+    }
+    tryApplyFileAsGlobal(f, g) {
+        if (f.isGlobal)
+            return;
+        if (g[0] === "sbs") {
+            // if (f.uri.includes("sbs.py"))
+            // Treat sbs differently
+            return;
+        }
+        const file = f.uri.replace(/\//g, ".").replace(/\\/g, ".");
+        if (file.endsWith(g[0] + ".py")) {
+            f.isGlobal = true;
+            if (g[1] !== "") {
+                // TODO: Update function names with prepend
+                // TODO: Issue #39 is caused by this?
+                const newDefaults = [];
+                (0, console_1.debug)(f.defaultFunctions);
+                for (const func of f.defaultFunctions) {
+                    const n = func.copy();
+                    n.name = g[1] + "_" + func.name;
+                    newDefaults.push(n);
                 }
+                f.defaultFunctions = newDefaults;
+                (0, console_1.debug)(f.defaultFunctions);
             }
         }
     }
@@ -1117,7 +1158,7 @@ class MissionCache {
     getPyFile(uri) {
         uri = (0, fileFunctions_1.fixFileName)(uri);
         for (const p of this.missionPyModules) {
-            if (p.uri === (0, fileFunctions_1.fixFileName)(uri)) {
+            if ((0, fileFunctions_1.fixFileName)(p.uri) === (0, fileFunctions_1.fixFileName)(uri)) {
                 return p;
             }
         }
@@ -1155,7 +1196,7 @@ class MissionCache {
             // debug(this.pyInfoLoaded);
             await (0, python_1.sleep)(100);
         }
-        (0, console_1.debug)("Hiding progress bar");
+        // debug("Hiding progress bar")
         (0, server_1.showProgressBar)(false);
     }
 }

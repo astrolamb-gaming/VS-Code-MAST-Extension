@@ -252,11 +252,11 @@ exports.connection.languages.diagnostics.on(async (params) => {
             let cache = (0, cache_1.getCache)(params.textDocument.uri);
             await cache.awaitLoaded();
             (0, variables_1.getVariableNamesInDoc)(document);
-            (0, console_1.debug)("Validating....");
+            // debug("Validating....");
             // let [val, comp]: Diagnostic[][] = await Promise.all([validateTextDocument(document), compileMastFile(document)]);
             // const ret = val.concat(comp);
             let ret = await (0, validate_1.validateTextDocument)(document);
-            (0, console_1.debug)("Validation complete.");
+            // debug("Validation complete.");
             return {
                 kind: node_1.DocumentDiagnosticReportKind.Full,
                 items: ret
@@ -323,8 +323,7 @@ exports.connection.onCompletion(async (_textDocumentPosition) => {
     if (_textDocumentPosition.textDocument.uri.endsWith("__init__.mast")) {
         (0, console_1.debug)("Can't get completions from __init__.mast file");
     }
-    if (_textDocumentPosition.textDocument.uri.endsWith(".py"))
-        return undefined;
+    // if (_textDocumentPosition.textDocument.uri.endsWith(".py")) return undefined; // Redundant
     if (!_textDocumentPosition.textDocument.uri.endsWith(".mast"))
         return undefined;
     const text = exports.documents.get(_textDocumentPosition.textDocument.uri);
@@ -341,6 +340,10 @@ exports.connection.onCompletion(async (_textDocumentPosition) => {
         // ci = [...new Map(ci.map(v => [v.insertText||v.label, v])).values()];
         //This allows for items with the same label, but excludes duplicates
         ci = [...new Map(ci.map((v) => [v.documentation + v.label + v.kind + v.detail, v])).values()];
+        if (ci[0].label.startsWith("ship_data")) {
+            (0, console_1.debug)("--------SHIP DATA-------");
+            (0, console_1.debug)(ci);
+        }
         return ci;
     }
     catch (e) {

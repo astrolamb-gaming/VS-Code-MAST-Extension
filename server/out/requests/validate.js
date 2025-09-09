@@ -320,7 +320,7 @@ async function validateTextDocument(textDocument) {
         }
     }
     const r = (0, routeLabels_1.checkEnableRoutes)(textDocument);
-    (0, console_1.debug)(cache.getSignals());
+    // debug(cache.getSignals())
     const sigs = (0, signals_1.checkForUnusedSignals)(textDocument);
     diagnostics = diagnostics.concat(r, sigs);
     // return debugLabelValidation(textDocument);

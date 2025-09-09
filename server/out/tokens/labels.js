@@ -325,6 +325,11 @@ function checkLabels(textDocument) {
         //debug(str);
         let found = false;
         const ml = getMainLabelAtPos(m.index, mainLabels);
+        if (ml === undefined) {
+            (0, console_1.debug)("ERROR in checkLabels() at getMainLabelAtPos(" + m.index + ", " + mainLabels.length + ")");
+            (0, console_1.debug)(mainLabels);
+            (0, console_1.debug)(textDocument.uri);
+        }
         // debug(ml);
         // Check if the label is the main label
         if (str === ml.name) {
@@ -594,20 +599,20 @@ function getLabelMetadataKeys(label) {
     const re = /^[ \t]*(\w+):(.*)/gm;
     let m;
     let keys = [];
-    (0, console_1.debug)(label);
-    (0, console_1.debug)(meta);
+    // debug(label)
+    // debug(meta)
     while (m = re.exec(meta)) {
         let key = m[1];
         let def = m[2].trim();
         keys.push([key, def]);
     }
-    (0, console_1.debug)(keys);
+    // debug(keys)
     keys.push(["START_X", ""]);
     keys.push(["START_Y", ""]);
     keys.push(["START_Z", ""]);
     keys = [...new Map(keys.map(v => [v[0], v])).values()];
     // debug(arrUniq);
-    (0, console_1.debug)(keys);
+    // debug(keys);
     return keys;
 }
 let extraDebug = false;

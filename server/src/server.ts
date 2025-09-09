@@ -313,12 +313,12 @@ connection.languages.diagnostics.on(async (params) => {
 			let cache = getCache(params.textDocument.uri);
 			await cache.awaitLoaded();
 			getVariableNamesInDoc(document);
-			debug("Validating....");
+			// debug("Validating....");
 			// let [val, comp]: Diagnostic[][] = await Promise.all([validateTextDocument(document), compileMastFile(document)]);
 			// const ret = val.concat(comp);
 			let ret: Diagnostic[] = await validateTextDocument(document);
 			
-			debug("Validation complete.");
+			// debug("Validation complete.");
 			return {
 				kind: DocumentDiagnosticReportKind.Full,
 				items: ret
@@ -446,7 +446,8 @@ connection.onCompletion(
 		if (_textDocumentPosition.textDocument.uri.endsWith("__init__.mast")) {
 			debug("Can't get completions from __init__.mast file");
 		}
-		if (_textDocumentPosition.textDocument.uri.endsWith(".py")) return undefined;
+		
+		// if (_textDocumentPosition.textDocument.uri.endsWith(".py")) return undefined; // Redundant
 		if (!_textDocumentPosition.textDocument.uri.endsWith(".mast")) return undefined;
 		const text = documents.get(_textDocumentPosition.textDocument.uri);
 		if (text === undefined) {
@@ -462,6 +463,10 @@ connection.onCompletion(
 			// ci = [...new Map(ci.map(v => [v.insertText||v.label, v])).values()];
 			//This allows for items with the same label, but excludes duplicates
 			ci = [...new Map(ci.map((v)=>[v.documentation+v.label+v.kind+v.detail, v])).values()]
+			if (ci[0].label.startsWith("ship_data")) {
+				debug("--------SHIP DATA-------")
+				debug(ci);
+			}
 			return ci;
 		} catch (e) {
 			debug("onCompletion failure\n" + e);

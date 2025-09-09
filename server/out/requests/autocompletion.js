@@ -25,7 +25,7 @@ let currentLine = 0;
 let routeCompletions = [];
 function onCompletion(_textDocumentPosition, text) {
     // return buildFaction("kra","Kralien_Set");
-    (0, console_1.debug)("Staring onCompletion");
+    // debug("Staring onCompletion");
     const cache = (0, cache_1.getCache)(text.uri);
     // return getGlobals().artFiles;
     // This updates the file's info with any new info from other files.
@@ -36,7 +36,7 @@ function onCompletion(_textDocumentPosition, text) {
         (0, server_1.showProgressBar)(false);
     }
     let ci = [];
-    (0, console_1.debug)("Cache loaded.");
+    // debug("Cache loaded.");
     const t = text?.getText();
     if (text === undefined) {
         (0, console_1.debug)("Document ref is undefined");
@@ -57,9 +57,9 @@ function onCompletion(_textDocumentPosition, text) {
     // const eStr: string = t.substring(pos, endOfLine);
     // const line = iStr + eStr;
     const line = (0, hover_1.getCurrentLineFromTextDocument)(_textDocumentPosition.position, text);
-    (0, console_1.debug)(line);
+    // debug(line);
     const eStr = line.replace(iStr, "");
-    (0, console_1.debug)(iStr);
+    // debug(iStr)
     // debug(eStr);
     // if (iStr.endsWith("/") && !iStr.endsWith("//")) {
     // 	return routeCompletions;
@@ -796,14 +796,15 @@ function onCompletion(_textDocumentPosition, text) {
     for (const key of values) {
         let i = {
             label: key,
-            kind: vscode_languageserver_1.CompletionItemKind.Keyword
+            kind: vscode_languageserver_1.CompletionItemKind.Keyword,
+            sortText: "____" + key
         };
         ci.push(i);
     }
     // Add Route-specific variables, e.g. COLLISION_ID or SCIENCE_TARGET
     const lbl = (0, labels_1.getMainLabelAtPos)(pos, cache.getMastFile(text.uri).labelNames);
-    (0, console_1.debug)("Main label at pos: ");
-    (0, console_1.debug)(lbl);
+    // debug("Main label at pos: ");
+    // debug(lbl)
     if (lbl.type === "route") {
         // if (!iStr.trim().startsWith("//")) {
         const vars = (0, routeLabels_1.getRouteLabelVars)(lbl.name);
@@ -843,7 +844,7 @@ function onCompletion(_textDocumentPosition, text) {
     catch (e) {
         (0, console_1.debug)(e);
     }
-    (0, console_1.debug)("Variables parsed.");
+    // debug("Variables parsed.");
     // debug(variables)
     ci = ci.concat(variables);
     // ci = ci.concat(cache.getMethods());

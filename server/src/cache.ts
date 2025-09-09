@@ -9,7 +9,7 @@ import { debug, time } from 'console';
 import { parse, RX } from './rx';
 import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } from './tokens/routeLabels';
 import { fixFileName, getFileContents, getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readFileSync, readZipArchive } from './fileFunctions';
-import { connection, showProgressBar as showProgressBar } from './server';
+import { connection, documents, showProgressBar as showProgressBar } from './server';
 import { URI } from 'vscode-uri';
 import { getGlobals, initializeGlobals } from './globals';
 import * as os from 'os';
@@ -24,15 +24,6 @@ import { Word } from './tokens/words';
 import { mergeSignalInfo, SignalInfo } from './tokens/signals';
 
 export const testingPython = false;
-
-const includeNonProcedurals = [
-	"scatter",
-	"faces",
-	"names",
-	"vec.py",
-	"spaceobject.py",
-	"agent"
-]
 
 export class MissionCache {
 
@@ -82,6 +73,7 @@ export class MissionCache {
 	pyInfoLoaded = false;
 	missionFilesLoaded = false;
 	sbsLoaded = false;
+	awaitingReload = false;
 	lastAccessed: integer = 0;
 
 	constructor(workspaceUri: string) {
@@ -104,10 +96,15 @@ export class MissionCache {
 		// 	initializePython(path.join(this.missionURI,"story.json"))	
 			
 		// });
-		this.startWatchers();
+		// this.startWatchers();
 	}
 
 	async load() {
+		this.endWatchers();
+		this.storyJsonLoaded = false;
+		this.pyInfoLoaded = false;
+		this.missionFilesLoaded = false;
+		this.sbsLoaded = false;
 		debug("Starting MissionCache.load()");
 		showProgressBar(true);
 		// (re)set all the arrays before (re)populating them.
@@ -120,12 +117,12 @@ export class MissionCache {
 		this.mediaLabels = [];
 		this.mastFileCache = [];
 		this.storyJson = new StoryJson(path.join(this.missionURI,"story.json"));
-		this.storyJsonLoaded = false;
-		this.sbsLoaded = false;
-		this.storyJson.readFile()
-			.then(()=>{
+		await this.storyJson.readFile()
+			// .then(()=>{
 				showProgressBar(true);
-				this.modulesLoaded().then(()=>{
+				debug("pyFileCache length: " + this.pyFileCache.length)
+				await this.modulesLoaded();
+				// .then(()=>{
 					debug("Modules loaded for " + this.missionName);
 					// showProgressBar(false);
 					this.storyJsonLoaded = true;
@@ -137,13 +134,15 @@ export class MissionCache {
 							globals = globals.concat(p.globals)
 						}
 					}
-					this.loadPythonGlobals(globals).then((info)=>{
+					await this.loadPythonGlobals(globals)
+					// .then((info)=>{
 						debug("Loaded globals")
 						this.pyInfoLoaded = true;
-					});
-				})
-			});
-		loadSbs().then(async (p)=>{
+					// });
+					debug("New pyFileCache length: " + this.pyFileCache.length)
+				// })
+			// });
+		let p = await loadSbs()//.then(async (p)=>{
 			showProgressBar(true);
 			if (p !== null) {
 				this.addMissionPyFile(p);
@@ -154,8 +153,8 @@ export class MissionCache {
 			debug("Finished loading sbs_utils for " + this.missionName);
 			// showProgressBar(false);
 			this.sbsLoaded = true;
-			await this.awaitLoaded();
-		});
+			// await this.awaitLoaded();
+		// });
 		this.checkForCacheUpdates();
 		debug(this.missionURI)
 		
@@ -163,7 +162,20 @@ export class MissionCache {
 		debug("Number of py files: "+this.pyFileCache.length);
 		await this.awaitLoaded();
 		debug("Everything is laoded")
-		
+		this.startWatchers();
+	}
+
+	/**
+	 * Reload the cache after it's already been loaded to reset everything.
+	 */
+	async reload() {
+		// Don't load until it's finished loading the first time
+		if (this.awaitingReload) return;
+		this.awaitingReload = true;
+		debug("Awaiting loaded")
+		await this.awaitLoaded();
+		await this.load();
+		this.awaitingReload = false;
 	}
 
 	watchers: fs.FSWatcher[] = [];
@@ -180,10 +192,9 @@ export class MissionCache {
 			// could be either 'rename' or 'change'. new file event and delete
 			// also generally emit 'rename'
 			// debug(filename);
-			if (!filename?.includes(".git")) {
-				debug(this.missionURI)
-				debug(filename)
-			}
+			if (filename === null || filename.includes(".git") || filename.includes("__pycache__")) return;
+			debug(this.missionURI)
+			debug(filename)
 			if (eventType === "rename") {
 				if (filename?.endsWith(".py")) {
 					this.removePyFile(path.join(this.missionURI,filename));
@@ -196,14 +207,18 @@ export class MissionCache {
 			// Should only trigger when the py file is saved.
 			if (eventType === "change") {
 				if (filename?.endsWith(".py")) {
-					let text = readFileSync(filename);
-					let textDoc = TextDocument.create(filename, "py", 0, text);
-					this.updateFileInfo(textDoc);
+					// let text = readFileSync(filename);
+					let file = path.join(this.missionURI, filename);
+
+					let textDoc = documents.get(file);
+					if (textDoc) {
+						this.updateFileInfo(textDoc);
+					}
+					
 				}
 			}
 			if (filename ==="story.json" && eventType === "change") {
-				this.load();
-				this.awaitLoaded();
+				this.reload();
 			}
 		});
 		this.watchers.push(w);
@@ -214,10 +229,12 @@ export class MissionCache {
 			// TODO: Only load the bits applicable for these files?
 			// More efficient to only reload what needs reloaded.
 			// As is, will need to reload the whole cache...
-			debug(filename + "  Changed")
-			// this.endWatchers();
-			this.load();
-			this.awaitLoaded();
+			
+			debug("Event Type: " + eventType);
+			if (eventType === "change") {
+				debug(filename + "  Changed\n\nHERE\n\n................");
+				this.reload();
+			}
 		});
 		this.watchers.push(w2);
 	}
@@ -321,6 +338,7 @@ export class MissionCache {
 				}
 			}
 		}
+		// This is built from the python shell
 		const builtIns = new PyFile("builtin.py","");
 		builtIns.classes = classes;
 		builtIns.isGlobal = true;
@@ -342,7 +360,7 @@ export class MissionCache {
 		// this.pyFileCache.push(builtInFunctions);
 		debug("buitins added")
 		// showProgressBar(false);
-		// this.pyInfoLoaded = true;
+		this.pyInfoLoaded = true;
 	}
 
 	async checkForInitFolder(folder:string) : Promise<boolean> {
@@ -403,6 +421,10 @@ export class MissionCache {
 		}
 	}
 
+	/**
+	 * Loads the zip/mastlib/sbslib file modules
+	 * @returns Promise<void>
+	 */
 	async modulesLoaded() {
 		if (testingPython) return;
 		const uri = this.missionURI;
@@ -433,11 +455,11 @@ export class MissionCache {
 						for (const f of files) {
 							if (f.endsWith(".py")|| f.endsWith(".mast")) {
 								showProgressBar(true);
-								const data = readFile(f).then((data)=>{
+								const data = await readFile(f)//.then((data)=>{
 									showProgressBar(true);
 									// debug("Loading: " + path.basename(f));
 									this.handleZipData(data, f);
-								});
+								// });
 							}
 						}
 					}
@@ -481,6 +503,7 @@ export class MissionCache {
 	 * @returns 
 	 */
 	handleZipData(data:string, file:string = "") {
+		// debug("Beginning to load zip data for: " + file);
 		if (file.endsWith("__init__.mast") || file.endsWith("__init__.py") || file.includes("mock")) {
 			// Do nothing
 		} else if (file.endsWith(".py")) {
@@ -562,35 +585,59 @@ export class MissionCache {
 		// 	//// Don't want non-sbs_utils stuff in the py file cache
 		// 	debug("ERROR: Py file added to wrong part of cache: " + p.uri);
 		// }
-		this.pyFileCache.push(p);
-		this.sbsGlobals = this.sbsGlobals.concat(p.globalFiles);
-		// debug(this.sbsGlobals)
+		// let test = false;
+		// if (p.uri.includes("ship_data")) {
+		// 	test = true;
+		// }
 		for (const f of this.pyFileCache) {
-			const file = f.uri.replace(/\//g,".").replace(/\\/g,".");
-			// debug(file);
-			if (f.isGlobal) continue; /// This will prevent global logic from happening more than once per file.
-			for (const g of this.sbsGlobals) {
-				if (g[0] === "sbs") {
-					// if (f.uri.includes("sbs.py"))
-					// Treat sbs differently
-					continue;
+			if (fixFileName(f.uri) === fixFileName(p.uri)) {
+				// if (test) debug("Cancelling???");
+				return;
+			}
+		}
+		
+		// ONly trigger when there are defined globals
+		if (p.globalFiles.length > 0) {
+			this.sbsGlobals = this.sbsGlobals.concat(p.globalFiles);
+			// Update all existing py files if they are globals
+			for (const g of p.globalFiles) {
+				for (const f of this.pyFileCache) {
+					this.tryApplyFileAsGlobal(p, g);
 				}
-				if (file.includes(g[0])) {
-					// debug(g[0]);
-					// debug("Adding " + f.uri + " as a global")
-					f.isGlobal = true;
-					if (g[1] !== "") {
-						// TODO: Update function names with prepend
-						const newDefaults: Function[] = [];
-						for (const func of f.defaultFunctions) {
-							const n = func.copy();
-							n.name = g[1] + "_" + func.name;
-							newDefaults.push(n);
-						}
-						f.defaultFunctions = newDefaults;
-						// debug(f.defaultFunctions);
-					}
+			}
+		}
+		
+		// ALWAYS go over the existing globals for the new file
+		for (const g of this.sbsGlobals) {
+			this.tryApplyFileAsGlobal(p, g);
+			
+		}
+		this.pyFileCache.push(p);
+	}
+
+	tryApplyFileAsGlobal(f:PyFile, g:string[]) {
+		if (f.isGlobal) return;
+		if (g[0] === "sbs") {
+			// if (f.uri.includes("sbs.py"))
+			// Treat sbs differently
+			return;
+		}
+		const file = f.uri.replace(/\//g,".").replace(/\\/g,".");
+		if (file.endsWith(g[0]+".py")) {
+			f.isGlobal = true;
+			if (g[1] !== "") {
+				// TODO: Update function names with prepend
+				// TODO: Issue #39 is caused by this?
+				
+				const newDefaults: Function[] = [];
+				debug(f.defaultFunctions);
+				for (const func of f.defaultFunctions) {
+					const n = func.copy();
+					n.name = g[1] + "_" + func.name;
+					newDefaults.push(n);
 				}
+				f.defaultFunctions = newDefaults;
+				debug(f.defaultFunctions);
 			}
 		}
 	}
@@ -751,7 +798,7 @@ export class MissionCache {
 				return 1;
 			}
 			return 0;
-			});
+		});
 		// debug(methods)
 		return methods;
 	}
@@ -1156,7 +1203,7 @@ export class MissionCache {
 	getPyFile(uri:string) : PyFile {
 		uri = fixFileName(uri);
 		for (const p of this.missionPyModules) {
-			if (p.uri === fixFileName(uri)) {
+			if (fixFileName(p.uri) === fixFileName(uri)) {
 				return p;
 			}
 		}
@@ -1195,7 +1242,7 @@ export class MissionCache {
 			// debug(this.pyInfoLoaded);
 			await sleep(100);
 		}
-		debug("Hiding progress bar")
+		// debug("Hiding progress bar")
 		showProgressBar(false);
 	}
 

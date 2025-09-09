@@ -347,6 +347,11 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 		let found: boolean = false;
 
 		const ml: LabelInfo = getMainLabelAtPos(m.index,mainLabels);
+		if (ml === undefined) {
+			debug("ERROR in checkLabels() at getMainLabelAtPos(" + m.index + ", " + mainLabels.length + ")");
+			debug(mainLabels);
+			debug(textDocument.uri)
+		}
 		// debug(ml);
 		// Check if the label is the main label
 		if (str === ml.name) {
@@ -637,20 +642,20 @@ export function getLabelMetadataKeys(label:LabelInfo) {
 	const re: RegExp = /^[ \t]*(\w+):(.*)/gm;
 	let m: RegExpExecArray | null;
 	let keys = [];
-	debug(label)
-	debug(meta)
+	// debug(label)
+	// debug(meta)
 	while (m = re.exec(meta)) {
 		let key = m[1];
 		let def = m[2].trim();
 		keys.push([key,def]);
 	}
-	debug(keys)
+	// debug(keys)
 	keys.push(["START_X",""]);
 	keys.push(["START_Y",""]);
 	keys.push(["START_Z",""]);
 	keys = [...new Map(keys.map(v => [v[0], v])).values()];
 	// debug(arrUniq);
-	debug(keys);
+	// debug(keys);
 	return keys;
 }
 

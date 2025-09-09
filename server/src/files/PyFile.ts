@@ -164,7 +164,8 @@ export class PyFile extends FileCache {
 				name = "";
 			}
 			g.push(name);
-			// debug(g);
+			// debug("Globals added:")
+			// debug(g)
 			this.globalFiles.push(g);
 		}
 		// debug("GLOBALS")
@@ -186,6 +187,8 @@ export class PyFile extends FileCache {
 				if (arr !== null) {
 					const globalRef = arr[1];
 					const globalVar = arr[2];
+					// debug("GlobalRef: " + globalRef)
+					// debug("GlobalVar: " + globalVar)
 					if (globalVar.includes("scatter") || globalVar.includes("faces") || globalVar.includes("__build_class__")) continue; // This leaves scatter and faces out of it. These are already parsed anyway. Also __build_class__ probably doesn't need exposed to the user.
 					newGlobals.push([globalRef,globalVar]);
 				}
