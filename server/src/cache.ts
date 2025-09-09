@@ -189,7 +189,7 @@ export class MissionCache {
 	startWatchers() {
 		let w = fs.watch(this.missionURI, {"recursive": true}, (eventType, filename) => {
 			// debug("fs.watch() EVENT: ")
-			// debug(eventType);
+			debug(eventType);
 			// could be either 'rename' or 'change'. new file event and delete
 			// also generally emit 'rename'
 			// debug(filename);
@@ -197,11 +197,29 @@ export class MissionCache {
 			debug(this.missionURI)
 			debug(filename)
 			if (eventType === "rename") {
-				if (filename?.endsWith(".py")) {
-					this.removePyFile(path.join(this.missionURI,filename));
-				}
-				if (filename?.endsWith(".mast")) {
-					this.removeMastFile(path.join(this.missionURI,filename));
+				const filePath = path.join(this.missionURI, filename);
+
+				// Check if the file was added
+				if (fs.existsSync(filePath)) {
+					console.log(`File added: ${filename}`);
+					const init = getInitContents(path.join(this.missionURI, filename));
+					let inInit = false;
+					for (const i of init) {
+						if (filename === i) {
+							inInit = true;
+							break;
+						}
+					}
+					if (!inInit) {
+						this.tryAddToInitFile(path.dirname(path.join(this.missionURI, filename)), path.basename(filename));
+					}
+				} else {
+					if (filename?.endsWith(".py")) {
+						this.removePyFile(path.join(this.missionURI,filename));
+					}
+					if (filename?.endsWith(".mast")) {
+						this.removeMastFile(path.join(this.missionURI,filename));
+					}
 				}
 				return;
 			}
@@ -428,11 +446,22 @@ export class MissionCache {
 	}
 
 	// TODO: When a file is opened, check if it is in __init__.mast. If not, prompt the user to add it.
-	private async addToInitFile(folder:string, newFile:string) {
-		try {
-			fs.writeFile(path.join(folder,"__init__.mast"), "\n" + newFile, {flag: "a+"}, ()=>{});
-		} catch (e) {
-			debug(e);
+	private async tryAddToInitFile(folder:string, newFile:string) {
+
+		let ret = await connection.window.showWarningMessage(
+			"No '__init__.mast' file found in this folder.",
+			{title: "Add to " + newFile + " to __init__.mast"},
+			{title: "Don't add"}
+			//{title: hide} // TODO: Add this later!!!!!!
+		);
+		if (ret === undefined) return true;
+		if (ret.title === "Add to " + newFile + " to __init__.mast") {
+			try {
+				fs.writeFile(path.join(folder,"__init__.mast"), "\nimport " + newFile, {flag: "a+"}, ()=>{});
+			} catch (e) {
+				debug("Can't add " + newFile + " to __init__.mast");
+				debug(e);
+			}
 		}
 	}
 

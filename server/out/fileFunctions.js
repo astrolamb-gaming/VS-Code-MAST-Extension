@@ -190,13 +190,18 @@ function getInitContents(uri) {
     let ret = [];
     const parent = getParentFolder(fixFileName(uri));
     const init = path.join(parent, "__init__.mast");
-    const text = fs.readFileSync(init, "utf-8").replace(/import[ \t]*/g, "");
-    let lines = text.split("\n");
-    for (const l of lines) {
-        const t = l.trim();
-        if (t !== "" && !t.startsWith("#")) {
-            ret.push(t);
+    try {
+        const text = fs.readFileSync(init, "utf-8").replace(/import[ \t]*/g, "");
+        let lines = text.split("\n");
+        for (const l of lines) {
+            const t = l.trim();
+            if (t !== "" && !t.startsWith("#")) {
+                ret.push(t);
+            }
         }
+    }
+    catch (e) {
+        (0, console_1.debug)("Can't load __init__.mast contents: " + uri);
     }
     return ret;
 }

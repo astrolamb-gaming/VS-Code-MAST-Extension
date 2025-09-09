@@ -174,7 +174,7 @@ class MissionCache {
     startWatchers() {
         let w = fs.watch(this.missionURI, { "recursive": true }, (eventType, filename) => {
             // debug("fs.watch() EVENT: ")
-            // debug(eventType);
+            (0, console_1.debug)(eventType);
             // could be either 'rename' or 'change'. new file event and delete
             // also generally emit 'rename'
             // debug(filename);
@@ -183,11 +183,29 @@ class MissionCache {
             (0, console_1.debug)(this.missionURI);
             (0, console_1.debug)(filename);
             if (eventType === "rename") {
-                if (filename?.endsWith(".py")) {
-                    this.removePyFile(path.join(this.missionURI, filename));
+                const filePath = path.join(this.missionURI, filename);
+                // Check if the file was added
+                if (fs.existsSync(filePath)) {
+                    console.log(`File added: ${filename}`);
+                    const init = (0, fileFunctions_1.getInitContents)(path.join(this.missionURI, filename));
+                    let inInit = false;
+                    for (const i of init) {
+                        if (filename === i) {
+                            inInit = true;
+                            break;
+                        }
+                    }
+                    if (!inInit) {
+                        this.tryAddToInitFile(path.dirname(path.join(this.missionURI, filename)), path.basename(filename));
+                    }
                 }
-                if (filename?.endsWith(".mast")) {
-                    this.removeMastFile(path.join(this.missionURI, filename));
+                else {
+                    if (filename?.endsWith(".py")) {
+                        this.removePyFile(path.join(this.missionURI, filename));
+                    }
+                    if (filename?.endsWith(".mast")) {
+                        this.removeMastFile(path.join(this.missionURI, filename));
+                    }
                 }
                 return;
             }
@@ -408,12 +426,20 @@ class MissionCache {
         }
     }
     // TODO: When a file is opened, check if it is in __init__.mast. If not, prompt the user to add it.
-    async addToInitFile(folder, newFile) {
-        try {
-            fs.writeFile(path.join(folder, "__init__.mast"), "\n" + newFile, { flag: "a+" }, () => { });
-        }
-        catch (e) {
-            (0, console_1.debug)(e);
+    async tryAddToInitFile(folder, newFile) {
+        let ret = await server_1.connection.window.showWarningMessage("No '__init__.mast' file found in this folder.", { title: "Add to " + newFile + " to __init__.mast" }, { title: "Don't add" }
+        //{title: hide} // TODO: Add this later!!!!!!
+        );
+        if (ret === undefined)
+            return true;
+        if (ret.title === "Add to " + newFile + " to __init__.mast") {
+            try {
+                fs.writeFile(path.join(folder, "__init__.mast"), "\nimport " + newFile, { flag: "a+" }, () => { });
+            }
+            catch (e) {
+                (0, console_1.debug)("Can't add " + newFile + " to __init__.mast");
+                (0, console_1.debug)(e);
+            }
         }
     }
     /**
