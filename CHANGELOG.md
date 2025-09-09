@@ -8,6 +8,18 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 * TODO: Add more info about shipdata entries to the art arguments for space objects
 * WIP: Get mast complier errors from the compiler itself, so the game doesn't have to be running to check for compiler errors.
+* WIP: Better Hover information
+
+### 0.16.0
+* Fix sublabels inside of @console labels
+* Add default sbslib contents for story.json if the generate empty option is chosesn
+* Implemented Rename Symbol functionality within the scope of a label
+* Improvements to autocompletion
+* Add documentation for use of "area" stylestring to the autocompletion info
+* Add `on` to list of auto-indent triggers
+* Improved load times
+* Fix [issue #39](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues/39) that caused funcions in the ship_data and scatter modules to have multiple copies of `ship_data` or `scatter` in their names
+* Fix [issue #42](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues/42) Saving a .py file in a mission folder now properly updates available functions
 
 
 ### 0.15.0

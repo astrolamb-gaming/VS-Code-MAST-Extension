@@ -8,6 +8,7 @@ const path = require("path");
 const MastFile_1 = require("./files/MastFile");
 const PyFile_1 = require("./files/PyFile");
 const labels_1 = require("./tokens/labels");
+const vscode_languageserver_textdocument_1 = require("vscode-languageserver-textdocument");
 const console_1 = require("console");
 const rx_1 = require("./rx");
 const routeLabels_1 = require("./tokens/routeLabels");
@@ -161,6 +162,7 @@ class MissionCache {
         (0, console_1.debug)("Awaiting loaded");
         await this.awaitLoaded();
         await this.load();
+        (0, console_1.debug)("Reload complete.");
         this.awaitingReload = false;
     }
     /**
@@ -194,9 +196,15 @@ class MissionCache {
                 if (filename?.endsWith(".py")) {
                     // let text = readFileSync(filename);
                     let file = path.join(this.missionURI, filename);
-                    let textDoc = server_1.documents.get(file);
+                    (0, console_1.debug)(file);
+                    let pyFile = this.getPyFile(file);
+                    let text = (0, fileFunctions_1.readFileSync)(file);
+                    const textDoc = vscode_languageserver_textdocument_1.TextDocument.create(file, "py", 1, text);
                     if (textDoc) {
                         this.updateFileInfo(textDoc);
+                    }
+                    else {
+                        (0, console_1.debug)("File not found in watcher");
                     }
                 }
             }
@@ -207,15 +215,25 @@ class MissionCache {
         this.watchers.push(w);
         // Watches for changes to the sbs_lib or mast_lib files
         let libFolder = path.join((0, globals_1.getGlobals)().artemisDir, "data", "missions", "__lib__");
-        (0, console_1.debug)(libFolder);
+        // debug(libFolder);
         let w2 = fs.watch(libFolder, {}, (eventType, filename) => {
             // TODO: Only load the bits applicable for these files?
             // More efficient to only reload what needs reloaded.
             // As is, will need to reload the whole cache...
-            (0, console_1.debug)("Event Type: " + eventType);
+            // debug("Event Type: " + eventType);
             if (eventType === "change") {
-                (0, console_1.debug)(filename + "  Changed\n\nHERE\n\n................");
-                this.reload();
+                (0, console_1.debug)("Change detected - checking if update is needed");
+                // debug(filename + "  Changed\n\nHERE\n\n................");
+                for (const lib of this.storyJson.sbslib) {
+                    if (lib === filename) {
+                        this.reload();
+                    }
+                }
+                for (const lib of this.storyJson.mastlib) {
+                    if (lib === filename) {
+                        this.reload();
+                    }
+                }
             }
         });
         this.watchers.push(w2);
@@ -558,17 +576,9 @@ class MissionCache {
      * @param p A {@link PyFile PyFile} that should be added to {@link MissionCache.pyFileCache MissionCache.pyFileCache}
      */
     addSbsPyFile(p) {
-        // if (!p.uri.includes("sbs_utils")) {
-        // 	//// Don't want non-sbs_utils stuff in the py file cache
-        // 	debug("ERROR: Py file added to wrong part of cache: " + p.uri);
-        // }
-        // let test = false;
-        // if (p.uri.includes("ship_data")) {
-        // 	test = true;
-        // }
+        // If it's already there, return
         for (const f of this.pyFileCache) {
             if ((0, fileFunctions_1.fixFileName)(f.uri) === (0, fileFunctions_1.fixFileName)(p.uri)) {
-                // if (test) debug("Cancelling???");
                 return;
             }
         }
@@ -586,13 +596,13 @@ class MissionCache {
         for (const g of this.sbsGlobals) {
             this.tryApplyFileAsGlobal(p, g);
         }
+        // Now add it to the cache
         this.pyFileCache.push(p);
     }
     tryApplyFileAsGlobal(f, g) {
         if (f.isGlobal)
             return;
         if (g[0] === "sbs") {
-            // if (f.uri.includes("sbs.py"))
             // Treat sbs differently
             return;
         }
@@ -603,14 +613,14 @@ class MissionCache {
                 // TODO: Update function names with prepend
                 // TODO: Issue #39 is caused by this?
                 const newDefaults = [];
-                (0, console_1.debug)(f.defaultFunctions);
+                // debug(f.defaultFunctions);
                 for (const func of f.defaultFunctions) {
                     const n = func.copy();
                     n.name = g[1] + "_" + func.name;
                     newDefaults.push(n);
                 }
                 f.defaultFunctions = newDefaults;
-                (0, console_1.debug)(f.defaultFunctions);
+                // debug(f.defaultFunctions);
             }
         }
     }

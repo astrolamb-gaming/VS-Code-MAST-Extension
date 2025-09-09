@@ -9,7 +9,7 @@ MAST references:
 [MAST Starter repository](https://github.com/artemis-sbs/mast_starter)  
 [Artemis Cosmos bug reporting](https://github.com/artemis-sbs/LegendaryMissions/issues)  
 
-## Features
+## Features (Non-exhaustive!)
 
 Includes:
 * Basic formatting and coloring, based on Python
@@ -27,6 +27,10 @@ Includes:
 * Autocompletion for roles and inventory keys
 * Function signature information (i.e. notes on argument types)
 * Go To Definition functionality for sbs_utils and modules for functions and labels in scope.
+* Hover information functionality
+* Go To Definition functionality
+* Rename Symbol functionality for variables in the current label
+* Find References functionality
 * Checks for module versions
 	* Can update all to latest version, or manually update
 * In mission folders, checks for `__init__.mast` in the folder you're working in. If it doesn't exist, will promt with an option to auto-generate the file, with all .mast and .py files included automatically.

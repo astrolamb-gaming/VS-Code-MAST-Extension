@@ -175,6 +175,7 @@ export class MissionCache {
 		debug("Awaiting loaded")
 		await this.awaitLoaded();
 		await this.load();
+		debug("Reload complete.");
 		this.awaitingReload = false;
 	}
 
@@ -209,10 +210,14 @@ export class MissionCache {
 				if (filename?.endsWith(".py")) {
 					// let text = readFileSync(filename);
 					let file = path.join(this.missionURI, filename);
-
-					let textDoc = documents.get(file);
+					debug(file);
+					let pyFile = this.getPyFile(file);
+					let text = readFileSync(file);
+					const textDoc = TextDocument.create(file, "py", 1, text);
 					if (textDoc) {
 						this.updateFileInfo(textDoc);
+					} else {
+						debug("File not found in watcher")
 					}
 					
 				}
@@ -224,16 +229,26 @@ export class MissionCache {
 		this.watchers.push(w);
 		// Watches for changes to the sbs_lib or mast_lib files
 		let libFolder = path.join(getGlobals().artemisDir, "data", "missions", "__lib__");
-		debug(libFolder);
+		// debug(libFolder);
 		let w2 = fs.watch(libFolder, {}, (eventType, filename) => {
 			// TODO: Only load the bits applicable for these files?
 			// More efficient to only reload what needs reloaded.
 			// As is, will need to reload the whole cache...
 			
-			debug("Event Type: " + eventType);
+			// debug("Event Type: " + eventType);
 			if (eventType === "change") {
-				debug(filename + "  Changed\n\nHERE\n\n................");
-				this.reload();
+				debug("Change detected - checking if update is needed")
+				// debug(filename + "  Changed\n\nHERE\n\n................");
+				for (const lib of this.storyJson.sbslib) {
+					if (lib === filename) {
+						this.reload();
+					}
+				}
+				for (const lib of this.storyJson.mastlib) {
+					if (lib === filename) {	
+						this.reload();
+					}
+				}
 			}
 		});
 		this.watchers.push(w2);
@@ -581,17 +596,9 @@ export class MissionCache {
 	 * @param p A {@link PyFile PyFile} that should be added to {@link MissionCache.pyFileCache MissionCache.pyFileCache}
 	 */
 	addSbsPyFile(p:PyFile) {
-		// if (!p.uri.includes("sbs_utils")) {
-		// 	//// Don't want non-sbs_utils stuff in the py file cache
-		// 	debug("ERROR: Py file added to wrong part of cache: " + p.uri);
-		// }
-		// let test = false;
-		// if (p.uri.includes("ship_data")) {
-		// 	test = true;
-		// }
+		// If it's already there, return
 		for (const f of this.pyFileCache) {
 			if (fixFileName(f.uri) === fixFileName(p.uri)) {
-				// if (test) debug("Cancelling???");
 				return;
 			}
 		}
@@ -610,15 +617,15 @@ export class MissionCache {
 		// ALWAYS go over the existing globals for the new file
 		for (const g of this.sbsGlobals) {
 			this.tryApplyFileAsGlobal(p, g);
-			
 		}
+
+		// Now add it to the cache
 		this.pyFileCache.push(p);
 	}
 
 	tryApplyFileAsGlobal(f:PyFile, g:string[]) {
 		if (f.isGlobal) return;
 		if (g[0] === "sbs") {
-			// if (f.uri.includes("sbs.py"))
 			// Treat sbs differently
 			return;
 		}
@@ -630,14 +637,14 @@ export class MissionCache {
 				// TODO: Issue #39 is caused by this?
 				
 				const newDefaults: Function[] = [];
-				debug(f.defaultFunctions);
+				// debug(f.defaultFunctions);
 				for (const func of f.defaultFunctions) {
 					const n = func.copy();
 					n.name = g[1] + "_" + func.name;
 					newDefaults.push(n);
 				}
 				f.defaultFunctions = newDefaults;
-				debug(f.defaultFunctions);
+				// debug(f.defaultFunctions);
 			}
 		}
 	}
