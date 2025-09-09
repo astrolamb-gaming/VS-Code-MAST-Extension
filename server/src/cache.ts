@@ -450,7 +450,7 @@ export class MissionCache {
 
 		let ret = await connection.window.showWarningMessage(
 			"No '__init__.mast' file found in this folder.",
-			{title: "Add to " + newFile + " to __init__.mast"},
+			{title: "Add " + newFile + " to __init__.mast"},
 			{title: "Don't add"}
 			//{title: hide} // TODO: Add this later!!!!!!
 		);

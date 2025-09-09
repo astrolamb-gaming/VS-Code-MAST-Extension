@@ -427,7 +427,7 @@ class MissionCache {
     }
     // TODO: When a file is opened, check if it is in __init__.mast. If not, prompt the user to add it.
     async tryAddToInitFile(folder, newFile) {
-        let ret = await server_1.connection.window.showWarningMessage("No '__init__.mast' file found in this folder.", { title: "Add to " + newFile + " to __init__.mast" }, { title: "Don't add" }
+        let ret = await server_1.connection.window.showWarningMessage("No '__init__.mast' file found in this folder.", { title: "Add " + newFile + " to __init__.mast" }, { title: "Don't add" }
         //{title: hide} // TODO: Add this later!!!!!!
         );
         if (ret === undefined)
