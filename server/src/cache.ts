@@ -36,7 +36,7 @@ export class MissionCache {
 	// They apply to ALL files in the mission folder.
 	missionPyModules: PyFile[] = [];
 	missionMastModules: MastFile[] = [];
-	missionClasses: ClassObject[] = [];
+	// missionClasses: ClassObject[] = [];
 	// missionDefaultFunctions: Function[] = [];
 
 
@@ -108,7 +108,7 @@ export class MissionCache {
 		debug("Starting MissionCache.load()");
 		showProgressBar(true);
 		// (re)set all the arrays before (re)populating them.
-		this.missionClasses = [];
+		// this.missionClasses = [];
 		// this.missionDefaultFunctions = [];
 		this.missionMastModules = [];
 		this.missionPyModules = [];
@@ -455,7 +455,7 @@ export class MissionCache {
 			//{title: hide} // TODO: Add this later!!!!!!
 		);
 		if (ret === undefined) return true;
-		if (ret.title === "Add to " + newFile + " to __init__.mast") {
+		if (ret.title === "Add " + newFile + " to __init__.mast") {
 			try {
 				fs.writeFile(path.join(folder,"__init__.mast"), "\nimport " + newFile, {flag: "a+"}, ()=>{});
 			} catch (e) {
@@ -617,7 +617,7 @@ export class MissionCache {
 		}
 		// Only do this if the file doesn't exist yet
 		this.missionPyModules.push(p);
-		this.missionClasses = this.missionClasses.concat(p.classes);
+		// this.missionClasses = this.missionClasses.concat(p.classes);
 	}
 
 	/**
@@ -868,7 +868,7 @@ export class MissionCache {
 	 */
 	getPossibleMethods(name:string): Function[] {
 		let list:Function[] = [];
-		for (const c of this.missionClasses) {
+		for (const c of this.getClasses()) {
 			for (const m of c.methods) {
 				if (m.name === name) {
 					list.push(m);
@@ -1064,7 +1064,7 @@ export class MissionCache {
 					ci.push(f.buildCompletionItem());
 				}
 			}
-			for (const c of this.missionClasses) {
+			for (const c of this.getClasses()) {
 				ci.push(c.buildCompletionItem());
 			}
 			for (const p of this.pyFileCache) {
@@ -1077,7 +1077,7 @@ export class MissionCache {
 			return ci;
 		}
 		// I don't think this is ever used.
-		for (const c of this.missionClasses) {
+		for (const c of this.getClasses()) {
 			if (c.name === _class) {
 				debug(c.name + " is the class we're looking for.")
 				debug(c.getMethodCompletionItems());
@@ -1111,7 +1111,7 @@ export class MissionCache {
 			}
 		}
 		if (isClassMethod) {
-			for (const c of this.missionClasses) {
+			for (const c of this.getClasses()) {
 				for (const m of c.methods) {
 					if (m.name === name) {
 						return m.buildSignatureInformation();

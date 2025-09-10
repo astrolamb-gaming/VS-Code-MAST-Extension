@@ -182,7 +182,7 @@ function getVariableTypes(typeEvalStr, uri) {
     // 	}
     // }
     // Is this a class, or a class function?
-    for (const co of cache.missionClasses) {
+    for (const co of cache.getClasses()) {
         if (typeEvalStr.startsWith(co.name)) {
             // Check if it's a static method of the class
             for (const func of co.methods) {

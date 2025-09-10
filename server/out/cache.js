@@ -36,7 +36,7 @@ class MissionCache {
         // They apply to ALL files in the mission folder.
         this.missionPyModules = [];
         this.missionMastModules = [];
-        this.missionClasses = [];
+        // missionClasses: ClassObject[] = [];
         // missionDefaultFunctions: Function[] = [];
         // These are for the files specific to this mission.
         /**
@@ -97,7 +97,7 @@ class MissionCache {
         (0, console_1.debug)("Starting MissionCache.load()");
         (0, server_1.showProgressBar)(true);
         // (re)set all the arrays before (re)populating them.
-        this.missionClasses = [];
+        // this.missionClasses = [];
         // this.missionDefaultFunctions = [];
         this.missionMastModules = [];
         this.missionPyModules = [];
@@ -432,7 +432,7 @@ class MissionCache {
         );
         if (ret === undefined)
             return true;
-        if (ret.title === "Add to " + newFile + " to __init__.mast") {
+        if (ret.title === "Add " + newFile + " to __init__.mast") {
             try {
                 fs.writeFile(path.join(folder, "__init__.mast"), "\nimport " + newFile, { flag: "a+" }, () => { });
             }
@@ -595,7 +595,7 @@ class MissionCache {
         }
         // Only do this if the file doesn't exist yet
         this.missionPyModules.push(p);
-        this.missionClasses = this.missionClasses.concat(p.classes);
+        // this.missionClasses = this.missionClasses.concat(p.classes);
     }
     /**
      * Add a py file to the sbs_utils cache (stuff that's in sbs_utils)
@@ -837,7 +837,7 @@ class MissionCache {
      */
     getPossibleMethods(name) {
         let list = [];
-        for (const c of this.missionClasses) {
+        for (const c of this.getClasses()) {
             for (const m of c.methods) {
                 if (m.name === name) {
                     list.push(m);
@@ -1027,7 +1027,7 @@ class MissionCache {
                     ci.push(f.buildCompletionItem());
                 }
             }
-            for (const c of this.missionClasses) {
+            for (const c of this.getClasses()) {
                 ci.push(c.buildCompletionItem());
             }
             for (const p of this.pyFileCache) {
@@ -1040,7 +1040,7 @@ class MissionCache {
             return ci;
         }
         // I don't think this is ever used.
-        for (const c of this.missionClasses) {
+        for (const c of this.getClasses()) {
             if (c.name === _class) {
                 (0, console_1.debug)(c.name + " is the class we're looking for.");
                 (0, console_1.debug)(c.getMethodCompletionItems());
@@ -1073,7 +1073,7 @@ class MissionCache {
             }
         }
         if (isClassMethod) {
-            for (const c of this.missionClasses) {
+            for (const c of this.getClasses()) {
                 for (const m of c.methods) {
                     if (m.name === name) {
                         return m.buildSignatureInformation();
