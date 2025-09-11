@@ -262,6 +262,10 @@ class MissionCache {
         }
         this.watchers = [];
     }
+    /**
+     * Load globals from the python shell and builtins.py (stuff like len() and list())
+     * @param globals
+     */
     async loadPythonGlobals(globals) {
         let go = await (0, globals_1.initializeGlobals)();
         (0, server_1.showProgressBar)(true);
@@ -455,6 +459,7 @@ class MissionCache {
             globals = await (0, globals_1.initializeGlobals)();
         }
         (0, console_1.debug)(uri);
+        // Don't load modules if it's the sbs_utils folder?
         if (uri.includes("sbs_utils")) {
             (0, console_1.debug)("sbs nope");
         }

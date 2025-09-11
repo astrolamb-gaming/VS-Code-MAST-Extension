@@ -4,11 +4,12 @@ import * as path from 'path';
 import { integer, Range, CompletionItem } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { FileCache, asClasses, prepend } from '../data';
-import { ClassObject } from '../data/class';
+import { ClassObject, getRegExMatch } from '../data/class';
 import { Function } from '../data/function';
 import { fixFileName } from '../fileFunctions';
 import { Word, parseWords } from '../tokens/words';
 import { parseSignalsInFile, SignalInfo } from '../tokens/signals';
+import { CRange, getMatchesForRegex, replaceRegexMatchWithUnderscore } from '../tokens/comments';
 
 
 export class PyFile extends FileCache {
@@ -50,6 +51,13 @@ export class PyFile extends FileCache {
 		this.classes = [];
 		this.defaultFunctions = [];
 		this.variableNames = [];
+
+		// Remove comments
+		let comments: CRange[] = getMatchesForRegex(/^[ \t]*#.*$/gm, text);
+		for (const c of comments) {
+			text = replaceRegexMatchWithUnderscore(text, c);
+		}
+
 		//if (!source.endsWith("timers.py")) return;
 		// super.parseVariables(text); We don't actually want to look for variable names in python files
 		// Instead of just assuming that there is always another class following, it could be a function, so we need to account for this.
@@ -118,7 +126,12 @@ export class PyFile extends FileCache {
 					}
 				} else {
 					// Only add to class list if it's actually a class (or sbs)
-					if (co.methods.length !== 0) this.classes.push(co);
+					if (co.methods.length !== 0) {
+						this.classes.push(co);
+					} else {
+						debug(co.name + " has no methods...")
+					}
+					// move the location of the method to use the start of the method's NAME instead of def...
 					for (const m of co.methods) {
 						m.startIndex = start + t.indexOf("def " + m.name) + 4;
 						m.location = {

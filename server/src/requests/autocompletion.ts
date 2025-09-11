@@ -564,6 +564,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		debug(iStr);
 		// First we check if a class is being referenced.
 		const classes = cache.getClasses();
+		// debug(classes)
 		for (const c of classes) {
 			if (c.name === "sbs") {
 				debug("THIS IS SBS");
@@ -581,12 +582,14 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			}
 		}
 		// Then we assume it's an object, but we can't determine the type, so we iterate over all the classes.
+		debug("It's an object, but don't know what class")
 		for (const c of classes) {
 			// debug(c.name);
 			if (asClasses.includes(c.name)) continue;
 			if (c.name.includes("Route")) continue;
 			if (c.name === "event") continue;
 			if (c.name === "sim") continue;
+			debug(c.name);
 			for (const m of c.methods) {
 				// Don't want to include constructors, this is for properties
 				if (m.functionType === "constructor") continue;
@@ -604,7 +607,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			}
 			// Add properties.
 			let props = c.buildVariableCompletionItemList();
-			debug(props);
+			// debug(props);
 			ci = ci.concat(props);
 		}
 		return ci;

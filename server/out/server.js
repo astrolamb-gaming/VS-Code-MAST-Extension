@@ -28,6 +28,7 @@ const cache_1 = require("./cache");
 const references_1 = require("./requests/references");
 const renameSymbol_1 = require("./requests/renameSymbol");
 const words_1 = require("./tokens/words");
+const PyFile_1 = require("./files/PyFile");
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 exports.connection = (0, node_1.createConnection)(node_1.ProposedFeatures.all);
@@ -153,6 +154,8 @@ exports.connection.onInitialized(async () => {
     let mastConfig = await exports.connection.workspace.getConfiguration("mastLanguageServer");
     allowMultipleCaches = mastConfig.allowMultipleCaches;
     cacheTimeout = mastConfig.cacheTimeout;
+    let p = new PyFile_1.PyFile("G:\\Artemis Installs\\Cosmos-1-1-7\\data\\missions\\sbs_utils\\sbs_utils\\agent.py");
+    (0, console_1.debug)(p);
     // connection.workspace.getWorkspaceFolders().then((folders)=>{
     // 	debug(folders);
     // 	// progressUpdate(100);

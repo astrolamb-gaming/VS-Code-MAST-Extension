@@ -117,6 +117,7 @@ export class MissionCache {
 		this.mediaLabels = [];
 		this.mastFileCache = [];
 		this.storyJson = new StoryJson(path.join(this.missionURI,"story.json"));
+		
 		await this.storyJson.readFile()
 			// .then(()=>{
 				showProgressBar(true);
@@ -277,6 +278,10 @@ export class MissionCache {
 		}
 		this.watchers = [];
 	}
+	/**
+	 * Load globals from the python shell and builtins.py (stuff like len() and list())
+	 * @param globals 
+	 */
 	async loadPythonGlobals(globals: string[][]) {
 		let go = await initializeGlobals();
 		showProgressBar(true);
@@ -477,6 +482,7 @@ export class MissionCache {
 			globals = await initializeGlobals();
 		}
 		debug(uri);
+		// Don't load modules if it's the sbs_utils folder?
 		if (uri.includes("sbs_utils")) {
 			debug("sbs nope");
 		}

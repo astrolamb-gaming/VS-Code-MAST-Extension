@@ -136,6 +136,7 @@ export class StoryJson {
 	 */
 	async readFile() {
 		showProgressBar(true);
+		// This prevents loading story.json from sbs_utils I think
 		if (path.dirname(this.uri).endsWith("sbs_utils")) return; // Why is this here? Not actually sure, but there must have been a reason...
 		if (!fs.existsSync(this.uri)) {
 			let generated = await this.storyJsonNotFoundError();

@@ -28,7 +28,7 @@ class Function {
         this.className = className;
         this.sourceFile = sourceFile;
         this.parameters = [];
-        const functionName = /(?:def\s)(.+?)(?:\()/gm; ///((def\s)(.+?)\()/gm; // Look for "def functionName(" to parse function names.
+        const functionName = /(?:def)[ \t]*(\w+)[ \t]*(?:\()/g; ///((def\s)(.+?)\()/gm; // Look for "def functionName(" to parse function names.
         //let className : RegExp = /class (.+?):/gm; // Look for "class ClassName:" to parse class names.
         const functionParam = /\((.*?)\)/ms; // Find parameters of function, if any.
         // Could replace functionParam regex with : (?:def\s.+?\()(.*?)(?:\)(:|\s*->))

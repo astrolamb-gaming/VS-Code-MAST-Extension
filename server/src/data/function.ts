@@ -75,7 +75,7 @@ export class Function implements IFunction {
 		this.className = className;
 		this.sourceFile = sourceFile;
 		this.parameters = [];
-		const functionName : RegExp = /(?:def\s)(.+?)(?:\()/gm; ///((def\s)(.+?)\()/gm; // Look for "def functionName(" to parse function names.
+		const functionName : RegExp = /(?:def)[ \t]*(\w+)[ \t]*(?:\()/g; ///((def\s)(.+?)\()/gm; // Look for "def functionName(" to parse function names.
 		//let className : RegExp = /class (.+?):/gm; // Look for "class ClassName:" to parse class names.
 		const functionParam : RegExp = /\((.*?)\)/ms; // Find parameters of function, if any.
 		// Could replace functionParam regex with : (?:def\s.+?\()(.*?)(?:\)(:|\s*->))

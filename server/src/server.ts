@@ -47,6 +47,7 @@ import { getCache } from './cache';
 import { onReferences } from './requests/references';
 import { onRenameRequest } from './requests/renameSymbol';
 import { getWordRangeAtPosition } from './tokens/words';
+import { PyFile } from './files/PyFile';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -197,6 +198,9 @@ connection.onInitialized(async () => {
 	let mastConfig = await connection.workspace.getConfiguration("mastLanguageServer")
 	allowMultipleCaches = mastConfig.allowMultipleCaches;
 	cacheTimeout = mastConfig.cacheTimeout;
+
+	let p = new PyFile("G:\\Artemis Installs\\Cosmos-1-1-7\\data\\missions\\sbs_utils\\sbs_utils\\agent.py");
+	debug(p);
 	
 	// connection.workspace.getWorkspaceFolders().then((folders)=>{
 	// 	debug(folders);

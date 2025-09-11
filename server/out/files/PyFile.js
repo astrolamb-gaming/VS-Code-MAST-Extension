@@ -11,6 +11,7 @@ const function_1 = require("../data/function");
 const fileFunctions_1 = require("../fileFunctions");
 const words_1 = require("../tokens/words");
 const signals_1 = require("../tokens/signals");
+const comments_1 = require("../tokens/comments");
 class PyFile extends data_1.FileCache {
     constructor(uri, fileContents = "") {
         // if (fileContents === "") debug("pyFile Contents empty for " + uri)
@@ -53,6 +54,11 @@ class PyFile extends data_1.FileCache {
         this.classes = [];
         this.defaultFunctions = [];
         this.variableNames = [];
+        // Remove comments
+        let comments = (0, comments_1.getMatchesForRegex)(/^[ \t]*#.*$/gm, text);
+        for (const c of comments) {
+            text = (0, comments_1.replaceRegexMatchWithUnderscore)(text, c);
+        }
         //if (!source.endsWith("timers.py")) return;
         // super.parseVariables(text); We don't actually want to look for variable names in python files
         // Instead of just assuming that there is always another class following, it could be a function, so we need to account for this.
@@ -116,8 +122,13 @@ class PyFile extends data_1.FileCache {
                 }
                 else {
                     // Only add to class list if it's actually a class (or sbs)
-                    if (co.methods.length !== 0)
+                    if (co.methods.length !== 0) {
                         this.classes.push(co);
+                    }
+                    else {
+                        (0, console_1.debug)(co.name + " has no methods...");
+                    }
+                    // move the location of the method to use the start of the method's NAME instead of def...
                     for (const m of co.methods) {
                         m.startIndex = start + t.indexOf("def " + m.name) + 4;
                         m.location = {
