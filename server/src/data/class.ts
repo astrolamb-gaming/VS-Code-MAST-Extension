@@ -25,7 +25,7 @@ export class ClassObject {
 		
 		// TODO: Could pull the class parent and interfaces (if any). Would this be useful?
 		this.name = getRegExMatch(raw,className).replace("class ","").replace(/(\(.*?\))?:/,"");
-		debug(this.name);
+		// debug(this.name);
 		
 		for (const n of replaceNames) {
 			if (this.name === n[0]) {
@@ -127,7 +127,7 @@ export class ClassObject {
 		while (m = wholeFunction.exec(raw)) {
 			blockIndices.push(m.index);
 		}
-		debug(blockIndices)
+		// debug(blockIndices)
 		if (blockIndices.length === 0) {
 			return fList;
 		}

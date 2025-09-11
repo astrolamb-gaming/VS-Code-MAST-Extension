@@ -5,7 +5,6 @@ exports.getRegExMatch = getRegExMatch;
 const vscode_languageserver_1 = require("vscode-languageserver");
 const data_1 = require("../data");
 const function_1 = require("./function");
-const console_1 = require("console");
 class ClassObject {
     constructor(raw, sourceFile) {
         this.methods = [];
@@ -18,7 +17,7 @@ class ClassObject {
         let comment = /((\"){3,3}(.*?)(\"){3,3})|(\.\.\.)/m;
         // TODO: Could pull the class parent and interfaces (if any). Would this be useful?
         this.name = getRegExMatch(raw, className).replace("class ", "").replace(/(\(.*?\))?:/, "");
-        (0, console_1.debug)(this.name);
+        // debug(this.name);
         for (const n of data_1.replaceNames) {
             if (this.name === n[0]) {
                 this.name = n[1];
@@ -106,7 +105,7 @@ class ClassObject {
         while (m = wholeFunction.exec(raw)) {
             blockIndices.push(m.index);
         }
-        (0, console_1.debug)(blockIndices);
+        // debug(blockIndices)
         if (blockIndices.length === 0) {
             return fList;
         }
