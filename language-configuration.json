@@ -1,6 +1,8 @@
 {
     "comments": {
-        "lineComment": "#",
+        "lineComment": {
+            "comment": "#"
+        },
         "blockComment": [
             "/*",
             "*/"
@@ -265,6 +267,13 @@
             "action": {
                 "indent": "indent"
             }
+        },
+        {
+            "beforeText": "^[ \\t]*#region.*?$",
+            "action": {
+                "appendText": "#endregion",
+                "indent": "none",
+            },
         }
     ]
   }
