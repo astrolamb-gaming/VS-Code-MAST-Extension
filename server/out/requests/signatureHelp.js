@@ -7,6 +7,7 @@ const cache_1 = require("./../cache");
 const comments_1 = require("./../tokens/comments");
 const hover_1 = require("./hover");
 const tokens_1 = require("./../tokens/tokens");
+const autocompletion_1 = require("./autocompletion");
 function onSignatureHelp(_textDocPos, text) {
     let sh = {
         signatures: []
@@ -26,7 +27,7 @@ function onSignatureHelp(_textDocPos, text) {
     const pos = text.offsetAt(_textDocPos.position);
     const startOfLine = pos - _textDocPos.position.character;
     const iStr = t.substring(startOfLine, pos);
-    const line = (0, hover_1.getCurrentLineFromTextDocument)(_textDocPos.position, text);
+    // const line = getCurrentLineFromTextDocument(_textDocPos.position,text);
     // Calculate which parameter is the active one
     const func = getCurrentMethodName(iStr);
     (0, console_1.debug)(func);
@@ -37,30 +38,35 @@ function onSignatureHelp(_textDocPos, text) {
     let obj = /{.*?(}|$)/gm;
     //TODO: I THINK this will handle nested functions... test later
     // let obj = /(\w+\(.*\))|({.*?(}|$))/gm;
-    let isClassMethodRes = (0, tokens_1.isClassMethod)(line, fstart);
+    // let isClassMethodRes = isClassMethod(line, fstart);
+    let isClassMethodRes = (0, tokens_1.isClassMethod)(iStr, fstart);
     // Check for the current function name and get SignatureInformation for that function.
     /**The {@link SignatureInformation SignatureInformation} for this function. */
     let sig = cache.getSignatureOfMethod(func, isClassMethodRes);
+    /**The name of the current argument */
+    let arg = "";
+    // Check if there's a named argument
+    arg = (0, autocompletion_1.findNamedArg)(iStr);
+    if (arg !== undefined && sig !== undefined && sig.parameters) {
+        for (const s in sig.parameters) {
+            if (sig.parameters[s].label === arg) {
+                // If a named arg is found, set the arg name and return
+                sig.activeParameter = parseInt(s);
+                sh.signatures.push(sig);
+                return sh;
+            }
+        }
+    }
+    // Currently probably never runs, but you never know
     /** Here we get rid of some things that could cause parsing issues.
      We replace fstrings and nested functions with _, and anythnig within quotes to just empty quotes.
      This eliminates commas that mess with the current parameter, as well as functions etc in fstrings */
     wholeFunc = wholeFunc.replace(obj, "_").replace(/\".*?\"/, '""');
-    const test = /(\w+)\=/m;
-    /**The name of the current argument */
-    let arg = "";
     const arr = wholeFunc.split(",");
     /** The current array index */
     const pNum = arr.length - 1;
-    // Check if there's a named argument
-    const match = arr[pNum].match(test);
-    if (match) {
-        // If a named arg is found, set the arg name
-        arg = match[1];
-    }
-    else {
-        sh.activeParameter = pNum;
-        arg = arr[pNum];
-    }
+    sh.activeParameter = pNum;
+    arg = arr[pNum];
     /**The {@link Function Function} in question */
     let method = cache.getMethod(func);
     // TODO:

@@ -100,6 +100,10 @@ export class MissionCache {
 	}
 
 	async load() {
+		if (this.missionURI === "") {
+			debug("Mission folder not valid: " + this.missionURI + "\nNot loading cache.")
+			return;
+		}
 		this.endWatchers();
 		this.storyJsonLoaded = false;
 		this.pyInfoLoaded = false;
@@ -120,40 +124,40 @@ export class MissionCache {
 		
 		await this.storyJson.readFile()
 			// .then(()=>{
-				showProgressBar(true);
-				debug("pyFileCache length: " + this.pyFileCache.length)
-				await this.modulesLoaded();
-				// .then(()=>{
-					debug("Modules loaded for " + this.missionName);
-					// showProgressBar(false);
-					this.storyJsonLoaded = true;
+		showProgressBar(true);
+		debug("pyFileCache length: " + this.pyFileCache.length)
+		await this.modulesLoaded();
+		// .then(()=>{
+		debug("Modules loaded for " + this.missionName);
+		// showProgressBar(false);
+		this.storyJsonLoaded = true;
 
-					// Now we do the python checks for the MastGlobals that don't exist already
-					let globals: string[][] = [];
-					for (const p of this.pyFileCache) {
-						if (p.globals.length > 0) {
-							globals = globals.concat(p.globals)
-						}
-					}
-					await this.loadPythonGlobals(globals)
-					// .then((info)=>{
-						debug("Loaded globals")
-						this.pyInfoLoaded = true;
-					// });
-					debug("New pyFileCache length: " + this.pyFileCache.length)
+		// Now we do the python checks for the MastGlobals that don't exist already
+		let globals: string[][] = [];
+		for (const p of this.pyFileCache) {
+			if (p.globals.length > 0) {
+				globals = globals.concat(p.globals)
+			}
+		}
+		await this.loadPythonGlobals(globals)
+		// .then((info)=>{
+		debug("Loaded globals")
+		this.pyInfoLoaded = true;
+		// });
+		debug("New pyFileCache length: " + this.pyFileCache.length)
 				// })
 			// });
 		let p = await loadSbs()//.then(async (p)=>{
-			showProgressBar(true);
-			if (p !== null) {
-				this.addMissionPyFile(p);
-				// this.missionPyModules.push(p);
-				// debug("addding " + p.uri);
-				// this.missionClasses = this.missionClasses.concat(p.classes);
-			}
-			debug("Finished loading sbs_utils for " + this.missionName);
-			// showProgressBar(false);
-			this.sbsLoaded = true;
+		showProgressBar(true);
+		if (p !== null) {
+			this.addMissionPyFile(p);
+			// this.missionPyModules.push(p);
+			// debug("addding " + p.uri);
+			// this.missionClasses = this.missionClasses.concat(p.classes);
+		}
+		debug("Finished loading sbs_utils for " + this.missionName);
+		// showProgressBar(false);
+		this.sbsLoaded = true;
 			// await this.awaitLoaded();
 		// });
 		this.checkForCacheUpdates();

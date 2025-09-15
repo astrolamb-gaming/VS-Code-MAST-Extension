@@ -87,6 +87,22 @@ export function parseVariables(doc: TextDocument): Variable[] {
 		}
 		ret.push(var1);
 	}
+	const buttonStyles = /=(\$\w+)[\t ](.*?)$/gm;
+	while (m = buttonStyles.exec(text)) {
+		const v = m[1];
+		const start = m.index + m[0].indexOf(v);
+		const end = v.length + start;
+		const range: Range = { start: doc.positionAt(start), end: doc.positionAt(end)}
+		// const line = getCurrentLineFromTextDocument(range.start,doc);
+		let var1: Variable = {
+			name: v,
+			range: range,
+			doc: m[2],
+			equals: "Button Style",
+			types: ["string"]
+		}
+		ret.push(var1);
+	}
 	const guiVar = /var[ \t]*=[ \t]*[\"\'](\w+)[\"\']/g;
 	while (m = guiVar.exec(text)) {
 		const v = m[1];

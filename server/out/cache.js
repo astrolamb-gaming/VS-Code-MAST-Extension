@@ -89,6 +89,10 @@ class MissionCache {
         // this.startWatchers();
     }
     async load() {
+        if (this.missionURI === "") {
+            (0, console_1.debug)("Mission folder not valid: " + this.missionURI + "\nNot loading cache.");
+            return;
+        }
         this.endWatchers();
         this.storyJsonLoaded = false;
         this.pyInfoLoaded = false;

@@ -126,7 +126,7 @@ class PyFile extends data_1.FileCache {
                         this.classes.push(co);
                     }
                     else {
-                        (0, console_1.debug)(co.name + " has no methods...");
+                        // debug(co.name + " has no methods...")
                     }
                     // move the location of the method to use the start of the method's NAME instead of def...
                     for (const m of co.methods) {

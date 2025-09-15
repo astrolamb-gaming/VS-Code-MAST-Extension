@@ -1,5 +1,5 @@
 import { debug } from 'console';
-import { CompletionItem, CompletionItemKind, integer, MarkupContent, SignatureInformation, TextDocumentPositionParams } from 'vscode-languageserver';
+import { CompletionItem, CompletionItemKind, integer, MarkupContent, ParameterInformation, SignatureHelpParams, SignatureInformation, TextDocumentPositionParams } from 'vscode-languageserver';
 import { buildLabelDocs, getLabelMetadataKeys, getLabelsAsCompletionItems, getMainLabelAtPos } from './../tokens/labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { asClasses, replaceNames } from './../data';
@@ -9,7 +9,7 @@ import { getCache } from './../cache';
 import path = require('path');
 import { fixFileName, getFilesInDir } from './../fileFunctions';
 import { getGlobals } from './../globals';
-import { getCurrentMethodName } from './signatureHelp';
+import { getCurrentMethodName, onSignatureHelp } from './signatureHelp';
 import { getKeysAsCompletionItem, getRolesAsCompletionItem, getRolesForFile } from './../tokens/roles';
 import { variableModifiers } from './../tokens/variables';
 import { isClassMethod, isFunction } from './../tokens/tokens';
@@ -181,6 +181,37 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// }
 
 
+	/// Piggy-backing on the Signature Help logic, since it works better than this ever did...
+	const params: SignatureHelpParams = {
+		textDocument: _textDocumentPosition.textDocument,
+		position: _textDocumentPosition.position
+	}
+	const sig = onSignatureHelp(params, text);
+	let currentParam:ParameterInformation|undefined;
+	let currentParamName: string = "";
+	let func: string = "";
+	// debug(sig);
+	if (sig && sig.signatures) {
+		let curSig = sig.signatures[0];
+		debug(curSig)
+		if (curSig.parameters) {
+			func = curSig.label;
+			// debug(func)
+			if (curSig.activeParameter == undefined) {
+				curSig.activeParameter = 0
+				// debug(currentParamName)
+			}
+			currentParam = curSig.parameters[curSig.activeParameter]
+			currentParamName = currentParam.label as string
+			
+		}
+	}
+
+	debug("arg: " + currentParamName)
+	debug("func: " + func)
+
+
+
 //#region In-String Completions
 	// This is to get rid of " or ' at end so we don't have to check for both
 	const blobStr = iStr.substring(0,iStr.length-1);
@@ -189,7 +220,8 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// TODO: this doesn't account for f-strings....
 	if (countMatches(iStr,/[\"']/g) % 2 !== 0 || iStr.endsWith("\"") || iStr.endsWith("'") || isInString(text,pos)) {
 		debug("Is in string (probably)")
-		if (blobStr.endsWith("signal_emit(")) {
+		// if (blobStr.endsWith("signal_emit(")) {
+		if (func === "signal_emit") {
 			const signals = cache.getSignals();
 			return buildSignalInfoListAsCompletionItems(signals);
 		}
@@ -211,7 +243,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			}
 
 			// Now for inventory keys
-			if (getCurrentMethodName(iStr).includes("inventory")) {
+			if (func.includes("inventory")) {
 				let keys = cache.getKeys(text.uri);
 				debug(keys);
 				ci = getKeysAsCompletionItem(keys);
@@ -220,21 +252,22 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 
 			// Here we check for stylestrings, art_ids, etc.
 			
-			const func = getCurrentMethodName(iStr);
-			const sig: SignatureInformation|undefined = getCache(text.uri).getSignatureOfMethod(func);
-			const fstart = iStr.lastIndexOf(func);
-			const wholeFunc = iStr.substring(fstart,iStr.length);
-			const arr = wholeFunc.split(",");
-			let named = /(\w+)\=$/m;
-			let test = blobStr.match(named);
+			// const func = getCurrentMethodName(iStr);
+			// const sig: SignatureInformation|undefined = getCache(text.uri).getSignatureOfMethod(func);
+			// const fstart = iStr.lastIndexOf(func);
+			// const wholeFunc = iStr.substring(fstart,iStr.length);
+			// const arr = wholeFunc.split(",");
+			// let named = /(\w+)\=$/m;
+			// let test = blobStr.match(named);
 			let args = [];
-			if (test) {
-				args = [test[1]];
-			} else {
-				args = getCurrentArgumentNames(iStr,text);
-			}
-			debug("Current function: " + func);
-			debug("arg: " + args);
+			// if (test) {
+			// 	args = [test[1]];
+			// } else {
+			// 	args = getCurrentArgumentNames(iStr,text);
+			// }
+			// debug("Current function: " + func);
+			// debug("arg: " + args);
+			args = [currentParamName];
 			for (const a of args) {
 				if (a === "role" || a === "roles") {
 					debug("Getting roles")
@@ -246,6 +279,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				}
 				if (a === "style") {
 					debug("Style found; iterating over widget stylestrings");
+					// First we iterate over the stylestrings in the the txt file, these are SBS functions
 					for (const s of getGlobals().widget_stylestrings) {
 						if (func === s.function) {
 							const c = {
@@ -262,6 +296,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 						}
 					}
 					if (ci.length > 0) return ci;
+					// Then we do generic ones for MAST functions.
 					for (const s of cache.styleDefinitions) {
 						const c: CompletionItem = {
 							label: s,
@@ -616,16 +651,18 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	const cm = getCurrentMethodName(iStr)
 	let wholeFunc = iStr.substring(iStr.lastIndexOf(cm));
 	wholeFunc = wholeFunc.substring(wholeFunc.indexOf("("));
-	if (isFunction(iStr, cm)) {
+	if (sig) {
+	// if (isFunction(iStr, cm)) {
 		// Check for named argument
 		let named = /(\w+)\=$/m;
 		let test = iStr.match(named);
 		let args = [];
+		args = [currentParamName]
 		if (test) {
-			args = [test[1]];
+			// args = [test[1]];
 		} else {
-			args = getCurrentArgumentNames(iStr,text);
-
+			// args = getCurrentArgumentNames(iStr,text);
+			
 			// Add the argument names
 			// Don't want to do this with a named argument
 			const argNames = cache.getMethod(cm);
@@ -895,17 +932,34 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	return ci;
 }
 
+/**
+ * Get the name of the current named argument, if it exists.
+ * @param str The string from the start of the line until the cursor's current position.
+ * @returns The name of the arguemnt, or undefined.
+ */
+export function findNamedArg(str:string): string|undefined {
+	let ret = undefined;
+	let name = /(?:[^\w])(\w+)=/g;
+	let rm = str.match(name);
+	let m: RegExpExecArray|null;
+	while(m = name.exec(str)) {
+		// Go until the last index
+		ret = m[1];
+	}
+	return ret;
+}
+
+
 export function getCurrentArgumentNames(iStr:string, doc:TextDocument): string[] {
 	let ret: string[] = [];
-	if (iStr.endsWith("=")) {
-		debug(iStr)
-		let name = /(?:[^\w])(\w+)=$/m;
-		let rm = iStr.match(name);
-		if (rm !== null) {
-			ret.push(rm[1]);
-			return ret;
-		}
+
+	let r = findNamedArg(iStr)
+	if (r !== undefined) {
+		ret.push(r);
+		return ret;
 	}
+
+	// Otherwise we have to find the function name, remove commas in strings, figure out which ordered argument it is, etc.
 	const func = getCurrentMethodName(iStr);
 	const fstart = iStr.lastIndexOf(func);
 	let wholeFunc = iStr.substring(fstart,iStr.length);

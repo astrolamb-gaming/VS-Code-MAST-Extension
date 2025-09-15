@@ -129,7 +129,7 @@ export class PyFile extends FileCache {
 					if (co.methods.length !== 0) {
 						this.classes.push(co);
 					} else {
-						debug(co.name + " has no methods...")
+						// debug(co.name + " has no methods...")
 					}
 					// move the location of the method to use the start of the method's NAME instead of def...
 					for (const m of co.methods) {

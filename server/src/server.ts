@@ -199,8 +199,8 @@ connection.onInitialized(async () => {
 	allowMultipleCaches = mastConfig.allowMultipleCaches;
 	cacheTimeout = mastConfig.cacheTimeout;
 
-	let p = new PyFile("G:\\Artemis Installs\\Cosmos-1-1-7\\data\\missions\\sbs_utils\\sbs_utils\\agent.py");
-	debug(p);
+	// let p = new PyFile("G:\\Artemis Installs\\Cosmos-1-1-7\\data\\missions\\sbs_utils\\sbs_utils\\agent.py");
+	// debug(p);
 	
 	// connection.workspace.getWorkspaceFolders().then((folders)=>{
 	// 	debug(folders);
@@ -467,10 +467,6 @@ connection.onCompletion(
 			// ci = [...new Map(ci.map(v => [v.insertText||v.label, v])).values()];
 			//This allows for items with the same label, but excludes duplicates
 			ci = [...new Map(ci.map((v)=>[v.documentation+v.label+v.kind+v.detail, v])).values()]
-			if (ci[0].label.startsWith("ship_data")) {
-				debug("--------SHIP DATA-------")
-				debug(ci);
-			}
 			return ci;
 		} catch (e) {
 			debug("onCompletion failure\n" + e);

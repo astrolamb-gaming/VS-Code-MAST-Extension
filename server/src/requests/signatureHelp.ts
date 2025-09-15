@@ -5,6 +5,9 @@ import { getCache } from './../cache';
 import { CRange, replaceRegexMatchWithUnderscore } from './../tokens/comments';
 import { getCurrentLineFromTextDocument, getHoveredSymbol } from './hover';
 import { isClassMethod } from './../tokens/tokens';
+import { findNamedArg } from './autocompletion';
+
+
 
 export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocument): SignatureHelp | undefined {
 	let sh : SignatureHelp = {
@@ -27,47 +30,56 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 	// Calculate the position in the text's string value using the Position value.
 	const pos : integer = text.offsetAt(_textDocPos.position);
 	const startOfLine : integer = pos - _textDocPos.position.character;
+
+
 	const iStr : string = t.substring(startOfLine,pos);
-	const line = getCurrentLineFromTextDocument(_textDocPos.position,text);
+	// const line = getCurrentLineFromTextDocument(_textDocPos.position,text);
+	
+
 	// Calculate which parameter is the active one
 	const func = getCurrentMethodName(iStr);
 	debug(func)
 	if (func === "") return;
 	const fstart = iStr.lastIndexOf(func);
-	
 	let wholeFunc = iStr.substring(fstart,iStr.length);
+	
+	
 	let obj = /{.*?(}|$)/gm;
 	//TODO: I THINK this will handle nested functions... test later
 	// let obj = /(\w+\(.*\))|({.*?(}|$))/gm;
 
-	let isClassMethodRes = isClassMethod(line, fstart);
+	// let isClassMethodRes = isClassMethod(line, fstart);
+	let isClassMethodRes = isClassMethod(iStr, fstart);
 	// Check for the current function name and get SignatureInformation for that function.
 	/**The {@link SignatureInformation SignatureInformation} for this function. */
 	let sig = cache.getSignatureOfMethod(func,isClassMethodRes);
 
+	/**The name of the current argument */
+	let arg:string|undefined = "";
+	// Check if there's a named argument
+	arg = findNamedArg(iStr);
+	if (arg !== undefined && sig !== undefined && sig.parameters) {
+		for (const s in sig.parameters) {
+			if (sig.parameters[s].label === arg) {
+				// If a named arg is found, set the arg name and return
+				sig.activeParameter = parseInt(s);
+				sh.signatures.push(sig);
+				return sh;
+			}
+		}
+	}
+	// Currently probably never runs, but you never know
+
+	
 	/** Here we get rid of some things that could cause parsing issues.
 	 We replace fstrings and nested functions with _, and anythnig within quotes to just empty quotes.
 	 This eliminates commas that mess with the current parameter, as well as functions etc in fstrings */
 	wholeFunc = wholeFunc.replace(obj, "_").replace(/\".*?\"/,'""');
-
-	const test = /(\w+)\=/m;
-
-	/**The name of the current argument */
-	let arg = "";
 	const arr = wholeFunc.split(",");
-
 	/** The current array index */
 	const pNum = arr.length - 1;
-
-	// Check if there's a named argument
-	const match = arr[pNum].match(test);
-	if (match) {
-		// If a named arg is found, set the arg name
-		arg = match[1];
-	} else {
-		sh.activeParameter = pNum;
-		arg = arr[pNum];
-	}
+	sh.activeParameter = pNum;
+	arg = arr[pNum];
 	
 	
 	

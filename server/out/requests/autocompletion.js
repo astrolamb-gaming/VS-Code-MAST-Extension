@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.onCompletion = onCompletion;
+exports.findNamedArg = findNamedArg;
 exports.getCurrentArgumentNames = getCurrentArgumentNames;
 const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
@@ -163,6 +164,32 @@ function onCompletion(_textDocumentPosition, text) {
     // 	debug("Updating strings...")
     // 	parseStrings(text);
     // }
+    /// Piggy-backing on the Signature Help logic, since it works better than this ever did...
+    const params = {
+        textDocument: _textDocumentPosition.textDocument,
+        position: _textDocumentPosition.position
+    };
+    const sig = (0, signatureHelp_1.onSignatureHelp)(params, text);
+    let currentParam;
+    let currentParamName = "";
+    let func = "";
+    // debug(sig);
+    if (sig && sig.signatures) {
+        let curSig = sig.signatures[0];
+        (0, console_1.debug)(curSig);
+        if (curSig.parameters) {
+            func = curSig.label;
+            // debug(func)
+            if (curSig.activeParameter == undefined) {
+                curSig.activeParameter = 0;
+                // debug(currentParamName)
+            }
+            currentParam = curSig.parameters[curSig.activeParameter];
+            currentParamName = currentParam.label;
+        }
+    }
+    (0, console_1.debug)("arg: " + currentParamName);
+    (0, console_1.debug)("func: " + func);
     //#region In-String Completions
     // This is to get rid of " or ' at end so we don't have to check for both
     const blobStr = iStr.substring(0, iStr.length - 1);
@@ -171,7 +198,8 @@ function onCompletion(_textDocumentPosition, text) {
     // TODO: this doesn't account for f-strings....
     if ((0, rx_1.countMatches)(iStr, /[\"']/g) % 2 !== 0 || iStr.endsWith("\"") || iStr.endsWith("'") || (0, comments_1.isInString)(text, pos)) {
         (0, console_1.debug)("Is in string (probably)");
-        if (blobStr.endsWith("signal_emit(")) {
+        // if (blobStr.endsWith("signal_emit(")) {
+        if (func === "signal_emit") {
             const signals = cache.getSignals();
             return (0, signals_1.buildSignalInfoListAsCompletionItems)(signals);
         }
@@ -191,29 +219,29 @@ function onCompletion(_textDocumentPosition, text) {
                 return ci;
             }
             // Now for inventory keys
-            if ((0, signatureHelp_1.getCurrentMethodName)(iStr).includes("inventory")) {
+            if (func.includes("inventory")) {
                 let keys = cache.getKeys(text.uri);
                 (0, console_1.debug)(keys);
                 ci = (0, roles_1.getKeysAsCompletionItem)(keys);
                 return ci;
             }
             // Here we check for stylestrings, art_ids, etc.
-            const func = (0, signatureHelp_1.getCurrentMethodName)(iStr);
-            const sig = (0, cache_1.getCache)(text.uri).getSignatureOfMethod(func);
-            const fstart = iStr.lastIndexOf(func);
-            const wholeFunc = iStr.substring(fstart, iStr.length);
-            const arr = wholeFunc.split(",");
-            let named = /(\w+)\=$/m;
-            let test = blobStr.match(named);
+            // const func = getCurrentMethodName(iStr);
+            // const sig: SignatureInformation|undefined = getCache(text.uri).getSignatureOfMethod(func);
+            // const fstart = iStr.lastIndexOf(func);
+            // const wholeFunc = iStr.substring(fstart,iStr.length);
+            // const arr = wholeFunc.split(",");
+            // let named = /(\w+)\=$/m;
+            // let test = blobStr.match(named);
             let args = [];
-            if (test) {
-                args = [test[1]];
-            }
-            else {
-                args = getCurrentArgumentNames(iStr, text);
-            }
-            (0, console_1.debug)("Current function: " + func);
-            (0, console_1.debug)("arg: " + args);
+            // if (test) {
+            // 	args = [test[1]];
+            // } else {
+            // 	args = getCurrentArgumentNames(iStr,text);
+            // }
+            // debug("Current function: " + func);
+            // debug("arg: " + args);
+            args = [currentParamName];
             for (const a of args) {
                 if (a === "role" || a === "roles") {
                     (0, console_1.debug)("Getting roles");
@@ -225,6 +253,7 @@ function onCompletion(_textDocumentPosition, text) {
                 }
                 if (a === "style") {
                     (0, console_1.debug)("Style found; iterating over widget stylestrings");
+                    // First we iterate over the stylestrings in the the txt file, these are SBS functions
                     for (const s of (0, globals_1.getGlobals)().widget_stylestrings) {
                         if (func === s.function) {
                             const c = {
@@ -242,6 +271,7 @@ function onCompletion(_textDocumentPosition, text) {
                     }
                     if (ci.length > 0)
                         return ci;
+                    // Then we do generic ones for MAST functions.
                     for (const s of cache.styleDefinitions) {
                         const c = {
                             label: s,
@@ -588,16 +618,18 @@ function onCompletion(_textDocumentPosition, text) {
     const cm = (0, signatureHelp_1.getCurrentMethodName)(iStr);
     let wholeFunc = iStr.substring(iStr.lastIndexOf(cm));
     wholeFunc = wholeFunc.substring(wholeFunc.indexOf("("));
-    if ((0, tokens_1.isFunction)(iStr, cm)) {
+    if (sig) {
+        // if (isFunction(iStr, cm)) {
         // Check for named argument
         let named = /(\w+)\=$/m;
         let test = iStr.match(named);
         let args = [];
+        args = [currentParamName];
         if (test) {
-            args = [test[1]];
+            // args = [test[1]];
         }
         else {
-            args = getCurrentArgumentNames(iStr, text);
+            // args = getCurrentArgumentNames(iStr,text);
             // Add the argument names
             // Don't want to do this with a named argument
             const argNames = cache.getMethod(cm);
@@ -861,17 +893,30 @@ function onCompletion(_textDocumentPosition, text) {
     // - Remove the text from the start of the completion item label
     return ci;
 }
+/**
+ * Get the name of the current named argument, if it exists.
+ * @param str The string from the start of the line until the cursor's current position.
+ * @returns The name of the arguemnt, or undefined.
+ */
+function findNamedArg(str) {
+    let ret = undefined;
+    let name = /(?:[^\w])(\w+)=/g;
+    let rm = str.match(name);
+    let m;
+    while (m = name.exec(str)) {
+        // Go until the last index
+        ret = m[1];
+    }
+    return ret;
+}
 function getCurrentArgumentNames(iStr, doc) {
     let ret = [];
-    if (iStr.endsWith("=")) {
-        (0, console_1.debug)(iStr);
-        let name = /(?:[^\w])(\w+)=$/m;
-        let rm = iStr.match(name);
-        if (rm !== null) {
-            ret.push(rm[1]);
-            return ret;
-        }
+    let r = findNamedArg(iStr);
+    if (r !== undefined) {
+        ret.push(r);
+        return ret;
     }
+    // Otherwise we have to find the function name, remove commas in strings, figure out which ordered argument it is, etc.
     const func = (0, signatureHelp_1.getCurrentMethodName)(iStr);
     const fstart = iStr.lastIndexOf(func);
     let wholeFunc = iStr.substring(fstart, iStr.length);
