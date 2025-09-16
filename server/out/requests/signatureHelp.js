@@ -52,11 +52,14 @@ function onSignatureHelp(_textDocPos, text) {
             if (sig.parameters[s].label === arg) {
                 // If a named arg is found, set the arg name and return
                 sig.activeParameter = parseInt(s);
+                (0, console_1.debug)(s);
+                (0, console_1.debug)(sig.activeParameter);
                 sh.signatures.push(sig);
                 return sh;
             }
         }
     }
+    (0, console_1.debug)("Not using sig");
     // Currently probably never runs, but you never know
     /** Here we get rid of some things that could cause parsing issues.
      We replace fstrings and nested functions with _, and anythnig within quotes to just empty quotes.

@@ -173,18 +173,18 @@ function onCompletion(_textDocumentPosition, text) {
     let currentParam;
     let currentParamName = "";
     let func = "";
-    // debug(sig);
+    (0, console_1.debug)(sig);
     if (sig && sig.signatures) {
         let curSig = sig.signatures[0];
         (0, console_1.debug)(curSig);
         if (curSig.parameters) {
             func = curSig.label;
             // debug(func)
-            if (curSig.activeParameter == undefined) {
-                curSig.activeParameter = 0;
+            if (sig.activeParameter === undefined) {
+                sig.activeParameter = 0;
                 // debug(currentParamName)
             }
-            currentParam = curSig.parameters[curSig.activeParameter];
+            currentParam = curSig.parameters[sig.activeParameter];
             currentParamName = currentParam.label;
         }
     }

@@ -190,18 +190,18 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	let currentParam:ParameterInformation|undefined;
 	let currentParamName: string = "";
 	let func: string = "";
-	// debug(sig);
+	debug(sig);
 	if (sig && sig.signatures) {
 		let curSig = sig.signatures[0];
 		debug(curSig)
 		if (curSig.parameters) {
 			func = curSig.label;
 			// debug(func)
-			if (curSig.activeParameter == undefined) {
-				curSig.activeParameter = 0
+			if (sig.activeParameter === undefined) {
+				sig.activeParameter = 0
 				// debug(currentParamName)
 			}
-			currentParam = curSig.parameters[curSig.activeParameter]
+			currentParam = curSig.parameters[sig.activeParameter]
 			currentParamName = currentParam.label as string
 			
 		}

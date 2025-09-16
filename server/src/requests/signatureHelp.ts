@@ -63,11 +63,14 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 			if (sig.parameters[s].label === arg) {
 				// If a named arg is found, set the arg name and return
 				sig.activeParameter = parseInt(s);
+				debug(s)
+				debug(sig.activeParameter)
 				sh.signatures.push(sig);
 				return sh;
 			}
 		}
 	}
+	debug("Not using sig")
 	// Currently probably never runs, but you never know
 
 	

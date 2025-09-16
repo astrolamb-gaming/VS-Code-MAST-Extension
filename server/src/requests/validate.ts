@@ -238,6 +238,20 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	errorSources.push(gui_colon);
 
 	errorSources.push(e1);
+
+
+	// TODO: f-string error checking - not working 100% right...
+	e1 = {
+		pattern: /[^f]((?<open>[\"\']).*?\{.*?\}.*?\k<open>)/g,
+		severity: DiagnosticSeverity.Warning,
+		source: 'mast',
+		message: "Possible f-string without a starting `f`",
+		relatedMessage: "With sbs_utils v1.2+, f-strings must use the `f` prefix, as described in [this post](https://github.com/artemis-sbs/LegendaryMissions/issues/383)"
+	}
+	errorSources.push(e1);
+
+
+
 	for (let i = 0; i < errorSources.length; i++) {
 		// let d1: Diagnostic[] = findDiagnostic(errorSources[i].pattern,textDocument,errorSources[i].severity,errorSources[i].message,errorSources[i].source, errorSources[i].relatedMessage, maxNumberOfProblems,problems);
 		let d1: Diagnostic[] = findDiagnostic(errorSources[i], textDocument, diagnostics.length, maxNumberOfProblems);
