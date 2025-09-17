@@ -194,7 +194,8 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		severity: DiagnosticSeverity.Error,
 		message: "Label Definition: Cannot use '-' or '=' inside label name.",
 		source: "sbs",
-		relatedMessage: "Only A-Z, a-z, 0-9, and _ are allowed to be used in a label name."
+		relatedMessage: "Only A-Z, a-z, 0-9, and _ are allowed to be used in a label name.",
+		excludeFrom: []
 	};
 	errorSources.push(e1);
 	e1 = {
@@ -202,28 +203,32 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		severity: DiagnosticSeverity.Error,
 		message: "Route labels can only be at the start of a line, unless used as label that runs when button is pressed.",
 		source: "sbs",
-		relatedMessage: "See https://artemis-sbs.github.io/sbs_utils/mast/routes/ for more details on routes."
+		relatedMessage: "See https://artemis-sbs.github.io/sbs_utils/mast/routes/ for more details on routes.",
+		excludeFrom: []
 	}
 	e1 = {
 		pattern: /\b[A-Z]{2,}\b/g,
 		severity: DiagnosticSeverity.Information,
 		source: "mast",
 		message: "CAPS " + debugStrs,
-		relatedMessage: "Is all caps intentional?"
+		relatedMessage: "Is all caps intentional?",
+		excludeFrom: []
 	}
 	e1 = {
 		pattern: /\w+\.($|\n)/gs,
 		severity: DiagnosticSeverity.Error,
 		source: "mast",
 		message: "Property for object not specified.",
-		relatedMessage: ""
+		relatedMessage: "",
+		excludeFrom: []
 	}
 	e1 = {
 		pattern: /:[ \t]*?(\/\/)?[\w \t\/]+(\{.*?\})?$/gm,
 		severity: DiagnosticSeverity.Error,
 		source: "mast",
 		message: "Bad colon usage in label definition",
-		relatedMessage: "If you're not defining a label code block, then you shouldn't be using a colon.\nIf you are defining a label code block, the colon should be at the end of the line."
+		relatedMessage: "If you're not defining a label code block, then you shouldn't be using a colon.\nIf you are defining a label code block, the colon should be at the end of the line.",
+		excludeFrom: ["comment","string","metadata"]
 	}
 	errorSources.push(e1);
 
@@ -232,7 +237,8 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		severity: DiagnosticSeverity.Error,
 		source: "mast",
 		message: "Colon used in label definition",
-		relatedMessage: "Can't use a colon here."
+		relatedMessage: "Can't use a colon here.",
+		excludeFrom: ["comment","string","metadata"]
 	}
 	errorSources.push(e1);
 
@@ -241,7 +247,8 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		severity: DiagnosticSeverity.Error,
 		source: 'mast',
 		message: 'Statement must end with a colon.',
-		relatedMessage: "Applies to: 'with', 'if', 'elif', 'else', 'while', 'for', 'on', and 'on change' blocks."
+		relatedMessage: "Applies to: 'with', 'if', 'elif', 'else', 'while', 'for', 'on', and 'on change' blocks.",
+		excludeFrom: []
 	}
 	errorSources.push(with_colon);
 
@@ -250,7 +257,8 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		severity: DiagnosticSeverity.Warning,
 		source: 'mast',
 		message: 'For gui text, colons are not allowed. Use <colon> instead.',
-		relatedMessage: ''
+		relatedMessage: '',
+		excludeFrom: []
 	}
 	errorSources.push(gui_colon);
 
@@ -263,7 +271,8 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		severity: DiagnosticSeverity.Warning,
 		source: 'mast',
 		message: "Possible f-string without a starting `f`",
-		relatedMessage: "With sbs_utils v1.2+, f-strings must use the `f` prefix, as described in [this post](https://github.com/artemis-sbs/LegendaryMissions/issues/383)"
+		relatedMessage: "With sbs_utils v1.2+, f-strings must use the `f` prefix, as described in [this post](https://github.com/artemis-sbs/LegendaryMissions/issues/383)",
+		excludeFrom: []
 	}
 	errorSources.push(e1);
 

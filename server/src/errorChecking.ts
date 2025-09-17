@@ -2,7 +2,7 @@ import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 import { Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, integer } from 'vscode-languageserver/node';
 import {ErrorInstance, hasDiagnosticRelatedInformationCapability} from './server';
 import { debug } from 'console';
-import { isInComment, isInString, isInYaml, replaceRegexMatchWithUnderscore, getComments, getStrings } from './tokens/comments';
+import { isInComment, isInString, isInYaml, replaceRegexMatchWithUnderscore, getComments, getStrings, isInSquareBrackets } from './tokens/comments';
 
 /**
  * Checks if the file ends with an empty line.
@@ -50,6 +50,28 @@ export function findDiagnostic(e:ErrorInstance, textDocument: TextDocument, prob
 	const diagnostics: Diagnostic[] = [];
 	while ((m = e.pattern.exec(text)) && problems < maxProblems) {
 		//debug(JSON.stringify(m));
+		
+		if (e.excludeFrom.includes("string")) {
+			if (isInString(textDocument,m.index)) {
+				continue;
+			}
+		}
+		if (e.excludeFrom.includes("metadata")) {
+			if (isInYaml(textDocument, m.index)) {
+				continue;
+			}
+		}
+		if (e.excludeFrom.includes("comment")) {
+			if (isInComment(textDocument, m.index)) {
+				continue;
+			}
+		}
+		// if (e.excludeFrom.includes("squreBrackets")) {
+		// 	if ()
+		// }
+		// if (e.excludeFrom.includes("curlyBraces")) {
+		// 	if ()
+		// }
 		problems++;
 		const diagnostic: Diagnostic = {
 			severity: e.severity,

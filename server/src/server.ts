@@ -398,6 +398,7 @@ export interface ErrorInstance {
 	 */
 	message: string;
 	relatedMessage: string;
+	excludeFrom: string[];
 }
 
 

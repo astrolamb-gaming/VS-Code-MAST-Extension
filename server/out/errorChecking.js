@@ -53,6 +53,27 @@ function findDiagnostic(e, textDocument, problems, maxProblems) {
     const diagnostics = [];
     while ((m = e.pattern.exec(text)) && problems < maxProblems) {
         //debug(JSON.stringify(m));
+        if (e.excludeFrom.includes("string")) {
+            if ((0, comments_1.isInString)(textDocument, m.index)) {
+                continue;
+            }
+        }
+        if (e.excludeFrom.includes("metadata")) {
+            if ((0, comments_1.isInYaml)(textDocument, m.index)) {
+                continue;
+            }
+        }
+        if (e.excludeFrom.includes("comment")) {
+            if ((0, comments_1.isInComment)(textDocument, m.index)) {
+                continue;
+            }
+        }
+        // if (e.excludeFrom.includes("squreBrackets")) {
+        // 	if ()
+        // }
+        // if (e.excludeFrom.includes("curlyBraces")) {
+        // 	if ()
+        // }
         problems++;
         const diagnostic = {
             severity: e.severity,
