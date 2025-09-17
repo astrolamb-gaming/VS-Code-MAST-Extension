@@ -218,6 +218,23 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		message: "Property for object not specified.",
 		relatedMessage: ""
 	}
+	e1 = {
+		pattern: /:[ \t]*?(\/\/)?[\w \t\/]+(\{.*?\})?$/gm,
+		severity: DiagnosticSeverity.Error,
+		source: "mast",
+		message: "Bad colon usage in label definition",
+		relatedMessage: "If you're not defining a label code block, then you shouldn't be using a colon.\nIf you are defining a label code block, the colon should be at the end of the line."
+	}
+	errorSources.push(e1);
+
+	e1 = {
+		pattern: /^(\/\/|==|--|\+\+).*?:/gm,
+		severity: DiagnosticSeverity.Error,
+		source: "mast",
+		message: "Colon used in label definition",
+		relatedMessage: "Can't use a colon here."
+	}
+	errorSources.push(e1);
 
 	let with_colon: ErrorInstance = {
 		pattern: /^[ \t]*(((with|if|elif|while|for|on[ \t]+(change)?)[\t ]+)|(else))[^:\n]*?[ \t]*$/gm,
