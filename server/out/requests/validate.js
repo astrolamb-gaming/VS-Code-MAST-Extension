@@ -208,7 +208,7 @@ async function validateTextDocument(textDocument) {
         excludeFrom: []
     };
     e1 = {
-        pattern: /:[ \t]*?(\/\/)?[\w \t\/]+(\{.*?\})?$/gm,
+        pattern: /:[ \t]*?(\/\/)?[\w\/]+(\{.*?\})?$/gm,
         severity: vscode_languageserver_1.DiagnosticSeverity.Error,
         source: "mast",
         message: "Bad colon usage in label definition",

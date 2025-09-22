@@ -223,7 +223,7 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		excludeFrom: []
 	}
 	e1 = {
-		pattern: /:[ \t]*?(\/\/)?[\w \t\/]+(\{.*?\})?$/gm,
+		pattern: /:[ \t]*?(\/\/)?[\w\/]+(\{.*?\})?$/gm,
 		severity: DiagnosticSeverity.Error,
 		source: "mast",
 		message: "Bad colon usage in label definition",
