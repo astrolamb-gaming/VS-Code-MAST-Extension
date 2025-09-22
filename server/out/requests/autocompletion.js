@@ -55,6 +55,11 @@ function onCompletion(_textDocumentPosition, text) {
     // eolPos.character = 0;
     // const endOfLine: integer = pos + text.offsetAt(eolPos)-1;
     const iStr = t.substring(startOfLine, pos);
+    (0, console_1.debug)(iStr);
+    if (iStr.trim().endsWith(")")) {
+        (0, console_1.debug)("Ends with ), should have no completions");
+        return [];
+    }
     // const eStr: string = t.substring(pos, endOfLine);
     // const line = iStr + eStr;
     const line = (0, hover_1.getCurrentLineFromTextDocument)(_textDocumentPosition.position, text);

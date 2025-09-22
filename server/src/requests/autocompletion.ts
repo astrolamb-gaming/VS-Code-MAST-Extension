@@ -57,6 +57,11 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// eolPos.character = 0;
 	// const endOfLine: integer = pos + text.offsetAt(eolPos)-1;
 	const iStr : string = t.substring(startOfLine,pos);
+	debug(iStr)
+	if (iStr.trim().endsWith(")")) {
+		debug("Ends with ), should have no completions")
+		return [];
+	}
 	// const eStr: string = t.substring(pos, endOfLine);
 	// const line = iStr + eStr;
 	const line = getCurrentLineFromTextDocument(_textDocumentPosition.position, text)
