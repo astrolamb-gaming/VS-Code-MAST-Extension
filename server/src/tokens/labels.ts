@@ -5,11 +5,12 @@ import { debug } from 'console';
 import { getCache } from '../cache';
 import { URI } from 'vscode-uri';
 import path = require('path');
-import { fileFromUri, fixFileName } from '../fileFunctions';
+import { fileFromUri, fixFileName, getFolders, getMissionFolder } from '../fileFunctions';
 import { isInComment, isInYaml } from './comments';
 import { start } from 'repl';
 import { getCurrentLineFromTextDocument } from '../requests/hover';
 import { documents } from '../server';
+import { getGlobals } from '../globals';
 
 
 export interface LabelInfo {
@@ -40,6 +41,23 @@ export enum LabelType {
  * @returns 
  */
 export function parseLabels(text: string, src: string, type: string = "main"): LabelInfo[] {
+	// debug("src: " + src);
+	// let missionFolder = getMissionFolder(src);
+	// let allMissions = getGlobals().getAllMissions();
+	// debug("Mssion folder: " + missionFolder)
+	// // return[]
+	// for (const m of allMissions) {
+	// 	// debug("mission: " + m);
+	// 	if (m.includes(missionFolder)) {
+	// 		let subs = getFolders(path.join(getGlobals().artemisDir,"data","missions",m));
+	// 		if (subs.includes(".git")) {
+	// 			debug("Mission Folder = " + m);
+	// 			missionFolder = m;
+	// 		}
+	// 	}
+	// }
+
+
 	let td: TextDocument = TextDocument.create(src, "mast", 0, text);
 	// let src = textDocument.uri;
 	// if (src.startsWith("file")) {

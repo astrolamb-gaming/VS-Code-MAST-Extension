@@ -33,6 +33,21 @@ var LabelType;
  * @returns
  */
 function parseLabels(text, src, type = "main") {
+    // debug("src: " + src);
+    // let missionFolder = getMissionFolder(src);
+    // let allMissions = getGlobals().getAllMissions();
+    // debug("Mssion folder: " + missionFolder)
+    // // return[]
+    // for (const m of allMissions) {
+    // 	// debug("mission: " + m);
+    // 	if (m.includes(missionFolder)) {
+    // 		let subs = getFolders(path.join(getGlobals().artemisDir,"data","missions",m));
+    // 		if (subs.includes(".git")) {
+    // 			debug("Mission Folder = " + m);
+    // 			missionFolder = m;
+    // 		}
+    // 	}
+    // }
     let td = vscode_languageserver_textdocument_1.TextDocument.create(src, "mast", 0, text);
     // let src = textDocument.uri;
     // if (src.startsWith("file")) {
