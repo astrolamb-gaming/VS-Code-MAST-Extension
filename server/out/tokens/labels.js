@@ -231,6 +231,8 @@ function checkForDuplicateLabelsInList(textDocument, labels = [], subLabels = fa
             // debug("Is route: " + labels[i].name)
             continue;
         }
+        if (labels[i].name.startsWith("@media"))
+            continue;
         for (const j in labels) {
             if (j === i) {
                 //break;
