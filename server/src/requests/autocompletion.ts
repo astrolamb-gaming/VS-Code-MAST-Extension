@@ -927,11 +927,12 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 //#endregion
 
 
-	//debug(ci.length);
-	//ci = ci.concat(defaultFunctionCompletionItems);
 	for (const m of cache.getMethods()) {
 		ci.push(m.buildCompletionItem());
 	}
+	// debug(iStr);
+	// debug(ci.length);
+
 	// TODO: Account for text that's already present?? I don't think that's necessary
 	// - Remove the text from the start of the completion item label
 	return ci;
