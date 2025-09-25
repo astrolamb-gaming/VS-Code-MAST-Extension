@@ -45,7 +45,7 @@ export function parseWords(doc: TextDocument): Word[] {
 		const v = m[1];
 		const start = m[0].indexOf(v) + m.index;
 		const end = start + m[0].length;
-		if (!isInString(doc, m.index) || ! isInComment(doc, m.index) || v.match(num)?.[0] !== null) {
+		if (!isInComment(doc, m.index) || v.match(num)?.[0] !== null) { //!isInString(doc, m.index) || 
 			const range: Range = { start: doc.positionAt(start), end: doc.positionAt(end)}
 			let found = false;
 			for (const w of ret) {

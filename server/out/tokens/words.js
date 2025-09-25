@@ -31,7 +31,7 @@ function parseWords(doc) {
         const v = m[1];
         const start = m[0].indexOf(v) + m.index;
         const end = start + m[0].length;
-        if (!(0, comments_1.isInString)(doc, m.index) || !(0, comments_1.isInComment)(doc, m.index) || v.match(num)?.[0] !== null) {
+        if (!(0, comments_1.isInComment)(doc, m.index) || v.match(num)?.[0] !== null) { //!isInString(doc, m.index) || 
             const range = { start: doc.positionAt(start), end: doc.positionAt(end) };
             let found = false;
             for (const w of ret) {

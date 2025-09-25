@@ -36,6 +36,7 @@ export function getGridIcons(): IconIndex[] {
 // Function to split an image into tiles
 async function splitImageIntoTiles(imagePath:string, tileWidth:integer, tileHeight:integer, outputDir:string, useIndex=true) {
 	const metadata = await sharp(imagePath).metadata();
+	if (!metadata) return;
 	const { width, height } = metadata;
 
 	if (!fs.existsSync(outputDir)) {
