@@ -129,7 +129,7 @@ export async function getSpecificGlobals(cache: MissionCache, globals: any) {
 			}
 			ret.push(m);
 		}
-		console.log('finished');
+		console.log('finished getting mastGlobalInfo');
 	//}).catch((e)=>{debug(e);});
 	// ret[0] = JSON.parse(ret[0])
 	} catch (e) {

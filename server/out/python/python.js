@@ -130,7 +130,7 @@ async function getSpecificGlobals(cache, globals) {
             }
             ret.push(m);
         }
-        console.log('finished');
+        console.log('finished getting mastGlobalInfo');
         //}).catch((e)=>{debug(e);});
         // ret[0] = JSON.parse(ret[0])
     }

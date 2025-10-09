@@ -424,6 +424,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	
 
 //#region Route and Media Labels 
+	debug("Route and Media Labels");
 	// Media labels only get the skybox names
 	if (iStr.endsWith("@media/skybox/")) {
 		return getGlobals().skyboxes;
@@ -479,7 +480,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 //#endregion
 
 //#region COMMS Stuff
-
+	debug("Comms stuff");
 	/**
  	* 	□ All
 		□ Scan
@@ -525,6 +526,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 //#endregion
 
 //#region Label Metadata Completions
+	debug("Label metadata")
 	// Check if there is a label at the end of these, which could include optional data
 	if ((trimmed.startsWith("+")||trimmed.startsWith("*")||trimmed.startsWith("jump")||trimmed.startsWith("->")) && !trimmed.endsWith(":")) {
 		let lbl = iStr.replace(/{.*?}/,"");
@@ -555,6 +557,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 //#endregion
 
 //#region JUMP Completions
+	debug("JUMPs")
 	// Handle label autocompletion
 	let jump: RegExp = /(->|jump)[ \t]*[^\t ]*$/m;
 	// if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (") || iStr.endsWith("objective_add(") || iStr.endsWith("brain_add(")) {
@@ -598,6 +601,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	//debug(ci);
 	
 //#region Class, Method, and Function Completions
+	debug("Class, method, and function completions")
 	// Check if this is a class
 	if (iStr.endsWith(".")) {
 		debug("Getting Classes...");
@@ -817,9 +821,10 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 //#endregion
 
 	//debug(ci.length);
-	ci = ci.concat(cache.getCompletions()); // TODO: What does this even do?
+	
 
 //#region Keywords and Variables
+	debug("Keywords and Variables")
 	//#region Line Start Keywords
 	if (trimmed.match(/[\t ]*\w*/)) {
 		let line_start_keywords : string[] = [
@@ -927,11 +932,17 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 //#endregion
 
 
-	for (const m of cache.getMethods()) {
-		ci.push(m.buildCompletionItem());
-	}
+	// for (const m of cache.getMethods()) {
+	// 	if (m.name.includes("gui")) {
+	// 		debug(m);
+	// 	}
+	// 	ci.push(m.buildCompletionItem());
+	// }
+
+	ci = ci.concat(cache.getCompletions()); // TODO: What does this even do?
+
 	// debug(iStr);
-	// debug(ci.length);
+	debug(ci.length);
 
 	// TODO: Account for text that's already present?? I don't think that's necessary
 	// - Remove the text from the start of the completion item label

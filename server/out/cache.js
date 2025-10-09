@@ -152,7 +152,7 @@ class MissionCache {
         //this.checkForInitFolder(this.missionURI);
         (0, console_1.debug)("Number of py files: " + this.pyFileCache.length);
         await this.awaitLoaded();
-        (0, console_1.debug)("Everything is laoded");
+        (0, console_1.debug)("Everything is loaded");
         this.startWatchers();
     }
     /**
@@ -623,7 +623,7 @@ class MissionCache {
             // Update all existing py files if they are globals
             for (const g of p.globalFiles) {
                 for (const f of this.pyFileCache) {
-                    this.tryApplyFileAsGlobal(p, g);
+                    this.tryApplyFileAsGlobal(f, g);
                 }
             }
         }
@@ -642,7 +642,7 @@ class MissionCache {
             return;
         }
         const file = f.uri.replace(/\//g, ".").replace(/\\/g, ".");
-        if (file.endsWith(g[0] + ".py")) {
+        if (file.includes(g[0]) && file.endsWith(".py")) {
             f.isGlobal = true;
             if (g[1] !== "") {
                 // TODO: Update function names with prepend

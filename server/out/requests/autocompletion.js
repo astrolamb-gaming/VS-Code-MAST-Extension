@@ -394,6 +394,7 @@ function onCompletion(_textDocumentPosition, text) {
     }
     let trimmed = iStr.trim();
     //#region Route and Media Labels 
+    (0, console_1.debug)("Route and Media Labels");
     // Media labels only get the skybox names
     if (iStr.endsWith("@media/skybox/")) {
         return (0, globals_1.getGlobals)().skyboxes;
@@ -449,6 +450,7 @@ function onCompletion(_textDocumentPosition, text) {
     }
     //#endregion
     //#region COMMS Stuff
+    (0, console_1.debug)("Comms stuff");
     /**
     * 	□ All
         □ Scan
@@ -493,6 +495,7 @@ function onCompletion(_textDocumentPosition, text) {
     }
     //#endregion
     //#region Label Metadata Completions
+    (0, console_1.debug)("Label metadata");
     // Check if there is a label at the end of these, which could include optional data
     if ((trimmed.startsWith("+") || trimmed.startsWith("*") || trimmed.startsWith("jump") || trimmed.startsWith("->")) && !trimmed.endsWith(":")) {
         let lbl = iStr.replace(/{.*?}/, "");
@@ -522,6 +525,7 @@ function onCompletion(_textDocumentPosition, text) {
     }
     //#endregion
     //#region JUMP Completions
+    (0, console_1.debug)("JUMPs");
     // Handle label autocompletion
     let jump = /(->|jump)[ \t]*[^\t ]*$/m;
     // if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (") || iStr.endsWith("objective_add(") || iStr.endsWith("brain_add(")) {
@@ -561,6 +565,7 @@ function onCompletion(_textDocumentPosition, text) {
     //debug(text.uri);
     //debug(ci);
     //#region Class, Method, and Function Completions
+    (0, console_1.debug)("Class, method, and function completions");
     // Check if this is a class
     if (iStr.endsWith(".")) {
         (0, console_1.debug)("Getting Classes...");
@@ -785,8 +790,8 @@ function onCompletion(_textDocumentPosition, text) {
     }
     //#endregion
     //debug(ci.length);
-    ci = ci.concat(cache.getCompletions()); // TODO: What does this even do?
     //#region Keywords and Variables
+    (0, console_1.debug)("Keywords and Variables");
     //#region Line Start Keywords
     if (trimmed.match(/[\t ]*\w*/)) {
         let line_start_keywords = [
@@ -889,11 +894,15 @@ function onCompletion(_textDocumentPosition, text) {
     ci = ci.concat(variables);
     // ci = ci.concat(cache.getMethods());
     //#endregion
-    for (const m of cache.getMethods()) {
-        ci.push(m.buildCompletionItem());
-    }
+    // for (const m of cache.getMethods()) {
+    // 	if (m.name.includes("gui")) {
+    // 		debug(m);
+    // 	}
+    // 	ci.push(m.buildCompletionItem());
+    // }
+    ci = ci.concat(cache.getCompletions()); // TODO: What does this even do?
     // debug(iStr);
-    // debug(ci.length);
+    (0, console_1.debug)(ci.length);
     // TODO: Account for text that's already present?? I don't think that's necessary
     // - Remove the text from the start of the completion item label
     return ci;
