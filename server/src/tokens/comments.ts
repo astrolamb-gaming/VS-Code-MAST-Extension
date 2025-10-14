@@ -297,7 +297,7 @@ export function parseStrings(textDocument: TextDocument) {
 	let text = textDocument.getText();
 	let strings: CRange[] = [];
 	// TODO: Get all sets of {} to see if we're in an f-string and need to exclude sections of the string
-	let strDouble = /(f?\".*?\")|('.*?')/gm;
+	let strDouble = /(f?\".*?\")|(f?'.*?')/gm;
 	// let strDoubleStartOnly = /(^\\s*?(\")[^\"]*?(\\n|$))/gm;
 	let caretDouble = /(\^{3,}.*?\^{3,})/gs;
 	let multiDouble = /([\"\']{3,}.*?[\"\']{3,})/gs;
