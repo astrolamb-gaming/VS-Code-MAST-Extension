@@ -178,7 +178,7 @@ class MissionCache {
     startWatchers() {
         let w = fs.watch(this.missionURI, { "recursive": true }, (eventType, filename) => {
             // debug("fs.watch() EVENT: ")
-            (0, console_1.debug)(eventType);
+            // debug(eventType);
             // could be either 'rename' or 'change'. new file event and delete
             // also generally emit 'rename'
             // debug(filename);
@@ -194,7 +194,7 @@ class MissionCache {
                     const init = (0, fileFunctions_1.getInitContents)(path.join(this.missionURI, filename));
                     let inInit = false;
                     for (const i of init) {
-                        if (filename === i) {
+                        if (filename.endsWith(i)) {
                             inInit = true;
                             break;
                         }
@@ -218,7 +218,7 @@ class MissionCache {
                 if (filename?.endsWith(".py")) {
                     // let text = readFileSync(filename);
                     let file = path.join(this.missionURI, filename);
-                    (0, console_1.debug)(file);
+                    // debug(file);
                     let pyFile = this.getPyFile(file);
                     let text = (0, fileFunctions_1.readFileSync)(file);
                     const textDoc = vscode_languageserver_textdocument_1.TextDocument.create(file, "py", 1, text);
@@ -435,7 +435,7 @@ class MissionCache {
     }
     // TODO: When a file is opened, check if it is in __init__.mast. If not, prompt the user to add it.
     async tryAddToInitFile(folder, newFile) {
-        let ret = await server_1.connection.window.showWarningMessage("No '__init__.mast' file found in this folder.", { title: "Add " + newFile + " to __init__.mast" }, { title: "Don't add" }
+        let ret = await server_1.connection.window.showWarningMessage("File not found in '__init__.mast'.", { title: "Add " + newFile + " to __init__.mast" }, { title: "Don't add" }
         //{title: hide} // TODO: Add this later!!!!!!
         );
         if (ret === undefined)

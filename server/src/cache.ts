@@ -194,7 +194,7 @@ export class MissionCache {
 	startWatchers() {
 		let w = fs.watch(this.missionURI, {"recursive": true}, (eventType, filename) => {
 			// debug("fs.watch() EVENT: ")
-			debug(eventType);
+			// debug(eventType);
 			// could be either 'rename' or 'change'. new file event and delete
 			// also generally emit 'rename'
 			// debug(filename);
@@ -210,7 +210,7 @@ export class MissionCache {
 					const init = getInitContents(path.join(this.missionURI, filename));
 					let inInit = false;
 					for (const i of init) {
-						if (filename === i) {
+						if (filename.endsWith(i)) {
 							inInit = true;
 							break;
 						}
@@ -233,7 +233,7 @@ export class MissionCache {
 				if (filename?.endsWith(".py")) {
 					// let text = readFileSync(filename);
 					let file = path.join(this.missionURI, filename);
-					debug(file);
+					// debug(file);
 					let pyFile = this.getPyFile(file);
 					let text = readFileSync(file);
 					const textDoc = TextDocument.create(file, "py", 1, text);
@@ -458,7 +458,7 @@ export class MissionCache {
 	private async tryAddToInitFile(folder:string, newFile:string) {
 
 		let ret = await connection.window.showWarningMessage(
-			"No '__init__.mast' file found in this folder.",
+			"File not found in '__init__.mast'.",
 			{title: "Add " + newFile + " to __init__.mast"},
 			{title: "Don't add"}
 			//{title: hide} // TODO: Add this later!!!!!!
