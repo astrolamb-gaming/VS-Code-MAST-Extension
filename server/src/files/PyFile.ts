@@ -10,7 +10,7 @@ import { fixFileName } from '../fileFunctions';
 import { Word, parseWords } from '../tokens/words';
 import { parseSignalsInFile, SignalInfo } from '../tokens/signals';
 import { CRange, getMatchesForRegex, replaceRegexMatchWithUnderscore } from '../tokens/comments';
-import { getBlobKeysForFile, getInventoryKeysForFile } from '../tokens/roles';
+import { getBlobKeysForFile, getInventoryKeysForFile, getLinksForFile } from '../tokens/roles';
 
 
 export class PyFile extends FileCache {
@@ -20,6 +20,7 @@ export class PyFile extends FileCache {
 	globalFiles: string[][] = [];
 	signals: SignalInfo[] = [];
 	inventory_keys: Word[] = [];
+	links:Word[] = [];
 	blob_keys: Word[] = [];
 	globals: string[][] = [];
 	isGlobal: boolean = false;
@@ -77,6 +78,7 @@ export class PyFile extends FileCache {
 		this.signals = parseSignalsInFile(doc);
 		this.inventory_keys = getInventoryKeysForFile(doc);
 		this.blob_keys = getBlobKeysForFile(doc);
+		this.links = getLinksForFile(doc);
 		// debug(this.signals)
 		// Iterate over all classes to get their indices
 		//classIndices.push(0);

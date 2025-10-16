@@ -24,6 +24,7 @@ class PyFile extends data_1.FileCache {
         this.globalFiles = [];
         this.signals = [];
         this.inventory_keys = [];
+        this.links = [];
         this.blob_keys = [];
         this.globals = [];
         this.isGlobal = false;
@@ -77,6 +78,7 @@ class PyFile extends data_1.FileCache {
         this.signals = (0, signals_1.parseSignalsInFile)(doc);
         this.inventory_keys = (0, roles_1.getInventoryKeysForFile)(doc);
         this.blob_keys = (0, roles_1.getBlobKeysForFile)(doc);
+        this.links = (0, roles_1.getLinksForFile)(doc);
         // debug(this.signals)
         // Iterate over all classes to get their indices
         //classIndices.push(0);

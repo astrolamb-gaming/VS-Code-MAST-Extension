@@ -47,6 +47,13 @@ export async function onReferences(doc: TextDocument, params:ReferenceParams): P
 		}
 	}
 
+	let links = getCache(doc.uri).getLinks();
+	for (const l of links) {
+		if (l.name === word) {
+			locs = locs.concat(l.locations);
+		}
+	}
+
 
 	// Get references for labels
 	// TODO: Refactor labels to use a similar system as Signals

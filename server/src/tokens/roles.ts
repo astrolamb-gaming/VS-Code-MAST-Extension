@@ -61,10 +61,9 @@ export function getInventoryKeysForFile(doc:TextDocument):Word[] {
 	let ret: Word[]=[];
 	while (m = regex.exec(doc.getText())) {
 		if (m[9]!== undefined) {
-			// keys.push(m[9]);
 			const v = m[9];
 			const start = m[0].indexOf(v) + m.index;
-			const end = start + m[0].length;
+			const end = start + v.length;
 			if (!isInComment(doc, m.index)) { //!isInString(doc, m.index) || 
 				const range: Range = { start: doc.positionAt(start), end: doc.positionAt(end)}
 				let found = false;
@@ -93,6 +92,74 @@ export function getInventoryKeysForFile(doc:TextDocument):Word[] {
 	return ret;
 }
 
+export function getLinksForFile(doc:TextDocument): Word[] {
+
+	// LInks that use the link name as the second argument.
+	let regex:RegExp = /link((ed)?_to)?\(.*?,[ \t]*[\"\'](\w+)[\"\']/g;
+	let m: RegExpExecArray | null;
+	let ret: Word[]=[];
+	while (m = regex.exec(doc.getText())) {
+		if (m[3]!== undefined) {
+			const v = m[3];
+			const start = m[0].indexOf(v) + m.index;
+			const end = start + v.length;
+			if (!isInComment(doc, m.index)) { //!isInString(doc, m.index) || 
+				const range: Range = { start: doc.positionAt(start), end: doc.positionAt(end)}
+				let found = false;
+				for (const w of ret) {
+					if (w.name === v) {
+						w.locations.push({uri: fileFromUri(doc.uri), range: range});
+						found = true;
+						break;
+					}
+				}
+				if (!found) {
+					let var1: Word = {
+						name: v,
+						locations: [{
+							uri: fileFromUri(doc.uri),
+							range: range
+						}]
+					}
+					ret.push(var1);
+				}
+			}
+		}
+	}
+
+	// Links that use the link name as the first argument
+	regex = /(has_|\.remove_|\.add|\.get_dedicated_)?link(s_set)?(_to)?\([ \t]*[\"\'](\w+)[\"\']/g;
+	while (m = regex.exec(doc.getText())) {
+		if (m[3]!== undefined) {
+			const v = m[4];
+			const start = m[0].indexOf(v) + m.index;
+			const end = start + v.length;
+			if (!isInComment(doc, m.index)) { //!isInString(doc, m.index) || 
+				const range: Range = { start: doc.positionAt(start), end: doc.positionAt(end)}
+				let found = false;
+				for (const w of ret) {
+					if (w.name === v) {
+						w.locations.push({uri: fileFromUri(doc.uri), range: range});
+						found = true;
+						break;
+					}
+				}
+				if (!found) {
+					let var1: Word = {
+						name: v,
+						locations: [{
+							uri: fileFromUri(doc.uri),
+							range: range
+						}]
+					}
+					ret.push(var1);
+				}
+			}
+		}
+	}
+	return ret;
+}
+
 export function getKeysAsCompletionItem(keys: Word[]) {
 	// keys = [...new Set(keys)];
 	const ci: CompletionItem[] = [];
@@ -109,18 +176,13 @@ export function getKeysAsCompletionItem(keys: Word[]) {
 
 export function getBlobKeysForFile(doc:TextDocument) {
 	let blob = /(data_set|blob)\.(get|set)\([\"\'](\w+)[\"\']/g;
-	let data_set_value = /(get|set)_data_set_value\(.*,[ \t]*[\"\'](\w+)[\"\']/g
-	
-	let keys = [];
-
+	let data_set_value = /(get|set)_data_set_value\(.*,[ \t]*[\"\'](\w+)[\"\']/g;
 	let m: RegExpExecArray|null;
 	let ret: Word[] = [];
 	while (m = blob.exec(doc.getText())) {
-		
-		// let key = m[2];
-		const v = m[2];
+		const v = m[3];
 		const start = m[0].indexOf(v) + m.index;
-		const end = start + m[0].length;
+		const end = start + v.length;
 		if (!isInComment(doc, m.index)) { //!isInString(doc, m.index) || 
 			const range: Range = { start: doc.positionAt(start), end: doc.positionAt(end)}
 			let found = false;
@@ -147,7 +209,7 @@ export function getBlobKeysForFile(doc:TextDocument) {
 	while (m = data_set_value.exec(doc.getText())) {
 		const v = m[2];
 		const start = m[0].indexOf(v) + m.index;
-		const end = start + m[0].length;
+		const end = start + v.length;
 		if (!isInComment(doc, m.index)) { //!isInString(doc, m.index) || 
 			const range: Range = { start: doc.positionAt(start), end: doc.positionAt(end)}
 			let found = false;
@@ -170,7 +232,5 @@ export function getBlobKeysForFile(doc:TextDocument) {
 			}
 		}
 	}
-
-	debug(ret)
 	return ret;
 }

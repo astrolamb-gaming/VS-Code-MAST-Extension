@@ -406,6 +406,19 @@ function onCompletion(_textDocumentPosition, text) {
                     }
                     // return ci;
                 }
+                if (a === "link_name" || a === "link") {
+                    const links = cache.getLinks();
+                    for (const l of links) {
+                        const c = {
+                            label: l.name,
+                            kind: vscode_languageserver_1.CompletionItemKind.Text,
+                            documentation: "Link",
+                            sortText: "__" + l.name
+                        };
+                        ci.push(c);
+                    }
+                    return ci;
+                }
             }
             (0, console_1.debug)("Is in string");
             return ci;
@@ -808,6 +821,19 @@ function onCompletion(_textDocumentPosition, text) {
                         kind: vscode_languageserver_1.CompletionItemKind.EnumMember
                     };
                     ci.push(item);
+                }
+                return ci;
+            }
+            if (arg === "link_name" || arg === "link") {
+                const links = cache.getLinks();
+                for (const l of links) {
+                    const c = {
+                        label: l.name,
+                        kind: vscode_languageserver_1.CompletionItemKind.Text,
+                        documentation: "Link",
+                        sortText: "__" + l.name
+                    };
+                    ci.push(c);
                 }
                 return ci;
             }

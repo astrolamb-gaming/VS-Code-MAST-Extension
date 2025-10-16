@@ -43,6 +43,12 @@ async function onReferences(doc, params) {
             locs = locs.concat(k.locations);
         }
     }
+    let links = (0, cache_1.getCache)(doc.uri).getLinks();
+    for (const l of links) {
+        if (l.name === word) {
+            locs = locs.concat(l.locations);
+        }
+    }
     // Get references for labels
     // TODO: Refactor labels to use a similar system as Signals
     // let labels = getCache(doc.uri).getLabels(doc, false);

@@ -3,9 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getRolesForFile = getRolesForFile;
 exports.getRolesAsCompletionItem = getRolesAsCompletionItem;
 exports.getInventoryKeysForFile = getInventoryKeysForFile;
+exports.getLinksForFile = getLinksForFile;
 exports.getKeysAsCompletionItem = getKeysAsCompletionItem;
 exports.getBlobKeysForFile = getBlobKeysForFile;
-const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
 const fileFunctions_1 = require("../fileFunctions");
 const comments_1 = require("./comments");
@@ -60,10 +60,9 @@ function getInventoryKeysForFile(doc) {
     let ret = [];
     while (m = regex.exec(doc.getText())) {
         if (m[9] !== undefined) {
-            // keys.push(m[9]);
             const v = m[9];
             const start = m[0].indexOf(v) + m.index;
-            const end = start + m[0].length;
+            const end = start + v.length;
             if (!(0, comments_1.isInComment)(doc, m.index)) { //!isInString(doc, m.index) || 
                 const range = { start: doc.positionAt(start), end: doc.positionAt(end) };
                 let found = false;
@@ -91,6 +90,71 @@ function getInventoryKeysForFile(doc) {
     // keys = [...new Set(keys)];
     return ret;
 }
+function getLinksForFile(doc) {
+    // LInks that use the link name as the second argument.
+    let regex = /link((ed)?_to)?\(.*?,[ \t]*[\"\'](\w+)[\"\']/g;
+    let m;
+    let ret = [];
+    while (m = regex.exec(doc.getText())) {
+        if (m[3] !== undefined) {
+            const v = m[3];
+            const start = m[0].indexOf(v) + m.index;
+            const end = start + v.length;
+            if (!(0, comments_1.isInComment)(doc, m.index)) { //!isInString(doc, m.index) || 
+                const range = { start: doc.positionAt(start), end: doc.positionAt(end) };
+                let found = false;
+                for (const w of ret) {
+                    if (w.name === v) {
+                        w.locations.push({ uri: (0, fileFunctions_1.fileFromUri)(doc.uri), range: range });
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    let var1 = {
+                        name: v,
+                        locations: [{
+                                uri: (0, fileFunctions_1.fileFromUri)(doc.uri),
+                                range: range
+                            }]
+                    };
+                    ret.push(var1);
+                }
+            }
+        }
+    }
+    // Links that use the link name as the first argument
+    regex = /(has_|\.remove_|\.add|\.get_dedicated_)?link(s_set)?(_to)?\([ \t]*[\"\'](\w+)[\"\']/g;
+    while (m = regex.exec(doc.getText())) {
+        if (m[3] !== undefined) {
+            const v = m[4];
+            const start = m[0].indexOf(v) + m.index;
+            const end = start + v.length;
+            if (!(0, comments_1.isInComment)(doc, m.index)) { //!isInString(doc, m.index) || 
+                const range = { start: doc.positionAt(start), end: doc.positionAt(end) };
+                let found = false;
+                for (const w of ret) {
+                    if (w.name === v) {
+                        w.locations.push({ uri: (0, fileFunctions_1.fileFromUri)(doc.uri), range: range });
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    let var1 = {
+                        name: v,
+                        locations: [{
+                                uri: (0, fileFunctions_1.fileFromUri)(doc.uri),
+                                range: range
+                            }]
+                    };
+                    ret.push(var1);
+                }
+            }
+        }
+    }
+    return ret;
+}
 function getKeysAsCompletionItem(keys) {
     // keys = [...new Set(keys)];
     const ci = [];
@@ -107,14 +171,12 @@ function getKeysAsCompletionItem(keys) {
 function getBlobKeysForFile(doc) {
     let blob = /(data_set|blob)\.(get|set)\([\"\'](\w+)[\"\']/g;
     let data_set_value = /(get|set)_data_set_value\(.*,[ \t]*[\"\'](\w+)[\"\']/g;
-    let keys = [];
     let m;
     let ret = [];
     while (m = blob.exec(doc.getText())) {
-        // let key = m[2];
-        const v = m[2];
+        const v = m[3];
         const start = m[0].indexOf(v) + m.index;
-        const end = start + m[0].length;
+        const end = start + v.length;
         if (!(0, comments_1.isInComment)(doc, m.index)) { //!isInString(doc, m.index) || 
             const range = { start: doc.positionAt(start), end: doc.positionAt(end) };
             let found = false;
@@ -140,7 +202,7 @@ function getBlobKeysForFile(doc) {
     while (m = data_set_value.exec(doc.getText())) {
         const v = m[2];
         const start = m[0].indexOf(v) + m.index;
-        const end = start + m[0].length;
+        const end = start + v.length;
         if (!(0, comments_1.isInComment)(doc, m.index)) { //!isInString(doc, m.index) || 
             const range = { start: doc.positionAt(start), end: doc.positionAt(end) };
             let found = false;
@@ -163,7 +225,6 @@ function getBlobKeysForFile(doc) {
             }
         }
     }
-    (0, console_1.debug)(ret);
     return ret;
 }
 //# sourceMappingURL=roles.js.map

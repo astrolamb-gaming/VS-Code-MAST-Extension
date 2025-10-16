@@ -6,7 +6,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { FileCache } from '../data';
 import { LabelInfo, parseLabelsInFile } from '../tokens/labels';
 import { parsePrefabs } from '../tokens/prefabs';
-import { getRolesForFile, getInventoryKeysForFile, getBlobKeysForFile } from '../tokens/roles';
+import { getRolesForFile, getInventoryKeysForFile, getBlobKeysForFile, getLinksForFile } from '../tokens/roles';
 import { Variable, parseVariables } from '../tokens/variables';
 import { Word, parseWords } from '../tokens/words';
 import { sleep } from '../python/python';
@@ -31,6 +31,7 @@ export class MastFile extends FileCache {
 	roles: string[] = [];
 	inventory_keys: Word[] = [];
 	blob_keys: Word[] = [];
+	links:Word[] = [];
 	prefabs: LabelInfo[] = [];
 	words: Word[] = [];
 	inZip: boolean = false;
@@ -84,6 +85,7 @@ export class MastFile extends FileCache {
 		this.roles = getRolesForFile(text);
 		this.inventory_keys = getInventoryKeysForFile(textDocument);
 		this.blob_keys = getBlobKeysForFile(textDocument);
+		this.links = getLinksForFile(textDocument);
 		this.routes = getRoutesInFile(textDocument);
 		this.signals = parseSignalsInFile(textDocument);
 		if (this.inZip) {

@@ -1006,6 +1006,23 @@ export class MissionCache {
 		// }
 		return words;
 	}
+
+	getLinks() {
+		let ret:Word[] = [];
+		for (const m of this.mastFileCache) {
+			ret = ret.concat(m.links);
+		}
+		for (const m of this.missionMastModules) {
+			ret = ret.concat(m.links);
+		}
+		for (const p of this.pyFileCache) {
+			ret = ret.concat(p.links);
+		}
+		for (const p of this.missionPyModules) {
+			ret = ret.concat(p.links);
+		}
+		return ret;
+	}
 	
 	/**
 	 * @param textDocument the current {@link TextDocument TextDocument}

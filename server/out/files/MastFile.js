@@ -33,6 +33,7 @@ class MastFile extends data_1.FileCache {
         this.roles = [];
         this.inventory_keys = [];
         this.blob_keys = [];
+        this.links = [];
         this.prefabs = [];
         this.words = [];
         this.inZip = false;
@@ -82,6 +83,7 @@ class MastFile extends data_1.FileCache {
         this.roles = (0, roles_1.getRolesForFile)(text);
         this.inventory_keys = (0, roles_1.getInventoryKeysForFile)(textDocument);
         this.blob_keys = (0, roles_1.getBlobKeysForFile)(textDocument);
+        this.links = (0, roles_1.getLinksForFile)(textDocument);
         this.routes = (0, routeLabels_1.getRoutesInFile)(textDocument);
         this.signals = (0, signals_1.parseSignalsInFile)(textDocument);
         if (this.inZip) {

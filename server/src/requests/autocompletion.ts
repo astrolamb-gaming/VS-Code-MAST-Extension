@@ -431,6 +431,20 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 					}
 					// return ci;
 				}
+
+				if (a === "link_name" || a === "link") {
+					const links = cache.getLinks();
+					for (const l of links) {
+						const c:CompletionItem = {
+							label: l.name,
+							kind: CompletionItemKind.Text,
+							documentation: "Link",
+							sortText: "__" + l.name
+						}
+						ci.push(c);
+					}
+					return ci;
+				}
 			}
 
 			debug("Is in string");
@@ -838,6 +852,19 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 						kind: CompletionItemKind.EnumMember
 					}
 					ci.push(item);
+				}
+				return ci;
+			}
+			if (arg === "link_name" || arg === "link") {
+				const links = cache.getLinks();
+				for (const l of links) {
+					const c:CompletionItem = {
+						label: l.name,
+						kind: CompletionItemKind.Text,
+						documentation: "Link",
+						sortText: "__" + l.name
+					}
+					ci.push(c);
 				}
 				return ci;
 			}
