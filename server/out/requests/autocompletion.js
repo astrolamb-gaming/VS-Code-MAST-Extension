@@ -212,7 +212,15 @@ function onCompletion(_textDocumentPosition, text) {
             // Here we check for blob info
             if (blobStr.endsWith(".set(") || blobStr.endsWith(".get(")) {
                 (0, console_1.debug)("Is BLobe");
-                return (0, globals_1.getGlobals)().blob_items;
+                let blobs = (0, globals_1.getGlobals)().blob_items;
+                for (const bk of cache.getBlobKeys()) {
+                    let ci = {
+                        label: bk.name,
+                        kind: vscode_languageserver_1.CompletionItemKind.Text
+                    };
+                    blobs.push(ci);
+                }
+                return blobs;
             }
             // Here we check for roles
             if (blobStr.endsWith("role(") || blobStr.endsWith("roles(")) {
@@ -320,7 +328,24 @@ function onCompletion(_textDocumentPosition, text) {
                 }
                 if (a === "key") {
                     if (func.endsWith("data_set_value")) {
-                        return (0, globals_1.getGlobals)().blob_items;
+                        const blobs = (0, globals_1.getGlobals)().blob_items;
+                        for (const bk of cache.getBlobKeys()) {
+                            let find = blobs.find(key => {
+                                return key.label === bk.name;
+                            });
+                            (0, console_1.debug)(find);
+                            if (find !== undefined) {
+                                continue;
+                            }
+                            let ci = {
+                                label: bk.name,
+                                kind: vscode_languageserver_1.CompletionItemKind.Text,
+                                documentation: "",
+                                detail: "Type: Unknown"
+                            };
+                            blobs.push(ci);
+                        }
+                        return blobs;
                     }
                 }
                 if (a === "behave_id") {

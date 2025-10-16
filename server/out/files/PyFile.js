@@ -12,6 +12,7 @@ const fileFunctions_1 = require("../fileFunctions");
 const words_1 = require("../tokens/words");
 const signals_1 = require("../tokens/signals");
 const comments_1 = require("../tokens/comments");
+const roles_1 = require("../tokens/roles");
 class PyFile extends data_1.FileCache {
     constructor(uri, fileContents = "") {
         // if (fileContents === "") debug("pyFile Contents empty for " + uri)
@@ -22,6 +23,8 @@ class PyFile extends data_1.FileCache {
         this.words = [];
         this.globalFiles = [];
         this.signals = [];
+        this.inventory_keys = [];
+        this.blob_keys = [];
         this.globals = [];
         this.isGlobal = false;
         // If fileContents is NOT an empty string (e.g. if it's from a zipped folder), then all we do is parse the contents
@@ -72,6 +75,8 @@ class PyFile extends data_1.FileCache {
         this.words = (0, words_1.parseWords)(doc);
         // debug(this.uri.replace("c:/Users/mholderbaum/Documents/Cosmos/Cosmos-1-1-3/data/missions/",""))
         this.signals = (0, signals_1.parseSignalsInFile)(doc);
+        this.inventory_keys = (0, roles_1.getInventoryKeysForFile)(doc);
+        this.blob_keys = (0, roles_1.getBlobKeysForFile)(doc);
         // debug(this.signals)
         // Iterate over all classes to get their indices
         //classIndices.push(0);

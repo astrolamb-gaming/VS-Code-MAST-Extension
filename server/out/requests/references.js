@@ -31,6 +31,18 @@ async function onReferences(doc, params) {
             return locs;
         }
     }
+    let blob_keys = (0, cache_1.getCache)(doc.uri).getBlobKeys();
+    for (const k of blob_keys) {
+        if (k.name === word) {
+            locs = locs.concat(k.locations);
+        }
+    }
+    let inventory_keys = (0, cache_1.getCache)(doc.uri).getKeys(doc.uri);
+    for (const k of inventory_keys) {
+        if (k.name === word) {
+            locs = locs.concat(k.locations);
+        }
+    }
     // Get references for labels
     // TODO: Refactor labels to use a similar system as Signals
     // let labels = getCache(doc.uri).getLabels(doc, false);

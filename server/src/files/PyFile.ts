@@ -10,6 +10,7 @@ import { fixFileName } from '../fileFunctions';
 import { Word, parseWords } from '../tokens/words';
 import { parseSignalsInFile, SignalInfo } from '../tokens/signals';
 import { CRange, getMatchesForRegex, replaceRegexMatchWithUnderscore } from '../tokens/comments';
+import { getBlobKeysForFile, getInventoryKeysForFile } from '../tokens/roles';
 
 
 export class PyFile extends FileCache {
@@ -18,6 +19,8 @@ export class PyFile extends FileCache {
 	words: Word[] = [];
 	globalFiles: string[][] = [];
 	signals: SignalInfo[] = [];
+	inventory_keys: Word[] = [];
+	blob_keys: Word[] = [];
 	globals: string[][] = [];
 	isGlobal: boolean = false;
 	constructor(uri: string, fileContents: string = "") {
@@ -72,6 +75,8 @@ export class PyFile extends FileCache {
 		this.words = parseWords(doc);
 		// debug(this.uri.replace("c:/Users/mholderbaum/Documents/Cosmos/Cosmos-1-1-3/data/missions/",""))
 		this.signals = parseSignalsInFile(doc);
+		this.inventory_keys = getInventoryKeysForFile(doc);
+		this.blob_keys = getBlobKeysForFile(doc);
 		// debug(this.signals)
 		// Iterate over all classes to get their indices
 		//classIndices.push(0);

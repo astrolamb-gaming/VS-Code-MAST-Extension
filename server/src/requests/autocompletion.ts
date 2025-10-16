@@ -234,7 +234,15 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			// Here we check for blob info
 			if (blobStr.endsWith(".set(") || blobStr.endsWith(".get(")) {
 				debug("Is BLobe");
-				return getGlobals().blob_items
+				let blobs = getGlobals().blob_items;
+				for (const bk of cache.getBlobKeys()) {
+					let ci:CompletionItem = {
+						label: bk.name,
+						kind: CompletionItemKind.Text
+					}
+					blobs.push(ci);
+				}
+				return blobs;
 			}
 
 			// Here we check for roles
@@ -345,7 +353,24 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				}
 				if (a === "key") {
 					if (func.endsWith("data_set_value")) {
-						return getGlobals().blob_items;
+						const blobs = getGlobals().blob_items;
+						for (const bk of cache.getBlobKeys()) {
+							let find = blobs.find(key=>{
+								return key.label === bk.name;
+							});
+							debug(find);
+							if (find !== undefined) {
+								continue;
+							}
+							let ci:CompletionItem = {
+								label: bk.name,
+								kind: CompletionItemKind.Text,
+								documentation: "",
+								detail: "Type: Unknown"
+							}
+							blobs.push(ci);
+						}
+						return blobs;
 					}
 				}
 				if (a === "behave_id") {

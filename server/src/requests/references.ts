@@ -5,6 +5,7 @@ import { getCurrentLineFromTextDocument, getHoveredSymbol } from './hover';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { isInComment, isInString, isInYaml } from './../tokens/comments';
 import { fileFromUri } from '../fileFunctions';
+import path = require('path');
 
 export async function onReferences(doc: TextDocument, params:ReferenceParams): Promise<Location[] | undefined> {
 	debug("Trying to find word...");
@@ -31,6 +32,21 @@ export async function onReferences(doc: TextDocument, params:ReferenceParams): P
 			return locs;
 		}
 	}
+
+	let blob_keys = getCache(doc.uri).getBlobKeys();
+	for (const k of blob_keys) {
+		if (k.name === word) {
+			locs = locs.concat(k.locations);
+		}
+	}
+
+	let inventory_keys = getCache(doc.uri).getKeys(doc.uri);
+	for (const k of inventory_keys) {
+		if (k.name === word) {
+			locs = locs.concat(k.locations);
+		}
+	}
+
 
 	// Get references for labels
 	// TODO: Refactor labels to use a similar system as Signals

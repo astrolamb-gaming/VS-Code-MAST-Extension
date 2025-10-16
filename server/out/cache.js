@@ -937,6 +937,19 @@ class MissionCache {
         // ret = [...new Set(ret)]; // Don't want duplicates, I think...
         return ret;
     }
+    getBlobKeys() {
+        let words = [];
+        for (const m of this.mastFileCache) {
+            words = words.concat(m.blob_keys);
+        }
+        for (const m of this.missionMastModules) {
+            words = words.concat(m.blob_keys);
+        }
+        for (const p of this.pyFileCache) {
+            words = words.concat(p.blob_keys);
+        }
+        return words;
+    }
     /**
      * Get all the words in scope
      * @returns a list of {@link Word Word}
@@ -1142,11 +1155,11 @@ class MissionCache {
         // debug(this.mastFileCache.length)
         for (const m of this.mastFileCache) {
             // if (ini.includes(path.basename(m.uri))) {
-            keys = keys.concat(m.keys);
+            keys = keys.concat(m.inventory_keys);
             // }
         }
         for (const m of this.missionMastModules) {
-            keys = keys.concat(m.keys);
+            keys = keys.concat(m.inventory_keys);
         }
         return keys;
     }
