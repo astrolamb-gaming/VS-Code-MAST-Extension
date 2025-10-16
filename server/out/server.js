@@ -82,14 +82,16 @@ exports.connection.onInitialize((params) => {
             },
             definitionProvider: true,
             // TODO: Implement code actions and command providers
-            // codeActionProvider: true,
-            // executeCommandProvider: {
-            // 	commands: [
-            // 		// TODO: Here we add the command names - for QuickFix
-            // 		//'labels.fix'
-            // 		'labels.route.enable'
-            // 	]
-            // },
+            codeActionProvider: true,
+            executeCommandProvider: {
+                commands: [
+                    // TODO: Here we add the command names - for QuickFix
+                    //'labels.fix'
+                    // 'labels.route.enable',
+                    'fix_fstring',
+                    "fix_all_fstrings"
+                ]
+            },
             signatureHelpProvider: {
                 triggerCharacters: ['(', ',']
             },
@@ -160,37 +162,66 @@ exports.connection.onInitialized(async () => {
     // 	// progressUpdate(100);
     // })
 });
-// connection.onCodeAction((params) => {
-// 	const textDocument = documents.get(params.textDocument.uri);
-// 	if (textDocument === undefined) {
-// 		return undefined;
-// 	}
-// 	// params.range
-// 	const title = 'Update label with enable';
-// 	return [
-// 		// TODO: Here we add CodeActions (i.e. commands) for QuickFixes
-// 		//CodeAction.create(title, Command.create(title, 'sample.fixMe', textDocument.uri), CodeActionKind.QuickFix)
-// 		// CodeAction.create("Add enable line",CodeActionKind.QuickFix),
-// 		CodeAction.create(title, Command.create(title, 'labels.route.enable', textDocument.uri), CodeActionKind.QuickFix)
-// 	];
-// });
+exports.connection.onCodeAction((params) => {
+    const textDocument = exports.documents.get(params.textDocument.uri);
+    if (textDocument === undefined) {
+        return undefined;
+    }
+    let ret = [];
+    (0, console_1.debug)(params);
+    for (const diagnostic of params.context.diagnostics) {
+        if (diagnostic.data === "fstring_err") {
+            let title = "Fix this f-strings";
+            let ca = node_1.CodeAction.create(title, node_1.Command.create(title, 'fix_fstring', textDocument.uri, diagnostic), node_1.CodeActionKind.QuickFix);
+            ret.push(ca);
+            title = "Fix all f-strings";
+            ca = node_1.CodeAction.create(title, node_1.Command.create(title, 'fix_all_fstrings', textDocument.uri, diagnostic), node_1.CodeActionKind.QuickFix);
+            ret.push(ca);
+        }
+    }
+    return ret;
+    // [
+    // 	// TODO: Here we add CodeActions (i.e. commands) for QuickFixes
+    // 	//CodeAction.create(title, Command.create(title, 'sample.fixMe', textDocument.uri), CodeActionKind.QuickFix)
+    // 	// CodeAction.create("Add enable line",CodeActionKind.QuickFix),
+    // ];
+});
 exports.connection.onExecuteCommand(async (params) => {
     //TODO: Here we execute the commands
-    if (params.command !== 'labels.fix' || params.arguments === undefined) {
+    if (params.arguments === undefined) {
         return;
     }
+    const textDocument = exports.documents.get(params.arguments[0]);
+    const diagnostic = params.arguments[1];
+    if (textDocument === undefined)
+        return;
+    if (diagnostic === undefined)
+        return;
     // const textDocument = documents.get(params.arguments[0]);
     // if (textDocument === undefined) {
     // 	return;
     // }
     // const newText = typeof params.arguments[1] === 'string' ? params.arguments[1] : 'Eclipse';
-    // connection.workspace.applyEdit({
-    // 	documentChanges: [
-    // 		TextDocumentEdit.create({ uri: textDocument.uri, version: textDocument.version }, [
-    // 			TextEdit.insert(Position.create(0, 0), newText)
-    // 		])
-    // 	]
-    // });
+    const edits = [];
+    if (params.command === "fix_fstring") {
+        (0, console_1.debug)("Fixing fstring...");
+        let tde = node_1.TextDocumentEdit.create({ uri: textDocument.uri, version: textDocument.version }, [
+            // TextEdit.insert(Position.create(0, 0), "f")
+            node_1.TextEdit.insert(diagnostic.range.start, "f")
+        ]);
+        edits.push(tde);
+    }
+    // if (params.command === "fix_all_fstrings") {
+    // 	debug("Fixing all fstrings...")
+    // 	let tde = TextDocumentEdit.create({ uri: textDocument.uri, version: textDocument.version }, [
+    // 		// TextEdit.insert(Position.create(0, 0), "f")
+    // 		TextEdit.insert(diagnostic.range.start, "f")
+    // 	])
+    // 	edits.push(tde);
+    // }
+    exports.connection.workspace.applyEdit({
+        documentChanges: edits
+    });
 });
 // The global settings, used when the `workspace/configuration` request is not supported by the client.
 // Please note that this is not the case when using this server with the client provided in this example

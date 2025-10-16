@@ -264,7 +264,7 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 
 	errorSources.push(e1);
 
-	
+
 
 	for (let i = 0; i < errorSources.length; i++) {
 		// let d1: Diagnostic[] = findDiagnostic(errorSources[i].pattern,textDocument,errorSources[i].severity,errorSources[i].message,errorSources[i].source, errorSources[i].relatedMessage, maxNumberOfProblems,problems);
@@ -399,7 +399,9 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 						},
 						message: "With sbs_utils v1.2+, f-strings must use the `f` prefix, as described in [this post](https://github.com/artemis-sbs/LegendaryMissions/issues/383)"
 					}
-				]
+				],
+				data: "fstring_err"
+				
 			}
 			diagnostics.push(d);
 		}

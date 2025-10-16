@@ -368,7 +368,8 @@ async function validateTextDocument(textDocument) {
                         },
                         message: "With sbs_utils v1.2+, f-strings must use the `f` prefix, as described in [this post](https://github.com/artemis-sbs/LegendaryMissions/issues/383)"
                     }
-                ]
+                ],
+                data: "fstring_err"
             };
             diagnostics.push(d);
         }
