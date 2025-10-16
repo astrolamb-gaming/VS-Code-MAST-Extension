@@ -244,16 +244,6 @@ async function validateTextDocument(textDocument) {
     };
     errorSources.push(gui_colon);
     errorSources.push(e1);
-    // TODO: f-string error checking - not working 100% right...
-    e1 = {
-        pattern: /[^f]((?<open>[\"\']).*?\{.*?\}.*?\k<open>)/g,
-        severity: vscode_languageserver_1.DiagnosticSeverity.Warning,
-        source: 'mast',
-        message: "Possible f-string without a starting `f`",
-        relatedMessage: "With sbs_utils v1.2+, f-strings must use the `f` prefix, as described in [this post](https://github.com/artemis-sbs/LegendaryMissions/issues/383)",
-        excludeFrom: []
-    };
-    errorSources.push(e1);
     for (let i = 0; i < errorSources.length; i++) {
         // let d1: Diagnostic[] = findDiagnostic(errorSources[i].pattern,textDocument,errorSources[i].severity,errorSources[i].message,errorSources[i].source, errorSources[i].relatedMessage, maxNumberOfProblems,problems);
         let d1 = (0, errorChecking_1.findDiagnostic)(errorSources[i], textDocument, diagnostics.length, maxNumberOfProblems);
@@ -351,6 +341,36 @@ async function validateTextDocument(textDocument) {
                 };
                 diagnostics.push(d);
             }
+        }
+    }
+    let fStrings = /(.)((?<open>[\"\'])(.*?)\{(.*?)\}(.*?)\k<open>)/g;
+    // m:RegExpExecArray|null;
+    while (m = fStrings.exec(textDocument.getText())) {
+        (0, console_1.debug)(m[0]);
+        (0, console_1.debug)(m[1]);
+        if ((0, comments_1.isInComment)(textDocument, m.index))
+            continue;
+        if (m[1] !== "f") {
+            (0, console_1.debug)("Adding diagnostic!");
+            let range = {
+                start: textDocument.positionAt(m.index + 1),
+                end: textDocument.positionAt(m.index + m[0].length)
+            };
+            const d = {
+                range: range,
+                message: "Possible f-string without a starting `f`",
+                severity: vscode_languageserver_1.DiagnosticSeverity.Warning,
+                relatedInformation: [
+                    {
+                        location: {
+                            uri: textDocument.uri,
+                            range: Object.assign({}, range)
+                        },
+                        message: "With sbs_utils v1.2+, f-strings must use the `f` prefix, as described in [this post](https://github.com/artemis-sbs/LegendaryMissions/issues/383)"
+                    }
+                ]
+            };
+            diagnostics.push(d);
         }
     }
     const r = (0, routeLabels_1.checkEnableRoutes)(textDocument);
