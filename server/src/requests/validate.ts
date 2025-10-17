@@ -12,6 +12,7 @@ import { URI } from 'vscode-uri';
 import { fixFileName } from './../fileFunctions';
 import { compileMission } from './../python/python';
 import { checkForUnusedSignals } from './../tokens/signals';
+import { fstat } from 'fs';
 
 let debugStrs : string = "";//Debug: ${workspaceFolder}\n";
 
@@ -375,9 +376,11 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		}
 	}
 
-	let fStrings = /(.)((?<open>[\"\'])(.*?)\{(.*?)\}(.*?)\k<open>)/g;
+	let fStrings = /(.)((?<open>[\"\']{3}|[\"\'])(.*?)\{(.*?)\}(.*?)\k<open>)/g;
+	let allStrings = /(.)((?<open>[\"\']{3}|[\"\']).*?\k<open>)/g;
 	// m:RegExpExecArray|null;
-	while (m = fStrings.exec(textDocument.getText())) {
+	while (m = allStrings.exec(textDocument.getText())) {
+		if (!m[0].match(fStrings)) continue;
 		debug(m[0])
 		debug(m[1])
 		if (isInComment(textDocument,m.index)) continue;

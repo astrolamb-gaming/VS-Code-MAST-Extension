@@ -343,9 +343,12 @@ async function validateTextDocument(textDocument) {
             }
         }
     }
-    let fStrings = /(.)((?<open>[\"\'])(.*?)\{(.*?)\}(.*?)\k<open>)/g;
+    let fStrings = /(.)((?<open>[\"\']{3}|[\"\'])(.*?)\{(.*?)\}(.*?)\k<open>)/g;
+    let allStrings = /(.)((?<open>[\"\']{3}|[\"\']).*?\k<open>)/g;
     // m:RegExpExecArray|null;
-    while (m = fStrings.exec(textDocument.getText())) {
+    while (m = allStrings.exec(textDocument.getText())) {
+        if (!m[0].match(fStrings))
+            continue;
         (0, console_1.debug)(m[0]);
         (0, console_1.debug)(m[1]);
         if ((0, comments_1.isInComment)(textDocument, m.index))

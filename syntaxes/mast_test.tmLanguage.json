@@ -5035,7 +5035,7 @@
     "qstring-button-definition": {
       "name": "comms.button.build",
       "comment": "Need to use \\s+ because it has to be indented?? Can it be not indented?",
-      "begin": "(?m)^\\s*[\\+\\*](?!\/)(\".*\")",
+      "begin": "(?m)^\\s*[\\+\\*](?!\/)f(\".*\")",
       "end": "(\".*?\")(.*?)(?=( if|\\$|\\n|\\{|\\(|\\[))",
       "endCaptures":{
         "1":{
@@ -5057,7 +5057,7 @@
     },
     "button-definition": {
       "name": "comms.button.build",
-      "match": "(?m)^\\s*(\\*|\\+)(?<priority>([ \\t]*(!\\d+)[ \\t]*))?(?<weight>([ \\t]*(\\^\\d+)[ \\t]*))?([ \\t]*\\[(?<format>([\\$\\#]?\\w+[ \\t]*(,[ \\t]*\\#?\\w+)?))\\])?[ \\t]*((?<q>[\"'])(?<message>[ \\t\\S]+?)(\\k<q>))([ \\t]*(?<path>([\\w\\/]+)))?(?<data>([ \\t]*\\{[^\\n\\r\\f]+\\}))?",
+      "match": "(?m)^\\s*(\\*|\\+)(?<priority>([ \\t]*(!\\d+)[ \\t]*))?(?<weight>([ \\t]*(\\^\\d+)[ \\t]*))?([ \\t]*\\[(?<format>([\\$\\#]?\\w+[ \\t]*(,[ \\t]*\\#?\\w+)?))\\])?[ \\t]*(f?(?<q>[\"'])(?<message>[ \\t\\S]+?)(\\k<q>))([ \\t]*(?<path>([\\w\\/]+)))?(?<data>([ \\t]*\\{[^\\n\\r\\f]+\\}))?",
       "captures":{
         "4": {
           "name": "string.weighted.percent.start"
