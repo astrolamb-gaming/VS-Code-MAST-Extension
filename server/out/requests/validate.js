@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.getCurrentDiagnostics = getCurrentDiagnostics;
 exports.compileMastFile = compileMastFile;
 exports.validateTextDocument = validateTextDocument;
 const console_1 = require("console");
@@ -29,6 +30,8 @@ let errorOrExcept = /(Error|Exception):(.*)/;
 let errorInfo = /at (.*) Line (\d+) (- '(.*)')?/;
 let moduleRx = /module[ \t](.*)/;
 let newlineIndex = /at first newline index\nat (.*) Line (\d+) \nmodule (\w+)\n\n/;
+let currentDiagnostics = [];
+function getCurrentDiagnostics() { return currentDiagnostics; }
 async function compileMastFile(textDocument) {
     // debug("Starting mast compile")
     // return [];
@@ -382,6 +385,7 @@ async function validateTextDocument(textDocument) {
     const sigs = (0, signals_1.checkForUnusedSignals)(textDocument);
     diagnostics = diagnostics.concat(r, sigs);
     // return debugLabelValidation(textDocument);
+    currentDiagnostics = diagnostics;
     return diagnostics;
 }
 function debugLabelValidation(doc) {

@@ -30,6 +30,9 @@ let errorInfo = /at (.*) Line (\d+) (- '(.*)')?/;
 let moduleRx = /module[ \t](.*)/;
 let newlineIndex = /at first newline index\nat (.*) Line (\d+) \nmodule (\w+)\n\n/;
 
+let currentDiagnostics:Diagnostic[] = []
+export function getCurrentDiagnostics():Diagnostic[] {return currentDiagnostics;}
+
 export async function compileMastFile(textDocument: TextDocument): Promise<Diagnostic[]> {
 	// debug("Starting mast compile")
 	// return [];
@@ -415,6 +418,7 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	const sigs = checkForUnusedSignals(textDocument);
 	diagnostics = diagnostics.concat(r, sigs);
 	// return debugLabelValidation(textDocument);
+	currentDiagnostics = diagnostics;
 	return diagnostics;
 }
 

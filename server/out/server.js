@@ -172,10 +172,45 @@ exports.connection.onCodeAction((params) => {
     for (const diagnostic of params.context.diagnostics) {
         if (diagnostic.data === "fstring_err") {
             let title = "Fix this f-strings";
-            let ca = node_1.CodeAction.create(title, node_1.Command.create(title, 'fix_fstring', textDocument.uri, diagnostic), node_1.CodeActionKind.QuickFix);
+            // let ca = CodeAction.create(title, Command.create(title, 'fix_fstring', textDocument.uri, diagnostic), CodeActionKind.QuickFix)
+            let ca = node_1.CodeAction.create(title, node_1.CodeActionKind.QuickFix);
+            let tde = {
+                range: { start: diagnostic.range.start, end: diagnostic.range.start },
+                newText: "f"
+            };
+            let tEdits = [];
+            tEdits.push(tde);
+            let edit = {
+                changes: {
+                    [textDocument.uri]: tEdits
+                }
+            };
+            ca.edit = edit;
             ret.push(ca);
-            title = "Fix all f-strings";
-            ca = node_1.CodeAction.create(title, node_1.Command.create(title, 'fix_all_fstrings', textDocument.uri, diagnostic), node_1.CodeActionKind.QuickFix);
+            ///////
+            // All this is irrelevant here; the params.context.diagnostics parameter doesn't include ALL diagnostics.
+            // It only includes them at a particular point. So we need to have another way to get all the available diagnostics.
+            title = "Fix all f-strings in file";
+            ca = node_1.CodeAction.create(title, node_1.CodeActionKind.QuickFix);
+            tEdits = [];
+            // Get ALL the fstring_err diagnostics
+            for (const d of (0, validate_1.getCurrentDiagnostics)()) {
+                (0, console_1.debug)(d.data);
+                if (d.data === "fstring_err") {
+                    tde = {
+                        range: { start: d.range.start, end: d.range.start },
+                        newText: "f"
+                    };
+                    tEdits.push(tde);
+                    (0, console_1.debug)("Err added");
+                }
+            }
+            edit = {
+                changes: {
+                    [textDocument.uri]: tEdits
+                }
+            };
+            ca.edit = edit;
             ret.push(ca);
         }
     }
@@ -185,43 +220,6 @@ exports.connection.onCodeAction((params) => {
     // 	//CodeAction.create(title, Command.create(title, 'sample.fixMe', textDocument.uri), CodeActionKind.QuickFix)
     // 	// CodeAction.create("Add enable line",CodeActionKind.QuickFix),
     // ];
-});
-exports.connection.onExecuteCommand(async (params) => {
-    //TODO: Here we execute the commands
-    if (params.arguments === undefined) {
-        return;
-    }
-    const textDocument = exports.documents.get(params.arguments[0]);
-    const diagnostic = params.arguments[1];
-    if (textDocument === undefined)
-        return;
-    if (diagnostic === undefined)
-        return;
-    // const textDocument = documents.get(params.arguments[0]);
-    // if (textDocument === undefined) {
-    // 	return;
-    // }
-    // const newText = typeof params.arguments[1] === 'string' ? params.arguments[1] : 'Eclipse';
-    const edits = [];
-    if (params.command === "fix_fstring") {
-        (0, console_1.debug)("Fixing fstring...");
-        let tde = node_1.TextDocumentEdit.create({ uri: textDocument.uri, version: textDocument.version }, [
-            // TextEdit.insert(Position.create(0, 0), "f")
-            node_1.TextEdit.insert(diagnostic.range.start, "f")
-        ]);
-        edits.push(tde);
-    }
-    // if (params.command === "fix_all_fstrings") {
-    // 	debug("Fixing all fstrings...")
-    // 	let tde = TextDocumentEdit.create({ uri: textDocument.uri, version: textDocument.version }, [
-    // 		// TextEdit.insert(Position.create(0, 0), "f")
-    // 		TextEdit.insert(diagnostic.range.start, "f")
-    // 	])
-    // 	edits.push(tde);
-    // }
-    exports.connection.workspace.applyEdit({
-        documentChanges: edits
-    });
 });
 // The global settings, used when the `workspace/configuration` request is not supported by the client.
 // Please note that this is not the case when using this server with the client provided in this example

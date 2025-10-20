@@ -46,7 +46,7 @@ import { onSignatureHelp } from './requests/signatureHelp';
 import fs = require("fs");
 import { getVariableNamesInDoc } from './tokens/variables';
 import { getGlobals, initializeGlobals } from './globals';
-import { validateTextDocument } from './requests/validate';
+import { getCurrentDiagnostics, validateTextDocument } from './requests/validate';
 import { onDefinition } from './requests/goToDefinition';
 import { getCache } from './cache';
 import { onReferences } from './requests/references';
@@ -223,12 +223,53 @@ connection.onCodeAction((params) => {
 	let ret = [];
 	debug(params);
 	for (const diagnostic of params.context.diagnostics) {
+		
 		if (diagnostic.data === "fstring_err") {
 			let title = "Fix this f-strings";
-			let ca = CodeAction.create(title, Command.create(title, 'fix_fstring', textDocument.uri, diagnostic), CodeActionKind.QuickFix)
+			// let ca = CodeAction.create(title, Command.create(title, 'fix_fstring', textDocument.uri, diagnostic), CodeActionKind.QuickFix)
+			let ca = CodeAction.create(title, CodeActionKind.QuickFix);
+
+			let tde:TextEdit = {
+				range: {start:diagnostic.range.start,end:diagnostic.range.start},
+				newText: "f"
+			}
+			let tEdits:TextEdit[] = [];
+			tEdits.push(tde);
+
+			let edit:WorkspaceEdit = {
+				changes:{
+					[textDocument.uri]: tEdits
+				}
+			}
+			ca.edit = edit
 			ret.push(ca);
-			title = "Fix all f-strings";
-			ca = CodeAction.create(title, Command.create(title, 'fix_all_fstrings', textDocument.uri, diagnostic), CodeActionKind.QuickFix)
+			///////
+			
+			// All this is irrelevant here; the params.context.diagnostics parameter doesn't include ALL diagnostics.
+			// It only includes them at a particular point. So we need to have another way to get all the available diagnostics.
+
+			title = "Fix all f-strings in file";
+			ca = CodeAction.create(title, CodeActionKind.QuickFix)
+
+			tEdits = [];
+			// Get ALL the fstring_err diagnostics
+			for (const d of getCurrentDiagnostics()) {
+				debug(d.data)
+				if (d.data === "fstring_err") {
+					tde = {
+						range: {start: d.range.start, end: d.range.start},
+						newText: "f"
+					}
+					tEdits.push(tde)
+					debug("Err added")
+				}
+			}
+			edit = {
+				changes:{
+					[textDocument.uri]: tEdits
+				}
+			}
+			ca.edit = edit
 			ret.push(ca);
 		}
 	}
@@ -240,55 +281,40 @@ connection.onCodeAction((params) => {
 		
 	// ];
 });
-connection.onExecuteCommand(async (params) => {
-	//TODO: Here we execute the commands
-	if (params.arguments === undefined) {
-		return;
-	}
-	const textDocument = documents.get(params.arguments[0]);
-	const diagnostic = params.arguments[1];
-	if (textDocument === undefined) return;
-	if (diagnostic === undefined) return;
+// connection.onExecuteCommand(async (params) => {
+// 	//TODO: Here we execute the commands
+// 	if (params.arguments === undefined) {
+// 		return;
+// 	}
+// 	const textDocument = documents.get(params.arguments[0]);
+// 	const diagnostic = params.arguments[1];
+// 	if (textDocument === undefined) return;
+// 	if (diagnostic === undefined) return;
 
-	// const textDocument = documents.get(params.arguments[0]);
-	// if (textDocument === undefined) {
-	// 	return;
-	// }
-	// const newText = typeof params.arguments[1] === 'string' ? params.arguments[1] : 'Eclipse';
+// 	// const textDocument = documents.get(params.arguments[0]);
+// 	// if (textDocument === undefined) {
+// 	// 	return;
+// 	// }
+// 	// const newText = typeof params.arguments[1] === 'string' ? params.arguments[1] : 'Eclipse';
 	
-	const edits: TextDocumentEdit[] = [];
+// 	const edits: TextDocumentEdit[] = [];
 
-	if (params.command === "fix_fstring") {
-		debug("Fixing fstring...")
+// 	if (params.command === "fix_fstring") {
+// 		debug("Fixing fstring...")
 
-		let tde = TextDocumentEdit.create({ uri: textDocument.uri, version: textDocument.version }, [
-			// TextEdit.insert(Position.create(0, 0), "f")
-			TextEdit.insert(diagnostic.range.start, "f")
-		])
+// 		let tde = TextDocumentEdit.create({ uri: textDocument.uri, version: textDocument.version }, [
+// 			// TextEdit.insert(Position.create(0, 0), "f")
+// 			TextEdit.insert(diagnostic.range.start, "f")
+// 		])
 
-		edits.push(tde);
-	}
-	// if (params.command === "fix_all_fstrings") {
-	// 	debug("Fixing all fstrings...")
+// 		edits.push(tde);
+// 	}
 
-		
+// 	connection.workspace.applyEdit({
+// 		documentChanges: edits
+// 	});
 
-
-	// 	let tde = TextDocumentEdit.create({ uri: textDocument.uri, version: textDocument.version }, [
-	// 		// TextEdit.insert(Position.create(0, 0), "f")
-	// 		TextEdit.insert(diagnostic.range.start, "f")
-	// 	])
-
-	// 	edits.push(tde);
-	// }
-
-	
-
-	connection.workspace.applyEdit({
-		documentChanges: edits
-	});
-
-});
+// });
 
 // The example settings
 interface MAST_Settings {
