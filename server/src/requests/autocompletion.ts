@@ -248,10 +248,10 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			// Here we check for roles
 			if (blobStr.endsWith("role(") || blobStr.endsWith("roles(")) {
 				debug("Getting roles")
-				let roles = getRolesForFile(t);
+				let roles = getRolesForFile(text);
 				roles = roles.concat(cache.getRoles(text.uri));
 				roles = roles.concat(getGlobals().shipData.roles);
-				ci = getRolesAsCompletionItem(roles);
+				ci = getRolesAsCompletionItem(roles, text);
 				return ci;
 			}
 
@@ -284,10 +284,10 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			for (const a of args) {
 				if (a === "role" || a === "roles") {
 					debug("Getting roles")
-					let roles = getRolesForFile(t);
+					let roles = getRolesForFile(text);
 					roles = roles.concat(cache.getRoles(text.uri));
 					roles = roles.concat(getGlobals().shipData.roles);
-					ci = getRolesAsCompletionItem(roles);
+					ci = getRolesAsCompletionItem(roles, text);
 				return ci;
 				}
 				if (a === "style") {

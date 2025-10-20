@@ -11,6 +11,7 @@ const server_1 = require("./server");
 const Hjson = require("hjson");
 const globals_1 = require("./globals");
 const sharp = require("sharp");
+const vscode_languageserver_textdocument_1 = require("vscode-languageserver-textdocument");
 class ShipData {
     constructor(artemisDir) {
         this.roles = [];
@@ -39,12 +40,13 @@ class ShipData {
         this.filePath = file;
         if (file !== null) {
             (0, fileFunctions_1.readFile)(file).then((contents) => {
+                this.textDoc = vscode_languageserver_textdocument_1.TextDocument.create(this.filePath, path.extname(this.filePath), 0, contents);
                 // contents = contents.replace(/\/\/.*?(\n|$)/gm,"");
                 try {
                     this.data = Hjson.parse(contents)["#ship-list"];
                     this.validJSON = true;
                     this.ships = this.parseShips();
-                    this.roles = this.parseRolesJSON();
+                    // this.roles = this.parseRolesJSON();
                 }
                 catch (e) {
                     const err = e;
@@ -52,8 +54,8 @@ class ShipData {
                     (0, console_1.debug)("shipData.json NOT parsed properly");
                     (0, console_1.debug)(err);
                     this.shipDataJsonError(err);
-                    this.roles = this.parseRolesText(contents);
                 }
+                this.roles = this.parseRolesText(this.textDoc);
                 // debug(this.data);
                 // debug(typeof this.data[0]);
                 this.fileExists = true;
@@ -232,22 +234,43 @@ class ShipData {
         roles = [...new Set(roles)];
         return roles;
     }
-    parseRolesText(contents) {
-        let roles = [];
-        const lines = contents.split("\n");
+    parseRolesText(doc) {
+        let ret = [];
+        const lines = doc.getText().split("\n");
         for (const line of lines) {
             if (line.trim().startsWith("\"roles\"") || line.trim().startsWith("\"side\"")) {
                 const role = line.trim().replace("roles", "").replace("side", "").replace(/\"/g, "").replace(":", "").trim();
                 const list = role.split(",");
-                for (const r of list) {
-                    if (r !== "") {
-                        roles.push(r.trim());
+                for (const v of list) {
+                    if (v === "") {
+                        continue;
+                    }
+                    const start = line.indexOf(v.trim());
+                    const end = start + v.length;
+                    const range = { start: doc.positionAt(start), end: doc.positionAt(end) };
+                    let found = false;
+                    for (const w of ret) {
+                        if (w.name === v) {
+                            w.locations.push({ uri: (0, fileFunctions_1.fileFromUri)(doc.uri), range: range });
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        let var1 = {
+                            name: v,
+                            locations: [{
+                                    uri: (0, fileFunctions_1.fileFromUri)(doc.uri),
+                                    range: range
+                                }]
+                        };
+                        ret.push(var1);
                     }
                 }
             }
         }
-        roles = [...new Set(roles)];
-        return roles;
+        // roles = [...new Set(roles)];
+        return ret;
     }
 }
 exports.ShipData = ShipData;

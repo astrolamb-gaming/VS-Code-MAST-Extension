@@ -1144,18 +1144,20 @@ class MissionCache {
      * @returns an array of strings
      */
     getRoles(folder) {
-        folder = (0, fileFunctions_1.fixFileName)(folder);
         let roles = [];
-        const ini = (0, fileFunctions_1.getInitContents)(folder);
-        (0, console_1.debug)(ini);
         for (const m of this.mastFileCache) {
-            (0, console_1.debug)(folder);
-            if (ini.includes(path.basename(m.uri))) {
-                roles = roles.concat(m.roles);
-            }
+            roles = roles.concat(m.roles);
         }
-        // Add default roles
-        roles.push("__player__");
+        for (const m of this.missionMastModules) {
+            roles = roles.concat(m.roles);
+        }
+        for (const p of this.pyFileCache) {
+            roles = roles.concat(p.roles);
+        }
+        for (const p of this.missionPyModules) {
+            roles = roles.concat(p.roles);
+        }
+        roles = roles.concat((0, globals_1.getGlobals)().shipData.roles);
         return roles;
     }
     /**

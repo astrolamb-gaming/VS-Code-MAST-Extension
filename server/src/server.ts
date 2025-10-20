@@ -221,7 +221,7 @@ connection.onCodeAction((params) => {
 		return undefined;
 	}
 	let ret = [];
-	debug(params);
+	// debug(params);
 	for (const diagnostic of params.context.diagnostics) {
 		
 		if (diagnostic.data === "fstring_err") {

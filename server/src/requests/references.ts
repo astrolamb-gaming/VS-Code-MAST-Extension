@@ -54,6 +54,13 @@ export async function onReferences(doc: TextDocument, params:ReferenceParams): P
 		}
 	}
 
+	let roles = getCache(doc.uri).getRoles(doc.uri);
+	for (const r of roles) {
+		if (r.name === word) {
+			locs = locs.concat(r.locations);
+		}
+	}
+
 
 	// Get references for labels
 	// TODO: Refactor labels to use a similar system as Signals

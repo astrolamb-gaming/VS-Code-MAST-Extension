@@ -384,11 +384,11 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	// m:RegExpExecArray|null;
 	while (m = allStrings.exec(textDocument.getText())) {
 		if (!m[0].match(fStrings)) continue;
-		debug(m[0])
-		debug(m[1])
+		// debug(m[0])
+		// debug(m[1])
 		if (isInComment(textDocument,m.index)) continue;
 		if (m[1] !== "f") {
-			debug("Adding diagnostic!")
+			// debug("Adding diagnostic!")
 			let range:Range = {
 				start: textDocument.positionAt(m.index+1),
 				end: textDocument.positionAt(m.index + m[0].length)

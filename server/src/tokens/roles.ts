@@ -3,12 +3,12 @@ import { CompletionItem, CompletionItemKind, Range } from 'vscode-languageserver
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { getGlobals } from '../globals';
 import path = require('path');
-import { fileFromUri, getFileContents, getFilesInDir } from '../fileFunctions';
+import { fileFromUri, fixFileName, getFileContents, getFilesInDir } from '../fileFunctions';
 import { isInComment } from './comments';
 import { Word } from './words';
 
-export function getRolesForFile(text: string): string[] {
-	let roles: string[] = [];
+export function getRolesForFile(text: TextDocument): Word[] {
+	let roles: Word[] = [];
 	const regExpArr = [
 		/role\([\"\'](.*?)[\"\']\)/g,							// string
 		/all_roles\([\"\'](.*?)[\"\']\)/g, 				// comma-separated string
@@ -27,28 +27,70 @@ export function getRolesForFile(text: string): string[] {
 	return roles;
 }
 
-function getRolesForRegEx(re: RegExp, text: string) : string[] {
-	let roles: string[] = [];
+function getRolesForRegEx(re: RegExp, doc:TextDocument) : Word[] {
+	let ret: Word[] = [];
 	let m: RegExpExecArray | null;
-	while (m = re.exec(text)) {
-		const list = m[1].split(",");
-		for (const i of list) {
-			if (i !== "") {
-				roles.push(i);
+	while (m = re.exec(doc.getText())) {
+		// const list = m[1].split(",");
+		// for (const i of list) {
+		// 	if (i !== "") {
+		// 		roles.push(i);
+		// 	}
+		// }
+		if (m[1]!== undefined) {
+			let str = m[1];
+			let roles = str.split(",");
+			for (const v of roles) {
+				const start = m[0].indexOf(v) + m.index;
+				const end = start + v.length;
+
+				if (!isInComment(doc, m.index)) { //!isInString(doc, m.index) || 
+					
+					const range: Range = { start: doc.positionAt(start), end: doc.positionAt(end)}
+					let found = false;
+					for (const w of ret) {
+						if (w.name === v) {
+							w.locations.push({uri: fileFromUri(doc.uri), range: range});
+							found = true;
+							break;
+						}
+					}
+					if (!found) {
+						let var1: Word = {
+							name: v,
+							locations: [{
+								uri: fileFromUri(doc.uri),
+								range: range
+							}]
+						}
+						ret.push(var1);
+					}
+				}
 			}
 		}
 	}
-	return roles;
+	return ret;
 }
 
-export function getRolesAsCompletionItem(roles: string[]) {
+export function getRolesAsCompletionItem(roles: Word[], doc:TextDocument) {
 	roles = [...new Set(roles)];
 	const ci: CompletionItem[] = [];
 	for (const r of roles) {
+		let filter = r.name;
+		let deets = "Role";
+		for (const loc of r.locations) {
+			debug(fixFileName(doc.uri))
+			debug(fixFileName(loc.uri))
+			if (fixFileName(doc.uri)===fixFileName(loc.uri)) {
+				filter = "___" + r.name;
+				deets = "Role (used in this file)"
+				break;
+			}
+		}
 		const c: CompletionItem = {
-			label: r,
+			label: r.name,
 			kind: CompletionItemKind.Text,
-			labelDetails: {description: "Role"}
+			labelDetails: {description: deets}
 		}
 		ci.push(c);
 	}

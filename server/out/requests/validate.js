@@ -352,12 +352,12 @@ async function validateTextDocument(textDocument) {
     while (m = allStrings.exec(textDocument.getText())) {
         if (!m[0].match(fStrings))
             continue;
-        (0, console_1.debug)(m[0]);
-        (0, console_1.debug)(m[1]);
+        // debug(m[0])
+        // debug(m[1])
         if ((0, comments_1.isInComment)(textDocument, m.index))
             continue;
         if (m[1] !== "f") {
-            (0, console_1.debug)("Adding diagnostic!");
+            // debug("Adding diagnostic!")
             let range = {
                 start: textDocument.positionAt(m.index + 1),
                 end: textDocument.positionAt(m.index + m[0].length)

@@ -6,6 +6,7 @@ exports.getInventoryKeysForFile = getInventoryKeysForFile;
 exports.getLinksForFile = getLinksForFile;
 exports.getKeysAsCompletionItem = getKeysAsCompletionItem;
 exports.getBlobKeysForFile = getBlobKeysForFile;
+const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
 const fileFunctions_1 = require("../fileFunctions");
 const comments_1 = require("./comments");
@@ -28,27 +29,67 @@ function getRolesForFile(text) {
     roles = [...new Set(roles)];
     return roles;
 }
-function getRolesForRegEx(re, text) {
-    let roles = [];
+function getRolesForRegEx(re, doc) {
+    let ret = [];
     let m;
-    while (m = re.exec(text)) {
-        const list = m[1].split(",");
-        for (const i of list) {
-            if (i !== "") {
-                roles.push(i);
+    while (m = re.exec(doc.getText())) {
+        // const list = m[1].split(",");
+        // for (const i of list) {
+        // 	if (i !== "") {
+        // 		roles.push(i);
+        // 	}
+        // }
+        if (m[1] !== undefined) {
+            let str = m[1];
+            let roles = str.split(",");
+            for (const v of roles) {
+                const start = m[0].indexOf(v) + m.index;
+                const end = start + v.length;
+                if (!(0, comments_1.isInComment)(doc, m.index)) { //!isInString(doc, m.index) || 
+                    const range = { start: doc.positionAt(start), end: doc.positionAt(end) };
+                    let found = false;
+                    for (const w of ret) {
+                        if (w.name === v) {
+                            w.locations.push({ uri: (0, fileFunctions_1.fileFromUri)(doc.uri), range: range });
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        let var1 = {
+                            name: v,
+                            locations: [{
+                                    uri: (0, fileFunctions_1.fileFromUri)(doc.uri),
+                                    range: range
+                                }]
+                        };
+                        ret.push(var1);
+                    }
+                }
             }
         }
     }
-    return roles;
+    return ret;
 }
-function getRolesAsCompletionItem(roles) {
+function getRolesAsCompletionItem(roles, doc) {
     roles = [...new Set(roles)];
     const ci = [];
     for (const r of roles) {
+        let filter = r.name;
+        let deets = "Role";
+        for (const loc of r.locations) {
+            (0, console_1.debug)((0, fileFunctions_1.fixFileName)(doc.uri));
+            (0, console_1.debug)((0, fileFunctions_1.fixFileName)(loc.uri));
+            if ((0, fileFunctions_1.fixFileName)(doc.uri) === (0, fileFunctions_1.fixFileName)(loc.uri)) {
+                filter = "___" + r.name;
+                deets = "Role (used in this file)";
+                break;
+            }
+        }
         const c = {
-            label: r,
+            label: r.name,
             kind: vscode_languageserver_1.CompletionItemKind.Text,
-            labelDetails: { description: "Role" }
+            labelDetails: { description: deets }
         };
         ci.push(c);
     }

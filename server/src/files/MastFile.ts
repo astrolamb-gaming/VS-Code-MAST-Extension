@@ -28,7 +28,7 @@ export class MastFile extends FileCache {
 	variables: Variable[] = [];
 	routes: string[] = [];
 	signals: SignalInfo[] = [];
-	roles: string[] = [];
+	roles: Word[] = [];
 	inventory_keys: Word[] = [];
 	blob_keys: Word[] = [];
 	links:Word[] = [];
@@ -82,7 +82,7 @@ export class MastFile extends FileCache {
 		// TODO: Parse variables, etc
 		//this.variables = getVariableNamesInDoc(textDocument);
 		this.variables = parseVariables(textDocument); //
-		this.roles = getRolesForFile(text);
+		this.roles = getRolesForFile(textDocument);
 		this.inventory_keys = getInventoryKeysForFile(textDocument);
 		this.blob_keys = getBlobKeysForFile(textDocument);
 		this.links = getLinksForFile(textDocument);

@@ -10,13 +10,14 @@ import { fixFileName } from '../fileFunctions';
 import { Word, parseWords } from '../tokens/words';
 import { parseSignalsInFile, SignalInfo } from '../tokens/signals';
 import { CRange, getMatchesForRegex, replaceRegexMatchWithUnderscore } from '../tokens/comments';
-import { getBlobKeysForFile, getInventoryKeysForFile, getLinksForFile } from '../tokens/roles';
+import { getBlobKeysForFile, getInventoryKeysForFile, getLinksForFile, getRolesForFile } from '../tokens/roles';
 
 
 export class PyFile extends FileCache {
 	defaultFunctions: Function[] = [];
 	classes: ClassObject[] = [];
 	words: Word[] = [];
+	roles: Word[] = [];
 	globalFiles: string[][] = [];
 	signals: SignalInfo[] = [];
 	inventory_keys: Word[] = [];
@@ -74,6 +75,7 @@ export class PyFile extends FileCache {
 
 		const doc: TextDocument = TextDocument.create(this.uri, "py", 1, text);
 		this.words = parseWords(doc);
+		this.roles = getRolesForFile(doc);
 		// debug(this.uri.replace("c:/Users/mholderbaum/Documents/Cosmos/Cosmos-1-1-3/data/missions/",""))
 		this.signals = parseSignalsInFile(doc);
 		this.inventory_keys = getInventoryKeysForFile(doc);

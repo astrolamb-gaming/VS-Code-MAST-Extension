@@ -168,7 +168,7 @@ exports.connection.onCodeAction((params) => {
         return undefined;
     }
     let ret = [];
-    (0, console_1.debug)(params);
+    // debug(params);
     for (const diagnostic of params.context.diagnostics) {
         if (diagnostic.data === "fstring_err") {
             let title = "Fix this f-strings";

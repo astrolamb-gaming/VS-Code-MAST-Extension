@@ -80,7 +80,7 @@ class MastFile extends data_1.FileCache {
         // TODO: Parse variables, etc
         //this.variables = getVariableNamesInDoc(textDocument);
         this.variables = (0, variables_1.parseVariables)(textDocument); //
-        this.roles = (0, roles_1.getRolesForFile)(text);
+        this.roles = (0, roles_1.getRolesForFile)(textDocument);
         this.inventory_keys = (0, roles_1.getInventoryKeysForFile)(textDocument);
         this.blob_keys = (0, roles_1.getBlobKeysForFile)(textDocument);
         this.links = (0, roles_1.getLinksForFile)(textDocument);

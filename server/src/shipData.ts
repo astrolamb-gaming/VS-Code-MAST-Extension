@@ -2,22 +2,25 @@ import { debug } from 'console';
 import path = require('path');
 import fs = require('fs');
 import os = require('os');
-import { readFile } from './fileFunctions';
-import { CompletionItem, CompletionItemKind, MarkupContent } from 'vscode-languageserver';
+import { fileFromUri, readFile } from './fileFunctions';
+import { CompletionItem, CompletionItemKind, MarkupContent, Range } from 'vscode-languageserver';
 import { connection, sendToClient } from './server';
 import Hjson = require('hjson');
 import { getGlobals } from './globals';
 import sharp = require('sharp');
+import { Word } from './tokens/words';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 
 
 export class ShipData {
-	roles: string[] = [];
+	roles: Word[] = [];
 	data: any[] = [];
 	fileExists = false;
 	validJSON = true;
 	filePath: string = "";
 	artemisDir: string;
 	ships: Ship[] = [];
+	textDoc:TextDocument|undefined;
 	constructor(artemisDir: string) {
 		this.artemisDir = artemisDir;
 		if (artemisDir === "") return;
@@ -29,6 +32,7 @@ export class ShipData {
 		fs.watch(artemisDir, (eventType, filename)=>{
 			this.load();
 		})
+		
 	}
 
 	load() {
@@ -39,21 +43,24 @@ export class ShipData {
 		this.filePath = file;
 		if (file !== null) {
 			readFile(file).then((contents)=>{
+				this.textDoc = TextDocument.create(this.filePath,path.extname(this.filePath),0,contents)
+				
 				// contents = contents.replace(/\/\/.*?(\n|$)/gm,"");
 				try {
 					this.data = Hjson.parse(contents)["#ship-list"];
 					
 					this.validJSON = true;
 					this.ships = this.parseShips();
-					this.roles = this.parseRolesJSON();
+					// this.roles = this.parseRolesJSON();
 				} catch (e) {
 					const err = e as Error;
 					this.validJSON = false;
 					debug("shipData.json NOT parsed properly");
 					debug(err);
 					this.shipDataJsonError(err);
-					this.roles = this.parseRolesText(contents);
+					
 				}
+				this.roles = this.parseRolesText(this.textDoc);
 				// debug(this.data);
 				// debug(typeof this.data[0]);
 				this.fileExists = true;
@@ -235,22 +242,44 @@ export class ShipData {
 		roles = [...new Set(roles)];
 		return roles;
 	}
-	parseRolesText(contents: string): string[] {
-		let roles: string[] = [];
-		const lines = contents.split("\n");
+	parseRolesText(doc:TextDocument): Word[] {
+		let ret: Word[] = [];
+		const lines = doc.getText().split("\n");
 		for (const line of lines) {
 			if (line.trim().startsWith("\"roles\"") || line.trim().startsWith("\"side\"")) {
 				const role = line.trim().replace("roles","").replace("side","").replace(/\"/g,"").replace(":","").trim();
 				const list = role.split(",");
-				for (const r of list) {
-					if (r !== "") {
-						roles.push(r.trim());
+				for (const v of list) {
+					if (v === "") {
+						continue;
+					}
+					const start = line.indexOf(v.trim());
+					const end = start + v.length;
+
+					const range: Range = { start: doc.positionAt(start), end: doc.positionAt(end)}
+					let found = false;
+					for (const w of ret) {
+						if (w.name === v) {
+							w.locations.push({uri: fileFromUri(doc.uri), range: range});
+							found = true;
+							break;
+						}
+					}
+					if (!found) {
+						let var1: Word = {
+							name: v,
+							locations: [{
+								uri: fileFromUri(doc.uri),
+								range: range
+							}]
+						}
+						ret.push(var1);
 					}
 				}
 			}
 		}
-		roles = [...new Set(roles)];
-		return roles
+		// roles = [...new Set(roles)];
+		return ret
 	}
 }
 

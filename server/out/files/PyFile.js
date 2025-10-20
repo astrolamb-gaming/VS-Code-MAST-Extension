@@ -21,6 +21,7 @@ class PyFile extends data_1.FileCache {
         this.defaultFunctions = [];
         this.classes = [];
         this.words = [];
+        this.roles = [];
         this.globalFiles = [];
         this.signals = [];
         this.inventory_keys = [];
@@ -74,6 +75,7 @@ class PyFile extends data_1.FileCache {
         let m;
         const doc = vscode_languageserver_textdocument_1.TextDocument.create(this.uri, "py", 1, text);
         this.words = (0, words_1.parseWords)(doc);
+        this.roles = (0, roles_1.getRolesForFile)(doc);
         // debug(this.uri.replace("c:/Users/mholderbaum/Documents/Cosmos/Cosmos-1-1-3/data/missions/",""))
         this.signals = (0, signals_1.parseSignalsInFile)(doc);
         this.inventory_keys = (0, roles_1.getInventoryKeysForFile)(doc);

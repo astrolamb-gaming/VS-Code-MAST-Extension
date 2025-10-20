@@ -225,10 +225,10 @@ function onCompletion(_textDocumentPosition, text) {
             // Here we check for roles
             if (blobStr.endsWith("role(") || blobStr.endsWith("roles(")) {
                 (0, console_1.debug)("Getting roles");
-                let roles = (0, roles_1.getRolesForFile)(t);
+                let roles = (0, roles_1.getRolesForFile)(text);
                 roles = roles.concat(cache.getRoles(text.uri));
                 roles = roles.concat((0, globals_1.getGlobals)().shipData.roles);
-                ci = (0, roles_1.getRolesAsCompletionItem)(roles);
+                ci = (0, roles_1.getRolesAsCompletionItem)(roles, text);
                 return ci;
             }
             // Now for inventory keys
@@ -258,10 +258,10 @@ function onCompletion(_textDocumentPosition, text) {
             for (const a of args) {
                 if (a === "role" || a === "roles") {
                     (0, console_1.debug)("Getting roles");
-                    let roles = (0, roles_1.getRolesForFile)(t);
+                    let roles = (0, roles_1.getRolesForFile)(text);
                     roles = roles.concat(cache.getRoles(text.uri));
                     roles = roles.concat((0, globals_1.getGlobals)().shipData.roles);
-                    ci = (0, roles_1.getRolesAsCompletionItem)(roles);
+                    ci = (0, roles_1.getRolesAsCompletionItem)(roles, text);
                     return ci;
                 }
                 if (a === "style") {

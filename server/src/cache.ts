@@ -22,6 +22,7 @@ import { getSpecificGlobals, sleep } from './python/python';
 import { loadStyleDefs } from './data/styles';
 import { Word } from './tokens/words';
 import { mergeSignalInfo, SignalInfo } from './tokens/signals';
+import { ShipData } from './shipData';
 
 export const testingPython = false;
 
@@ -1185,20 +1186,21 @@ export class MissionCache {
 	 * @param folder The folder the current file is in, or just the file uri
 	 * @returns an array of strings
 	 */
-	getRoles(folder: string): string[] {
-		folder = fixFileName(folder);
-		let roles: string[] = [];
-		const ini = getInitContents(folder);
-		debug(ini);
+	getRoles(folder: string): Word[] {
+		let roles: Word[] = [];
 		for (const m of this.mastFileCache) {
-			debug(folder);
-			if (ini.includes(path.basename(m.uri))) {
-				roles = roles.concat(m.roles);
-			}
+			roles = roles.concat(m.roles);
 		}
-		// Add default roles
-		roles.push("__player__");
-
+		for (const m of this.missionMastModules) {
+			roles = roles.concat(m.roles);
+		}
+		for (const p of this.pyFileCache) {
+			roles = roles.concat(p.roles)
+		}
+		for (const p of this.missionPyModules) {
+			roles = roles.concat(p.roles);
+		}
+		roles = roles.concat(getGlobals().shipData.roles);
 		return roles;
 	}
 
