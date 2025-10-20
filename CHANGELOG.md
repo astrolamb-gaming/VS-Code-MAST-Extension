@@ -10,7 +10,24 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * WIP: Get mast complier errors from the compiler itself, so the game doesn't have to be running to check for compiler errors.
 * WIP: Better Hover information
 
+
+### 0.17.0 - WIP
+
+* Add popup when adding a new file that prompts to add to `__init__.mast`
+* Fix warning message text
+* Reworked the python file parsing system to properly parse classes and functions
+* Improve parsing logic for autocompletion for parameters
+* Fix active parameter of function signatures
+* Add check for button definitions that use colon and label (e.g. `+"Button Name" some_label:` should show an error; must remove the colon)
+* Fix python globals (there was an issue where nested files weren't being parsed)
+* Fix string checks, particularly for f-strings
+* Add Find References functionality for inventory and blob keys
+* Add autocompletion and Find References for Link keys
+* Add CodeActions for f-string errors
+
+
 ### 0.16.0
+
 * Fix sublabels inside of @console labels
 * Add default sbslib contents for story.json if the generate empty option is chosesn
 * Implemented Rename Symbol functionality within the scope of a label
@@ -23,6 +40,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 
 ### 0.15.0
+
 * Implement hover, Go To Definition, and Find References for function names (e.g. `len` instead of `len()`)
 * Refactor of Route checks to fix some related issues
 * Add Find References and Autocompletion for Signals [#33](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues/33), as well as validation for if signals are emitted and used
@@ -44,11 +62,14 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 
 ### 0.14.0
+
 * Add icon to autocompete information for functions with the icon_index parameter
 * Fix for use of `#region....#endregion` for collapseable code blocks
 * Fix autocompletion for named arguments in function calls
 
+
 ### 0.13.0
+
 * Add blob values for get/set_data_set_value functions
 * Fix issues with signature determination for some functions
 * Update sbs particle function descriptorString autocompletions based on widget_stylestring_documentation.txt
