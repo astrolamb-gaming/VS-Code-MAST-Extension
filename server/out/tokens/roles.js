@@ -1,10 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getRolesForFile = getRolesForFile;
-exports.getRolesAsCompletionItem = getRolesAsCompletionItem;
+exports.getWordsAsCompletionItems = getWordsAsCompletionItems;
 exports.getInventoryKeysForFile = getInventoryKeysForFile;
 exports.getLinksForFile = getLinksForFile;
-exports.getKeysAsCompletionItem = getKeysAsCompletionItem;
 exports.getBlobKeysForFile = getBlobKeysForFile;
 const vscode_languageserver_1 = require("vscode-languageserver");
 const path = require("path");
@@ -26,19 +25,13 @@ function getRolesForFile(text) {
         roles = roles.concat(exp);
     }
     // Remove duplicates
-    roles = mergeRoles(roles);
+    roles = mergeWordList(roles);
     return roles;
 }
 function getRolesForRegEx(re, doc) {
     let ret = [];
     let m;
     while (m = re.exec(doc.getText())) {
-        // const list = m[1].split(",");
-        // for (const i of list) {
-        // 	if (i !== "") {
-        // 		roles.push(i);
-        // 	}
-        // }
         if (m[1] !== undefined) {
             let str = m[1];
             let roles = str.split(",");
@@ -72,23 +65,31 @@ function getRolesForRegEx(re, doc) {
     }
     return ret;
 }
-function getRolesAsCompletionItem(roles, doc) {
-    roles = mergeRoles(roles);
+/**
+ * Convert a list of {@link Word Word}s to a list of {@link CompletionItem CompletionItem}s
+ * @param type The type of word, e.g. `Role`, `Inventory Key`, etc.
+ * @param roles The list of {@link Word Word}s
+ * @param doc The {@link TextDocument TextDocument} of the current file.
+ * @returns A list of {@link CompletionItem CompletionItem}s
+ */
+function getWordsAsCompletionItems(type, roles, doc) {
+    roles = mergeWordList(roles);
     const ci = [];
     for (const r of roles) {
         if (r.name === "#")
             continue;
         let filter = r.name;
-        let deets = "Role";
+        let deets = type;
         for (const loc of r.locations) {
             if ((0, fileFunctions_1.fixFileName)(doc.uri) === (0, fileFunctions_1.fixFileName)(loc.uri)) {
+                // hashtag takes priority over underscore for sorting
                 filter = "###" + r.name;
-                deets = "Role (used in this file)";
+                deets = type + " (this file)";
                 break;
             }
             else if (path.dirname((0, fileFunctions_1.fixFileName)(doc.uri)) === path.dirname((0, fileFunctions_1.fixFileName)(loc.uri))) {
                 filter = "##" + r.name;
-                deets = "Role (used in this folder)";
+                deets = type + " (this folder)";
             }
         }
         const c = {
@@ -101,7 +102,12 @@ function getRolesAsCompletionItem(roles, doc) {
     }
     return ci;
 }
-function mergeRoles(roles) {
+/**
+ * Merge a list of {@link Word Word}. Could be roles, inventory keys, blob keys, or links, or regular "words".
+ * @param roles
+ * @returns
+ */
+function mergeWordList(roles) {
     let map = new Map();
     for (let r of roles) {
         let word = map.get(r.name);
@@ -121,9 +127,10 @@ function getInventoryKeysForFile(doc) {
     let ret = [];
     while (m = regex.exec(doc.getText())) {
         if (m[9] !== undefined) {
-            const v = m[9];
+            let v = m[9];
             const start = m[0].indexOf(v) + m.index;
             const end = start + v.length;
+            v = v.trim().toLowerCase();
             if (!(0, comments_1.isInComment)(doc, m.index)) { //!isInString(doc, m.index) || 
                 const range = { start: doc.positionAt(start), end: doc.positionAt(end) };
                 let found = false;
@@ -149,6 +156,7 @@ function getInventoryKeysForFile(doc) {
     }
     // filters out any duplicates
     // keys = [...new Set(keys)];
+    ret = mergeWordList(ret);
     return ret;
 }
 function getLinksForFile(doc) {
@@ -214,20 +222,8 @@ function getLinksForFile(doc) {
             }
         }
     }
+    ret = mergeWordList(ret);
     return ret;
-}
-function getKeysAsCompletionItem(keys) {
-    // keys = [...new Set(keys)];
-    const ci = [];
-    for (const r of keys) {
-        const c = {
-            label: r.name,
-            kind: vscode_languageserver_1.CompletionItemKind.Text,
-            labelDetails: { description: "Inventory Key" }
-        };
-        ci.push(c);
-    }
-    return ci;
 }
 function getBlobKeysForFile(doc) {
     let blob = /(data_set|blob)\.(get|set)\([\"\'](\w+)[\"\']/g;
@@ -286,6 +282,7 @@ function getBlobKeysForFile(doc) {
             }
         }
     }
+    ret = mergeWordList(ret);
     return ret;
 }
 //# sourceMappingURL=roles.js.map

@@ -10,14 +10,13 @@ import path = require('path');
 import { fixFileName, getFilesInDir } from './../fileFunctions';
 import { getGlobals } from './../globals';
 import { getCurrentMethodName, onSignatureHelp } from './signatureHelp';
-import { getKeysAsCompletionItem, getRolesAsCompletionItem, getRolesForFile } from './../tokens/roles';
+import { getWordsAsCompletionItems, getRolesForFile } from './../tokens/roles';
 import { variableModifiers } from './../tokens/variables';
-import { isClassMethod, isFunction } from './../tokens/tokens';
+import { isClassMethod } from './../tokens/tokens';
 import { Function } from './../data/function';
 import { getCurrentLineFromTextDocument } from './hover';
 import { countMatches } from './../rx';
 import { showProgressBar } from './../server';
-import { blob } from 'stream/consumers';
 import { buildSignalInfoListAsCompletionItems } from './../tokens/signals';
 
 // https://stackoverflow.com/questions/78755236/how-can-i-prioritize-vs-code-extension-code-completion
@@ -236,9 +235,11 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				debug("Is BLobe");
 				let blobs = getGlobals().blob_items;
 				for (const bk of cache.getBlobKeys()) {
+					if (blobs.find(item=>{item.label === bk.name})) continue;
 					let ci:CompletionItem = {
 						label: bk.name,
-						kind: CompletionItemKind.Text
+						kind: CompletionItemKind.Text,
+						detail: "Type: Unknown"
 					}
 					blobs.push(ci);
 				}
@@ -251,7 +252,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				let roles = getRolesForFile(text);
 				roles = roles.concat(cache.getRoles(text.uri));
 				roles = roles.concat(getGlobals().shipData.roles);
-				ci = getRolesAsCompletionItem(roles, text);
+				ci = getWordsAsCompletionItems("Role", roles, text);
 				return ci;
 			}
 
@@ -259,7 +260,8 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			if (func.includes("inventory")) {
 				let keys = cache.getKeys(text.uri);
 				debug(keys);
-				ci = getKeysAsCompletionItem(keys);
+				// ci = getKeysAsCompletionItem(keys);
+				ci = getWordsAsCompletionItems("Inventory Key", keys, text)
 				return ci;
 			}
 
@@ -287,7 +289,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 					let roles = getRolesForFile(text);
 					roles = roles.concat(cache.getRoles(text.uri));
 					roles = roles.concat(getGlobals().shipData.roles);
-					ci = getRolesAsCompletionItem(roles, text);
+					ci = getWordsAsCompletionItems("Role", roles, text);
 				return ci;
 				}
 				if (a === "style") {
@@ -434,15 +436,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 
 				if (a === "link_name" || a === "link") {
 					const links = cache.getLinks();
-					for (const l of links) {
-						const c:CompletionItem = {
-							label: l.name,
-							kind: CompletionItemKind.Text,
-							documentation: "Link",
-							sortText: "__" + l.name
-						}
-						ci.push(c);
-					}
+					ci = ci.concat(getWordsAsCompletionItems("Link", links, text));
 					return ci;
 				}
 			}
@@ -857,15 +851,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			}
 			if (arg === "link_name" || arg === "link") {
 				const links = cache.getLinks();
-				for (const l of links) {
-					const c:CompletionItem = {
-						label: l.name,
-						kind: CompletionItemKind.Text,
-						documentation: "Link",
-						sortText: "__" + l.name
-					}
-					ci.push(c);
-				}
+				ci = ci.concat(getWordsAsCompletionItems("Link",links, text));
 				return ci;
 			}
 		}

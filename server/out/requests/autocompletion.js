@@ -214,9 +214,12 @@ function onCompletion(_textDocumentPosition, text) {
                 (0, console_1.debug)("Is BLobe");
                 let blobs = (0, globals_1.getGlobals)().blob_items;
                 for (const bk of cache.getBlobKeys()) {
+                    if (blobs.find(item => { item.label === bk.name; }))
+                        continue;
                     let ci = {
                         label: bk.name,
-                        kind: vscode_languageserver_1.CompletionItemKind.Text
+                        kind: vscode_languageserver_1.CompletionItemKind.Text,
+                        detail: "Type: Unknown"
                     };
                     blobs.push(ci);
                 }
@@ -228,14 +231,15 @@ function onCompletion(_textDocumentPosition, text) {
                 let roles = (0, roles_1.getRolesForFile)(text);
                 roles = roles.concat(cache.getRoles(text.uri));
                 roles = roles.concat((0, globals_1.getGlobals)().shipData.roles);
-                ci = (0, roles_1.getRolesAsCompletionItem)(roles, text);
+                ci = (0, roles_1.getWordsAsCompletionItems)("Role", roles, text);
                 return ci;
             }
             // Now for inventory keys
             if (func.includes("inventory")) {
                 let keys = cache.getKeys(text.uri);
                 (0, console_1.debug)(keys);
-                ci = (0, roles_1.getKeysAsCompletionItem)(keys);
+                // ci = getKeysAsCompletionItem(keys);
+                ci = (0, roles_1.getWordsAsCompletionItems)("Inventory Key", keys, text);
                 return ci;
             }
             // Here we check for stylestrings, art_ids, etc.
@@ -261,7 +265,7 @@ function onCompletion(_textDocumentPosition, text) {
                     let roles = (0, roles_1.getRolesForFile)(text);
                     roles = roles.concat(cache.getRoles(text.uri));
                     roles = roles.concat((0, globals_1.getGlobals)().shipData.roles);
-                    ci = (0, roles_1.getRolesAsCompletionItem)(roles, text);
+                    ci = (0, roles_1.getWordsAsCompletionItems)("Role", roles, text);
                     return ci;
                 }
                 if (a === "style") {
@@ -408,15 +412,7 @@ function onCompletion(_textDocumentPosition, text) {
                 }
                 if (a === "link_name" || a === "link") {
                     const links = cache.getLinks();
-                    for (const l of links) {
-                        const c = {
-                            label: l.name,
-                            kind: vscode_languageserver_1.CompletionItemKind.Text,
-                            documentation: "Link",
-                            sortText: "__" + l.name
-                        };
-                        ci.push(c);
-                    }
+                    ci = ci.concat((0, roles_1.getWordsAsCompletionItems)("Link", links, text));
                     return ci;
                 }
             }
@@ -826,15 +822,7 @@ function onCompletion(_textDocumentPosition, text) {
             }
             if (arg === "link_name" || arg === "link") {
                 const links = cache.getLinks();
-                for (const l of links) {
-                    const c = {
-                        label: l.name,
-                        kind: vscode_languageserver_1.CompletionItemKind.Text,
-                        documentation: "Link",
-                        sortText: "__" + l.name
-                    };
-                    ci.push(c);
-                }
+                ci = ci.concat((0, roles_1.getWordsAsCompletionItems)("Link", links, text));
                 return ci;
             }
         }

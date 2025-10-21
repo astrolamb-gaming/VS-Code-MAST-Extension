@@ -1,9 +1,8 @@
 import { debug } from 'console';
 import { CompletionItem, CompletionItemKind, Range } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { getGlobals } from '../globals';
 import path = require('path');
-import { fileFromUri, fixFileName, getFileContents, getFilesInDir } from '../fileFunctions';
+import { fileFromUri, fixFileName } from '../fileFunctions';
 import { isInComment } from './comments';
 import { Word } from './words';
 
@@ -23,7 +22,7 @@ export function getRolesForFile(text: TextDocument): Word[] {
 		roles = roles.concat(exp);
 	}
 	// Remove duplicates
-	roles = mergeRoles(roles);
+	roles = mergeWordList(roles);
 	return roles;
 }
 
@@ -31,12 +30,6 @@ function getRolesForRegEx(re: RegExp, doc:TextDocument) : Word[] {
 	let ret: Word[] = [];
 	let m: RegExpExecArray | null;
 	while (m = re.exec(doc.getText())) {
-		// const list = m[1].split(",");
-		// for (const i of list) {
-		// 	if (i !== "") {
-		// 		roles.push(i);
-		// 	}
-		// }
 		if (m[1]!== undefined) {
 			let str = m[1];
 			let roles = str.split(",");
@@ -73,21 +66,29 @@ function getRolesForRegEx(re: RegExp, doc:TextDocument) : Word[] {
 	return ret;
 }
 
-export function getRolesAsCompletionItem(roles: Word[], doc:TextDocument) {
-	roles = mergeRoles(roles);
+/**
+ * Convert a list of {@link Word Word}s to a list of {@link CompletionItem CompletionItem}s
+ * @param type The type of word, e.g. `Role`, `Inventory Key`, etc.
+ * @param roles The list of {@link Word Word}s
+ * @param doc The {@link TextDocument TextDocument} of the current file.
+ * @returns A list of {@link CompletionItem CompletionItem}s
+ */
+export function getWordsAsCompletionItems(type:string, roles: Word[], doc:TextDocument) {
+	roles = mergeWordList(roles);
 	const ci: CompletionItem[] = [];
 	for (const r of roles) {
 		if (r.name === "#") continue;
 		let filter = r.name;
-		let deets = "Role";
+		let deets = type;
 		for (const loc of r.locations) {
 			if (fixFileName(doc.uri)===fixFileName(loc.uri)) {
+				// hashtag takes priority over underscore for sorting
 				filter = "###" + r.name;
-				deets = "Role (used in this file)";
+				deets = type + " (this file)";
 				break;
 			} else if (path.dirname(fixFileName(doc.uri)) === path.dirname(fixFileName(loc.uri))) {
 				filter = "##" + r.name;
-				deets = "Role (used in this folder)";
+				deets = type + " (this folder)";
 			}
 		}
 		const c: CompletionItem = {
@@ -100,7 +101,12 @@ export function getRolesAsCompletionItem(roles: Word[], doc:TextDocument) {
 	}
 	return ci;
 }
-function mergeRoles(roles:Word[]):Word[] {
+/**
+ * Merge a list of {@link Word Word}. Could be roles, inventory keys, blob keys, or links, or regular "words".
+ * @param roles 
+ * @returns 
+ */
+function mergeWordList(roles:Word[]):Word[] {
 	let map:Map<string,Word> = new Map();
 	for (let r of roles) {
 		let word = map.get(r.name);
@@ -120,9 +126,10 @@ export function getInventoryKeysForFile(doc:TextDocument):Word[] {
 	let ret: Word[]=[];
 	while (m = regex.exec(doc.getText())) {
 		if (m[9]!== undefined) {
-			const v = m[9];
+			let v = m[9];
 			const start = m[0].indexOf(v) + m.index;
 			const end = start + v.length;
+			v = v.trim().toLowerCase();
 			if (!isInComment(doc, m.index)) { //!isInString(doc, m.index) || 
 				const range: Range = { start: doc.positionAt(start), end: doc.positionAt(end)}
 				let found = false;
@@ -148,6 +155,7 @@ export function getInventoryKeysForFile(doc:TextDocument):Word[] {
 	}
 	// filters out any duplicates
 	// keys = [...new Set(keys)];
+	ret = mergeWordList(ret);
 	return ret;
 }
 
@@ -216,21 +224,8 @@ export function getLinksForFile(doc:TextDocument): Word[] {
 			}
 		}
 	}
+	ret = mergeWordList(ret);
 	return ret;
-}
-
-export function getKeysAsCompletionItem(keys: Word[]) {
-	// keys = [...new Set(keys)];
-	const ci: CompletionItem[] = [];
-	for (const r of keys) {
-		const c: CompletionItem = {
-			label: r.name,
-			kind: CompletionItemKind.Text,
-			labelDetails: {description: "Inventory Key"}
-		}
-		ci.push(c);
-	}
-	return ci;
 }
 
 export function getBlobKeysForFile(doc:TextDocument) {
@@ -291,5 +286,6 @@ export function getBlobKeysForFile(doc:TextDocument) {
 			}
 		}
 	}
+	ret = mergeWordList(ret);
 	return ret;
 }
