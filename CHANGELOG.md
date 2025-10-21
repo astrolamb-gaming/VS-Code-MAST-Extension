@@ -21,9 +21,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * Add check for button definitions that use colon and label (e.g. `+"Button Name" some_label:` should show an error; must remove the colon)
 * Fix python globals (there was an issue where nested files weren't being parsed)
 * Fix string checks, particularly for f-strings
-* Add Find References functionality for inventory and blob keys
+* Add Find References functionality for inventory and blob keys, and for roles
 * Add autocompletion and Find References for Link keys
 * Add CodeActions for f-string errors
+* Improved role parsing and autocompletion
 
 
 ### 0.16.0

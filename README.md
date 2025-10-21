@@ -28,9 +28,8 @@ Includes:
 * Function signature information (i.e. notes on argument types)
 * Go To Definition functionality for sbs_utils and modules for functions and labels in scope.
 * Hover information functionality
-* Go To Definition functionality
 * Rename Symbol functionality for variables in the current label
-* Find References functionality
+* Find References functionality (functions, inventory, data set, and link keys, and roles)
 * Checks for module versions
 	* Can update all to latest version, or manually update
 * In mission folders, checks for `__init__.mast` in the folder you're working in. If it doesn't exist, will promt with an option to auto-generate the file, with all .mast and .py files included automatically.
