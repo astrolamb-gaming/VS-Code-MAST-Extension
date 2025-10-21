@@ -43,7 +43,7 @@ function getRolesForRegEx(re, doc) {
             let str = m[1];
             let roles = str.split(",");
             for (let v of roles) {
-                v = v.trim();
+                v = v.trim().toLowerCase();
                 const start = m[0].indexOf(v) + m.index;
                 const end = start + v.length;
                 if (!(0, comments_1.isInComment)(doc, m.index)) { //!isInString(doc, m.index) || 
@@ -76,6 +76,8 @@ function getRolesAsCompletionItem(roles, doc) {
     roles = mergeRoles(roles);
     const ci = [];
     for (const r of roles) {
+        if (r.name === "#")
+            continue;
         let filter = r.name;
         let deets = "Role";
         for (const loc of r.locations) {
@@ -87,11 +89,7 @@ function getRolesAsCompletionItem(roles, doc) {
             else if (path.dirname((0, fileFunctions_1.fixFileName)(doc.uri)) === path.dirname((0, fileFunctions_1.fixFileName)(loc.uri))) {
                 filter = "##" + r.name;
                 deets = "Role (used in this folder)";
-                break;
             }
-        }
-        if (r.name === "#") {
-            filter = "_" + r.name;
         }
         const c = {
             label: r.name,
@@ -105,7 +103,7 @@ function getRolesAsCompletionItem(roles, doc) {
 }
 function mergeRoles(roles) {
     let map = new Map();
-    for (const r of roles) {
+    for (let r of roles) {
         let word = map.get(r.name);
         if (word) {
             word.locations = word.locations.concat(r.locations);

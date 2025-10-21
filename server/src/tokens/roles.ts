@@ -41,7 +41,7 @@ function getRolesForRegEx(re: RegExp, doc:TextDocument) : Word[] {
 			let str = m[1];
 			let roles = str.split(",");
 			for (let v of roles) {
-				v = v.trim();
+				v = v.trim().toLowerCase();
 				const start = m[0].indexOf(v) + m.index;
 				const end = start + v.length;
 
@@ -77,6 +77,7 @@ export function getRolesAsCompletionItem(roles: Word[], doc:TextDocument) {
 	roles = mergeRoles(roles);
 	const ci: CompletionItem[] = [];
 	for (const r of roles) {
+		if (r.name === "#") continue;
 		let filter = r.name;
 		let deets = "Role";
 		for (const loc of r.locations) {
@@ -87,11 +88,7 @@ export function getRolesAsCompletionItem(roles: Word[], doc:TextDocument) {
 			} else if (path.dirname(fixFileName(doc.uri)) === path.dirname(fixFileName(loc.uri))) {
 				filter = "##" + r.name;
 				deets = "Role (used in this folder)";
-				break;
 			}
-		}
-		if (r.name === "#") {
-			filter = "_" + r.name;
 		}
 		const c: CompletionItem = {
 			label: r.name,
@@ -105,7 +102,7 @@ export function getRolesAsCompletionItem(roles: Word[], doc:TextDocument) {
 }
 function mergeRoles(roles:Word[]):Word[] {
 	let map:Map<string,Word> = new Map();
-	for (const r of roles) {
+	for (let r of roles) {
 		let word = map.get(r.name);
 		if (word) {
 			word.locations = word.locations.concat(r.locations);

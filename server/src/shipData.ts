@@ -112,7 +112,7 @@ export class ShipData {
 				const roleList = [];
 				const list = roles.split(",");
 				for (const l of list) {
-					roleList.push(l.trim());
+					roleList.push(l.trim().toLowerCase());
 				}
 				ship.roles = roleList;
 			}
@@ -228,14 +228,14 @@ export class ShipData {
 			if (newRoles) {
 				const list = newRoles.split(",");
 				for (const l of list) {
-					roles.push(l.trim());
+					roles.push(l.trim().toLowerCase());
 				}
 			}
 			newRoles = ship["side"];
 			if (newRoles) {
 				const list = newRoles.split(",");
 				for (const l of list) {
-					roles.push(l.trim());
+					roles.push(l.trim().toLowerCase());
 				}
 			}
 		}
@@ -250,7 +250,7 @@ export class ShipData {
 				const role = line.trim().replace("roles","").replace("side","").replace(/\"/g,"").replace(":","").trim();
 				const list = role.split(",");
 				for (let v of list) {
-					v = v.trim();
+					v = v.trim().toLowerCase();
 					if (v === "") {
 						continue;
 					}
