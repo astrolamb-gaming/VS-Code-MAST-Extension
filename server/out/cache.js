@@ -184,8 +184,8 @@ class MissionCache {
             // debug(filename);
             if (filename === null || filename.includes(".git") || filename.includes("__pycache__"))
                 return;
-            (0, console_1.debug)(this.missionURI);
-            (0, console_1.debug)(filename);
+            // debug(this.missionURI)
+            // debug(filename)
             if (eventType === "rename") {
                 const filePath = path.join(this.missionURI, filename);
                 // Check if the file was added

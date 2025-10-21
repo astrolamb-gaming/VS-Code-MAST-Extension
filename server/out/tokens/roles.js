@@ -6,8 +6,8 @@ exports.getInventoryKeysForFile = getInventoryKeysForFile;
 exports.getLinksForFile = getLinksForFile;
 exports.getKeysAsCompletionItem = getKeysAsCompletionItem;
 exports.getBlobKeysForFile = getBlobKeysForFile;
-const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
+const path = require("path");
 const fileFunctions_1 = require("../fileFunctions");
 const comments_1 = require("./comments");
 function getRolesForFile(text) {
@@ -26,7 +26,7 @@ function getRolesForFile(text) {
         roles = roles.concat(exp);
     }
     // Remove duplicates
-    roles = [...new Set(roles)];
+    roles = mergeRoles(roles);
     return roles;
 }
 function getRolesForRegEx(re, doc) {
@@ -42,7 +42,8 @@ function getRolesForRegEx(re, doc) {
         if (m[1] !== undefined) {
             let str = m[1];
             let roles = str.split(",");
-            for (const v of roles) {
+            for (let v of roles) {
+                v = v.trim();
                 const start = m[0].indexOf(v) + m.index;
                 const end = start + v.length;
                 if (!(0, comments_1.isInComment)(doc, m.index)) { //!isInString(doc, m.index) || 
@@ -72,28 +73,49 @@ function getRolesForRegEx(re, doc) {
     return ret;
 }
 function getRolesAsCompletionItem(roles, doc) {
-    roles = [...new Set(roles)];
+    roles = mergeRoles(roles);
     const ci = [];
     for (const r of roles) {
         let filter = r.name;
         let deets = "Role";
         for (const loc of r.locations) {
-            (0, console_1.debug)((0, fileFunctions_1.fixFileName)(doc.uri));
-            (0, console_1.debug)((0, fileFunctions_1.fixFileName)(loc.uri));
             if ((0, fileFunctions_1.fixFileName)(doc.uri) === (0, fileFunctions_1.fixFileName)(loc.uri)) {
-                filter = "___" + r.name;
+                filter = "###" + r.name;
                 deets = "Role (used in this file)";
                 break;
             }
+            else if (path.dirname((0, fileFunctions_1.fixFileName)(doc.uri)) === path.dirname((0, fileFunctions_1.fixFileName)(loc.uri))) {
+                filter = "##" + r.name;
+                deets = "Role (used in this folder)";
+                break;
+            }
+        }
+        if (r.name === "#") {
+            filter = "_" + r.name;
         }
         const c = {
             label: r.name,
             kind: vscode_languageserver_1.CompletionItemKind.Text,
-            labelDetails: { description: deets }
+            labelDetails: { description: deets },
+            sortText: filter
         };
         ci.push(c);
     }
     return ci;
+}
+function mergeRoles(roles) {
+    let map = new Map();
+    for (const r of roles) {
+        let word = map.get(r.name);
+        if (word) {
+            word.locations = word.locations.concat(r.locations);
+            map.set(r.name, word);
+        }
+        else {
+            map.set(r.name, r);
+        }
+    }
+    return [...map.values()];
 }
 function getInventoryKeysForFile(doc) {
     let regex = /((((get|set|remove)_)?(shared_)?inventory_value)|(inventory_set))\([^,]*?,[ \t]*(?<val>([\"\']))([^\"\'\n\r]*)\k<val>,[ \t]*(.*)?\)/g;

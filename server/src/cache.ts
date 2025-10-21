@@ -200,8 +200,8 @@ export class MissionCache {
 			// also generally emit 'rename'
 			// debug(filename);
 			if (filename === null || filename.includes(".git") || filename.includes("__pycache__")) return;
-			debug(this.missionURI)
-			debug(filename)
+			// debug(this.missionURI)
+			// debug(filename)
 			if (eventType === "rename") {
 				const filePath = path.join(this.missionURI, filename);
 

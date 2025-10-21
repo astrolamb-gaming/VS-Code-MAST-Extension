@@ -23,7 +23,7 @@ export function getRolesForFile(text: TextDocument): Word[] {
 		roles = roles.concat(exp);
 	}
 	// Remove duplicates
-	roles = [...new Set(roles)];
+	roles = mergeRoles(roles);
 	return roles;
 }
 
@@ -40,7 +40,8 @@ function getRolesForRegEx(re: RegExp, doc:TextDocument) : Word[] {
 		if (m[1]!== undefined) {
 			let str = m[1];
 			let roles = str.split(",");
-			for (const v of roles) {
+			for (let v of roles) {
+				v = v.trim();
 				const start = m[0].indexOf(v) + m.index;
 				const end = start + v.length;
 
@@ -73,28 +74,47 @@ function getRolesForRegEx(re: RegExp, doc:TextDocument) : Word[] {
 }
 
 export function getRolesAsCompletionItem(roles: Word[], doc:TextDocument) {
-	roles = [...new Set(roles)];
+	roles = mergeRoles(roles);
 	const ci: CompletionItem[] = [];
 	for (const r of roles) {
 		let filter = r.name;
 		let deets = "Role";
 		for (const loc of r.locations) {
-			debug(fixFileName(doc.uri))
-			debug(fixFileName(loc.uri))
 			if (fixFileName(doc.uri)===fixFileName(loc.uri)) {
-				filter = "___" + r.name;
-				deets = "Role (used in this file)"
+				filter = "###" + r.name;
+				deets = "Role (used in this file)";
+				break;
+			} else if (path.dirname(fixFileName(doc.uri)) === path.dirname(fixFileName(loc.uri))) {
+				filter = "##" + r.name;
+				deets = "Role (used in this folder)";
 				break;
 			}
+		}
+		if (r.name === "#") {
+			filter = "_" + r.name;
 		}
 		const c: CompletionItem = {
 			label: r.name,
 			kind: CompletionItemKind.Text,
-			labelDetails: {description: deets}
+			labelDetails: {description: deets},
+			sortText: filter
 		}
 		ci.push(c);
 	}
 	return ci;
+}
+function mergeRoles(roles:Word[]):Word[] {
+	let map:Map<string,Word> = new Map();
+	for (const r of roles) {
+		let word = map.get(r.name);
+		if (word) {
+			word.locations = word.locations.concat(r.locations);
+			map.set(r.name, word);
+		} else {
+			map.set(r.name,r);
+		}
+	}
+	return [...map.values()];
 }
 
 export function getInventoryKeysForFile(doc:TextDocument):Word[] {

@@ -249,7 +249,8 @@ export class ShipData {
 			if (line.trim().startsWith("\"roles\"") || line.trim().startsWith("\"side\"")) {
 				const role = line.trim().replace("roles","").replace("side","").replace(/\"/g,"").replace(":","").trim();
 				const list = role.split(",");
-				for (const v of list) {
+				for (let v of list) {
+					v = v.trim();
 					if (v === "") {
 						continue;
 					}
