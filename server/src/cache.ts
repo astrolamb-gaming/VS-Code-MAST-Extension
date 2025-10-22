@@ -140,6 +140,9 @@ export class MissionCache {
 				globals = globals.concat(p.globals)
 			}
 		}
+		// // debug(globals);
+		// globals.push(["dict","dict"]);
+		// debug(globals);
 		await this.loadPythonGlobals(globals)
 		// .then((info)=>{
 		debug("Loaded globals")

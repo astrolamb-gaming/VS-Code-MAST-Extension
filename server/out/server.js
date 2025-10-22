@@ -195,14 +195,12 @@ exports.connection.onCodeAction((params) => {
             tEdits = [];
             // Get ALL the fstring_err diagnostics
             for (const d of (0, validate_1.getCurrentDiagnostics)()) {
-                (0, console_1.debug)(d.data);
                 if (d.data === "fstring_err") {
                     tde = {
                         range: { start: d.range.start, end: d.range.start },
                         newText: "f"
                     };
                     tEdits.push(tde);
-                    (0, console_1.debug)("Err added");
                 }
             }
             edit = {

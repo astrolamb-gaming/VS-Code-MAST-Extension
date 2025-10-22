@@ -198,11 +198,15 @@ def parseClass(mastName,module,pyName):
 globalsList = json.loads(token)
 # print(globalsList)
 globals = MastGlobals.globals
-standardTypes = ["str",'int','list','set','range']
+
+globals["dict"] = dict
+
+standardTypes = ["str",'int','list','set','range','dict']
 ret = []
 for g in globals:
-	for t in globalsList:
-		if str(g) == t[0]:
+	# Turns out globalsList is not needed and could cause some issues here; i.e. if a mast global exists but isn't listed in globalsList (like `dict`)
+	# for t in globalsList:
+	# 	if str(g) == t[0]:
 			# This is the name of the global for MAST
 			# print(g)
 
