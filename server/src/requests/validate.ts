@@ -410,42 +410,42 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		
 	}
 
-	debug("Checking strings")
-	let fStrings = /(.)((?<open>[\"\']{3}|[\"\'])(.*?)\{(.*?)\}(.*?)\k<open>)/g;
-	let allStrings = /(.)((?<open>[\"\']{3}|[\"\']).*?\k<open>)/g;
-	// m:RegExpExecArray|null;
-	while (m = allStrings.exec(textDocument.getText())) {
-		if (!m[0].match(fStrings)) continue;
-		// debug(m[0])
-		// debug(m[1])
-		if (isInComment(textDocument,m.index)) continue;
-		if (m[1] !== "f") {
-			let line = getCurrentLineFromTextDocument(textDocument.positionAt(m.index),textDocument);
-			if (line.trim().startsWith("+")) continue; // Exclude button definitions TODO: Should this be here? For now at least?
-			// debug("Adding diagnostic!")
-			let range:Range = {
-				start: textDocument.positionAt(m.index+1),
-				end: textDocument.positionAt(m.index + m[0].length)
-			}
-			const d:Diagnostic = {
-				range: range,
-				message: "Possible f-string without a starting `f`",
-				severity: DiagnosticSeverity.Warning,
-				relatedInformation: [
-					{
-						location: {
-							uri: textDocument.uri,
-							range: Object.assign({}, range)
-						},
-						message: "With sbs_utils v1.2+, f-strings must use the `f` prefix, as described in [this post](https://github.com/artemis-sbs/LegendaryMissions/issues/383)"
-					}
-				],
-				data: "fstring_err"
+	// debug("Checking strings")
+	// let fStrings = /(.)((?<open>[\"\']{3}|[\"\'])(.*?)\{(.*?)\}(.*?)\k<open>)/g;
+	// let allStrings = /(.)((?<open>[\"\']{3}|[\"\']).*?\k<open>)/g;
+	// // m:RegExpExecArray|null;
+	// while (m = allStrings.exec(textDocument.getText())) {
+	// 	if (!m[0].match(fStrings)) continue;
+	// 	// debug(m[0])
+	// 	// debug(m[1])
+	// 	if (isInComment(textDocument,m.index)) continue;
+	// 	if (m[1] !== "f") {
+	// 		let line = getCurrentLineFromTextDocument(textDocument.positionAt(m.index),textDocument);
+	// 		if (line.trim().startsWith("+")) continue; // Exclude button definitions TODO: Should this be here? For now at least?
+	// 		// debug("Adding diagnostic!")
+	// 		let range:Range = {
+	// 			start: textDocument.positionAt(m.index+1),
+	// 			end: textDocument.positionAt(m.index + m[0].length)
+	// 		}
+	// 		const d:Diagnostic = {
+	// 			range: range,
+	// 			message: "Possible f-string without a starting `f`",
+	// 			severity: DiagnosticSeverity.Warning,
+	// 			relatedInformation: [
+	// 				{
+	// 					location: {
+	// 						uri: textDocument.uri,
+	// 						range: Object.assign({}, range)
+	// 					},
+	// 					message: "With sbs_utils v1.2+, f-strings must use the `f` prefix, as described in [this post](https://github.com/artemis-sbs/LegendaryMissions/issues/383)"
+	// 				}
+	// 			],
+	// 			data: "fstring_err"
 				
-			}
-			diagnostics.push(d);
-		}
-	}
+	// 		}
+	// 		diagnostics.push(d);
+	// 	}
+	// }
 	
 	const r = checkEnableRoutes(textDocument);
 	// debug(cache.getSignals())
