@@ -16,6 +16,7 @@ const vscode_uri_1 = require("vscode-uri");
 const fileFunctions_1 = require("./../fileFunctions");
 const python_1 = require("./../python/python");
 const signals_1 = require("./../tokens/signals");
+const hover_1 = require("./hover");
 let debugStrs = ""; //Debug: ${workspaceFolder}\n";
 let exclude = [];
 /*
@@ -346,6 +347,40 @@ async function validateTextDocument(textDocument) {
             }
         }
     }
+    (0, console_1.debug)("Checking for functions that don't exist");
+    const functionRegex = /(\.)?(\w+)\(/g;
+    // Check for functions that don't exist
+    while (m = functionRegex.exec(textDocument.getText())) {
+        if ((0, comments_1.isInComment)(textDocument, m.index))
+            continue;
+        if ((0, comments_1.isInString)(textDocument, m.index))
+            continue;
+        let offset = 0;
+        if (m[1] === ".") {
+            // Is a class method
+            let methods = cache.getPossibleMethods(m[2]);
+            if (methods.length > 0)
+                continue;
+            //else empty list
+            offset = 1;
+        }
+        // else
+        let func = cache.getMethod(m[2]);
+        if (func !== undefined)
+            continue;
+        let range = {
+            start: textDocument.positionAt(m.index + offset),
+            end: textDocument.positionAt(m.index + m[0].length - 1)
+        };
+        const d = {
+            range: range,
+            message: "Function not found",
+            severity: vscode_languageserver_1.DiagnosticSeverity.Warning,
+            source: "mast extension"
+        };
+        diagnostics.push(d);
+    }
+    (0, console_1.debug)("Checking strings");
     let fStrings = /(.)((?<open>[\"\']{3}|[\"\'])(.*?)\{(.*?)\}(.*?)\k<open>)/g;
     let allStrings = /(.)((?<open>[\"\']{3}|[\"\']).*?\k<open>)/g;
     // m:RegExpExecArray|null;
@@ -357,6 +392,9 @@ async function validateTextDocument(textDocument) {
         if ((0, comments_1.isInComment)(textDocument, m.index))
             continue;
         if (m[1] !== "f") {
+            let line = (0, hover_1.getCurrentLineFromTextDocument)(textDocument.positionAt(m.index), textDocument);
+            if (line.trim().startsWith("+"))
+                continue; // Exclude button definitions TODO: Should this be here? For now at least?
             // debug("Adding diagnostic!")
             let range = {
                 start: textDocument.positionAt(m.index + 1),

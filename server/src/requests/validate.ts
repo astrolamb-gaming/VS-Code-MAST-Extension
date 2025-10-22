@@ -3,7 +3,7 @@ import * as path from 'path';
 import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
 import { getCache } from './../cache';
 import { parseComments, parseStrings, parseYamls, isInString, isInComment, parseSquareBrackets, isInYaml, getStrings } from './../tokens/comments';
-import { checkLastLine, findDiagnostic } from './../errorChecking';
+import { checkFunctionSignatures, checkLastLine, findDiagnostic } from './../errorChecking';
 import { checkLabels } from './../tokens/labels';
 import { ErrorInstance, getDocumentSettings, hasDiagnosticRelatedInformationCapability } from './../server';
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -13,6 +13,7 @@ import { fixFileName } from './../fileFunctions';
 import { compileMission } from './../python/python';
 import { checkForUnusedSignals } from './../tokens/signals';
 import { fstat } from 'fs';
+import { getCurrentLineFromTextDocument } from './hover';
 
 let debugStrs : string = "";//Debug: ${workspaceFolder}\n";
 
@@ -378,7 +379,38 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 			}
 		}
 	}
+	debug("Checking for functions that don't exist")
+	const functionRegex = /(\.)?(\w+)\(/g;
+	// Check for functions that don't exist
+	while (m = functionRegex.exec(textDocument.getText())) {
+		if (isInComment(textDocument,m.index)) continue;
+		if (isInString(textDocument,m.index)) continue;
+		let offset = 0;
+		if (m[1] === ".") {
+			// Is a class method
+			let methods = cache.getPossibleMethods(m[2])
+			if (methods.length > 0) continue;
+			//else empty list
+			offset = 1;
+		}
+		// else
+		let func = cache.getMethod(m[2]);
+		if (func !== undefined) continue;
+		let range:Range = {
+			start: textDocument.positionAt(m.index + offset),
+			end: textDocument.positionAt(m.index + m[0].length-1)
+		}
+		const d:Diagnostic = {
+			range: range,
+			message: "Function not found",
+			severity: DiagnosticSeverity.Warning,
+			source: "mast extension"
+		}
+		diagnostics.push(d);
+		
+	}
 
+	debug("Checking strings")
 	let fStrings = /(.)((?<open>[\"\']{3}|[\"\'])(.*?)\{(.*?)\}(.*?)\k<open>)/g;
 	let allStrings = /(.)((?<open>[\"\']{3}|[\"\']).*?\k<open>)/g;
 	// m:RegExpExecArray|null;
@@ -388,6 +420,8 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		// debug(m[1])
 		if (isInComment(textDocument,m.index)) continue;
 		if (m[1] !== "f") {
+			let line = getCurrentLineFromTextDocument(textDocument.positionAt(m.index),textDocument);
+			if (line.trim().startsWith("+")) continue; // Exclude button definitions TODO: Should this be here? For now at least?
 			// debug("Adding diagnostic!")
 			let range:Range = {
 				start: textDocument.positionAt(m.index+1),
