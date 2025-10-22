@@ -15,7 +15,7 @@ const routeLabels_1 = require("./tokens/routeLabels");
 const fileFunctions_1 = require("./fileFunctions");
 const server_1 = require("./server");
 const vscode_uri_1 = require("vscode-uri");
-const globals_1 = require("./globals");
+const artemisGlobals_1 = require("./artemisGlobals");
 const os = require("os");
 const audioFiles_1 = require("./resources/audioFiles");
 const function_1 = require("./data/function");
@@ -236,7 +236,7 @@ class MissionCache {
         });
         this.watchers.push(w);
         // Watches for changes to the sbs_lib or mast_lib files
-        let libFolder = path.join((0, globals_1.getGlobals)().artemisDir, "data", "missions", "__lib__");
+        let libFolder = path.join((0, artemisGlobals_1.getArtemisGlobals)().artemisDir, "data", "missions", "__lib__");
         // debug(libFolder);
         let w2 = fs.watch(libFolder, {}, (eventType, filename) => {
             // TODO: Only load the bits applicable for these files?
@@ -271,7 +271,7 @@ class MissionCache {
      * @param globals
      */
     async loadPythonGlobals(globals) {
-        let go = await (0, globals_1.initializeGlobals)();
+        let go = await (0, artemisGlobals_1.initializeArtemisGlobals)();
         (0, server_1.showProgressBar)(true);
         let sigParser = /'(.*?)'/g;
         let globalInfo = [];
@@ -458,9 +458,9 @@ class MissionCache {
         if (exports.testingPython)
             return;
         const uri = this.missionURI;
-        let globals = (0, globals_1.getGlobals)();
+        let globals = (0, artemisGlobals_1.getArtemisGlobals)();
         if (globals === undefined) {
-            globals = await (0, globals_1.initializeGlobals)();
+            globals = await (0, artemisGlobals_1.initializeArtemisGlobals)();
         }
         (0, console_1.debug)(uri);
         // Don't load modules if it's the sbs_utils folder?
@@ -1157,7 +1157,7 @@ class MissionCache {
         for (const p of this.missionPyModules) {
             roles = roles.concat(p.roles);
         }
-        roles = roles.concat((0, globals_1.getGlobals)().shipData.roles);
+        roles = roles.concat((0, artemisGlobals_1.getArtemisGlobals)().shipData.roles);
         return roles;
     }
     /**

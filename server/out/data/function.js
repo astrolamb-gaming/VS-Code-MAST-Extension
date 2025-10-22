@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Parameter = exports.Function = void 0;
 const vscode_languageserver_1 = require("vscode-languageserver");
 const class_1 = require("./class");
-const globals_1 = require("../globals");
+const artemisGlobals_1 = require("../artemisGlobals");
 class Function {
     copy() {
         const f = new Function("", "", "");
@@ -305,7 +305,7 @@ class Function {
             };
             if (pi.label === "style") {
                 pi.documentation = pi.documentation + "\n\nStyle information:";
-                for (const s of (0, globals_1.getGlobals)().widget_stylestrings) {
+                for (const s of (0, artemisGlobals_1.getArtemisGlobals)().widget_stylestrings) {
                     if (s.function === this.name) {
                         let doc = s.name + ":\n";
                         doc = doc + "    " + s.docs;

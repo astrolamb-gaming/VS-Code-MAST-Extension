@@ -11,7 +11,7 @@ import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } fro
 import { fixFileName, getFileContents, getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readFileSync, readZipArchive } from './fileFunctions';
 import { connection, documents, showProgressBar as showProgressBar } from './server';
 import { URI } from 'vscode-uri';
-import { getGlobals, initializeGlobals } from './globals';
+import { getArtemisGlobals, initializeArtemisGlobals } from './artemisGlobals';
 import * as os from 'os';
 import { Variable } from './tokens/variables';
 import { getMusicFiles } from './resources/audioFiles';
@@ -252,7 +252,7 @@ export class MissionCache {
 		});
 		this.watchers.push(w);
 		// Watches for changes to the sbs_lib or mast_lib files
-		let libFolder = path.join(getGlobals().artemisDir, "data", "missions", "__lib__");
+		let libFolder = path.join(getArtemisGlobals().artemisDir, "data", "missions", "__lib__");
 		// debug(libFolder);
 		let w2 = fs.watch(libFolder, {}, (eventType, filename) => {
 			// TODO: Only load the bits applicable for these files?
@@ -288,7 +288,7 @@ export class MissionCache {
 	 * @param globals 
 	 */
 	async loadPythonGlobals(globals: string[][]) {
-		let go = await initializeGlobals();
+		let go = await initializeArtemisGlobals();
 		showProgressBar(true);
 		let sigParser = /'(.*?)'/g;
 		let globalInfo: any = [];
@@ -482,9 +482,9 @@ export class MissionCache {
 	async modulesLoaded() {
 		if (testingPython) return;
 		const uri = this.missionURI;
-		let globals = getGlobals();
+		let globals = getArtemisGlobals();
 		if (globals === undefined) {
-			globals = await initializeGlobals();
+			globals = await initializeArtemisGlobals();
 		}
 		debug(uri);
 		// Don't load modules if it's the sbs_utils folder?
@@ -1200,7 +1200,7 @@ export class MissionCache {
 		for (const p of this.missionPyModules) {
 			roles = roles.concat(p.roles);
 		}
-		roles = roles.concat(getGlobals().shipData.roles);
+		roles = roles.concat(getArtemisGlobals().shipData.roles);
 		return roles;
 	}
 

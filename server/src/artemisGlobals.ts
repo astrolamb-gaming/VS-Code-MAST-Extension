@@ -33,7 +33,7 @@ interface FaceFile {
 	fileName: string
 }
 
-export class Globals {
+export class ArtemisGlobals {
 	currentFile: string = "";
 	skyboxes: CompletionItem[] = [];
 	music: CompletionItem[] = [];
@@ -71,7 +71,7 @@ export class Globals {
 		this.shipData = new ShipData(this.artemisDir);
 	}
 
-	loadGlobals() {
+	loadArtemisGlobals() {
 		this.loadingState = 1;
 		if (this.artemisDir ===  null) {
 			// Do something, throw an error, whatever it takes, artemis dir not found
@@ -407,34 +407,34 @@ export class Globals {
 	async awaitLoading() {
 		while (this.loadingState !== 2) {
 			if (this.loadingState === 0) {
-				this.loadGlobals();
+				this.loadArtemisGlobals();
 			}
 			await sleep(50);
 		}
 		return this;
 	}
 }
-let globals: Globals;
+let globals: ArtemisGlobals;
 // sleep(100).then(()=>{
 // 	globals = new Globals();
 // })
 
-export async function initializeGlobals(): Promise<Globals> {
+export async function initializeArtemisGlobals(): Promise<ArtemisGlobals> {
 	debug("Initializing globals")
 	if (globals !== undefined) {
 		return await globals.awaitLoading();
 	}
-	globals = new Globals();
+	globals = new ArtemisGlobals();
 	// globals.loadGlobals();
 	return await globals.awaitLoading();
 }
 
 
-export function getGlobals(): Globals {
+export function getArtemisGlobals(): ArtemisGlobals {
 	if (globals === null || globals === undefined) {
 		debug("Globals not loaded yet - initializing globals.");
-		globals = new Globals();
-		globals.loadGlobals();
+		globals = new ArtemisGlobals();
+		globals.loadArtemisGlobals();
 	}
 	return globals;
 }

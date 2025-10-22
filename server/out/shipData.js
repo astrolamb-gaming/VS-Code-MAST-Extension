@@ -9,7 +9,7 @@ const fileFunctions_1 = require("./fileFunctions");
 const vscode_languageserver_1 = require("vscode-languageserver");
 const server_1 = require("./server");
 const Hjson = require("hjson");
-const globals_1 = require("./globals");
+const artemisGlobals_1 = require("./artemisGlobals");
 const sharp = require("sharp");
 const vscode_languageserver_textdocument_1 = require("vscode-languageserver-textdocument");
 class ShipData {
@@ -202,7 +202,7 @@ class ShipData {
         return ci;
     }
     getCompletionItemsForShips() {
-        let g = (0, globals_1.getGlobals)();
+        let g = (0, artemisGlobals_1.getArtemisGlobals)();
         let ci = g.artFiles;
         for (const c of ci) {
             const ship = this.getShipInfoFromKey(c.label);

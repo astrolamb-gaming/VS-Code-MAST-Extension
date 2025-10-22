@@ -9,7 +9,7 @@ const console_1 = require("console");
 const vscode_languageserver_1 = require("vscode-languageserver");
 const comments_1 = require("../tokens/comments");
 const cache_1 = require("../cache");
-const globals_1 = require("../globals");
+const artemisGlobals_1 = require("../artemisGlobals");
 const tokens_1 = require("../tokens/tokens");
 const variables_1 = require("../tokens/variables");
 const labels_1 = require("../tokens/labels");
@@ -42,7 +42,7 @@ function onHover(_pos, text) {
         if (func > 0) {
             const end = before.substring(0, func);
             if (end.endsWith("get") || end.endsWith("set")) {
-                for (const b of (0, globals_1.getGlobals)().data_set_entries) {
+                for (const b of (0, artemisGlobals_1.getArtemisGlobals)().data_set_entries) {
                     if (symbol === b.name) {
                         const hover = {
                             contents: b.docs

@@ -4,7 +4,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { fixFileName, getParentFolder } from './fileFunctions';
 import exp = require('constants');
 import { getCache } from './cache';
-import { getGlobals } from './globals';
+import { getArtemisGlobals } from './artemisGlobals';
 
 /**
  * This accounts for classes that use a different name as a global than the class name. 

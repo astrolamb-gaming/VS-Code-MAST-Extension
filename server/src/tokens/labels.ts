@@ -10,7 +10,7 @@ import { isInComment, isInYaml } from './comments';
 import { start } from 'repl';
 import { getCurrentLineFromTextDocument } from '../requests/hover';
 import { documents } from '../server';
-import { getGlobals } from '../globals';
+import { getArtemisGlobals } from '../artemisGlobals';
 
 
 export interface LabelInfo {

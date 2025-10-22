@@ -45,7 +45,7 @@ import { getCurrentLineFromTextDocument, getHoveredSymbol, onHover } from './req
 import { onSignatureHelp } from './requests/signatureHelp';
 import fs = require("fs");
 import { getVariableNamesInDoc } from './tokens/variables';
-import { getGlobals, initializeGlobals } from './globals';
+import { getArtemisGlobals, initializeArtemisGlobals } from './artemisGlobals';
 import { getCurrentDiagnostics, validateTextDocument } from './requests/validate';
 import { onDefinition } from './requests/goToDefinition';
 import { getCache } from './cache';
@@ -514,12 +514,12 @@ connection.onCompletion(
 				return [];
 			}
 			debug("THIS IS A JSON FILE");
-			let g = getGlobals();
+			let g = getArtemisGlobals();
 			if (g !== undefined) {
 				return g.libModuleCompletionItems;
 			} else {
-				await initializeGlobals();
-				return getGlobals()?.libModuleCompletionItems;
+				await initializeArtemisGlobals();
+				return getArtemisGlobals()?.libModuleCompletionItems;
 			}
 		}
 		if (_textDocumentPosition.textDocument.uri.endsWith("__init__.mast")) {

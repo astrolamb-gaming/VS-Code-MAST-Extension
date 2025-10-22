@@ -4,7 +4,7 @@ exports.StoryJson = void 0;
 const console_1 = require("console");
 const path = require("path");
 const fileFunctions_1 = require("../fileFunctions");
-const globals_1 = require("../globals");
+const artemisGlobals_1 = require("../artemisGlobals");
 const server_1 = require("../server");
 const fs = require("fs");
 class StoryJson {
@@ -28,9 +28,9 @@ class StoryJson {
         let errors = -1;
         //debug(files)
         for (const m of files) {
-            const libDir = path.join((0, globals_1.getGlobals)().artemisDir, "data", "missions", "__lib__", m);
+            const libDir = path.join((0, artemisGlobals_1.getArtemisGlobals)().artemisDir, "data", "missions", "__lib__", m);
             const libName = this.getModuleBaseName(m);
-            if ((0, globals_1.getGlobals)().libModules.includes(libDir)) {
+            if ((0, artemisGlobals_1.getArtemisGlobals)().libModules.includes(libDir)) {
                 // Module found. Check for updated versions
                 let latest = this.getLatestVersion(libName);
                 if (latest === "") {
@@ -109,7 +109,7 @@ class StoryJson {
     getLatestVersion(name) {
         let version = 0;
         let latestFile = "";
-        for (const file of (0, globals_1.getGlobals)().libModules) {
+        for (const file of (0, artemisGlobals_1.getArtemisGlobals)().libModules) {
             if (file.includes(name)) {
                 const v = this.getVersionPriority(file);
                 if (v > version) {

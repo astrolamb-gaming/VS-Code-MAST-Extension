@@ -1,6 +1,6 @@
 import { CompletionItem, CompletionItemKind, CompletionItemLabelDetails, integer, Location, MarkupContent, ParameterInformation, SignatureInformation } from 'vscode-languageserver';
 import { getRegExMatch } from './class';
-import { getGlobals } from '../globals';
+import { getArtemisGlobals } from '../artemisGlobals';
 
 
 /**
@@ -362,7 +362,7 @@ export class Function implements IFunction {
 			}
 			if (pi.label === "style") {
 				pi.documentation = pi.documentation + "\n\nStyle information:";
-				for (const s of getGlobals().widget_stylestrings) {
+				for (const s of getArtemisGlobals().widget_stylestrings) {
 					if (s.function === this.name) {
 						let doc = s.name + ":\n"
 						doc = doc + "    " + s.docs;

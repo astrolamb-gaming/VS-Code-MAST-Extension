@@ -5,7 +5,7 @@ import sharp = require('sharp');
 import { getFilesInDir } from '../fileFunctions';
 import { debug } from 'console';
 import { integer } from 'vscode-languageserver';
-import { IconIndex } from '../globals';
+import { IconIndex } from '../artemisGlobals';
 
 const iconTempPath = path.join(os.tmpdir(),"cosmosImages","iconSets");
 

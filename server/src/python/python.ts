@@ -5,7 +5,7 @@ import path = require('path');
 import * as fs from 'fs';
 import { getCache, MissionCache } from '../cache';
 import { integer } from 'vscode-languageserver';
-import { getGlobals, initializeGlobals } from '../globals';
+import { getArtemisGlobals, initializeArtemisGlobals } from '../artemisGlobals';
 import { StoryJson } from '../data/storyJson';
 import { notifyClient, sendWarning } from '../server';
 
@@ -100,9 +100,9 @@ export async function getSpecificGlobals(cache: MissionCache, globals: any) {
 	// }
 
 	// let sbs = path.join(scriptPath, "sbs.zip");
-	let g = getGlobals();
+	let g = getArtemisGlobals();
 	if (g === undefined) {
-		g = await initializeGlobals();
+		g = await initializeArtemisGlobals();
 	}
 	let libFolder = path.join(g.artemisDir,"data","missions");
 	if (cache.storyJson.sbslib.length === 0) return ret;
@@ -190,7 +190,7 @@ export async function compileMission(mastFile: string, content: string, sj:Story
 	mastFile = fixFileName(mastFile);
 	let errors: string[] = [];
 	// const o =  buildOptions(sj, [mastFile, content]);
-	let g = await initializeGlobals();
+	let g = await initializeArtemisGlobals();
 	const artDir = g.artemisDir;
 	const o = buildOptions(sj, [artDir, mastFile]);
 	if (o === null) return [];
@@ -206,7 +206,7 @@ export async function compileMission(mastFile: string, content: string, sj:Story
  */
 function buildOptions(sj:StoryJson, additionalArgs: any[]): Options | null {
 	if (pyPath === "") {
-		let adir = getGlobals().artemisDir;
+		let adir = getArtemisGlobals().artemisDir;
 		let f = findSubfolderByName(adir,"PyRuntime");
 		if (f !== null) {
 			pyPath = path.resolve(f);
@@ -219,7 +219,7 @@ function buildOptions(sj:StoryJson, additionalArgs: any[]): Options | null {
 		scriptPath = __dirname.replace("out","src");
 	}
 
-	let libFolder = path.join(getGlobals().artemisDir,"data","missions");
+	let libFolder = path.join(getArtemisGlobals().artemisDir,"data","missions");
 	const sbsLibPath = path.join(libFolder,"__lib__",sj.sbslib[0]);
 	// debug(sbsLibPath);
 

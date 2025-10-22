@@ -12,7 +12,7 @@ const comments_1 = require("./../tokens/comments");
 const cache_1 = require("./../cache");
 const path = require("path");
 const fileFunctions_1 = require("./../fileFunctions");
-const globals_1 = require("./../globals");
+const artemisGlobals_1 = require("../artemisGlobals");
 const signatureHelp_1 = require("./signatureHelp");
 const roles_1 = require("./../tokens/roles");
 const variables_1 = require("./../tokens/variables");
@@ -30,10 +30,10 @@ function onCompletion(_textDocumentPosition, text) {
     const cache = (0, cache_1.getCache)(text.uri);
     // return getGlobals().artFiles;
     // This updates the file's info with any new info from other files.
-    if (!(0, globals_1.getGlobals)().isCurrentFile(text.uri)) {
+    if (!(0, artemisGlobals_1.getArtemisGlobals)().isCurrentFile(text.uri)) {
         (0, server_1.showProgressBar)(true);
         cache.updateFileInfo(text);
-        (0, globals_1.getGlobals)().setCurrentFile(text.uri);
+        (0, artemisGlobals_1.getArtemisGlobals)().setCurrentFile(text.uri);
         (0, server_1.showProgressBar)(false);
     }
     let ci = [];
@@ -212,7 +212,7 @@ function onCompletion(_textDocumentPosition, text) {
             // Here we check for blob info
             if (blobStr.endsWith(".set(") || blobStr.endsWith(".get(")) {
                 (0, console_1.debug)("Is BLobe");
-                let blobs = (0, globals_1.getGlobals)().blob_items;
+                let blobs = (0, artemisGlobals_1.getArtemisGlobals)().blob_items;
                 for (const bk of cache.getBlobKeys()) {
                     if (blobs.find(item => { item.label === bk.name; }))
                         continue;
@@ -230,7 +230,7 @@ function onCompletion(_textDocumentPosition, text) {
                 (0, console_1.debug)("Getting roles");
                 let roles = (0, roles_1.getRolesForFile)(text);
                 roles = roles.concat(cache.getRoles(text.uri));
-                roles = roles.concat((0, globals_1.getGlobals)().shipData.roles);
+                roles = roles.concat((0, artemisGlobals_1.getArtemisGlobals)().shipData.roles);
                 ci = (0, roles_1.getWordsAsCompletionItems)("Role", roles, text);
                 return ci;
             }
@@ -264,14 +264,14 @@ function onCompletion(_textDocumentPosition, text) {
                     (0, console_1.debug)("Getting roles");
                     let roles = (0, roles_1.getRolesForFile)(text);
                     roles = roles.concat(cache.getRoles(text.uri));
-                    roles = roles.concat((0, globals_1.getGlobals)().shipData.roles);
+                    roles = roles.concat((0, artemisGlobals_1.getArtemisGlobals)().shipData.roles);
                     ci = (0, roles_1.getWordsAsCompletionItems)("Role", roles, text);
                     return ci;
                 }
                 if (a === "style") {
                     (0, console_1.debug)("Style found; iterating over widget stylestrings");
                     // First we iterate over the stylestrings in the the txt file, these are SBS functions
-                    for (const s of (0, globals_1.getGlobals)().widget_stylestrings) {
+                    for (const s of (0, artemisGlobals_1.getArtemisGlobals)().widget_stylestrings) {
                         if (func === s.function) {
                             const c = {
                                 label: s.name,
@@ -307,7 +307,7 @@ function onCompletion(_textDocumentPosition, text) {
                 }
                 if (a === "descriptorString") {
                     if (func.includes("particle")) {
-                        for (const arg of (0, globals_1.getGlobals)().widget_stylestrings) {
+                        for (const arg of (0, artemisGlobals_1.getArtemisGlobals)().widget_stylestrings) {
                             if (arg.function === "particle_event") {
                                 const item = {
                                     label: arg.name,
@@ -324,7 +324,7 @@ function onCompletion(_textDocumentPosition, text) {
                 if (a === "art_id" || a === "art") {
                     // ci = getGlobals().shipData.getCompletionItemsForShips();
                     ci = [];
-                    const ships = (0, globals_1.getGlobals)().shipData.ships;
+                    const ships = (0, artemisGlobals_1.getArtemisGlobals)().shipData.ships;
                     for (const ship of ships) {
                         ci.push(ship.completionItem);
                     }
@@ -332,7 +332,7 @@ function onCompletion(_textDocumentPosition, text) {
                 }
                 if (a === "key") {
                     if (func.endsWith("data_set_value")) {
-                        const blobs = (0, globals_1.getGlobals)().blob_items;
+                        const blobs = (0, artemisGlobals_1.getArtemisGlobals)().blob_items;
                         for (const bk of cache.getBlobKeys()) {
                             let find = blobs.find(key => {
                                 return key.label === bk.name;
@@ -398,7 +398,7 @@ function onCompletion(_textDocumentPosition, text) {
                 }
                 // If it even just INCLUDES "widget", then we'll try to add it.
                 if (a.includes("widget")) {
-                    const widgets = (0, globals_1.getGlobals)().widgets;
+                    const widgets = (0, artemisGlobals_1.getArtemisGlobals)().widgets;
                     for (const w of widgets) {
                         const c = {
                             label: w.name,
@@ -431,11 +431,11 @@ function onCompletion(_textDocumentPosition, text) {
     (0, console_1.debug)("Route and Media Labels");
     // Media labels only get the skybox names
     if (iStr.endsWith("@media/skybox/")) {
-        return (0, globals_1.getGlobals)().skyboxes;
+        return (0, artemisGlobals_1.getArtemisGlobals)().skyboxes;
         // Get Music Options (default vs Artemis2)
     }
     else if (iStr.endsWith("@media/music/")) {
-        return (0, globals_1.getGlobals)().music;
+        return (0, artemisGlobals_1.getArtemisGlobals)().music;
     }
     if (trimmed.match(/sbs\.play_audio_file\([ \d\w]+\, */)) {
         return cache.getMusicFiles();
@@ -768,7 +768,7 @@ function onCompletion(_textDocumentPosition, text) {
                 }
             }
             if (arg === "icon_index") {
-                let iconList = (0, globals_1.getGlobals)().gridIcons;
+                let iconList = (0, artemisGlobals_1.getArtemisGlobals)().gridIcons;
                 for (const i of iconList) {
                     const docs = {
                         kind: "markdown",
@@ -1020,7 +1020,7 @@ function getCompletionsForMethodParameters(iStr, paramName, doc, pos) {
         if (paramName === p.name) {
             // Now we iterate over all the possible optiosn
             if (paramName === "style") {
-                for (const s of (0, globals_1.getGlobals)().widget_stylestrings) {
+                for (const s of (0, artemisGlobals_1.getArtemisGlobals)().widget_stylestrings) {
                     if (func === s.function) {
                         const c = {
                             label: s.name,
@@ -1038,10 +1038,10 @@ function getCompletionsForMethodParameters(iStr, paramName, doc, pos) {
             }
             else if (paramName === "art_id") {
                 // Get all possible art files
-                return (0, globals_1.getGlobals)().artFiles;
+                return (0, artemisGlobals_1.getArtemisGlobals)().artFiles;
             }
             else if (paramName === 'art') {
-                return (0, globals_1.getGlobals)().artFiles;
+                return (0, artemisGlobals_1.getArtemisGlobals)().artFiles;
             }
             else if (paramName === "label") {
                 const cache = (0, cache_1.getCache)(doc.uri);
@@ -1087,7 +1087,7 @@ function getCompletionsForMethodParams(iStr, paramName, doc) {
                 if (i !== "" + (arr.length - 1))
                     continue;
                 if (sig.parameters[i].label === "style") {
-                    for (const s of (0, globals_1.getGlobals)().widget_stylestrings) {
+                    for (const s of (0, artemisGlobals_1.getArtemisGlobals)().widget_stylestrings) {
                         if (func === s.function) {
                             const c = {
                                 label: s.name,
@@ -1105,10 +1105,10 @@ function getCompletionsForMethodParams(iStr, paramName, doc) {
                 }
                 else if (sig.parameters[i].label === "art_id") {
                     // Get all possible art files
-                    return (0, globals_1.getGlobals)().artFiles;
+                    return (0, artemisGlobals_1.getArtemisGlobals)().artFiles;
                 }
                 else if (sig.parameters[i].label === 'art') {
-                    return (0, globals_1.getGlobals)().artFiles;
+                    return (0, artemisGlobals_1.getArtemisGlobals)().artFiles;
                 }
                 else if (sig.parameters[i].label === "label") {
                 }

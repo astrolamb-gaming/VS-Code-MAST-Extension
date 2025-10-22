@@ -3,7 +3,7 @@ import { Hover, integer, Location, MarkupContent, Position, TextDocumentPosition
 import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 import { CRange, isInComment, isInString } from '../tokens/comments';
 import { getCache } from '../cache';
-import { getGlobals } from '../globals';
+import { getArtemisGlobals } from '../artemisGlobals';
 import { getClassOfMethod, isClassMethod, isFunction } from '../tokens/tokens';
 import { variableModifiers } from '../tokens/variables';
 import { buildLabelDocs, getMainLabelAtPos } from '../tokens/labels';
@@ -44,7 +44,7 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 		if (func > 0) {
 			const end = before.substring(0,func);
 			if (end.endsWith("get") || end.endsWith("set")) {
-				for (const b of getGlobals().data_set_entries) {
+				for (const b of getArtemisGlobals().data_set_entries) {
 					if (symbol === b.name) {
 						const hover: Hover = {
 							contents: b.docs

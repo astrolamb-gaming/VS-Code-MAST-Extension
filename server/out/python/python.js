@@ -11,7 +11,7 @@ const fileFunctions_1 = require("../fileFunctions");
 const console_1 = require("console");
 const path = require("path");
 const cache_1 = require("../cache");
-const globals_1 = require("../globals");
+const artemisGlobals_1 = require("../artemisGlobals");
 const server_1 = require("../server");
 let pyPath = "";
 let scriptPath = "";
@@ -100,9 +100,9 @@ async function getSpecificGlobals(cache, globals) {
     // 	//debug(pyPath);
     // }
     // let sbs = path.join(scriptPath, "sbs.zip");
-    let g = (0, globals_1.getGlobals)();
+    let g = (0, artemisGlobals_1.getArtemisGlobals)();
     if (g === undefined) {
-        g = await (0, globals_1.initializeGlobals)();
+        g = await (0, artemisGlobals_1.initializeArtemisGlobals)();
     }
     let libFolder = path.join(g.artemisDir, "data", "missions");
     if (cache.storyJson.sbslib.length === 0)
@@ -189,7 +189,7 @@ async function compileMission(mastFile, content, sj) {
     mastFile = (0, fileFunctions_1.fixFileName)(mastFile);
     let errors = [];
     // const o =  buildOptions(sj, [mastFile, content]);
-    let g = await (0, globals_1.initializeGlobals)();
+    let g = await (0, artemisGlobals_1.initializeArtemisGlobals)();
     const artDir = g.artemisDir;
     const o = buildOptions(sj, [artDir, mastFile]);
     if (o === null)
@@ -205,7 +205,7 @@ async function compileMission(mastFile, content, sj) {
  */
 function buildOptions(sj, additionalArgs) {
     if (pyPath === "") {
-        let adir = (0, globals_1.getGlobals)().artemisDir;
+        let adir = (0, artemisGlobals_1.getArtemisGlobals)().artemisDir;
         let f = (0, fileFunctions_1.findSubfolderByName)(adir, "PyRuntime");
         if (f !== null) {
             pyPath = path.resolve(f);
@@ -217,7 +217,7 @@ function buildOptions(sj, additionalArgs) {
     if (scriptPath === "") {
         scriptPath = __dirname.replace("out", "src");
     }
-    let libFolder = path.join((0, globals_1.getGlobals)().artemisDir, "data", "missions");
+    let libFolder = path.join((0, artemisGlobals_1.getArtemisGlobals)().artemisDir, "data", "missions");
     const sbsLibPath = path.join(libFolder, "__lib__", sj.sbslib[0]);
     // debug(sbsLibPath);
     let sbsPath = path.join(scriptPath, "sbs.zip");

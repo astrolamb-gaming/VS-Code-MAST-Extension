@@ -6,7 +6,7 @@ import { fileFromUri, readFile } from './fileFunctions';
 import { CompletionItem, CompletionItemKind, MarkupContent, Range } from 'vscode-languageserver';
 import { connection, sendToClient } from './server';
 import Hjson = require('hjson');
-import { getGlobals } from './globals';
+import { getArtemisGlobals } from './artemisGlobals';
 import sharp = require('sharp');
 import { Word } from './tokens/words';
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -211,7 +211,7 @@ export class ShipData {
 		return ci;
 	}
 	getCompletionItemsForShips(): CompletionItem[] {
-		let g = getGlobals();
+		let g = getArtemisGlobals();
 		let ci: CompletionItem[] = g.artFiles;
 		for (const c of ci) {
 			const ship: any = this.getShipInfoFromKey(c.label);

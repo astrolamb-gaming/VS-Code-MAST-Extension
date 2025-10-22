@@ -8,7 +8,7 @@ import { isInComment, isInString, isInYaml, isTextInBracket, replaceRegexMatchWi
 import { getCache } from './../cache';
 import path = require('path');
 import { fixFileName, getFilesInDir } from './../fileFunctions';
-import { getGlobals } from './../globals';
+import { getArtemisGlobals } from '../artemisGlobals';
 import { getCurrentMethodName, onSignatureHelp } from './signatureHelp';
 import { getWordsAsCompletionItems, getRolesForFile } from './../tokens/roles';
 import { variableModifiers } from './../tokens/variables';
@@ -30,10 +30,10 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	const cache = getCache(text.uri);
 	// return getGlobals().artFiles;
 	// This updates the file's info with any new info from other files.
-	if (!getGlobals().isCurrentFile(text.uri)) {
+	if (!getArtemisGlobals().isCurrentFile(text.uri)) {
 		showProgressBar(true);
 		cache.updateFileInfo(text);
-		getGlobals().setCurrentFile(text.uri);
+		getArtemisGlobals().setCurrentFile(text.uri);
 		showProgressBar(false);
 	}
 	
@@ -233,7 +233,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			// Here we check for blob info
 			if (blobStr.endsWith(".set(") || blobStr.endsWith(".get(")) {
 				debug("Is BLobe");
-				let blobs = getGlobals().blob_items;
+				let blobs = getArtemisGlobals().blob_items;
 				for (const bk of cache.getBlobKeys()) {
 					if (blobs.find(item=>{item.label === bk.name})) continue;
 					let ci:CompletionItem = {
@@ -251,7 +251,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				debug("Getting roles")
 				let roles = getRolesForFile(text);
 				roles = roles.concat(cache.getRoles(text.uri));
-				roles = roles.concat(getGlobals().shipData.roles);
+				roles = roles.concat(getArtemisGlobals().shipData.roles);
 				ci = getWordsAsCompletionItems("Role", roles, text);
 				return ci;
 			}
@@ -288,14 +288,14 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 					debug("Getting roles")
 					let roles = getRolesForFile(text);
 					roles = roles.concat(cache.getRoles(text.uri));
-					roles = roles.concat(getGlobals().shipData.roles);
+					roles = roles.concat(getArtemisGlobals().shipData.roles);
 					ci = getWordsAsCompletionItems("Role", roles, text);
 				return ci;
 				}
 				if (a === "style") {
 					debug("Style found; iterating over widget stylestrings");
 					// First we iterate over the stylestrings in the the txt file, these are SBS functions
-					for (const s of getGlobals().widget_stylestrings) {
+					for (const s of getArtemisGlobals().widget_stylestrings) {
 						if (func === s.function) {
 							const c = {
 								label: s.name,
@@ -330,7 +330,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				}
 				if (a === "descriptorString") {
 					if (func.includes("particle")) {
-						for (const arg of getGlobals().widget_stylestrings) {
+						for (const arg of getArtemisGlobals().widget_stylestrings) {
 							if (arg.function === "particle_event") {
 								const item: CompletionItem = {
 									label: arg.name,
@@ -347,7 +347,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				if (a === "art_id" || a === "art") {
 					// ci = getGlobals().shipData.getCompletionItemsForShips();
 					ci = [];
-					const ships = getGlobals().shipData.ships;
+					const ships = getArtemisGlobals().shipData.ships;
 					for (const ship of ships) {
 						ci.push(ship.completionItem);
 					}
@@ -355,7 +355,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				}
 				if (a === "key") {
 					if (func.endsWith("data_set_value")) {
-						const blobs = getGlobals().blob_items;
+						const blobs = getArtemisGlobals().blob_items;
 						for (const bk of cache.getBlobKeys()) {
 							let find = blobs.find(key=>{
 								return key.label === bk.name;
@@ -421,7 +421,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				}
 				// If it even just INCLUDES "widget", then we'll try to add it.
 				if (a.includes("widget")) {
-					const widgets = getGlobals().widgets;
+					const widgets = getArtemisGlobals().widgets;
 					for (const w of widgets) {
 						const c: CompletionItem = {
 							label: w.name,
@@ -460,10 +460,10 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	debug("Route and Media Labels");
 	// Media labels only get the skybox names
 	if (iStr.endsWith("@media/skybox/")) {
-		return getGlobals().skyboxes;
+		return getArtemisGlobals().skyboxes;
 	// Get Music Options (default vs Artemis2)
 	} else if (iStr.endsWith("@media/music/")) {
-		return getGlobals().music;
+		return getArtemisGlobals().music;
 	}
 	if (trimmed.match(/sbs\.play_audio_file\([ \d\w]+\, */)) {
 		return cache.getMusicFiles();
@@ -797,7 +797,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				}
 			}
 			if (arg === "icon_index") {
-				let iconList = getGlobals().gridIcons;
+				let iconList = getArtemisGlobals().gridIcons;
 				for (const i of iconList) {
 					const docs: MarkupContent = {
 						kind: "markdown",
@@ -1064,7 +1064,7 @@ function getCompletionsForMethodParameters(iStr:string, paramName: string, doc:T
 			if (paramName === p.name) {
 				// Now we iterate over all the possible optiosn
 				if (paramName === "style") {
-					for (const s of getGlobals().widget_stylestrings) {
+					for (const s of getArtemisGlobals().widget_stylestrings) {
 						if (func === s.function) {
 							const c = {
 								label: s.name,
@@ -1081,9 +1081,9 @@ function getCompletionsForMethodParameters(iStr:string, paramName: string, doc:T
 					}
 				} else if (paramName === "art_id") {
 					// Get all possible art files
-					return getGlobals().artFiles;
+					return getArtemisGlobals().artFiles;
 				} else if (paramName === 'art') {
-					return getGlobals().artFiles;
+					return getArtemisGlobals().artFiles;
 				} else if (paramName === "label") {
 					const cache = getCache(doc.uri);
 					let labels = cache.getMastFile(doc.uri).labelNames;
@@ -1129,7 +1129,7 @@ function getCompletionsForMethodParams(iStr:string, paramName: string, doc:TextD
 			for (const i in sig.parameters) {
 				if (i !== ""+(arr.length-1)) continue;
 				if (sig.parameters[i].label === "style") {
-					for (const s of getGlobals().widget_stylestrings) {
+					for (const s of getArtemisGlobals().widget_stylestrings) {
 						if (func === s.function) {
 							const c = {
 								label: s.name,
@@ -1146,9 +1146,9 @@ function getCompletionsForMethodParams(iStr:string, paramName: string, doc:TextD
 					}
 				} else if (sig.parameters[i].label === "art_id") {
 					// Get all possible art files
-					return getGlobals().artFiles;
+					return getArtemisGlobals().artFiles;
 				} else if (sig.parameters[i].label === 'art') {
-					return getGlobals().artFiles;
+					return getArtemisGlobals().artFiles;
 				} else if (sig.parameters[i].label === "label") {
 
 				}

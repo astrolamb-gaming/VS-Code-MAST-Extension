@@ -2,7 +2,7 @@ import { debug } from 'console';
 import path = require('path');
 import { integer } from 'vscode-languageserver';
 import { getFileContents, getMissionFolder } from '../fileFunctions';
-import { getGlobals } from '../globals';
+import { getArtemisGlobals } from '../artemisGlobals';
 import { connection, notifyClient, sendToClient, showProgressBar } from '../server';
 import fs = require('fs');
 
@@ -40,9 +40,9 @@ export class StoryJson {
 		let errors = -1;
 		//debug(files)
 		for (const m of files) {
-			const libDir = path.join(getGlobals().artemisDir,"data","missions","__lib__",m);
+			const libDir = path.join(getArtemisGlobals().artemisDir,"data","missions","__lib__",m);
 			const libName = this.getModuleBaseName(m);
-			if (getGlobals().libModules.includes(libDir)) {
+			if (getArtemisGlobals().libModules.includes(libDir)) {
 				// Module found. Check for updated versions
 				let latest = this.getLatestVersion(libName);
 				if (latest === "") {
@@ -119,7 +119,7 @@ export class StoryJson {
 	getLatestVersion(name:string) {
 		let version = 0;
 		let latestFile = "";
-		for (const file of getGlobals().libModules) {
+		for (const file of getArtemisGlobals().libModules) {
 			if (file.includes(name)) {
 				const v = this.getVersionPriority(file);
 				if (v > version) {

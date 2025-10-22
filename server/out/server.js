@@ -21,7 +21,7 @@ const hover_1 = require("./requests/hover");
 const signatureHelp_1 = require("./requests/signatureHelp");
 const fs = require("fs");
 const variables_1 = require("./tokens/variables");
-const globals_1 = require("./globals");
+const artemisGlobals_1 = require("./artemisGlobals");
 const validate_1 = require("./requests/validate");
 const goToDefinition_1 = require("./requests/goToDefinition");
 const cache_1 = require("./cache");
@@ -342,13 +342,13 @@ exports.connection.onCompletion(async (_textDocumentPosition) => {
             return [];
         }
         (0, console_1.debug)("THIS IS A JSON FILE");
-        let g = (0, globals_1.getGlobals)();
+        let g = (0, artemisGlobals_1.getArtemisGlobals)();
         if (g !== undefined) {
             return g.libModuleCompletionItems;
         }
         else {
-            await (0, globals_1.initializeGlobals)();
-            return (0, globals_1.getGlobals)()?.libModuleCompletionItems;
+            await (0, artemisGlobals_1.initializeArtemisGlobals)();
+            return (0, artemisGlobals_1.getArtemisGlobals)()?.libModuleCompletionItems;
         }
     }
     if (_textDocumentPosition.textDocument.uri.endsWith("__init__.mast")) {
