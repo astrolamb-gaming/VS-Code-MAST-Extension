@@ -4,6 +4,7 @@ exports.Parameter = exports.Function = void 0;
 const vscode_languageserver_1 = require("vscode-languageserver");
 const class_1 = require("./class");
 const artemisGlobals_1 = require("../artemisGlobals");
+const console_1 = require("console");
 class Function {
     copy() {
         const f = new Function("", "", "");
@@ -46,7 +47,42 @@ class Function {
         }
         this.rawParams = params;
         let comments = (0, class_1.getRegExMatch)(raw, comment).replace("\"\"\"", "").replace("\"\"\"", "");
-        this.documentation = comments;
+        let lines = comments.split("\n");
+        let newLines = [];
+        let m;
+        const param = /([ \w]+)(\([^\)]*\))?:(.*)?/;
+        for (let line of lines) {
+            let found = false;
+            while (m = line.match(param)) {
+                let l = "";
+                if (m[3] && m[3].trim() !== "") { // If it's a param. 
+                    // debug(m[0])
+                    l = "**" + m[1].trim() + "**";
+                    if (m[2]) {
+                        l = l + " *" + m[2] + "*:  ";
+                    }
+                    else {
+                        l = l + ":  ";
+                    }
+                    l = l + m[3].trim();
+                }
+                else if (m[3] === undefined) { // It's a header, like `Args:`
+                    l = "### " + m[1].trim();
+                }
+                else { // Just a string
+                    l = line.trim() + "  ";
+                }
+                newLines.push(l + "  ");
+                found = true;
+                break;
+            }
+            if (found)
+                continue;
+            newLines.push(line.trim() + "  ");
+        }
+        // debug(newLines);
+        this.documentation = newLines.join("\n");
+        (0, console_1.debug)(this.documentation);
         let retVal = (0, class_1.getRegExMatch)(raw, returnValue).replace(/(:|->)/g, "").trim();
         if (retVal === "") {
             let cLines = comments.split("\n");
@@ -179,6 +215,7 @@ class Function {
         if (this.returnType !== "")
             retType = " -> " + this.returnType;
         let ci_details = "(" + this.functionType + ") " + classRef + this.name + paramList + retType;
+        ci_details = "```javascript\n" + ci_details + "\n```   \n";
         return ci_details;
     }
     /**
@@ -191,9 +228,10 @@ class Function {
          * TODO: Fix this for CompletionItem in {@link buildCompletionItem buil6dCompletionItem}
          */
         if (docs === "") {
-            docs = this.documentation.toString();
+            // if (this.documentation.value )
+            docs = this.documentation;
         }
-        const functionDetails = "```javascript\n" + this.buildFunctionDetails() + "\n```";
+        // const functionDetails = "```javascript\n" + this.buildFunctionDetails() + "\n```";
         const documentation = "```text\n\n" + this.documentation + "```";
         // const documentation = (this.documentation as string).replace(/\t/g,"&emsp;").replace(/    /g,"&emsp;").replace(/\n/g,"\\\n");
         //                    artemis-sbs.LegendaryMissions.upgrades.v1.0.4.mastlib/upgrade.py
@@ -204,14 +242,24 @@ class Function {
         // https://github.com/artemis-sbs/sbs_utils/blob/master/mock/sbs.py
         let source = ""; //this.determineSource(this.sourceFile);
         source = ''; //"\nSource:  \n  " + source;
-        if (docs !== "") {
-            docs = "\n\n```text\n\n" + docs + "\n```";
-        }
+        // if (docs !== "") {
+        // 	docs = "\n\n```text\n\n" + docs + "\n```";
+        // }
+        let functionDetails = this.buildFunctionDetails();
+        // debug(functionDetails);
+        // debug(docs);
+        // debug(source);
         const ret = {
-            kind: "markdown",
-            value: "```javascript\n" + this.buildFunctionDetails() + "\n```" + docs + source
+            kind: vscode_languageserver_1.MarkupKind.Markdown,
+            // value: "```javascript\n" + functionDetails + "\n```  \r\n" + docs + source
+            value: [
+                functionDetails,
+                docs,
+                source
+            ].join("\n")
             // value: functionDetails + "\n" + documentation + "\n\n" + source
         };
+        (0, console_1.debug)(ret.value);
         return ret;
     }
     determineSource(source) {

@@ -1,6 +1,8 @@
-import { CompletionItem, CompletionItemKind, CompletionItemLabelDetails, integer, Location, MarkupContent, ParameterInformation, SignatureInformation } from 'vscode-languageserver';
+import { CompletionItem, CompletionItemKind, CompletionItemLabelDetails, integer, Location, MarkupContent, MarkupKind, ParameterInformation, SignatureInformation } from 'vscode-languageserver';
 import { getRegExMatch } from './class';
 import { getArtemisGlobals } from '../artemisGlobals';
+import { debug } from 'console';
+import { NewlineTransformer } from 'python-shell';
 
 
 /**
@@ -42,7 +44,7 @@ export interface IParameter {
 
 export class Function implements IFunction {
 	name = "";
-	documentation: string | MarkupContent;
+	documentation: string;
 	functionType: string;
 	className: string;
 	rawParams: string;
@@ -96,7 +98,40 @@ export class Function implements IFunction {
 		this.rawParams = params;
 
 		let comments = getRegExMatch(raw, comment).replace("\"\"\"","").replace("\"\"\"","");
-		this.documentation = comments;
+		let lines = comments.split("\n");
+		let newLines:string[] = [];
+		let m: RegExpMatchArray|null;
+		const param = /([ \w]+)(\([^\)]*\))?:(.*)?/;
+
+		for (let line of lines) {
+			let found = false;
+			while (m = line.match(param)) {
+				let l = "";
+				if (m[3] && m[3].trim() !== "") { // If it's a param. 
+					// debug(m[0])
+					l = "**"+m[1].trim()+"**";
+					if (m[2]) {
+						l = l + " *" + m[2] + "*:  "
+					} else {
+						l = l + ":  "
+					}
+					l = l + m[3].trim();
+				} else if (m[3] === undefined) { // It's a header, like `Args:`
+					l = "### " + m[1].trim();
+				} else { // Just a string
+					l = line.trim() + "  ";
+				}
+				newLines.push(l + "  ");
+				found = true;
+				break;
+			}
+			if (found) continue;
+			newLines.push(line.trim() + "  ");
+		}
+		// debug(newLines);
+
+		this.documentation = newLines.join("\n");
+		debug(this.documentation);
 
 		let retVal = getRegExMatch(raw, returnValue).replace(/(:|->)/g, "").trim();
 		if (retVal === "") {
@@ -222,6 +257,7 @@ export class Function implements IFunction {
 		let retType = "";
 		if (this.returnType !== "") retType = " -> " + this.returnType;
 		let ci_details: string = "(" + this.functionType + ") " + classRef + this.name + paramList + retType;
+		ci_details = "```javascript\n" + ci_details + "\n```   \n";
 		return ci_details;
 	}
 
@@ -236,10 +272,11 @@ export class Function implements IFunction {
 		 */ 
 
 		if (docs === "") {
-			docs = this.documentation.toString();
+			// if (this.documentation.value )
+			docs = this.documentation;
 		}
 
-		const functionDetails = "```javascript\n" + this.buildFunctionDetails() + "\n```";
+		// const functionDetails = "```javascript\n" + this.buildFunctionDetails() + "\n```";
 		const documentation = "```text\n\n" + this.documentation + "```";
 		// const documentation = (this.documentation as string).replace(/\t/g,"&emsp;").replace(/    /g,"&emsp;").replace(/\n/g,"\\\n");
 		
@@ -259,14 +296,25 @@ export class Function implements IFunction {
 		
 
 		source = '';//"\nSource:  \n  " + source;
-		if (docs !== "") {
-			docs = "\n\n```text\n\n" + docs + "\n```";
-		}
+		// if (docs !== "") {
+		// 	docs = "\n\n```text\n\n" + docs + "\n```";
+		// }
+
+		let functionDetails = this.buildFunctionDetails();
+		// debug(functionDetails);
+		// debug(docs);
+		// debug(source);
 		const ret: MarkupContent = {
-			kind: "markdown",
-			value: "```javascript\n" + this.buildFunctionDetails() + "\n```" + docs + source
+			kind: MarkupKind.Markdown,
+			// value: "```javascript\n" + functionDetails + "\n```  \r\n" + docs + source
+			value:[
+				functionDetails,
+				docs,
+				source
+			].join("\n")
 			// value: functionDetails + "\n" + documentation + "\n\n" + source
 		}
+		debug(ret.value);
 		return ret;
 	}
 

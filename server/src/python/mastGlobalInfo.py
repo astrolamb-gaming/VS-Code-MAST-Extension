@@ -235,9 +235,9 @@ for g in globals:
 								info.documentation = ""
 
 							if g in standardTypes:
-								info.documentation += f"\nMore information can probably be found at https://docs.python.org/3/library/stdtypes.html#{name}"
+								info.documentation += f"\nMore information can probably be found in the [documentation](https://docs.python.org/3/library/stdtypes.html#{name})"
 							else:
-								info.documentation += f"\nMore information can probably be found at https://docs.python.org/3/library/{g}.html#{name}"
+								info.documentation += f"\nMore information can probably be found in the [documentation](https://docs.python.org/3/library/{g}.html#{name})"
 							if "module" in str(globals[g]):
 								info.kind = "module"
 								
