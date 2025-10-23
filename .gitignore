@@ -285,6 +285,9 @@ FakesAssemblies/
 .ntvs_analysis.dat
 node_modules/
 
+# output files, VSCode will build these so they aren't needed in git
+out/
+
 # Visual Studio 6 build log
 *.plg
 
