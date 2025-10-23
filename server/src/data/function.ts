@@ -97,28 +97,32 @@ export class Function implements IFunction {
 		}
 		this.rawParams = params;
 
-		let comments = getRegExMatch(raw, comment).replace("\"\"\"","").replace("\"\"\"","");
+		let comments = getRegExMatch(raw, comment).replace("\"\"\"","").replace("\"\"\"","").trim();
 		let lines = comments.split("\n");
 		let newLines:string[] = [];
 		let m: RegExpMatchArray|null;
-		const oldParam = /:(param|type)(\w+):(.*)/;
-		const param = /([ \w]+)(\([^\)]*\))?:(.*)?/;
+		// const oldParam = /:(param|type)(\w+):(.*)/;
+		const param = /(\*)?[ \t]*([a-zA-Z_][ \w]*)(\([^\)]*\))?:(.*)?/;
 
 		for (let line of lines) {
 			let found = false;
+			// line = line.replace(/    |\t/g,"&ensp;&thinsp;");
 			while (m = line.match(param)) {
 				let l = "";
-				if (m[3] && m[3].trim() !== "") { // If it's a param. 
+				if (m[4] && m[4].trim() !== "") { // If it's a param. 
 					// debug(m[0])
-					l = "**"+m[1].trim()+"**";
-					if (m[2]) {
-						l = l + " *" + m[2] + "*:  "
+					l = "**"+m[2].trim()+"**";
+					if (m[3]) {
+						l = l + " *" + m[3] + "*:  "
 					} else {
 						l = l + ":  "
 					}
-					l = l + m[3].trim();
-				} else if (m[3] === undefined) { // It's a header, like `Args:`
-					l = "### " + m[1].trim();
+					l = l + m[4].trim();
+					if (m[1]) { // If it's a list item
+						l = "* " + l;
+					}
+				} else if (m[4] === undefined) { // It's a header, like `Args:`
+					l = "### " + m[2].trim();
 				} else { // Just a string
 					l = line.trim() + "  ";
 				}
@@ -130,7 +134,7 @@ export class Function implements IFunction {
 			newLines.push(line.trim() + "  ");
 		}
 		// debug(newLines);
-
+		// this.documentation = comments;
 		this.documentation = newLines.join("\n");
 		debug(this.documentation);
 
