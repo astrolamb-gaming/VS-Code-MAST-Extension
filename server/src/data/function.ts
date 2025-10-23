@@ -101,6 +101,7 @@ export class Function implements IFunction {
 		let lines = comments.split("\n");
 		let newLines:string[] = [];
 		let m: RegExpMatchArray|null;
+		const oldParam = /:(param|type)(\w+):(.*)/;
 		const param = /([ \w]+)(\([^\)]*\))?:(.*)?/;
 
 		for (let line of lines) {

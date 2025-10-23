@@ -50,6 +50,7 @@ class Function {
         let lines = comments.split("\n");
         let newLines = [];
         let m;
+        const oldParam = /:(param|type)(\w+):(.*)/;
         const param = /([ \w]+)(\([^\)]*\))?:(.*)?/;
         for (let line of lines) {
             let found = false;
