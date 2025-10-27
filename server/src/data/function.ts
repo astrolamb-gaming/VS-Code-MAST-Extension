@@ -402,9 +402,10 @@ export class Function implements IFunction {
 		// 	value: "```javascript\n" + ci_details + "\n```\n```text\n" + this.documentation + "\n```\n"
 		// }
 		//debug(markup)
+		let docs = this.buildMarkUpContent(this.documentation as string);
 		const si: SignatureInformation = {
 			label: this.name,
-			documentation: ci_details + "\n" + this.documentation,
+			documentation: docs,//ci_details + "\n" + this.documentation,
 			// TODO: Make this more Markup style instead of just text
 			parameters: []
 		}
