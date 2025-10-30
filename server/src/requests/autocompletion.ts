@@ -292,7 +292,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 					ci = getWordsAsCompletionItems("Role", roles, text);
 				return ci;
 				}
-				if (a === "style") {
+				if (a === "style" || a === "extra_style") {
 					debug("Style found; iterating over widget stylestrings");
 					// First we iterate over the stylestrings in the the txt file, these are SBS functions
 					for (const s of getArtemisGlobals().widget_stylestrings) {
@@ -344,7 +344,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 						return ci;
 					}
 				}
-				if (a === "art_id" || a === "art") {
+				if (a === "art_id" || a === "art" || a === "ship_key") {
 					// ci = getGlobals().shipData.getCompletionItemsForShips();
 					ci = [];
 					const ships = getArtemisGlobals().shipData.ships;
@@ -1063,7 +1063,7 @@ function getCompletionsForMethodParameters(iStr:string, paramName: string, doc:T
 		let p = method.parameters[paramNumber];
 			if (paramName === p.name) {
 				// Now we iterate over all the possible optiosn
-				if (paramName === "style") {
+				if (paramName === "style" || paramName === "extra_style") {
 					for (const s of getArtemisGlobals().widget_stylestrings) {
 						if (func === s.function) {
 							const c = {
@@ -1079,7 +1079,8 @@ function getCompletionsForMethodParameters(iStr:string, paramName: string, doc:T
 							ci.push(c)
 						}
 					}
-				} else if (paramName === "art_id") {
+				} else if (paramName === "art_id" || paramName === "ship_key") {
+					// TODO: Include art files for other mission folders???? Would need to parse shipData.json for other folders.
 					// Get all possible art files
 					return getArtemisGlobals().artFiles;
 				} else if (paramName === 'art') {
@@ -1128,7 +1129,8 @@ function getCompletionsForMethodParams(iStr:string, paramName: string, doc:TextD
 		if (sig.parameters !== undefined) {
 			for (const i in sig.parameters) {
 				if (i !== ""+(arr.length-1)) continue;
-				if (sig.parameters[i].label === "style") {
+				// TODO: The label here has extra documentation that I need to look into more.
+				if (sig.parameters[i].label === "style" || sig.parameters[i].label === "extra_style") {
 					for (const s of getArtemisGlobals().widget_stylestrings) {
 						if (func === s.function) {
 							const c = {
@@ -1144,7 +1146,7 @@ function getCompletionsForMethodParams(iStr:string, paramName: string, doc:TextD
 							ci.push(c)
 						}
 					}
-				} else if (sig.parameters[i].label === "art_id") {
+				} else if (sig.parameters[i].label === "art_id" || sig.parameters[i].label === "ship_key") {
 					// Get all possible art files
 					return getArtemisGlobals().artFiles;
 				} else if (sig.parameters[i].label === 'art') {

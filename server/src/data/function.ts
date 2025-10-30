@@ -102,7 +102,7 @@ export class Function implements IFunction {
 		let newLines:string[] = [];
 		let m: RegExpMatchArray|null;
 		// const oldParam = /:(param|type)(\w+):(.*)/;
-		const param = /(\*)?[ \t]*([a-zA-Z_][ \w]*)(\([^\)]*\))?:(.*)?/;
+		const param = /(\*)?[ \t]*([a-zA-Z_,][ \w]*)(\([^\)]*\))?:(.*)?/;
 
 		for (let line of lines) {
 			let found = false;

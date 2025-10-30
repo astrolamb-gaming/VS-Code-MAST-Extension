@@ -23,7 +23,6 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * Fix string checks, particularly for f-strings
 * Add Find References functionality for inventory and blob keys, and for roles
 * Add autocompletion and Find References for Link keys
-* Add CodeActions for f-string errors
 * Improved role parsing and autocompletion
 
 
