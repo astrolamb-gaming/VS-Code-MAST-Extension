@@ -24,6 +24,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * Add Find References functionality for inventory and blob keys, and for roles
 * Add autocompletion and Find References for Link keys
 * Improved role parsing and autocompletion
+* Can now get python string method autcompletions for strings (e.g. `"some string".` will trigger autocompletions)
 
 
 ### 0.16.0
