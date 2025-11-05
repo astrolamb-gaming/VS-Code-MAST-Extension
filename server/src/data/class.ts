@@ -167,6 +167,7 @@ export class ClassObject {
 			if (f.name === "art_id") {
 				debug(str);
 			}
+			if (f.name === "") continue;
 			fList.push(f);
 		}
 		return fList;
