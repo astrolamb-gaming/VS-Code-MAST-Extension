@@ -201,7 +201,7 @@ globals = MastGlobals.globals
 
 globals["dict"] = dict
 
-standardTypes = ["str",'int','list','set','range','dict']
+standardTypes = ["str",'int', 'float', 'list','set', 'frozenset', 'tuple', 'bool', 'bytes', 'complex', 'range','dict']
 ret = []
 for g in globals:
 	# Turns out globalsList is not needed and could cause some issues here; i.e. if a mast global exists but isn't listed in globalsList (like `dict`)
@@ -236,7 +236,8 @@ for g in globals:
 
 							if g in standardTypes:
 								info.documentation += f"\nMore information can probably be found in the [documentation](https://docs.python.org/3/library/stdtypes.html#{name})"
-							else:
+							# This checks all the builtins that aren't standard types
+							if g in sys.builtin_module_names:
 								info.documentation += f"\nMore information can probably be found in the [documentation](https://docs.python.org/3/library/{g}.html#{name})"
 							if "module" in str(globals[g]):
 								info.kind = "module"

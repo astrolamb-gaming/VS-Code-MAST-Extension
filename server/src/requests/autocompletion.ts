@@ -641,6 +641,15 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		debug(iStr);
 		// First we check if a class is being referenced.
 		const classes = cache.getClasses();
+
+		if (iStr.endsWith("'.") || iStr.endsWith('".')) {
+			// Is a string, show string methods
+			for (const c of classes) {
+				if (c.name === "str") {
+					return c.getMethodCompletionItems();
+				}
+			}
+		}
 		// debug(classes)
 		for (const c of classes) {
 			if (c.name === "sbs") {
