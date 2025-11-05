@@ -136,7 +136,7 @@ export class Function implements IFunction {
 		// debug(newLines);
 		// this.documentation = comments;
 		this.documentation = newLines.join("\n");
-		debug(this.documentation);
+		// debug(this.documentation);
 
 		let retVal = getRegExMatch(raw, returnValue).replace(/(:|->)/g, "").trim();
 		if (retVal === "") {
@@ -167,27 +167,28 @@ export class Function implements IFunction {
 		}
 		this.returnType = retVal;
 
-		
+		const preNameStr = raw.substring(0, raw.indexOf("def "));
+		// debug(preNameStr);
 
 		let cik: CompletionItemKind = CompletionItemKind.Function;
 		let cikStr: string = "function";
-		if (isProperty.test(raw)) {
+		if (isProperty.test(preNameStr)) {
 			cik = CompletionItemKind.Property;
 			cikStr = "property";
 		}
-		if (isClassMethod.test(raw)) {
+		if (isClassMethod.test(preNameStr)) {
 			cik = CompletionItemKind.Method;
 			cikStr = "classmethod";
 		}
-		if (isSetter.test(raw)) {
-			cik = CompletionItemKind.Unit;
+		if (isSetter.test(preNameStr)) {
+			cik = CompletionItemKind.Property;
 			cikStr = "setter";
 		}
-		if (isPromise.test(raw)) {
+		if (isPromise.test(preNameStr)) {
 			cik = CompletionItemKind.Reference;
 			cikStr = "awaitable";
 		}
-		if (isLabel.test(raw)) {
+		if (isLabel.test(preNameStr)) {
 			cik = CompletionItemKind.Event;
 			cikStr = "label";
 		}
@@ -207,12 +208,19 @@ export class Function implements IFunction {
 		// this.completionItem = this.buildCompletionItem();
 		// this.signatureInformation = this.buildSignatureInformation();
 		//debug(this);
+
+		// if (this.name === "art_id") {
+		// 	debug(raw);
+		// 	debug(this.functionType);
+		// 	debug(this.rawParams)
+		// }
+
 		return this;
 	}
 
 	convertFunctionTypeToCompletionItemKind(type:string): CompletionItemKind {
 		let cik: CompletionItemKind = CompletionItemKind.Function;
-		if (type === "setter") return CompletionItemKind.Unit;
+		if (type === "setter") return CompletionItemKind.Property;
 		if (type === "property") return CompletionItemKind.Property;
 		if (type === "constructor") return CompletionItemKind.Constructor
 		if (type === "classmethod") return CompletionItemKind.Method;
@@ -255,6 +263,11 @@ export class Function implements IFunction {
 	 * @returns 
 	 */
 	buildFunctionDetails() : string {
+		if (this.name === "art_id") {
+			debug(this.rawParams);
+			debug(this.name);
+			debug(this.functionType)
+		}
 		let classRef = ((this.className === "") ? "" : this.className + ".");
 		if (this.functionType === 'constructor') { classRef = ""; }
 		let paramList = "";
@@ -319,7 +332,7 @@ export class Function implements IFunction {
 			].join("\n")
 			// value: functionDetails + "\n" + documentation + "\n\n" + source
 		}
-		debug(ret.value);
+		// debug(ret.value);
 		return ret;
 	}
 

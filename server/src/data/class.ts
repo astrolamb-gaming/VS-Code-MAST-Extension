@@ -3,6 +3,7 @@ import { replaceNames } from '../data';
 import { Function } from './function';
 import { Variable } from '../tokens/variables';
 import { debug } from 'console';
+import { block } from 'sharp';
 
 export class ClassObject {
 	name: string;
@@ -111,7 +112,7 @@ export class ClassObject {
 
 		let testStr = '    @label\n    def add_client_tag() -> None:\n    """stub; does nothing yet."""';
 
-		let wholeFunction : RegExp = /((@property|\.setter|@classmethod|@staticmethod|@label|@awaitable)([\n\t\r ]))?[\t ]*?(def[ \t])/g;
+		let wholeFunction : RegExp = /((@property|\.setter|@classmethod|@staticmethod|@label|@awaitable)[ \t]*([\n\t\r ]))?[\t ]*?(def[ \t])/g;
 
 		let functionName : RegExp = /((def\s)(.+?)\()/gm; // Look for "def functionName(" to parse function names.
 		//let className : RegExp = /class (.+?):/gm; // Look for "class ClassName:" to parse class names.
@@ -122,41 +123,89 @@ export class ClassObject {
 		let isClassMethod: RegExp = /@classmethod/;
 		let isSetter : RegExp = /\.setter/;
 
+		let mods : RegExp = /(@property|\.setter|@classmethod|@staticmethod|@label|@awaitable)/;
+
+		let spaces: RegExp = /^([ \t]*)./gm;
+
 		let blockIndices: integer[] = [];
 
-		while (m = wholeFunction.exec(raw)) {
-			blockIndices.push(m.index);
-		}
-		// debug(blockIndices)
-		if (blockIndices.length === 0) {
-			return fList;
-		}
-		blockIndices.push(raw.length - 1);
-		let len = blockIndices.length; // How many indices there are - NOT the same as number of classes (should be # of classes - 1)
-		for (let i = 0; i < len; i++) {
-			let t: string;
-			let start = blockIndices[0];
-			if (i === 0) {
-				t = raw.substring(0, start);
-			} else {
-				start = blockIndices[i - 1];
-				t = raw.substring(start, blockIndices[i]);
+		let lines:string[] = raw.split("\n");
+
+		let blockLineIndices: integer [] = [];
+		
+		let currentStart = 0;
+		let isFunctionDef = false;
+		for (const i in lines) {
+			let line = lines[i]
+			let m = line.match(spaces);
+			if (m) {
+				// Check if it's a function definition
+				if (functionName.test(line) || mods.test(line)) {
+					// Check if it's still part of the function def
+					if (!isFunctionDef) {
+						blockLineIndices.push(parseInt(i));
+						isFunctionDef = true;
+					}
+					continue;
+				}
+				isFunctionDef = false;
 			}
-			const f: Function = new Function(t, source, sourceFile);
-			if (f.name=== "") {
-				// This is all the stuff between the class def and first function def
-				// debug(t);
-				continue;
+		}
+		blockLineIndices.push(lines.length);
+		let start = 0;
+		for (const index of blockLineIndices) {
+			let funcLines = [];
+			// let str = ""
+			for (let i = start; i < index; i++){
+				funcLines.push(lines[i]);
+				// str = str + "\n" + lines[i];
+				start = i;
 			}
-			// f.startIndex = f.startIndex + this.startPos;
+			// debug(str);
+			let str = funcLines.join("\n");
+			const f: Function = new Function(str, source, sourceFile);
+			if (f.name === "art_id") {
+				debug(str);
+			}
 			fList.push(f);
 		}
-		// debug(source);
-		// TODO: Doing this seems to cause some issues.....
-		// But there do seem to be multiple copies of some functions. Might need to check if these are just getters and setters
-		// fList = [...new Map(fList.map(v => [v.startIndex, v])).values()]
-		// if (fList.length >= 0) debug(fList);
 		return fList;
+
+
+
+		// while (m = wholeFunction.exec(raw)) {
+		// 	blockIndices.push(m.index);
+		// }
+		// // debug(blockIndices)
+		// if (blockIndices.length === 0) {
+		// 	return fList;
+		// }
+		// blockIndices.push(raw.length - 1);
+		// let len = blockIndices.length; // How many indices there are - NOT the same as number of classes (should be # of classes - 1)
+		// for (let i = 0; i < len; i++) {
+		// 	let t: string;
+		// 	let start = blockIndices[0];
+		// 	if (i === 0) {
+		// 		t = raw.substring(0, start);
+		// 	} else {
+		// 		start = blockIndices[i - 1];
+		// 		t = raw.substring(start, blockIndices[i]);
+		// 	}
+		// 	const f: Function = new Function(t, source, sourceFile);
+		// 	if (f.name=== "") {
+		// 		// This is all the stuff between the class def and first function def
+		// 		// debug(t);
+		// 		continue;
+		// 	}
+		// 	// f.startIndex = f.startIndex + this.startPos;
+		// 	fList.push(f);
+		// }
+		// // debug(source);
+		// // TODO: Doing this seems to cause some issues.....
+		// // But there do seem to be multiple copies of some functions. Might need to check if these are just getters and setters
+		// // fList = [...new Map(fList.map(v => [v.startIndex, v])).values()]
+		// // if (fList.length >= 0) debug(fList);
+		// return fList;
 	}
 }
 

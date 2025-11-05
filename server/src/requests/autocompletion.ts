@@ -666,7 +666,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			if (c.name.includes("Route")) continue;
 			if (c.name === "event") continue;
 			if (c.name === "sim") continue;
-			debug(c.name);
+			// debug(c.name);
 			for (const m of c.methods) {
 				// Don't want to include constructors, this is for properties
 				if (m.functionType === "constructor") continue;
