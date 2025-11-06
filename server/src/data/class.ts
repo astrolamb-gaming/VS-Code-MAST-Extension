@@ -164,9 +164,6 @@ export class ClassObject {
 			// debug(str);
 			let str = funcLines.join("\n");
 			const f: Function = new Function(str, source, sourceFile);
-			if (f.name === "art_id") {
-				debug(str);
-			}
 			if (f.name === "") continue;
 			fList.push(f);
 		}

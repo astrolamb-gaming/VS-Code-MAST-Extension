@@ -209,12 +209,6 @@ export class Function implements IFunction {
 		// this.signatureInformation = this.buildSignatureInformation();
 		//debug(this);
 
-		// if (this.name === "art_id") {
-		// 	debug(raw);
-		// 	debug(this.functionType);
-		// 	debug(this.rawParams)
-		// }
-
 		return this;
 	}
 
@@ -263,11 +257,6 @@ export class Function implements IFunction {
 	 * @returns 
 	 */
 	buildFunctionDetails() : string {
-		if (this.name === "art_id") {
-			debug(this.rawParams);
-			debug(this.name);
-			debug(this.functionType)
-		}
 		let classRef = ((this.className === "") ? "" : this.className + ".");
 		if (this.functionType === 'constructor') { classRef = ""; }
 		let paramList = "";

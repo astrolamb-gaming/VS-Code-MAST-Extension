@@ -344,7 +344,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 						return ci;
 					}
 				}
-				if (a === "art_id" || a === "art" || a === "ship_key") {
+				if (a === "art_id" || a === "art" || a === "ship_key" || a === "ship_data_key") {
 					// ci = getGlobals().shipData.getCompletionItemsForShips();
 					ci = [];
 					const ships = getArtemisGlobals().shipData.ships;
@@ -1088,7 +1088,7 @@ function getCompletionsForMethodParameters(iStr:string, paramName: string, doc:T
 							ci.push(c)
 						}
 					}
-				} else if (paramName === "art_id" || paramName === "ship_key") {
+				} else if (paramName === "art_id" || paramName === "ship_key" || paramName === "ship_data_key") {
 					// TODO: Include art files for other mission folders???? Would need to parse shipData.json for other folders.
 					// Get all possible art files
 					return getArtemisGlobals().artFiles;
@@ -1155,7 +1155,7 @@ function getCompletionsForMethodParams(iStr:string, paramName: string, doc:TextD
 							ci.push(c)
 						}
 					}
-				} else if (sig.parameters[i].label === "art_id" || sig.parameters[i].label === "ship_key") {
+				} else if (sig.parameters[i].label === "art_id" || sig.parameters[i].label === "ship_key" || sig.parameters[i].label === "ship_data_key") {
 					// Get all possible art files
 					return getArtemisGlobals().artFiles;
 				} else if (sig.parameters[i].label === 'art') {
