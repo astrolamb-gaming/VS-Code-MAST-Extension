@@ -202,7 +202,7 @@ export class MissionCache {
 			// could be either 'rename' or 'change'. new file event and delete
 			// also generally emit 'rename'
 			// debug(filename);
-			if (filename === null || filename.includes(".git") || filename.includes("__pycache__")) return;
+			if (filename === null || filename.includes(".git") || filename.includes("__pycache__") || filename.includes("__init__")) return;
 			// debug(this.missionURI)
 			// debug(filename)
 			if (eventType === "rename") {
@@ -462,7 +462,7 @@ export class MissionCache {
 	private async tryAddToInitFile(folder:string, newFile:string) {
 
 		let ret = await connection.window.showWarningMessage(
-			"File not found in '__init__.mast'.",
+			"File not found in '__init__.mast': " + newFile,
 			{title: "Add " + newFile + " to __init__.mast"},
 			{title: "Don't add"}
 			//{title: hide} // TODO: Add this later!!!!!!
