@@ -8,10 +8,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 * TODO: Add more info about shipdata entries to the art arguments for space objects
 * WIP: Get mast complier errors from the compiler itself, so the game doesn't have to be running to check for compiler errors.
-* WIP: Better Hover information
 
 
-### 0.17.0 - WIP
+### 0.17.0
 
 * Add popup when adding a new file that prompts to add to `__init__.mast`
 * Fix warning message text
