@@ -89,9 +89,12 @@ export class Function implements IFunction {
 		const isLabel: RegExp = /(@label)/;
 		const isPromise: RegExp = /(@awaitable)/;
 
-		this.name = getRegExMatch(raw, functionName).replace("def ","").replace("(","").trim();
+		const func : RegExp = /def (\w+?)\((.*?)\)/;
+		const definition = getRegExMatch(raw, func);
 
-		let params = getRegExMatch(raw, functionParam).replace(/\(|\)/g,"").replace(/self(.*?,|.*?$)/m,"").replace(/^[\t ]*#.*?(\n|$)/gm,"").replace(/\n\s*\n/g,"\n").trim();
+		this.name = getRegExMatch(definition, functionName).replace("def ","").replace("(","").trim();
+
+		let params = getRegExMatch(definition, functionParam).replace(/\(|\)/g,"").replace(/self(.*?,|.*?$)/m,"").replace(/^[\t ]*#.*?(\n|$)/gm,"").replace(/\n\s*\n/g,"\n").trim();
 		if (params.endsWith(",")) {
 			params = params.substring(0,params.length-1);
 		}

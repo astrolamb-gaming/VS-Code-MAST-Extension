@@ -10,6 +10,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * WIP: Get mast complier errors from the compiler itself, so the game doesn't have to be running to check for compiler errors.
 
 
+### 0.17.1
+
+* Hotfix an issue with parsing function arguments improperly.
+* Fixed issue with `__init__.mast` files causing issues when changing git branches.
+
+
 ### 0.17.0
 
 * Add popup when adding a new file that prompts to add to `__init__.mast`
