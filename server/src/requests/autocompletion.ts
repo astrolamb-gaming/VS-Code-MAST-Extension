@@ -657,7 +657,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				debug(c);
 			}
 			// debug(c);
-			if (iStr.endsWith(c.name + ".")) {
+			if (iStr.endsWith(" " + c.name + ".")) {
 				debug(iStr + " contains " + c.name);
 				// TODO: Only use labels with isClassMethod = true
 				// c.methods[0].completionItem.kind == CompletionItemKind.Method;
