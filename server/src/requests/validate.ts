@@ -14,6 +14,7 @@ import { compileMission } from './../python/python';
 import { checkForUnusedSignals } from './../tokens/signals';
 import { fstat } from 'fs';
 import { getCurrentLineFromTextDocument } from './hover';
+import { checkForAssignmentsToScopeName } from '../tokens/variables';
 
 let debugStrs : string = "";//Debug: ${workspaceFolder}\n";
 
@@ -359,8 +360,10 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		diagnostics.push(d);
 	}
 
+	let variables = cache.getVariables(textDocument);
+
 	for (const label of cache.getLabels(textDocument)) {
-		for (const v of cache.getVariables(textDocument)) {
+		for (const v of variables) {
 			if (label.name === v.name) {
 				d = {
 					range: v.range,
@@ -446,11 +449,12 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	// 		diagnostics.push(d);
 	// 	}
 	// }
-	
+	const assigns = checkForAssignmentsToScopeName(variables);
+	debug(assigns)
 	const r = checkEnableRoutes(textDocument);
 	// debug(cache.getSignals())
 	const sigs = checkForUnusedSignals(textDocument);
-	diagnostics = diagnostics.concat(r, sigs);
+	diagnostics = diagnostics.concat(r, sigs, assigns);
 	// return debugLabelValidation(textDocument);
 	currentDiagnostics = diagnostics;
 	return diagnostics;

@@ -238,7 +238,7 @@
         },
         {
           "name": "storage.modifier.declaration.python",
-          "match": "(?x)\n  \\b(?<!\\.)(\n    global | shared | nonlocal\n  )\\b\n"
+          "match": "(?x)\n  \\b(?<!\\.)(\n    global | shared | nonlocal | assigned | temp | client | default \n  )\\b\n"
         },
         {
           "name": "storage.type.class.python",

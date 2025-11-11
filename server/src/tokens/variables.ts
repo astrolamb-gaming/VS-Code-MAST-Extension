@@ -1,4 +1,4 @@
-import { CompletionItem, CompletionItemKind, Range } from 'vscode-languageserver';
+import { CompletionItem, CompletionItemKind, Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { getCurrentLineFromTextDocument } from '../requests/hover';
 import { debug } from 'console';
@@ -56,10 +56,10 @@ export function parseVariables(doc: TextDocument): Variable[] {
 	while (m = variableRX.exec(text)) {
 		const v = m[4];//.replace(/(shared|assigned|client|temp|default)/g,"").trim();
 		const start = m[0].indexOf(v) + m.index;
-		const end = start + m[0].length;
+		const end = start + m[0].length-1;
 		const range: Range = { start: doc.positionAt(start), end: doc.positionAt(end)}
 		const line = getCurrentLineFromTextDocument(range.start,doc);
-		let val = line.substring(line.indexOf("=")+1,line.length).trim();
+		let val = line.substring(line.indexOf("=")+1,line.length-1).trim();
 		let var1: Variable = {
 			name: v,
 			range: range,
@@ -158,4 +158,25 @@ export function getVariableAsCompletionItem(vars: Variable): CompletionItem {
 	}
 	ci.documentation = doc.trim();
 	return ci;
+}
+
+export function checkForAssignmentsToScopeName(vars:Variable[]):Diagnostic[] {
+
+	let ret:Diagnostic[] = [];
+	for (const v of vars) {
+		for (const scope of variableModifiers) {
+			if (v.name === scope[0]) {
+				// if (v.doc.endsWith(".mast")) { // python files could use this
+					let d:Diagnostic = {
+						range: v.range,
+						message: "Cannot assign a value to " + v.name + ". " + v.name + " is a scope declaration keyword.",
+						severity: DiagnosticSeverity.Error
+					}
+					ret.push(d);
+				// }
+			}
+		}
+	}
+
+	return ret;
 }
