@@ -34,6 +34,7 @@ outputChannel = window.createOutputChannel("MAST Client Output",{log:true});
 debug("Output channel created");
 
 // #region <--------------------- child_process checking... ---------------------->
+// I Don't remember why this is here, and doesn't seem to do anything important anymore?????
 (function() {
 	debug("Startings")
     var childProcess = require("child_process");

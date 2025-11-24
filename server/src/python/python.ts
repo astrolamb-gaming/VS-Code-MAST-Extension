@@ -80,6 +80,7 @@ export function initializePython(uri: string) {
 
 export async function getSpecificGlobals(cache: MissionCache, globals: any) {
 	let ret: string[] = [];
+	// return ret;
 	// const cache = getCache(mission);
 	
 	globals = JSON.stringify(globals);

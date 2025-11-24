@@ -443,7 +443,7 @@ export class MissionCache {
 			if (withFiles) {
 				let files = getFilesInDir(folder,false);
 				for (const f of files) {
-					if (f.endsWith("__init__.mast")) continue;
+					if (f.endsWith("__init__.mast") || f.endsWith(".json")) continue;
 					if (!f.endsWith(".mast") && !f.endsWith(".py")) continue;
 					const baseDir = path.basename(f);
 					contents = contents + "import " + baseDir + "\n";
@@ -460,6 +460,7 @@ export class MissionCache {
 
 	// TODO: When a file is opened, check if it is in __init__.mast. If not, prompt the user to add it.
 	private async tryAddToInitFile(folder:string, newFile:string) {
+		if (!newFile.endsWith(".mast") && !newFile.endsWith(".py")) return;
 
 		let ret = await connection.window.showWarningMessage(
 			"File not found in '__init__.mast': " + newFile,
