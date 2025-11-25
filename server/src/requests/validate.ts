@@ -239,7 +239,7 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	errorSources.push(e1);
 
 	e1 = {
-		pattern: /^(\/\/|==|--|\+\+).*?:/gm,
+		pattern: /^(\/\/|==|--|\+\+).*?:/g,
 		severity: DiagnosticSeverity.Error,
 		source: "mast",
 		message: "Colon used in label definition",
