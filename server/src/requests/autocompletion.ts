@@ -387,6 +387,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 						"behav_mine",
 						"behav_maelstrom",
 						"behav_pickup",
+						"behav_wreck",
 						"behav_do_nothing"
 					]
 					for (const b of behaves) {
