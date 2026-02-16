@@ -174,6 +174,7 @@ export class PyFile extends FileCache {
 
 		/**
 		 * This refers to MAST globals, NOT extension globals
+		 * TODO: add the mast function that imports a global.
 		 */
 		let globalRegEx = /MastGlobals\.import_python_module\((["']([\w_\.]+)["'])(,[ \t]['"](\w+)['"])?\)/g;
 		// Here we find all the instances of import_python_module() in the file.

@@ -150,16 +150,17 @@ export class MissionCache {
 		// });
 		debug("New pyFileCache length: " + this.pyFileCache.length)
 				// })
-			// });
-		let p = await loadSbs()//.then(async (p)=>{
-		showProgressBar(true);
-		if (p !== null) {
-			this.addMissionPyFile(p);
-			// this.missionPyModules.push(p);
-			// debug("addding " + p.uri);
-			// this.missionClasses = this.missionClasses.concat(p.classes);
-		}
-		debug("Finished loading sbs_utils for " + this.missionName);
+//File structure for sbs_utils changed, so we'll just comment this out..
+		// 	// });
+		// let p = await loadSbs()//.then(async (p)=>{
+		// showProgressBar(true);
+		// if (p !== null) {
+		// 	this.addMissionPyFile(p);
+		// 	// this.missionPyModules.push(p);
+		// 	// debug("addding " + p.uri);
+		// 	// this.missionClasses = this.missionClasses.concat(p.classes);
+		// }
+		// debug("Finished loading sbs_utils for " + this.missionName);
 		// showProgressBar(false);
 		this.sbsLoaded = true;
 			// await this.awaitLoaded();
@@ -502,6 +503,7 @@ export class MissionCache {
 			debug("Beginning to load modules");
 			const total = lib.length;
 			for (const zip of lib) {
+				debug("Unzipping: " + zip);
 				showProgressBar(true);
 				let found = false;
 				let missions = globals.getAllMissions()
@@ -563,7 +565,7 @@ export class MissionCache {
 	 */
 	handleZipData(data:string, file:string = "") {
 		// debug("Beginning to load zip data for: " + file);
-		if (file.endsWith("__init__.mast") || file.endsWith("__init__.py") || file.includes("mock")) {
+		if (file.endsWith("__init__.mast") || file.endsWith("__init__.py")) {
 			// Do nothing
 		} else if (file.endsWith(".py")) {
 			// debug(file)
