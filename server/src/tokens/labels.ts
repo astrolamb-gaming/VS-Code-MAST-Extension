@@ -342,7 +342,7 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 	//const calledLabel : RegExp = /(^[ \t]*?(->|jump)[ \t]*?\w+)/gm;
 	const calledLabel : RegExp = /(?<=^[ \t]*(jump |->)[ \t]*)(\w+)/gm;
 	let m: RegExpExecArray | null;
-	let mainLabels : LabelInfo[] = getCache(textDocument.uri).getLabels(textDocument, false);//getLabelsInFile(text,textDocument.uri);
+	let mainLabels : LabelInfo[] = getCache(textDocument.uri).getLabels(textDocument, true);//getLabelsInFile(text,textDocument.uri);
 	///parseLabels(textDocument.getText(),textDocument.uri, true);
 	// const subLabels : LabelInfo[] = parseLabels(textDocument.getText(), textDocument.uri, false);
 	// // Add child labels to their parent
@@ -390,6 +390,7 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 		
 		// If the label is not a main label, nor a sub-label of the main label,
 		// then we need to see if it exists at all.
+		// It must either not exist, or be a sublabel of a different main label, which is not allowed.
 		for (const main of mainLabels) {
 			if (str === main.name) {
 				found = true;
@@ -408,7 +409,7 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 								source: "mast",
 								
 							}
-							d.relatedInformation = relatedMessage(textDocument,d.range, "This sub-label is a child of the " + main.name + " main label.\nYou can only jump to a sub-label from within its parent label.");
+							d.relatedInformation = relatedMessage(textDocument,d.range, "This sub-label is a child of the `" + main.name + "` main label.\nYou can only jump to a sub-label from within its parent label.");
 							diagnostics.push(d);
 							debug(main.subLabels);
 						}
