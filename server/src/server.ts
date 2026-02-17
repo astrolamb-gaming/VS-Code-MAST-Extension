@@ -34,7 +34,8 @@ import {
 	Command,
 	CodeActionKind,
 	TextEdit,
-	Position
+	Position,
+	SemanticTokensParams
 
 } from 'vscode-languageserver/node';
 import { Range, TextDocument } from 'vscode-languageserver-textdocument';
@@ -53,6 +54,8 @@ import { onReferences } from './requests/references';
 import { onRenameRequest } from './requests/renameSymbol';
 import { getWordRangeAtPosition } from './tokens/words';
 import { PyFile } from './files/PyFile';
+import { getSemanticTokens, TOKEN_TYPES, TOKEN_MODIFIERS, getEmptySemanticTokens } from './requests/semanticTokens';
+import { getSemanticTokensCache } from './requests/semanticTokensCache';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -78,8 +81,8 @@ export let labelNames : LabelInfo[] = [];
 
 
 /**
- * TODO: Implement system using semantic tokens
- * https://stackoverflow.com/questions/70490767/language-server-semantic-tokens
+ * Semantic tokens are now implemented via getSemanticTokens()
+ * See requests/semanticTokens.ts for implementation
  */
 connection.onInitialize((params: InitializeParams) => {
 	// These are only executed on startup
@@ -140,13 +143,14 @@ connection.onInitialize((params: InitializeParams) => {
 				triggerCharacters: ['(',',']
 			},
 			hoverProvider: true,
-			// semanticTokensProvider: {
-            //     legend: {
-            //         // set your tokens here
-            //         tokenTypes: ['class','function','label','inline_label','variable','property','method','comment','string','keyword','number','operator'], 
-            //         tokenModifiers: ['declaration','documentation']
-            //     }
-            // }
+			semanticTokensProvider: {
+				legend: {
+					tokenTypes: [...TOKEN_TYPES],
+					tokenModifiers: [...TOKEN_MODIFIERS]
+				},
+				full: true,
+				range: false
+			},
 			referencesProvider: true,
 			renameProvider: true
 		}
@@ -373,6 +377,8 @@ documents.onDidClose(e => {
 	// 	getCache(e.document.uri).removeMastFile(e.document.uri)
 	// }
 	documentSettings.delete(e.document.uri);
+	// Invalidate semantic tokens cache for this document
+	getSemanticTokensCache().invalidate(e.document.uri);
 });
 
 connection.languages.diagnostics.on(async (params) => {
@@ -590,24 +596,6 @@ connection.onHover(async (_textDocumentPosition: TextDocumentPositionParams): Pr
 	return h;
 });
 
-// connection.onRequest("textDocument/semanticTokens/full", (params: SemanticTokensParams) => {
-//     // Implement your logic to provide semantic tokens for the given document here.
-//     // You should return the semantic tokens as a response.
-//     const semanticTokens = computeSemanticTokens(params.textDocument.uri);
-//     return semanticTokens;
-// });
-
-// function computeSemanticTokens(params: string): SemanticTokens {
-// 	let doc = documents.get(params);
-// 	if (doc === undefined) { return {data: []};}
-//     let tokens: SemanticTokens = {
-// 		data: []
-// 	};
-// 	debug(params);
-// 	let strings = getStrings(doc);
-// 	SemanticTokensBuilder.
-// 	return tokens;
-// }
 
 
 
@@ -763,6 +751,30 @@ export async function showProgressBar(visible: boolean) {
 // Make the text document manager listen on the connection
 // for open, change and close text document events
 documents.listen(connection);
+
+// Semantic tokens provider
+connection.languages.semanticTokens.on((params: SemanticTokensParams) => {
+	const document = documents.get(params.textDocument.uri);
+	if (!document) {
+		return getEmptySemanticTokens();
+	}
+	try {
+		// Check cache first
+		const cache = getSemanticTokensCache();
+		const cached = cache.get(params.textDocument.uri, document.version);
+		if (cached) {
+			return cached;
+		}
+
+		// Compute tokens and cache result
+		const tokens = getSemanticTokens(document);
+		cache.set(params.textDocument.uri, document.version, tokens);
+		return tokens;
+	} catch (e) {
+		debug(`Error computing semantic tokens: ${e}`);
+		return getEmptySemanticTokens();
+	}
+});
 
 // Listen on the connection
 connection.listen();
