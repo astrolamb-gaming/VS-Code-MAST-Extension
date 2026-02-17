@@ -5,7 +5,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { asClasses, replaceNames } from './../data';
 import { getRouteLabelVars } from './../tokens/routeLabels';
 import { isInComment, isInString, isInYaml, isTextInBracket, replaceRegexMatchWithUnderscore } from './../tokens/comments';
-import { getCache } from './../cache';
+import { getCache, MissionCache } from './../cache';
 import path = require('path');
 import { fixFileName, getFilesInDir } from './../fileFunctions';
 import { getArtemisGlobals } from '../artemisGlobals';
@@ -259,11 +259,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 
 			// Now for inventory keys
 			if (func.includes("inventory")) {
-				let keys = cache.getKeys(text.uri);
-				debug(keys);
-				// ci = getKeysAsCompletionItem(keys);
-				ci = getWordsAsCompletionItems("Inventory Key", keys, text)
-				return ci;
+				return getInventoryKeysForFile(cache, text);
 			}
 
 			// Here we check for stylestrings, art_ids, etc.
@@ -356,24 +352,11 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				}
 				if (a === "key") {
 					if (func.endsWith("data_set_value")) {
-						const blobs = getArtemisGlobals().blob_items;
-						for (const bk of cache.getBlobKeys()) {
-							let find = blobs.find(key=>{
-								return key.label === bk.name;
-							});
-							debug(find);
-							if (find !== undefined) {
-								continue;
-							}
-							let ci:CompletionItem = {
-								label: bk.name,
-								kind: CompletionItemKind.Text,
-								documentation: "",
-								detail: "Type: Unknown"
-							}
-							blobs.push(ci);
-						}
-						return blobs;
+						return getAllBlobKeys(cache, text);
+					}
+					// Account for `modifier` and `modify`
+					if (func.includes("modif")) {
+						return getAllBlobKeys(cache, text).concat(getInventoryKeysForFile(cache, text))
 					}
 				}
 				if (a === "behave_id") {
@@ -1169,4 +1152,34 @@ function getCompletionsForMethodParams(iStr:string, paramName: string, doc:TextD
 		}
 	}
 	return ci;
+}
+
+function getInventoryKeysForFile(cache: MissionCache, text: TextDocument): CompletionItem[] {
+	let keys = cache.getKeys(text.uri);
+	// debug(keys);
+	// ci = getKeysAsCompletionItem(keys);
+	let ci = getWordsAsCompletionItems("Inventory Key", keys, text)
+	return ci;
+}
+
+function getAllBlobKeys(cache: MissionCache, text: TextDocument): CompletionItem[] {
+	const blobs = getArtemisGlobals().blob_items;
+	for (const bk of cache.getBlobKeys()) {
+		let find = blobs.find(key=>{
+			return key.label === bk.name;
+		});
+		// debug(find);
+		if (find !== undefined) {
+			continue;
+		}
+		debug("Blob not found: " + bk.name)
+		let ci:CompletionItem = {
+			label: bk.name,
+			kind: CompletionItemKind.Text,
+			documentation: "",
+			detail: "Type: Unknown"
+		}
+		blobs.push(ci);
+	}
+	return blobs;
 }
