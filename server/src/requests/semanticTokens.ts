@@ -90,6 +90,7 @@ export class MastLexer {
 		this.scanComments();
 		this.scanLabels();
 		this.scanKeywords();
+		this.scanArrowOperators();
 		this.scanVariableDefinitions();
 		this.scanFunctionDefinitions();
 		this.scanClassDefinitions();
@@ -284,10 +285,40 @@ export class MastLexer {
 					this.operatorExclusionRanges.push({ start: labelStart, end: labelEnd });
 			}
 		}
+
+		// Inline route labels: //label_name/subroute that can appear anywhere in a line (not just at start)
+		const inlineRouteLabelRegex = /(\/{2,})(\w+)(\/\w+)*/g;
+		while ((match = inlineRouteLabelRegex.exec(this.text)) !== null) {
+			// Skip if this was already matched by the line-start route label regex
+			if (!this.isInExcludedRegion(match.index)) {
+				const priorNewline = this.text.lastIndexOf('\n', match.index - 1);
+				const prefix = this.text.substring(priorNewline + 1, match.index);
+				
+				// Only process if this is NOT at the start of a line (line-start patterns already handled above)
+				if (!/^\s*$/.test(prefix)) {
+					const labelName = match[2];
+					const offset = match.index + match[0].indexOf(labelName);
+					const pos = this.doc.positionAt(offset);
+					this.tokens.push({
+						type: 'route-label',
+						modifier: 'definition',
+						line: pos.line,
+						character: pos.character,
+						length: labelName.length,
+						text: labelName
+					});
+
+					// Exclude the entire matched route label span from operator scanning
+					const labelStart = match.index;
+					const labelEnd = match.index + match[0].length;
+					this.operatorExclusionRanges.push({ start: labelStart, end: labelEnd });
+				}
+			}
+		}
 	}
 
 	private scanKeywords(): void {
-		const keywordRegex = /\b(def|async|on\s+change|await|shared|import|if|else|match|case|yield|return|break|continue|pass|raise|try|except|finally|with|class|while|for|in|is|and|or|not|lambda|True|False|None)\b/gi;
+		const keywordRegex = /\b(def|async|on\s+change|await|shared|import|if|else|match|case|yield|return|break|continue|pass|raise|try|except|finally|with|class|while|for|in|is|and|or|not|lambda|True|False|None|jump)\b/gi;
 		let match: RegExpExecArray | null;
 		while ((match = keywordRegex.exec(this.text)) !== null) {
 			if (!this.isInExcludedRegion(match.index)) {
@@ -298,6 +329,24 @@ export class MastLexer {
 					character: pos.character,
 					length: match[0].length,
 					text: match[0]
+				});
+			}
+		}
+	}
+
+	private scanArrowOperators(): void {
+		// Arrow operator: ->
+		const arrowRegex = /->/g;
+		let match: RegExpExecArray | null;
+		while ((match = arrowRegex.exec(this.text)) !== null) {
+			if (!this.isInExcludedRegion(match.index)) {
+				const pos = this.doc.positionAt(match.index);
+				this.tokens.push({
+					type: 'keyword',
+					line: pos.line,
+					character: pos.character,
+					length: 2,
+					text: '->'
 				});
 			}
 		}
