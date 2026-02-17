@@ -217,6 +217,11 @@
 			"type": "object",
 			"title": "Example configuration",
 			"properties": {
+				"mastLanguageServer.enablePythonCompletions": {
+					"type": "boolean",
+					"default": true,
+					"description": "If true, the language server will provide select completions for Python files (inventory and blob keys, roles, imports). This may cause performance issues for large missions."
+				},
 				"mastLanguageServer.maxNumberOfProblems": {
 					"scope": "resource",
 					"type": "number",

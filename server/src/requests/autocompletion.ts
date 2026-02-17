@@ -29,6 +29,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// debug("Staring onCompletion");
 	const cache = getCache(text.uri);
 	// return getGlobals().artFiles;
+	
 	// This updates the file's info with any new info from other files.
 	if (!getArtemisGlobals().isCurrentFile(text.uri)) {
 		showProgressBar(true);
