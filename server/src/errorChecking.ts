@@ -3,6 +3,7 @@ import { Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, integer }
 import {ErrorInstance, hasDiagnosticRelatedInformationCapability} from './server';
 import { debug } from 'console';
 import { isInComment, isInString, isInYaml, replaceRegexMatchWithUnderscore, getComments, getStrings, isInSquareBrackets } from './tokens/comments';
+import { getCache } from './cache';
 
 /**
  * Checks if the file ends with an empty line.
@@ -168,3 +169,30 @@ export function checkFunctionSignatures(textDocument: TextDocument) : Diagnostic
 
 	return diagnostics;
 }
+
+export function checkForDeprecatedFunctions(textDocument: TextDocument): Diagnostic[] {
+	const text = textDocument.getText();
+	debug("Starting deprecated function checking")
+	const diagnostics : Diagnostic[] = [];
+
+
+	let cache = getCache(textDocument.uri)
+	for (const f of cache.deprecatedFunctions) {
+		const regex = new RegExp(`\\b${f.name}\\b`, "g");
+		let m: RegExpExecArray | null;
+		while (m = regex.exec(text)) {
+			const diagnostic: Diagnostic = {
+				severity: DiagnosticSeverity.Warning,
+				range: {
+					start: textDocument.positionAt(m.index),
+					end: textDocument.positionAt(m.index + m[0].length)
+				},
+				message: `The function "${f.name}" is deprecated. Check the documentation for more details.`,
+				source: "mast extension"
+			};
+			diagnostics.push(diagnostic);
+		}
+	}
+	return diagnostics;
+}
+

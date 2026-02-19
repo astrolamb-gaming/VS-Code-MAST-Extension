@@ -3,7 +3,7 @@ import * as path from 'path';
 import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
 import { getCache } from './../cache';
 import { parseComments, parseStrings, parseYamls, isInString, isInComment, parseSquareBrackets, isInYaml, getStrings } from './../tokens/comments';
-import { checkFunctionSignatures, checkLastLine, findDiagnostic } from './../errorChecking';
+import { checkForDeprecatedFunctions, checkFunctionSignatures, checkLastLine, findDiagnostic } from './../errorChecking';
 import { checkLabels } from './../tokens/labels';
 import { ErrorInstance, getDocumentSettings, hasDiagnosticRelatedInformationCapability } from './../server';
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -281,8 +281,9 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	//diagnostics = diagnostics.concat(d1);
 
 	try {
+		let d2 = checkForDeprecatedFunctions(textDocument);
 		let d1 = checkLabels(textDocument);
-		diagnostics = diagnostics.concat(d1);
+		diagnostics = diagnostics.concat(d1,d2);
 	} catch (e) {
 		debug(e);
 		debug("Couldn't get labels?");

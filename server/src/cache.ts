@@ -18,7 +18,7 @@ import { getMusicFiles } from './resources/audioFiles';
 import { Function, Parameter } from "./data/function";
 import { ClassObject } from './data/class';
 import { StoryJson } from './data/storyJson';
-import { getSpecificGlobals, sleep } from './python/python';
+import { getGlobalFunctions, getSpecificGlobals, sleep } from './python/python';
 import { loadStyleDefs } from './data/styles';
 import { Word } from './tokens/words';
 import { mergeSignalInfo, SignalInfo } from './tokens/signals';
@@ -76,6 +76,7 @@ export class MissionCache {
 	sbsLoaded = false;
 	awaitingReload = false;
 	lastAccessed: integer = 0;
+	deprecatedFunctions: Function[] = [];
 
 	constructor(workspaceUri: string) {
 		//debug(workspaceUri);
@@ -165,6 +166,25 @@ export class MissionCache {
 		this.sbsLoaded = true;
 			// await this.awaitLoaded();
 		// });
+
+
+		this.deprecatedFunctions = [];
+		
+		for (const p of this.pyFileCache) {
+			for (const f of p.defaultFunctions) {
+				if (f.documentation.toLowerCase().includes("deprecated")) {
+					this.deprecatedFunctions.push(f);
+				}
+			}
+		}
+		for (const p of this.missionPyModules) {
+			for (const f of p.defaultFunctions) {
+				if (f.documentation.toLowerCase().includes("deprecated")) {
+					this.deprecatedFunctions.push(f);
+				}
+			}
+		}
+
 		this.checkForCacheUpdates();
 		debug(this.missionURI);
 		
