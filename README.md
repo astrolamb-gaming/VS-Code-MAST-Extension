@@ -19,6 +19,7 @@ Includes:
 	* Proper f-string usage
 	* Checks if label names are overriden by a variable name
 	* Some possible syntax errors
+	* Warning for deprecated functions
 * Autocompletion and hover information for applicable functions within the sbs and sbs_utils packages, as well as built-in python functions
 * Autocompletion for variables etc in current file and files in scope
 	- NOTE: It's very difficult to determine the type of a variable programmatically for python (and, therefore, MAST). The extension can't really do it, so you'll have to keep track of what each variable represents.

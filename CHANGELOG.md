@@ -10,6 +10,13 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * WIP: Get mast complier errors from the compiler itself, so the game doesn't have to be running to check for compiler errors.
 
 
+### 0.17.2
+
+* Account for sbs_utils file structure change for `mock/sbs.py`
+* Add semantic token support
+* Fix for incorrect sublabel error
+
+
 ### 0.17.1
 
 * Hotfix an issue with parsing function arguments improperly.
