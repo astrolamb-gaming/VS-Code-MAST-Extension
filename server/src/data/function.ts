@@ -105,7 +105,7 @@ export class Function implements IFunction {
 		let newLines:string[] = [];
 		let m: RegExpMatchArray|null;
 		// const oldParam = /:(param|type)(\w+):(.*)/;
-		const param = /(\*)?[ \t]*([a-zA-Z_,][ \w]*)(\([^\)]*\))?:(.*)?/;
+		const param = /(\*)?[ \t]*([a-zA-Z_,][ \w|]*)(\([^\)]*\))?:(.*)?/;
 
 		for (let line of lines) {
 			let found = false;
@@ -141,15 +141,15 @@ export class Function implements IFunction {
 		this.documentation = newLines.join("\n");
 		// debug(this.documentation);
 
-		let retVal = getRegExMatch(raw, returnValue).replace(/(:|->)/g, "").trim();
-		if (retVal === "") {
+		this.returnType = getRegExMatch(raw, returnValue).replace(/(:|->)/g, "").trim();
+		if (this.returnType === "") {
 			let cLines = comments.split("\n");
 			for (let i = 0; i < cLines.length; i++) {
 				if (cLines[i].includes("Return")) {
 					if (cLines[i+1] === undefined) {
 						// debug(this)
 						// debug(comments);
-						continue;
+						break;
 					}
 					let retLine = cLines[i+1].trim().replace("(","");
 					if (retLine.startsWith("bool")) {
@@ -160,15 +160,22 @@ export class Function implements IFunction {
 						this.returnType = "list";
 					} else if (retLine.startsWith("str")) {
 						this.returnType = "string";
+					} else if (retLine.startsWith("data_set")) {
+						this.returnType = "sbs.object_data_set";
 					} else {
 						// We potentially modified retLine by replacing open parentheses, so we just use the source
-						this.returnType = cLines[i+1].trim();
+						let line = cLines[i+1].trim();
+						let end = line.indexOf(":");
+						if (end > -1) {
+							this.returnType = line.substring(0,end);
+						} else {
+							this.returnType = line;
+						}
 					}
 					break;
 				}
 			}
 		}
-		this.returnType = retVal;
 
 		const preNameStr = raw.substring(0, raw.indexOf("def "));
 		// debug(preNameStr);
