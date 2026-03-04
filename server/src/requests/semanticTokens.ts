@@ -1,32 +1,44 @@
 import { debug } from 'console';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { SemanticTokens, SemanticTokensBuilder, integer } from 'vscode-languageserver';
+// regex-based helpers are used by the original MastLexer for backwards
+// compatibility/benchmarking but the state-machine lexer should avoid them
+// entirely.  We still need the CRange type for range bookkeeping.
+// the regex helpers are still required by MastLexer
 import { getComments, getStrings, getYamls } from '../tokens/comments';
 import { CRange } from '../tokens/comments';
+import { Token } from '../tokens/tokens';
 
 /**
  * Semantic token types supported by the MAST language server.
  * Must match the tokenTypes array in server.ts capabilities.
  */
 export const TOKEN_TYPES = [
-	'keyword',        // 0
-	'label',          // 1
-	'variable',       // 2
-	'string',         // 3
-	'comment',        // 4
-	'function',       // 5
-	'class',          // 6
-	'operator',       // 7
-	'number',         // 8
-	'route-label',    // 9
-	'media-label',    // 10
-	'resource-label'  // 11
+	'keyword',           // 0
+	'label',             // 1
+	'variable',          // 2
+	'string',            // 3
+	'comment',           // 4
+	'function',          // 5
+	'class',             // 6
+	'operator',          // 7
+	'number',            // 8
+	'route-label',       // 9
+	'media-label',       // 10
+	'resource-label',    // 11
+	'builtInConstant',   // 12
+	'stringOption',      // 13
+	'yaml.key',          // 14
+	'yaml.value',        // 15
+	'codetag',           // 16
+	'style-definition'
 ] as const;
 
 export const TOKEN_MODIFIERS = [
 	'declaration',    // 0
 	'definition',     // 1
-	'readonly'        // 2
+	'readonly',       // 2
+	'reference'       // 3
 ] as const;
 
 export interface TokenInfo {
@@ -54,6 +66,7 @@ export class MastLexer {
 	constructor(document: TextDocument) {
 		this.doc = document;
 		this.text = document.getText();
+		// MastLexer continues to use regex helpers; keep original initialization
 		this.commentRanges = getComments(document);
 		this.stringRanges = getStrings(document);
 		this.yamlRanges = getYamls(document);
@@ -488,6 +501,921 @@ export class MastLexer {
 }
 
 /**
+ * State machine lexer for MAST language files
+ * Character-by-character scanning for comparison/benchmarking
+ */
+export class MastStateMachineLexer {
+    private doc: TextDocument;
+    private text: string;
+    private tokens: TokenInfo[] = [];
+    private pos: number = 0;
+    private line: number = 0;
+    private char: number = 0;
+	private expectSignalReference: boolean = false;
+	// When a line begins with a single '+' we expect a string to follow;
+	// after that string the next identifier should be treated as a label reference.
+	private expectPlusDirective: boolean = false;
+	private expectPlusLabelReference: boolean = false;
+
+	constructor(document: TextDocument) {
+		this.doc = document;
+		this.text = document.getText();
+	}
+
+
+	private peek(offset: number = 1): string | null {
+		const nextPos = this.pos + offset;
+		return nextPos < this.text.length ? this.text[nextPos] : null;
+	}
+
+	private peekAhead(length: number): string {
+		return this.text.substring(this.pos, this.pos + length);
+	}
+
+	private advance(): void {
+		if (this.pos < this.text.length) {
+			if (this.text[this.pos] === '\n') {
+				this.line++;
+				this.char = 0;
+			} else {
+				this.char++;
+			}
+			this.pos++;
+		}
+	}
+
+	// advance to a specific offset without updating line/char manually
+	private advanceTo(offset: number): void {
+		while (this.pos < offset) {
+			this.advance();
+		}
+	}
+
+	private skipWhitespace(): void {
+		while (this.pos < this.text.length && /[\t ]/.test(this.text[this.pos])) {
+			this.advance();
+		}
+	}
+
+	// Determines whether the current position is the first non-whitespace
+	// character on its line.
+	private isLineStart(): boolean {
+		if (this.pos === 0) {
+			return true;
+		}
+		let i = this.pos - 1;
+		while (i >= 0 && this.text[i] !== '\n') {
+			if (this.text[i] !== ' ' && this.text[i] !== '\t') {
+				return false;
+			}
+			i--;
+		}
+		return true;
+	}
+
+	// Scan a single-line comment starting at current pos ('//' or '#').
+	private scanComment(): TokenInfo {
+		const startPos = this.pos;
+		const startLine = this.line;
+		const startChar = this.char;
+		if (this.text[this.pos] === '/' && this.peek() === '/') {
+			this.advance(); // '/'
+			this.advance(); // '/'
+		} else {
+			this.advance(); // '#'
+		}
+		while (this.pos < this.text.length && this.text[this.pos] !== '\n') {
+			this.advance();
+		}
+		const text = this.text.substring(startPos, this.pos);
+		return {
+			type: 'comment',
+			line: startLine,
+			character: startChar,
+			length: text.length,
+			text
+		};
+	}
+
+	// Scan a route label if current position begins with '//' followed by
+	// non-whitespace.  Returns an array of tokens or null if not a label.
+	private scanRouteLabel(): TokenInfo[] | null {
+		if (this.text[this.pos] !== '/' || this.peek() !== '/') {
+			return null;
+		}
+		// look ahead to see if next char after slashes is non-whitespace
+		const after = this.text[this.pos + 2];
+		if (after === ' ' || after === '\t' || after === '\n' || after === undefined) {
+			return null; // regular comment
+		}
+		const tokens: TokenInfo[] = [];
+		const startLine = this.line;
+		const startChar = this.char;
+		const lineStart = this.isLineStart();
+		// consume the slashes
+		this.advance();
+		this.advance();
+		const pathStartPos = this.pos;
+		const pathStartChar = this.char;
+		while (this.pos < this.text.length && !/[ \t\r\n]/.test(this.text[this.pos])) {
+			this.advance();
+		}
+		const path = this.text.substring(pathStartPos, this.pos);
+		// // is parsed but not emitted as a token if at line start
+		tokens.push({
+			type: 'route-label',
+			modifier: 'definition',
+			line: startLine,
+			character: pathStartChar,
+			length: path.length,
+			text: path
+		});
+		return tokens;
+	}
+
+	// Scan a media label that begins with '@' at the start of a line and
+	// continues until the first whitespace. Returns a single TokenInfo or null.
+	private scanMediaLabel(): TokenInfo | null {
+		if (this.text[this.pos] !== '@') {
+			return null;
+		}
+		if (!this.isLineStart()) {
+			return null;
+		}
+		// look ahead to ensure next char is not whitespace
+		const after = this.peek(1);
+		if (after === ' ' || after === '\t' || after === '\n' || after === null) {
+			return null;
+		}
+		const startLine = this.line;
+		const startChar = this.char;
+		// consume '@'
+		this.advance();
+		const nameStartChar = this.char;
+		const nameStart = this.pos;
+		while (this.pos < this.text.length && !/[ \t\r\n]/.test(this.text[this.pos])) {
+			this.advance();
+		}
+		const name = this.text.substring(nameStart, this.pos);
+		if (name.length === 0) {
+			// nothing after @
+			this.pos = nameStart; // already at nameStart
+			this.line = startLine;
+			this.char = startChar;
+			return null;
+		}
+		return {
+			type: 'media-label',
+			modifier: 'definition',
+			line: startLine,
+			character: nameStartChar,
+			length: name.length,
+			text: name
+		};
+	}
+
+	private isIdentifierStart(char: string): boolean {
+		return /[a-zA-Z_]/.test(char);
+	}
+
+	private isIdentifierPart(char: string): boolean {
+		return /[a-zA-Z0-9_]/.test(char);
+	}
+
+	private isDigit(char: string): boolean {
+		return /\d/.test(char);
+	}
+
+	private scanStringOption(): TokenInfo | null {
+		if (this.text[this.pos] !== '<') {
+			return null;
+		}
+		const startPos = this.pos;
+		const startLine = this.line;
+		const startChar = this.char;
+
+		this.advance(); // Opening <
+		const contentStart = this.pos;
+
+		// Scan until closing >
+		while (this.pos < this.text.length && this.text[this.pos] !== '>') {
+			this.advance();
+		}
+
+		// Must have closing >
+		if (this.pos >= this.text.length || this.text[this.pos] !== '>') {
+			// Not a valid string option, revert
+			this.pos = startPos;
+			this.line = startLine;
+			this.char = startChar;
+			return null;
+		}
+
+		const content = this.text.substring(contentStart, this.pos).trim();
+		
+		// Validate content format: must be either an identifier, or 'var' followed by an identifier
+		let isValid = false;
+		if (content.length > 0) {
+			if (this.isIdentifierStart(content[0])) {
+				// Check if entire content is valid identifier characters
+				isValid = content.split('').every(c => this.isIdentifierPart(c));
+			} else if (content.startsWith('var ')) {
+				// Check format: 'var' followed by space and valid identifier
+				const varPart = content.substring(4).trim();
+				if (varPart.length > 0 && this.isIdentifierStart(varPart[0])) {
+					isValid = varPart.split('').every(c => this.isIdentifierPart(c));
+				}
+			}
+		}
+
+		if (!isValid) {
+			// Not a valid string option, revert
+			this.pos = startPos;
+			this.line = startLine;
+			this.char = startChar;
+			return null;
+		}
+
+		this.advance(); // Closing >
+
+		const text = this.text.substring(startPos, this.pos);
+		return {
+			type: 'stringOption',
+			line: startLine,
+			character: startChar,
+			length: text.length,
+			text
+		};
+	}
+
+	// Scan a jump target after '->' or 'jump' keyword. Assumes current
+	// position is after the operator/keyword when called for 'jump'.
+	private scanJumpTarget(): TokenInfo | null {
+		// skip whitespace
+		while (this.pos < this.text.length && /[\t ]/.test(this.text[this.pos])) {
+			this.advance();
+		}
+		if (this.pos >= this.text.length) return null;
+		if (!this.isIdentifierStart(this.text[this.pos])) return null;
+		const startLine = this.line;
+		const startChar = this.char;
+		const startPos = this.pos;
+		while (this.pos < this.text.length && this.isIdentifierPart(this.text[this.pos])) {
+			this.advance();
+		}
+		const text = this.text.substring(startPos, this.pos);
+		return {
+			type: 'label',
+			modifier: 'reference',
+			line: startLine,
+			character: startChar,
+			length: text.length,
+			text
+		};
+	}
+
+	private scanIdentifierOrKeyword(): TokenInfo | null {
+		const startPos = this.pos;
+		const startLine = this.line;
+		const startChar = this.char;
+
+		while (this.pos < this.text.length && this.isIdentifierPart(this.text[this.pos])) {
+			this.advance();
+		}
+
+		const text = this.text.substring(startPos, this.pos);
+		const keywords = ['def', 'async', 'await', 'shared', 'import', 'if', 'elif', 'else', 'match', 'case', 'yield', 'return', 'break', 'continue', 'pass', 'raise', 'try', 'except', 'finally', 'with', 'class', 'while', 'for', 'in', 'is', 'and', 'or', 'not', 'lambda', 'on', 'change', 'signal'];
+		
+		// Special-case `jump` keyword: emit following identifier as label
+		if (text === 'jump') {
+			const jt = this.scanJumpTarget();
+			return jt; // may be null if no valid target
+		}
+
+		if (text === 'yield') {
+			const jt = this.scanJumpTarget();
+			if (jt) {
+				jt.type = "yield.result"
+			}
+			return jt;
+		}
+
+		// Special-case `on` keyword: check if followed by `change` or `signal`
+		if (text === 'on') {
+			let checkPos = this.pos;
+			// skip whitespace
+			while (checkPos < this.text.length && /[\t ]/.test(this.text[checkPos])) {
+				checkPos++;
+			}
+			// peek ahead for 'change' or 'signal'
+			const checkWord = this.text.substring(checkPos);
+			if (/^signal\b/.test(checkWord)) {
+				// lookahead found 'signal', set flag for next identifier
+				this.expectSignalReference = true;
+			}
+			// exclude 'on' keyword
+			return null;
+		}
+
+		const builtInConstants = ['True', 'False', 'None'];
+		
+// If expecting a plus-line label reference, handle it first so that
+		// even keywords can be treated as references in this context.
+		if (this.expectPlusLabelReference) {
+			this.expectPlusLabelReference = false;
+			return {
+				type: 'label',
+				modifier: 'reference',
+				line: startLine,
+				character: startChar,
+				length: text.length,
+				text
+			};
+		}
+
+		if (builtInConstants.includes(text)) {
+			return {
+				type: 'builtInConstant',
+				line: startLine,
+				character: startChar,
+				length: text.length,
+				text
+			};
+		}
+		
+		if (keywords.includes(text)) {
+			return null; // Keywords are parsed but not emitted
+		}
+
+		// If expecting a signal reference, emit as label with 'reference' modifier
+		if (this.expectSignalReference) {
+			this.expectSignalReference = false;
+			return {
+				type: 'label',
+				modifier: 'reference',
+				line: startLine,
+				character: startChar,
+				length: text.length,
+				text
+			};
+		}
+
+		// Check if this is a function call by looking for '(' after optional whitespace
+		let checkPos = this.pos;
+		while (checkPos < this.text.length && /[\t ]/.test(this.text[checkPos])) {
+			checkPos++;
+		}
+		const isFunctionCall = checkPos < this.text.length && this.text[checkPos] === '(';
+
+		if (isFunctionCall) {
+			return {
+				type: 'function',
+				modifier: 'reference',
+				line: startLine,
+				character: startChar,
+				length: text.length,
+				text
+			};
+		}
+
+		return {
+			type: 'variable',
+			line: startLine,
+			character: startChar,
+			length: text.length,
+			text
+		};
+	}
+
+	private scanNumber(): TokenInfo {
+		const startPos = this.pos;
+		const startLine = this.line;
+		const startChar = this.char;
+
+		// Hex, binary, octal
+		if (this.text[this.pos] === '0' && (this.peek() === 'x' || this.peek() === 'X')) {
+			this.advance(); // 0
+			this.advance(); // x/X
+			while (this.pos < this.text.length && (/[0-9a-fA-F_]/.test(this.text[this.pos]))) {
+				this.advance();
+			}
+		} else if (this.text[this.pos] === '0' && (this.peek() === 'b' || this.peek() === 'B')) {
+			this.advance(); // 0
+			this.advance(); // b/B
+			while (this.pos < this.text.length && (/[01_]/.test(this.text[this.pos]))) {
+				this.advance();
+			}
+		} else if (this.text[this.pos] === '0' && (this.peek() === 'o' || this.peek() === 'O')) {
+			this.advance(); // 0
+			this.advance(); // o/O
+			while (this.pos < this.text.length && (/[0-7_]/.test(this.text[this.pos]))) {
+				this.advance();
+			}
+		} else {
+			// Decimal
+			while (this.pos < this.text.length && (this.isDigit(this.text[this.pos]) || this.text[this.pos] === '_')) {
+				this.advance();
+			}
+			// Float
+			if (this.text[this.pos] === '.' && this.isDigit(this.peek()!)) {
+				this.advance(); // .
+				while (this.pos < this.text.length && (this.isDigit(this.text[this.pos]) || this.text[this.pos] === '_')) {
+					this.advance();
+				}
+			}
+		}
+
+		const text = this.text.substring(startPos, this.pos);
+		return {
+			type: 'number',
+			line: startLine,
+			character: startChar,
+			length: text.length,
+			text
+		};
+	}
+
+	private scanString(quote: string): TokenInfo {
+		const startPos = this.pos;
+		const startLine = this.line;
+		const startChar = this.char;
+		
+		this.advance(); // Opening quote
+		while (this.pos < this.text.length && this.text[this.pos] !== quote) {
+			if (this.text[this.pos] === '\\') {
+				this.advance(); // Escape char
+				if (this.pos < this.text.length) {
+					this.advance(); // Escaped char
+				}
+			} else {
+				this.advance();
+			}
+		}
+		if (this.pos < this.text.length && this.text[this.pos] === quote) {
+			this.advance(); // Closing quote
+		}
+
+		const text = this.text.substring(startPos, this.pos);
+		return {
+			type: 'string',
+			line: startLine,
+			character: startChar,
+			length: text.length,
+			text
+		};
+	}
+
+	// Scan line-start strings: lines beginning with ' " or % are treated as strings
+	private scanLineStartString(): TokenInfo {
+		const startPos = this.pos;
+		const startLine = this.line;
+		const startChar = this.char;
+
+		// Consume the entire line
+		while (this.pos < this.text.length && this.text[this.pos] !== '\n') {
+			this.advance();
+		}
+
+		const text = this.text.substring(startPos, this.pos);
+		return {
+			type: 'string',
+			line: startLine,
+			character: startChar,
+			length: text.length,
+			text
+		};
+	}
+
+	private scanLabel(): TokenInfo[] {
+		const tokens: TokenInfo[] = [];
+		const startPos = this.pos;
+		const startLine = this.line;
+		const startChar = this.char;
+		const current = this.text[this.pos];
+
+		// Determine marker character (= - +) and collect leading markers
+		let marker = '';
+		if (current === '=' || current === '-' || current === '+') {
+			const markerChar = current;
+			while (this.pos < this.text.length && this.text[this.pos] === markerChar) {
+				marker += this.text[this.pos];
+				this.advance();
+			}
+		} else {
+			return tokens;
+		}
+
+		// Must have at least 2 marker chars to be a label
+		if (marker.length < 2) {
+			// Not a label, revert position
+			this.pos = startPos;
+			this.line = startLine;
+			this.char = startChar;
+			return tokens;
+		}
+
+		// Leading marker is parsed but not emitted as a token
+
+		// Skip whitespace after leading marker
+		while (this.pos < this.text.length && /[\t ]/.test(this.text[this.pos])) {
+			this.advance();
+		}
+
+		// Scan label name (identifier)
+		const namePos = this.pos;
+		const nameStartLine = this.line;
+		const nameStartChar = this.char;
+
+		if (!this.isIdentifierStart(this.text[this.pos])) {
+			// No valid identifier after marker, revert
+			this.pos = startPos;
+			this.line = startLine;
+			this.char = startChar;
+			return [];
+		}
+
+		while (this.pos < this.text.length && this.isIdentifierPart(this.text[this.pos])) {
+			this.advance();
+		}
+
+		const name = this.text.substring(namePos, this.pos);
+		tokens.push({
+			type: 'label',
+			modifier: 'definition',
+			line: nameStartLine,
+			character: nameStartChar,
+			length: name.length,
+			text: name
+		});
+
+		// Skip whitespace before trailing marker
+		while (this.pos < this.text.length && /[\t ]/.test(this.text[this.pos])) {
+			this.advance();
+		}
+
+		// Check for trailing marker (optional)
+		if (this.pos < this.text.length && this.text[this.pos] === marker[0]) {
+			const trailingStartPos = this.pos;
+			const trailingStartLine = this.line;
+			const trailingStartChar = this.char;
+			let trailing = '';
+
+			while (this.pos < this.text.length && this.text[this.pos] === marker[0]) {
+				trailing += this.text[this.pos];
+				this.advance();
+			}
+
+			// Trailing marker is parsed but not emitted as a token
+		}
+
+		return tokens;
+	}
+
+	private scanOperator(): TokenInfo | null {
+		const startPos = this.pos;
+		const startLine = this.line;
+		const startChar = this.char;
+		const char = this.text[this.pos];
+		const next = this.peek();
+
+		// Multi-character operators
+		const twoChar = char + (next || '');
+		const multiOpRegex = /^(==|!=|<=|>=|<<|>>|\*\*|->)$/;
+		if (multiOpRegex.test(twoChar)) {
+			this.advance();
+			this.advance();
+			return {
+				type: twoChar === '->' ? 'keyword' : 'operator',
+				line: startLine,
+				character: startChar,
+				length: 2,
+				text: twoChar
+			};
+		}
+
+		// Single character operators
+		if (/[+\-*/%&|^~<>=]/.test(char)) {
+			this.advance();
+			return {
+				type: 'operator',
+				line: startLine,
+				character: startChar,
+				length: 1,
+				text: char
+			};
+		}
+
+		return null;
+	}
+
+	private scanStyleDef() : TokenInfo | null {
+		debug("Scanning for Style Definitions")
+		this.skipWhitespace();
+		debug("Checking: " + this.text[this.pos])
+		if (this.pos < this.text.length && this.text[this.pos] === "[") {
+			const startChar = this.char;
+			const startPos = this.pos;
+			while (this.pos < this.text.length && this.text[this.pos] !== "]") {
+				this.advance();
+			}
+			const name = this.text.substring(startPos, this.pos);
+			debug("Style Def found.")
+			return {
+				type: 'style-definition',
+				modifier: 'reference',
+				line: this.line,
+				character: startChar,
+				length: name.length,
+				text: name
+			}
+		}
+		debug("No style def found.")
+		return null;
+	}
+
+	private scanCommsMessage(): TokenInfo[] {
+		const tokenList:TokenInfo[] = [];
+		const styleDef = this.scanStyleDef();
+		if (styleDef) {
+			tokenList.push(styleDef);
+			this.advance();
+		}
+		this.skipWhitespace();
+		if (this.text[this.pos] === '"' || this.text[this.pos] === "'") {
+			const str = this.scanString(this.text[this.pos]);
+			// if (str) {
+			// 	tokenList.push(str);
+			// }
+		}
+		this.skipWhitespace();
+		if (this.text[this.pos] === ":") {
+			tokenList.push({
+				type: 'trigger-indent',
+				line: this.line,
+				character: this.char,
+				length: 1,
+				text: ":"
+			})
+			return tokenList;
+		}
+		const lbl = this.scanJumpTarget();
+		if (lbl) {
+			tokenList.push(lbl);
+		}
+		return tokenList;
+	}
+
+	public tokenize(): TokenInfo[] {
+		this.tokens = [];
+		this.pos = 0;
+		this.line = 0;
+		this.char = 0;
+		let inYaml = false;
+
+		while (this.pos < this.text.length) {
+			// YAML block detection: must start with three backticks, optionally
+			// preceded by a name and colon.  e.g. "metadata: ```" or "```".
+			if (!inYaml && this.isLineStart()) {
+				const rest = this.text.substring(this.pos);
+				if (/^\s*(?:[A-Za-z_]\w*:\s*)?`{3}/.test(rest)) {
+					inYaml = true;
+					// consume rest of the opening line
+					while (this.pos < this.text.length && this.text[this.pos] !== '\n') {
+						this.advance();
+					}
+					continue;
+				}
+			}
+			if (inYaml) {
+				// look for closing ``` at line start
+				if (this.isLineStart()) {
+					const rest2 = this.text.substring(this.pos);
+					if (/^\s*`{3}/.test(rest2)) {
+						inYaml = false;
+						while (this.pos < this.text.length && this.text[this.pos] !== '\n') {
+							this.advance();
+						}
+						continue;
+					}
+				}
+				// otherwise skip current character
+				this.advance();
+				continue;
+			}
+
+			const current = this.text[this.pos];
+
+			// when a plus directive is in effect, skip any whitespace or
+			// optional bracketed metadata before the string itself.
+			if (this.expectPlusDirective) {
+				if (current === '[') {
+					this.advance();
+					while (this.pos < this.text.length && this.text[this.pos] !== ']') {
+						this.advance();
+					}
+					if (this.pos < this.text.length && this.text[this.pos] === ']') {
+						this.advance();
+					}
+					continue;
+				}
+				if (current === ' ' || current === '\t') {
+					this.advance();
+					continue;
+				}
+			}
+			if (this.isLineStart() && (current === '"' || current === "'" || current === '%')) {
+				this.scanLineStartString(); // Parse but don't emit
+				continue;
+			}
+
+			// Route label definitions take precedence over comments.  They
+			// begin with // followed by non-whitespace and run until the
+			// first space or newline.
+			if (current === '/' && this.peek() === '/') {
+				const routeTokens = this.scanRouteLabel();
+				if (routeTokens) {
+					this.tokens.push(...routeTokens);
+					continue;
+				}
+			}
+
+			// Media labels: @name at line start
+			if (current === '@' && this.isLineStart()) {
+				const m = this.scanMediaLabel();
+				if (m) {
+					this.tokens.push(m);
+					continue;
+				}
+			}
+
+			// Lines beginning with a single '+' are a special directive.  We
+			// emit the plus itself as a keyword and then mark the state so that
+			// the first string that follows triggers a label reference expectation.
+			if (current === '+' && this.isLineStart()) {
+				// ensure we don't treat '++' or '+=' etc as this directive
+				const nxt = this.peek();
+				if (nxt !== '+' && nxt !== '=') {
+					this.tokens.push({
+						type: 'keyword',
+						line: this.line,
+						character: this.char,
+						length: 1,
+						text: '+'
+					});
+					this.advance();
+					const cms = this.scanCommsMessage()
+					this.tokens = this.tokens.concat(this.tokens, cms);
+					this.advance();
+					continue;
+				}
+			}
+
+			// Check for message sending stuff
+			if (current === "<" && this.isLineStart() && this.peek()=== "<") {
+				this.tokens.push({
+					type: 'keyword',
+					line: this.line,
+					character: this.char,
+					length: 2,
+					text: '<<'
+				});
+				this.advance();
+				this.advance();
+				const cms = this.scanCommsMessage()
+				this.tokens = this.tokens.concat(this.tokens, cms);
+				this.advance();
+				continue;
+			}
+
+			// Comments
+			if (current === '#') {
+				const token = this.scanComment();
+
+				// search inside comment text for codetag markers
+				const codetagRegex = /\b(?:NOTE|XXX|HACK|FIXME|BUG|TODO|INFO|WARNING|WARN|ERROR|ERR)\b/;
+				let m: RegExpExecArray | null;
+				// use global regex to find all occurrences
+				const globalRe = new RegExp(codetagRegex.source, 'gi');
+				const codetagMatches: Array<{ index: number; length: number; text: string }> = [];
+				while ((m = globalRe.exec(token.text)) !== null) {
+					codetagMatches.push({ index: m.index, length: m[0].length, text: m[0] });
+				}
+
+				// If there are codetags, emit comment in segments around them
+				if (codetagMatches.length > 0) {
+					let lastEnd = 0;
+					for (const match of codetagMatches) {
+						// Emit comment segment before codetag
+						if (match.index > lastEnd) {
+							this.tokens.push({
+								type: 'comment',
+								line: token.line,
+								character: token.character + lastEnd,
+								length: match.index - lastEnd,
+								text: token.text.substring(lastEnd, match.index)
+							});
+						}
+						// Emit codetag token
+						this.tokens.push({
+							type: 'codetag',
+							line: token.line,
+							character: token.character + match.index,
+							length: match.length,
+							text: match.text
+						});
+						lastEnd = match.index + match.length;
+					}
+					// Emit remaining comment segment after last codetag
+					if (lastEnd < token.text.length) {
+						this.tokens.push({
+							type: 'comment',
+							line: token.line,
+							character: token.character + lastEnd,
+							length: token.text.length - lastEnd,
+							text: token.text.substring(lastEnd)
+						});
+					}
+				} else {
+					// No codetags, emit as normal comment
+					this.tokens.push(token);
+				}
+				continue;
+			}
+
+			// Strings (inline)
+			// Check for f-string prefix (f"..." or f'...')
+			if ((current === 'f' || current === 'F') && this.pos + 1 < this.text.length) {
+				const next = this.text[this.pos + 1];
+				if (next === '"' || next === "'") {
+					this.advance(); // skip the 'f' prefix
+					this.scanString(next); // Parse but don't emit
+					continue;
+				}
+			}
+
+			if (current === '"' || current === "'") {
+				// handle plus directive
+				if (this.expectPlusDirective) {
+					this.expectPlusDirective = false;
+					this.expectPlusLabelReference = true;
+				}
+				this.scanString(current); // Parse but don't emit
+				continue;
+			}
+
+			// Identifiers / keywords / function calls
+			if (this.isIdentifierStart(current)) {
+				const token = this.scanIdentifierOrKeyword();
+				if (token) {
+					this.tokens.push(token);
+				}
+				continue;
+			}
+
+			// Labels (at line start only): ==name== or --name-- or ++name++
+			if (this.isLineStart() && (current === '=' || current === '-' || current === '+')) {
+				const labelTokens = this.scanLabel();
+				if (labelTokens.length > 0) {
+					// Labels are parsed but not emitted as tokens
+					continue;
+				}
+			}
+
+			// Operators
+			if (/[+\-*/%&|^~<>=]/.test(current)) {
+				const token = this.scanOperator();
+				if (token) {
+					if (token.text === '->') {
+						this.tokens.push(token);
+						const jt = this.scanJumpTarget();
+						if (jt) this.tokens.push(jt);
+					} else {
+						this.tokens.push(token);
+					}
+				}
+				continue;
+			}
+
+			// anything else, just advance
+			this.advance();
+		}
+
+		// Sort by offset
+		this.tokens.sort((a, b) => {
+			const aOffset = this.doc.offsetAt({ line: a.line, character: a.character });
+			const bOffset = this.doc.offsetAt({ line: b.line, character: b.character });
+			return aOffset - bOffset;
+		});
+
+		return this.tokens;
+	}
+
+	public getTokens(): TokenInfo[] {
+		return this.tokens;
+	}
+}
+
+/**
  * Converts TokenInfo array to SemanticTokens format for LSP
  */
 export function buildSemanticTokens(tokens: TokenInfo[]): SemanticTokens {
@@ -520,8 +1448,18 @@ export function buildSemanticTokens(tokens: TokenInfo[]): SemanticTokens {
  * Get semantic tokens for a document
  */
 export function getSemanticTokens(document: TextDocument): SemanticTokens {
-	const lexer = new MastLexer(document);
-	const tokens = lexer.tokenize();
+	// Use regex-based lexer (set to false to benchmark state machine)
+	const USE_REGEX_LEXER = document.uri.includes("gamemaster");
+	
+	let tokens: TokenInfo[];
+	if (USE_REGEX_LEXER) {
+		const lexer = new MastLexer(document);
+		tokens = lexer.tokenize();
+	} else {
+		const lexer = new MastStateMachineLexer(document);
+		tokens = lexer.tokenize();
+	}
+	
 	return buildSemanticTokens(tokens);
 }
 
