@@ -1201,14 +1201,15 @@ export class MastStateMachineLexer {
 							this.advance();
 						}
 						continue;
-					} else {
-						const id = this.scanIdentifierOrKeyword();
-						if (id) {
-							id.type = 'yaml.key'
-							this.tokens.push(id);
-						}
-						continue;
 					}
+					// } else {
+					// 	const id = this.scanIdentifierOrKeyword();
+					// 	if (id) {
+					// 		id.type = 'yaml.key'
+					// 		this.tokens.push(id);
+					// 	}
+					// 	continue;
+					// }
 				}
 				// otherwise skip current character
 				this.advance();
