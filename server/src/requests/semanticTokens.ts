@@ -599,7 +599,7 @@ export class MastStateMachineLexer {
 
 	// Scan a route label if current position begins with '//' followed by
 	// non-whitespace.  Returns an array of tokens or null if not a label.
-	private scanRouteLabel(): TokenInfo[] | null {
+	private scanRouteLabel(): TokenInfo | null {
 		if (this.text[this.pos] !== '/' || this.peek() !== '/') {
 			return null;
 		}
@@ -608,7 +608,7 @@ export class MastStateMachineLexer {
 		if (after === ' ' || after === '\t' || after === '\n' || after === undefined) {
 			return null; // regular comment
 		}
-		const tokens: TokenInfo[] = [];
+
 		const startLine = this.line;
 		const startChar = this.char;
 		const lineStart = this.isLineStart();
@@ -622,15 +622,15 @@ export class MastStateMachineLexer {
 		}
 		const path = this.text.substring(pathStartPos, this.pos);
 		// // is parsed but not emitted as a token if at line start
-		tokens.push({
+		const token:TokenInfo = {
 			type: 'route-label',
 			modifier: 'definition',
 			line: startLine,
 			character: pathStartChar,
 			length: path.length,
 			text: path
-		});
-		return tokens;
+		};
+		return token;
 	}
 
 	// Scan a media label that begins with '@' at the start of a line and
@@ -1108,7 +1108,7 @@ export class MastStateMachineLexer {
 		return null;
 	}
 
-	private scanStyleDef() : TokenInfo | null {
+	private scanStyleDefRef() : TokenInfo | null {
 		debug("Scanning for Style Definitions")
 		this.skipWhitespace();
 		debug("Checking: " + this.text[this.pos])
@@ -1135,7 +1135,7 @@ export class MastStateMachineLexer {
 
 	private scanCommsMessage(): TokenInfo[] {
 		const tokenList:TokenInfo[] = [];
-		const styleDef = this.scanStyleDef();
+		const styleDef = this.scanStyleDefRef();
 		if (styleDef) {
 			tokenList.push(styleDef);
 			this.advance();
@@ -1158,7 +1158,12 @@ export class MastStateMachineLexer {
 			})
 			return tokenList;
 		}
-		const lbl = this.scanJumpTarget();
+		let lbl = null;
+		if (this.text[this.pos] === "/" && this.peek() === "/") {
+			lbl = this.scanRouteLabel();
+		} else {
+			lbl = this.scanJumpTarget();
+		}
 		if (lbl) {
 			tokenList.push(lbl);
 		}
@@ -1188,12 +1193,25 @@ export class MastStateMachineLexer {
 			}
 			if (inYaml) {
 				// look for closing ``` at line start
+				debug("In Yaml")
 				if (this.isLineStart()) {
+					debug("Line start")
 					const rest2 = this.text.substring(this.pos);
 					if (/^\s*`{3}/.test(rest2)) {
 						inYaml = false;
 						while (this.pos < this.text.length && this.text[this.pos] !== '\n') {
 							this.advance();
+						}
+						debug("Yaml done")
+						continue;
+					} else {
+						const rest3 = rest2.substring(0, rest2.indexOf("\n"));
+						debug("Not a yaml end: " + rest3)
+						const id = this.scanIdentifierOrKeyword();
+						if (id) {
+							id.type = 'yaml.key'
+							this.tokens.push(id);
+							debug("Key: " + id.text)
 						}
 						continue;
 					}
@@ -1232,9 +1250,9 @@ export class MastStateMachineLexer {
 			// begin with // followed by non-whitespace and run until the
 			// first space or newline.
 			if (current === '/' && this.peek() === '/') {
-				const routeTokens = this.scanRouteLabel();
-				if (routeTokens) {
-					this.tokens.push(...routeTokens);
+				const routeToken = this.scanRouteLabel();
+				if (routeToken) {
+					this.tokens.push(routeToken);
 					continue;
 				}
 			}
@@ -1288,6 +1306,7 @@ export class MastStateMachineLexer {
 			}
 
 			// Comments
+			//#region Comments
 			if (current === '#') {
 				const token = this.scanComment();
 
@@ -1341,6 +1360,7 @@ export class MastStateMachineLexer {
 				}
 				continue;
 			}
+			//#endregion
 
 			// Strings (inline)
 			// Check for f-string prefix (f"..." or f'...')
