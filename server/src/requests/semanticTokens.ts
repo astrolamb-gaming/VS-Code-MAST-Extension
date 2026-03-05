@@ -1193,25 +1193,19 @@ export class MastStateMachineLexer {
 			}
 			if (inYaml) {
 				// look for closing ``` at line start
-				debug("In Yaml")
 				if (this.isLineStart()) {
-					debug("Line start")
 					const rest2 = this.text.substring(this.pos);
 					if (/^\s*`{3}/.test(rest2)) {
 						inYaml = false;
 						while (this.pos < this.text.length && this.text[this.pos] !== '\n') {
 							this.advance();
 						}
-						debug("Yaml done")
 						continue;
 					} else {
-						const rest3 = rest2.substring(0, rest2.indexOf("\n"));
-						debug("Not a yaml end: " + rest3)
 						const id = this.scanIdentifierOrKeyword();
 						if (id) {
 							id.type = 'yaml.key'
 							this.tokens.push(id);
-							debug("Key: " + id.text)
 						}
 						continue;
 					}
