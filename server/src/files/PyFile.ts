@@ -11,6 +11,8 @@ import { Word, parseWords } from '../tokens/words';
 import { parseSignalsInFile, SignalInfo } from '../tokens/signals';
 import { CRange, getMatchesForRegex, replaceRegexMatchWithUnderscore } from '../tokens/comments';
 import { getBlobKeysForFile, getInventoryKeysForFile, getLinksForFile, getRolesForFile } from '../tokens/roles';
+import { extractBlobKeysFromPythonFile, extractInventoryKeysFromPythonFile, extractLinksFromPythonFile, extractRolesFromPythonFile, extractSignalsFromPythonFile, tokenizePythonFile } from '../tokens/pythonStringExtractor';
+import { PythonLexer } from '../data/pythonLexer';
 
 
 export class PyFile extends FileCache {
@@ -56,6 +58,7 @@ export class PyFile extends FileCache {
 		this.classes = [];
 		this.defaultFunctions = [];
 		this.variableNames = [];
+		const originalText = text;
 
 		// Remove comments
 		let comments: CRange[] = getMatchesForRegex(/^[ \t]*#.*$/gm, text);
@@ -63,120 +66,43 @@ export class PyFile extends FileCache {
 			text = replaceRegexMatchWithUnderscore(text, c);
 		}
 
-		//if (!source.endsWith("timers.py")) return;
-		// super.parseVariables(text); We don't actually want to look for variable names in python files
-		// Instead of just assuming that there is always another class following, it could be a function, so we need to account for this.
-		let blockStart: RegExp = /^(class|def) .+?$/gm;
-		//const parentClass: RegExp = /\(\w*?\):/
-		let comment: RegExp = /((\"){3,3}(.*?)(\"){3,3})|(\.\.\.)/m;
-		let checkText: string;
-		let blockIndices: integer[] = [];
-		let m: RegExpExecArray | null;
-
 		const doc: TextDocument = TextDocument.create(this.uri, "py", 1, text);
-		this.words = parseWords(doc);
-		this.roles = getRolesForFile(doc);
-		// debug(this.uri.replace("c:/Users/mholderbaum/Documents/Cosmos/Cosmos-1-1-3/data/missions/",""))
-		this.signals = parseSignalsInFile(doc);
-		this.inventory_keys = getInventoryKeysForFile(doc);
-		this.blob_keys = getBlobKeysForFile(doc);
-		this.links = getLinksForFile(doc);
-		// debug(this.signals)
-		// Iterate over all classes to get their indices
-		//classIndices.push(0);
-		while (m = blockStart.exec(text)) {
-			blockIndices.push(m.index);
-			//debug("" + m.index + ": " +m[0]);
-		}
-		blockIndices.push(text.length - 1);
+		const structureDoc: TextDocument = TextDocument.create(this.uri, "py", 1, originalText);
 
-		let len = blockIndices.length; // How many indices there are - NOT the same as number of classes (should be # of classes - 1)
+		// Extract MAST framework strings using token-based extractor (lightweight)
+		const tokens = tokenizePythonFile(doc);
+		this.roles = extractRolesFromPythonFile(doc, tokens);
+		this.blob_keys = extractBlobKeysFromPythonFile(doc, tokens);
+		this.inventory_keys = extractInventoryKeysFromPythonFile(doc, tokens);
+		this.links = extractLinksFromPythonFile(doc, tokens);
+		this.signals = extractSignalsFromPythonFile(doc, tokens);
 
+		// Parse Python structure using PythonLexer (only for reasonably-sized files)
+		try {
+			// Use unmodified source so indentation/comment layout is preserved for class/method parsing
+			const pythonLexer = new PythonLexer(structureDoc);
+			const { classes, functions } = pythonLexer.parse();
 
-
-
-		// Here we go over all the indices and get all functions between the last index (or 0) and the current index.
-		// So if the file doesn't start with a class definition, all function prior to a class definition are added to the default functions
-		// while class functions are addded to a ClassObject object.
-		for (let i = 0; i < len; i++) {
-			let t: string;
-			let start = blockIndices[0];
-			if (i === 0) {
-				t = text.substring(0, start);
-			} else {
-				start = blockIndices[i - 1];
-				t = text.substring(start, blockIndices[i]);
+			// PythonLexer now returns ClassObject and Function directly - no conversion needed!
+			this.classes = classes;
+			this.defaultFunctions = functions;
+			
+			if (this.uri.includes("inventory")) {
+				debug(`Parsed ${classes.length} classes and ${functions.length} functions in ${this.uri}`);
+				debug(classes)
+				debug(functions)
 			}
-
-			if (t.startsWith("class")) {
-				const co = new ClassObject(t, this.uri);
-				co.startPos = start + t.indexOf(co.name);
-				const r: Range = {
-					start: doc.positionAt(co.startPos),
-					end: doc.positionAt(co.startPos + co.name.length)
-				};
-				co.location = {
-					uri: this.uri,
-					range: r
-				};
-				// Since sbs functions aren't part of a class, but do need a "sbs." prefix, we pretend sbs is its own class. 
-				// PyFile handles that.
-				if (co.name === "") {
-					this.defaultFunctions = co.methods;
-					for (const m of co.methods) {
-						m.startIndex = start + t.indexOf("def " + m.name) + 4;
-						m.location = {
-							uri: this.uri,
-							range: {
-								start: doc.positionAt(m.startIndex),
-								end: doc.positionAt(m.startIndex + m.name.length)
-							}
-						};
-					}
-				} else {
-					// Only add to class list if it's actually a class (or sbs)
-					if (co.methods.length !== 0) {
-						this.classes.push(co);
-					} else {
-						// debug(co.name + " has no methods...")
-					}
-					// move the location of the method to use the start of the method's NAME instead of def...
-					for (const m of co.methods) {
-						m.startIndex = start + t.indexOf("def " + m.name) + 4;
-						m.location = {
-							uri: this.uri,
-							range: {
-								start: doc.positionAt(m.startIndex),
-								end: doc.positionAt(m.startIndex + m.name.length)
-							}
-						};
-					}
-					//debug(co);
-				}
-			} else if (t.startsWith("def")) {
-				// if (source.includes("sbs.py")) debug("TYRING ANOTHER SBS FUNCTION"); debug(source);
-				const m = new Function(t, "", this.uri);
-				m.startIndex = start + t.indexOf("def " + m.name) + 4;
-				m.location = {
-					uri: this.uri,
-					range: {
-						start: doc.positionAt(m.startIndex),
-						end: doc.positionAt(m.startIndex + m.name.length)
-					}
-				};
-				this.defaultFunctions.push(m);
-			}
-			// if (this.uri.endsWith("ship_data.py")) {
-			// 	debug(this.defaultFunctions)
-			// }
+		} catch (e) {
+			// If PythonLexer fails, continue without class/function info
+			debug("PythonLexer error for " + this.uri + ": " + e);
 		}
-
 
 		/**
 		 * This refers to MAST globals, NOT extension globals
 		 */
 		let globalRegEx = /MastGlobals\.import_python_module\((["']([\w_\.]+)["'])(,[ \t]['"](\w+)['"])?\)/g;
 		// Here we find all the instances of import_python_module() in the file.
+		let m: RegExpExecArray | null;
 		while (m = globalRegEx.exec(text)) {
 			// debug(m[0])
 			let mod = m[2];

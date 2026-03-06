@@ -3,6 +3,7 @@ import { Range, Location } from 'vscode-languageserver';
 import { fileFromUri } from '../fileFunctions';
 import { isInComment } from './comments';
 import { Word } from './words';
+import { SignalInfo } from './signals';
 
 /**
  * Configuration for extracting specific string patterns from code
@@ -25,19 +26,10 @@ interface ExtractionPattern {
  */
 export interface ExtractedStrings {
 	roles: Word[];
-	signals: SignalUsage[];
+	signals: SignalInfo[];
 	inventoryKeys: Word[];
 	blobKeys: Word[];
 	links: Word[];
-}
-
-/**
- * Signal usage tracking (emit vs trigger)
- */
-export interface SignalUsage {
-	name: string;
-	emitLocations: Location[];
-	triggerLocations: Location[];
 }
 
 /**
@@ -94,8 +86,8 @@ export class StringExtractor {
 	/**
 	 * Extract signal strings and track emit vs trigger usage
 	 */
-	public extractSignals(): SignalUsage[] {
-		const signalMap = new Map<string, SignalUsage>();
+	public extractSignals(): SignalInfo[] {
+		const signalMap = new Map<string, SignalInfo>();
 
 		// Pattern for signal_emit() calls
 		const emitPattern = /signal_emit\([\"'](\w+)[\"'](,.*?)?\)/g;
@@ -111,12 +103,12 @@ export class StringExtractor {
 				if (!signal) {
 					signal = {
 						name: signalName,
-						emitLocations: [],
-						triggerLocations: []
+						emit: [],
+						triggered: []
 					};
 					signalMap.set(signalName, signal);
 				}
-				signal.emitLocations.push(location);
+				signal.emit.push(location);
 			}
 		}
 
@@ -132,12 +124,12 @@ export class StringExtractor {
 				if (!signal) {
 					signal = {
 						name: signalName,
-						emitLocations: [],
-						triggerLocations: []
+						emit: [],
+						triggered: []
 					};
 					signalMap.set(signalName, signal);
 				}
-				signal.emitLocations.push(location);
+				signal.emit.push(location);
 			}
 		}
 
@@ -153,12 +145,12 @@ export class StringExtractor {
 				if (!signal) {
 					signal = {
 						name: signalName,
-						emitLocations: [],
-						triggerLocations: []
+						emit: [],
+						triggered: []
 					};
 					signalMap.set(signalName, signal);
 				}
-				signal.triggerLocations.push(location);
+				signal.triggered.push(location);
 			}
 		}
 
@@ -329,12 +321,8 @@ export function extractStringsFromDocument(doc: TextDocument): ExtractedStrings 
 }
 
 /**
- * Convert SignalUsage array to the legacy SignalInfo format
+ * Compatibility helper; signals are already in SignalInfo format.
  */
-export function convertToSignalInfo(signals: SignalUsage[]): Array<{ name: string; emit: Location[]; triggered: Location[] }> {
-	return signals.map(s => ({
-		name: s.name,
-		emit: s.emitLocations,
-		triggered: s.triggerLocations
-	}));
+export function convertToSignalInfo(signals: SignalInfo[]): SignalInfo[] {
+	return signals;
 }

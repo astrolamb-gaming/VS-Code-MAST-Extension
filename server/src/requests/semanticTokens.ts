@@ -1109,9 +1109,7 @@ export class MastStateMachineLexer {
 	}
 
 	private scanStyleDefRef() : TokenInfo | null {
-		debug("Scanning for Style Definitions")
 		this.skipWhitespace();
-		debug("Checking: " + this.text[this.pos])
 		if (this.pos < this.text.length && this.text[this.pos] === "[") {
 			const startChar = this.char;
 			const startPos = this.pos;
@@ -1119,7 +1117,6 @@ export class MastStateMachineLexer {
 				this.advance();
 			}
 			const name = this.text.substring(startPos, this.pos);
-			debug("Style Def found.")
 			return {
 				type: 'style-definition',
 				modifier: 'reference',
@@ -1129,7 +1126,6 @@ export class MastStateMachineLexer {
 				text: name
 			}
 		}
-		debug("No style def found.")
 		return null;
 	}
 

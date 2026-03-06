@@ -72,10 +72,41 @@ export class Function implements IFunction {
 	// completionItem: CompletionItem;
 	// signatureInformation: SignatureInformation;
 
-	constructor(raw: string, className: string, sourceFile: string) {
-		this.location = {uri:sourceFile,range: {start: {line:0,character:0},end: {line:0,character:1}}}
+	constructor(raw: string, className: string, sourceFile: string, preParsed?: {
+		name?: string;
+		parameters?: IParameter[];
+		rawParams?: string;
+		returnType?: string;
+		documentation?: string;
+		functionType?: string;
+		decorators?: string[];
+		location?: Location;
+		isAsync?: boolean;
+	}) {
 		this.className = className;
 		this.sourceFile = sourceFile;
+		this.location = {uri:sourceFile,range: {start: {line:0,character:0},end: {line:0,character:1}}};
+		
+		// If pre-parsed data is provided, use it directly (avoids expensive regex parsing)
+		if (preParsed) {
+			this.name = preParsed.name || '';
+			this.parameters = preParsed.parameters || [];
+			this.rawParams = preParsed.rawParams || '';
+			this.returnType = preParsed.returnType || '';
+			this.documentation = preParsed.documentation || '';
+			this.functionType = preParsed.functionType || 'function';
+			this.location = preParsed.location || this.location;
+			
+			// Handle constructor naming
+			if (this.name === "__init__" || this.functionType === "constructor") {
+				this.name = className;
+				this.functionType = "constructor";
+			}
+			
+			return this;
+		}
+		
+		// Otherwise, do traditional regex parsing
 		this.parameters = [];
 		const functionName : RegExp = /(?:def)[ \t]*(\w+)[ \t]*(?:\()/g; ///((def\s)(.+?)\()/gm; // Look for "def functionName(" to parse function names.
 		//let className : RegExp = /class (.+?):/gm; // Look for "class ClassName:" to parse class names.

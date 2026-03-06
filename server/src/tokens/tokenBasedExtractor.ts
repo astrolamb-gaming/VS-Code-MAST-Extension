@@ -2,6 +2,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Range, Location } from 'vscode-languageserver';
 import { fileFromUri } from '../fileFunctions';
 import { Word } from './words';
+import { SignalInfo } from './signals';
 
 /**
  * Token-based string extractor that works with lexer output
@@ -19,16 +20,10 @@ export interface Token {
 
 export interface ExtractedStrings {
 	roles: Word[];
-	signals: SignalUsage[];
+	signals: SignalInfo[];
 	inventoryKeys: Word[];
 	blobKeys: Word[];
 	links: Word[];
-}
-
-export interface SignalUsage {
-	name: string;
-	emitLocations: Location[];
-	triggerLocations: Location[];
 }
 
 /**
@@ -81,8 +76,8 @@ export class TokenBasedExtractor {
 	/**
 	 * Extract signal strings and track emit vs trigger usage
 	 */
-	public extractSignals(): SignalUsage[] {
-		const signalMap = new Map<string, SignalUsage>();
+	public extractSignals(): SignalInfo[] {
+		const signalMap = new Map<string, SignalInfo>();
 
 		// Find signal_emit() calls
 		for (let i = 0; i < this.tokens.length - 1; i++) {
@@ -304,7 +299,7 @@ export class TokenBasedExtractor {
 	 * Add a signal usage to the map
 	 */
 	private addSignalUsage(
-		map: Map<string, SignalUsage>,
+		map: Map<string, SignalInfo>,
 		name: string,
 		token: Token,
 		isEmit: boolean
@@ -315,16 +310,16 @@ export class TokenBasedExtractor {
 		if (!signal) {
 			signal = {
 				name,
-				emitLocations: [],
-				triggerLocations: []
+				emit: [],
+				triggered: []
 			};
 			map.set(name, signal);
 		}
 		
 		if (isEmit) {
-			signal.emitLocations.push(location);
+			signal.emit.push(location);
 		} else {
-			signal.triggerLocations.push(location);
+			signal.triggered.push(location);
 		}
 	}
 
@@ -390,12 +385,8 @@ export function extractStringsFromTokens(doc: TextDocument, tokens: Token[]): Ex
 }
 
 /**
- * Convert SignalUsage array to the legacy SignalInfo format
+ * Compatibility helper; signals are already in SignalInfo format.
  */
-export function convertToSignalInfo(signals: SignalUsage[]): Array<{ name: string; emit: Location[]; triggered: Location[] }> {
-	return signals.map(s => ({
-		name: s.name,
-		emit: s.emitLocations,
-		triggered: s.triggerLocations
-	}));
+export function convertToSignalInfo(signals: SignalInfo[]): SignalInfo[] {
+	return signals;
 }

@@ -260,61 +260,56 @@ export class SimplePythonTokenizer {
 }
 
 /**
+ * Tokenize a Python file once for reuse across multiple extraction calls.
+ */
+export function tokenizePythonFile(doc: TextDocument): Token[] {
+	const tokenizer = new SimplePythonTokenizer(doc);
+	return tokenizer.tokenize();
+}
+
+function createExtractor(doc: TextDocument, tokens?: Token[]): TokenBasedExtractor {
+	const resolvedTokens = tokens ?? tokenizePythonFile(doc);
+	return new TokenBasedExtractor(doc, resolvedTokens);
+}
+
+/**
  * Extract MAST framework strings from a Python file using the token-based approach
  */
-export function extractStringsFromPythonFile(doc: TextDocument): ExtractedStrings {
-	const tokenizer = new SimplePythonTokenizer(doc);
-	const tokens = tokenizer.tokenize();
-	const extractor = new TokenBasedExtractor(doc, tokens);
-	return extractor.extractAll();
+export function extractStringsFromPythonFile(doc: TextDocument, tokens?: Token[]): ExtractedStrings {
+	return createExtractor(doc, tokens).extractAll();
 }
 
 /**
  * Get just the roles from a Python file
  */
-export function extractRolesFromPythonFile(doc: TextDocument): ReturnType<TokenBasedExtractor['extractRoles']> {
-	const tokenizer = new SimplePythonTokenizer(doc);
-	const tokens = tokenizer.tokenize();
-	const extractor = new TokenBasedExtractor(doc, tokens);
-	return extractor.extractRoles();
+export function extractRolesFromPythonFile(doc: TextDocument, tokens?: Token[]): ReturnType<TokenBasedExtractor['extractRoles']> {
+	return createExtractor(doc, tokens).extractRoles();
 }
 
 /**
  * Get just the signals from a Python file
  */
-export function extractSignalsFromPythonFile(doc: TextDocument): ReturnType<TokenBasedExtractor['extractSignals']> {
-	const tokenizer = new SimplePythonTokenizer(doc);
-	const tokens = tokenizer.tokenize();
-	const extractor = new TokenBasedExtractor(doc, tokens);
-	return extractor.extractSignals();
+export function extractSignalsFromPythonFile(doc: TextDocument, tokens?: Token[]): ReturnType<TokenBasedExtractor['extractSignals']> {
+	return createExtractor(doc, tokens).extractSignals();
 }
 
 /**
  * Get just the inventory keys from a Python file
  */
-export function extractInventoryKeysFromPythonFile(doc: TextDocument): ReturnType<TokenBasedExtractor['extractInventoryKeys']> {
-	const tokenizer = new SimplePythonTokenizer(doc);
-	const tokens = tokenizer.tokenize();
-	const extractor = new TokenBasedExtractor(doc, tokens);
-	return extractor.extractInventoryKeys();
+export function extractInventoryKeysFromPythonFile(doc: TextDocument, tokens?: Token[]): ReturnType<TokenBasedExtractor['extractInventoryKeys']> {
+	return createExtractor(doc, tokens).extractInventoryKeys();
 }
 
 /**
  * Get just the blob keys from a Python file
  */
-export function extractBlobKeysFromPythonFile(doc: TextDocument): ReturnType<TokenBasedExtractor['extractBlobKeys']> {
-	const tokenizer = new SimplePythonTokenizer(doc);
-	const tokens = tokenizer.tokenize();
-	const extractor = new TokenBasedExtractor(doc, tokens);
-	return extractor.extractBlobKeys();
+export function extractBlobKeysFromPythonFile(doc: TextDocument, tokens?: Token[]): ReturnType<TokenBasedExtractor['extractBlobKeys']> {
+	return createExtractor(doc, tokens).extractBlobKeys();
 }
 
 /**
  * Get just the links from a Python file
  */
-export function extractLinksFromPythonFile(doc: TextDocument): ReturnType<TokenBasedExtractor['extractLinks']> {
-	const tokenizer = new SimplePythonTokenizer(doc);
-	const tokens = tokenizer.tokenize();
-	const extractor = new TokenBasedExtractor(doc, tokens);
-	return extractor.extractLinks();
+export function extractLinksFromPythonFile(doc: TextDocument, tokens?: Token[]): ReturnType<TokenBasedExtractor['extractLinks']> {
+	return createExtractor(doc, tokens).extractLinks();
 }

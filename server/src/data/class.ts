@@ -16,8 +16,37 @@ export class ClassObject {
 	startPos: integer;
 	location: Location;
 
-	constructor(raw: string, sourceFile: string) {
+	constructor(raw: string, sourceFile: string, preParsed?: {
+		name?: string;
+		parent?: string;
+		methods?: Function[];
+		properties?: Variable[];
+		documentation?: string;
+		location?: Location;
+	}) {
+		this.sourceFile = sourceFile;
 		this.startPos = 0;
+		
+		// If pre-parsed data is provided, use it directly (avoids expensive regex parsing)
+		if (preParsed) {
+			this.name = preParsed.name || '';
+			this.parent = preParsed.parent;
+			this.methods = preParsed.methods || [];
+			this.properties = preParsed.properties || [];
+			this.documentation = preParsed.documentation || '';
+			this.location = preParsed.location || {uri:sourceFile,range: {start: {line:0,character:0},end: {line:0,character:1}}};
+			
+			// Find constructor function
+			for (const method of this.methods) {
+				if (method.functionType === "constructor") {
+					this.constructorFunction = method;
+					break;
+				}
+			}
+			return this;
+		}
+		
+		// Otherwise, do traditional regex parsing
 		this.location = {uri:sourceFile,range: {start: {line:0,character:0},end: {line:0,character:1}}}
 		let className : RegExp = /^class .+?:/gm; // Look for "class ClassName:" to parse class names.
 		// debug(className);

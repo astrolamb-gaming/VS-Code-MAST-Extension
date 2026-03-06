@@ -10,7 +10,7 @@ import { PythonLexer } from '../data/pythonLexer';
 import { StringExtractor } from '../tokens/stringExtractor';
 
 // Example 1: Parse Python file structure
-function parsePythonFile(fileContent: string, uri: string) {
+export function parsePythonFile(fileContent: string, uri: string) {
 	const doc = TextDocument.create(uri, 'python', 1, fileContent);
 	const lexer = new PythonLexer(doc);
 	const { classes, functions } = lexer.parse();
@@ -80,8 +80,8 @@ function extractMastStringsFromPython(fileContent: string, uri: string) {
 	console.log('\nSignals:');
 	for (const signal of strings.signals) {
 		console.log(`  - ${signal.name}`);
-		console.log(`    Emitted: ${signal.emitLocations.length} time(s)`);
-		console.log(`    Triggered: ${signal.triggerLocations.length} time(s)`);
+		console.log(`    Emitted: ${signal.emit.length} time(s)`);
+		console.log(`    Triggered: ${signal.triggered.length} time(s)`);
 	}
 	
 	console.log('\nInventory Keys:');
