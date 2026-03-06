@@ -331,7 +331,7 @@ export class MastLexer {
 	}
 
 	private scanKeywords(): void {
-		const keywordRegex = /\b(def|async|on\s+change|await|shared|import|if|else|match|case|yield|return|break|continue|pass|raise|try|except|finally|with|class|while|for|in|is|and|or|not|lambda|True|False|None|jump)\b/gi;
+		const keywordRegex = /\b(def|async|on\s+change|await|global|shared|nonlocal|assigned|temp|client|default|import|if|else|match|case|yield|return|break|continue|pass|raise|try|except|finally|with|class|while|for|in|is|and|or|not|lambda|True|False|None|jump)\b/gi;
 		let match: RegExpExecArray | null;
 		while ((match = keywordRegex.exec(this.text)) !== null) {
 			if (!this.isInExcludedRegion(match.index)) {
@@ -1134,7 +1134,34 @@ export class MastStateMachineLexer {
 	}
 
 	private scanCommsMessage(): TokenInfo[] {
+		const commsThings = [
+			"<<",
+			">>",
+			"()",
+			"<scan>",
+			"<all>",
+			"<var"
+			// + and * identifiers not included because they've already been checked.	
+		]
+
+
 		const tokenList:TokenInfo[] = [];
+
+		for (const c in commsThings) {
+			if (this.text.substring(this.pos).startsWith(c)) {
+				// const commsStart = this.pos;
+				tokenList.push({
+					type: 'keyword',
+					line: this.line,
+					character: this.char,
+					length: c.length,
+					text: c
+				})
+				this.advanceTo(this.pos+c.length);
+				break;
+			}
+		}
+
 		const styleDef = this.scanStyleDefRef();
 		if (styleDef) {
 			tokenList.push(styleDef);
@@ -1218,24 +1245,24 @@ export class MastStateMachineLexer {
 
 			const current = this.text[this.pos];
 
-			// when a plus directive is in effect, skip any whitespace or
-			// optional bracketed metadata before the string itself.
-			if (this.expectPlusDirective) {
-				if (current === '[') {
-					this.advance();
-					while (this.pos < this.text.length && this.text[this.pos] !== ']') {
-						this.advance();
-					}
-					if (this.pos < this.text.length && this.text[this.pos] === ']') {
-						this.advance();
-					}
-					continue;
-				}
-				if (current === ' ' || current === '\t') {
-					this.advance();
-					continue;
-				}
-			}
+			// // when a plus directive is in effect, skip any whitespace or
+			// // optional bracketed metadata before the string itself.
+			// if (this.expectPlusDirective) {
+			// 	if (current === '[') {
+			// 		this.advance();
+			// 		while (this.pos < this.text.length && this.text[this.pos] !== ']') {
+			// 			this.advance();
+			// 		}
+			// 		if (this.pos < this.text.length && this.text[this.pos] === ']') {
+			// 			this.advance();
+			// 		}
+			// 		continue;
+			// 	}
+			// 	if (current === ' ' || current === '\t') {
+			// 		this.advance();
+			// 		continue;
+			// 	}
+			// }
 			if (this.isLineStart() && (current === '"' || current === "'" || current === '%')) {
 				this.scanLineStartString(); // Parse but don't emit
 				continue;
@@ -1261,9 +1288,7 @@ export class MastStateMachineLexer {
 				}
 			}
 
-			// Lines beginning with a single '+' are a special directive.  We
-			// emit the plus itself as a keyword and then mark the state so that
-			// the first string that follows triggers a label reference expectation.
+			// Lines beginning with a single '+' signify a button definition
 			if (current === '+' && this.isLineStart()) {
 				// ensure we don't treat '++' or '+=' etc as this directive
 				const nxt = this.peek();
