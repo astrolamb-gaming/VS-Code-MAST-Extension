@@ -94,6 +94,7 @@ export class Function implements IFunction {
 			this.rawParams = preParsed.rawParams || '';
 			this.returnType = preParsed.returnType || '';
 			this.documentation = preParsed.documentation || '';
+			this.documentation = this.parseDocString(this.documentation);
 			this.functionType = preParsed.functionType || 'function';
 			this.location = preParsed.location || this.location;
 			
@@ -132,45 +133,7 @@ export class Function implements IFunction {
 		this.rawParams = params;
 
 		let comments = getRegExMatch(raw, comment).replace("\"\"\"","").replace("\"\"\"","").trim();
-		let lines = comments.split("\n");
-		let newLines:string[] = [];
-		let m: RegExpMatchArray|null;
-		// const oldParam = /:(param|type)(\w+):(.*)/;
-		const param = /(\*)?[ \t]*([a-zA-Z_,][ \w|]*)(\([^\)]*\))?:(.*)?/;
-
-		for (let line of lines) {
-			let found = false;
-			// line = line.replace(/    |\t/g,"&ensp;&thinsp;");
-			while (m = line.match(param)) {
-				let l = "";
-				if (m[4] && m[4].trim() !== "") { // If it's a param. 
-					// debug(m[0])
-					l = "**"+m[2].trim()+"**";
-					if (m[3]) {
-						l = l + " *" + m[3] + "*:  "
-					} else {
-						l = l + ":  "
-					}
-					l = l + m[4].trim();
-					if (m[1]) { // If it's a list item
-						l = "* " + l;
-					}
-				} else if (m[4] === undefined) { // It's a header, like `Args:`
-					l = "### " + m[2].trim();
-				} else { // Just a string
-					l = line.trim() + "  ";
-				}
-				newLines.push(l + "  ");
-				found = true;
-				break;
-			}
-			if (found) continue;
-			newLines.push(line.trim() + "  ");
-		}
-		// debug(newLines);
-		// this.documentation = comments;
-		this.documentation = newLines.join("\n");
-		// debug(this.documentation);
+		this.documentation = this.parseDocString(comments);
 
 		this.returnType = getRegExMatch(raw, returnValue).replace(/(:|->)/g, "").trim();
 		if (this.returnType === "") {
@@ -307,6 +270,49 @@ export class Function implements IFunction {
 		let ci_details: string = "(" + this.functionType + ") " + classRef + this.name + paramList + retType;
 		ci_details = "```javascript\n" + ci_details + "\n```   \n";
 		return ci_details;
+	}
+
+
+	private parseDocString(docstring: string): string {
+		const newLines: string[] = [];
+		const lines = docstring.split("\n");
+		const param = /(\*)?[ \t]*([a-zA-Z_,][ \w|]*)(\([^\)]*\))?:(.*)?/;
+		let m: RegExpMatchArray | null;
+		for (let line of lines) {
+			let found = false;
+			// line = line.replace(/    |\t/g,"&ensp;&thinsp;");
+			while (m = line.match(param)) {
+				let l = "";
+				if (m[4] && m[4].trim() !== "") { // If it's a param. 
+					// debug(m[0])
+					l = "**"+m[2].trim()+"**";
+					if (m[3]) {
+						l = l + " *" + m[3] + "*:  "
+					} else {
+						l = l + ":  "
+					}
+					l = l + m[4].trim();
+					if (m[1]) { // If it's a list item
+						l = "> " + l;
+					} else {
+						// Use blockquote formatting for indentation
+						l = "> " + l;
+					}
+				} else if (m[4] === undefined) { // It's a header, like `Args:`
+					l = "### " + m[2].trim();
+				} else { // Just a string
+					l = line.trim() + "  ";
+				}
+				newLines.push(l + "  ");
+				found = true;
+				break;
+			}
+			if (found) continue;
+			newLines.push(line.trim() + "  ");
+		}
+		// debug(newLines);
+		// this.documentation = comments;
+		return newLines.join("\n");
 	}
 
 	/**
