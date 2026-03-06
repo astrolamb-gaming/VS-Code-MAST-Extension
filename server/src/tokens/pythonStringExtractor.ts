@@ -34,6 +34,27 @@ export class SimplePythonTokenizer {
 				continue;
 			}
 
+			// Check for string prefixes (f, r, b, u, fr, rf, br, rb) followed by quotes
+			if (this.isIdentifierStart(ch)) {
+				const prefix = this.peekStringPrefix();
+				if (prefix !== null) {
+					// This is a prefixed string (e.g., f"...", r"...", b"...")
+					// Skip the prefix and scan the string
+					this.pos += prefix.length;
+					this.character += prefix.length;
+					
+					const nextChar = this.text[this.pos];
+					
+					// Check for triple-quoted strings
+					if (this.matchTripleQuote()) {
+						this.scanTripleQuotedString();
+					} else if (nextChar === '"' || nextChar === "'") {
+						this.scanString(nextChar);
+					}
+					continue;
+				}
+			}
+
 			// Strings
 			if (ch === '"' || ch === "'") {
 				this.scanString(ch);
@@ -86,6 +107,38 @@ export class SimplePythonTokenizer {
 			this.pos++;
 			this.character++;
 		}
+	}
+
+	/**
+	 * Check if current position starts a string prefix (f, r, b, u, fr, rf, br, rb, etc.)
+	 * Returns the prefix string if found, null otherwise
+	 */
+	private peekStringPrefix(): string | null {
+		const remaining = this.text.substring(this.pos);
+		
+		// Check for two-character prefixes first (fr, rf, br, rb)
+		const twoCharPrefixes = ['fr', 'rf', 'br', 'rb', 'FR', 'RF', 'BR', 'RB', 'Fr', 'Rf', 'Br', 'Rb', 'fR', 'rF', 'bR', 'rB'];
+		for (const prefix of twoCharPrefixes) {
+			if (remaining.startsWith(prefix)) {
+				const afterPrefix = remaining.charAt(prefix.length);
+				if (afterPrefix === '"' || afterPrefix === "'") {
+					return prefix;
+				}
+			}
+		}
+		
+		// Check for single-character prefixes (f, r, b, u)
+		const oneCharPrefixes = ['f', 'r', 'b', 'u', 'F', 'R', 'B', 'U'];
+		for (const prefix of oneCharPrefixes) {
+			if (remaining.startsWith(prefix)) {
+				const afterPrefix = remaining.charAt(prefix.length);
+				if (afterPrefix === '"' || afterPrefix === "'") {
+					return prefix;
+				}
+			}
+		}
+		
+		return null;
 	}
 
 	private matchTripleQuote(): boolean {

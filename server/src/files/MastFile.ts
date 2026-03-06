@@ -12,6 +12,7 @@ import { Word, parseWords } from '../tokens/words';
 import { sleep } from '../python/python';
 import { getRoutesInFile } from '../tokens/routeLabels';
 import { parseSignalsInFile, SignalInfo } from '../tokens/signals';
+import { extractRolesFromMastFile, extractSignalsFromMastFile, extractInventoryKeysFromMastFile, extractBlobKeysFromMastFile, extractLinksFromMastFile } from '../tokens/mastStringExtractor';
 
 
 /**
@@ -76,23 +77,25 @@ export class MastFile extends FileCache {
 		this.loaded = false;
 		// debug("parsing mast file: " + this.uri)
 		const textDocument: TextDocument = TextDocument.create(this.uri, "mast", 1, text);
+
+		// Parse labels and prefabs
 		this.labelNames = parseLabelsInFile(text, this.uri);
-		// debug(this.labelNames)
 		this.prefabs = parsePrefabs(this.labelNames);
-		// TODO: Parse variables, etc
-		//this.variables = getVariableNamesInDoc(textDocument);
-		this.variables = parseVariables(textDocument); //
-		this.roles = getRolesForFile(textDocument);
-		this.inventory_keys = getInventoryKeysForFile(textDocument);
-		this.blob_keys = getBlobKeysForFile(textDocument);
-		this.links = getLinksForFile(textDocument);
+		
+		// Parse variables
+		this.variables = parseVariables(textDocument);
+		
+		// Parse routes
 		this.routes = getRoutesInFile(textDocument);
-		this.signals = parseSignalsInFile(textDocument);
-		if (this.inZip) {
-			this.words = [];
-		} else {
-			this.words = parseWords(textDocument);
-		}
+		
+		// Parse framework strings using token-based extractors (lightweight and efficient)
+		this.roles = extractRolesFromMastFile(textDocument);
+		this.blob_keys = extractBlobKeysFromMastFile(textDocument);
+		this.inventory_keys = extractInventoryKeysFromMastFile(textDocument);
+		this.links = extractLinksFromMastFile(textDocument);
+		this.signals = extractSignalsFromMastFile(textDocument);
+		
+		// Parse words
 		this.loaded = true;
 	}
 

@@ -56,20 +56,9 @@ export class TokenBasedExtractor {
 	 * Extract role strings by finding add_role/has_role function calls
 	 */
 	public extractRoles(): Word[] {
-		const roleFunctions = [
-			'role',
-			'all_roles',
-			'add_role',
-			'any_role',
-			'has_role',
-			'has_roles',
-			'remove_role'
-		];
-
-		return this.extractStringsForFunctions(roleFunctions, {
+		return this.extractStringsByFunctionKeywords(['role'], {
 			normalizeCase: true,
-			allowCommaSeparated: true,
-			argumentIndex: roleFunctions.slice(0, 2).includes('role') ? 0 : 1 // 'role' takes string as first arg, others as second
+			allowCommaSeparated: true
 		});
 	}
 
@@ -131,19 +120,8 @@ export class TokenBasedExtractor {
 	 * Extract inventory key strings
 	 */
 	public extractInventoryKeys(): Word[] {
-		const inventoryFunctions = [
-			'get_inventory_value',
-			'set_inventory_value',
-			'remove_inventory_value',
-			'get_shared_inventory_value',
-			'set_shared_inventory_value',
-			'remove_shared_inventory_value',
-			'inventory_set'
-		];
-
-		return this.extractStringsForFunctions(inventoryFunctions, {
-			normalizeCase: true,
-			argumentIndex: 1 // Second argument is the key
+		return this.extractStringsByFunctionKeywords(['inventory'], {
+			normalizeCase: true
 		});
 	}
 
@@ -151,18 +129,8 @@ export class TokenBasedExtractor {
 	 * Extract blob/dataset key strings
 	 */
 	public extractBlobKeys(): Word[] {
-		const blobFunctions = [
-			'get_blob_value',
-			'set_blob_value',
-			'remove_blob_value',
-			'get_data_set_value',
-			'set_data_set_value',
-			'remove_data_set_value'
-		];
-
-		return this.extractStringsForFunctions(blobFunctions, {
-			normalizeCase: true,
-			argumentIndex: 1 // Second argument is the key
+		return this.extractStringsByFunctionKeywords(['blob', 'data_set'], {
+			normalizeCase: true
 		});
 	}
 
@@ -170,40 +138,46 @@ export class TokenBasedExtractor {
 	 * Extract link strings
 	 */
 	public extractLinks(): Word[] {
-		const linkFunctions = [
-			'link',
-			'linked_to',
-			'link_to',
-			'has_link',
-			'add_link',
-			'remove_link',
-			'get_dedicated_link',
-			'links_set'
-		];
+		return this.extractStringsByFunctionKeywords(['link']);
+	}
 
+	/**
+	 * Generic extraction for function calls with string arguments.
+	 * Matches functions by keyword(s) and extracts all top-level string args.
+	 */
+	private extractStringsByFunctionKeywords(
+		keywords: string[],
+		options: {
+			normalizeCase?: boolean;
+			allowCommaSeparated?: boolean;
+		} = {}
+	): Word[] {
 		const words: Word[] = [];
 
-		// Most link functions use the link name as first or second argument
-		// link(obj, "name") - second arg
-		// has_link("name") - first arg
 		for (let i = 0; i < this.tokens.length; i++) {
 			const token = this.tokens[i];
 			
-			if (token.type === 'function' && linkFunctions.includes(token.text)) {
-				// For link(), linked_to(), link_to() - look for second string arg
-				if (['link', 'linked_to', 'link_to'].includes(token.text)) {
-					const stringToken = this.findNthStringToken(i, 1); // 0-indexed, so 1 = second
-					if (stringToken) {
-						const linkName = this.extractStringValue(stringToken.text);
-						this.addWord(words, linkName, stringToken);
+			if (token.type !== 'function' || !this.matchesFunctionKeywords(token.text, keywords)) {
+				continue;
+			}
+
+			const stringTokens = this.findAllStringTokensInCall(i);
+			for (const stringToken of stringTokens) {
+				let value = this.extractStringValue(stringToken.text);
+
+				if (options.allowCommaSeparated) {
+					const values = value.split(',').map(v => v.trim());
+					for (let val of values) {
+						if (options.normalizeCase) {
+							val = val.toLowerCase();
+						}
+						this.addWord(words, val, stringToken);
 					}
 				} else {
-					// For other functions - first string arg
-					const stringToken = this.findNextStringToken(i);
-					if (stringToken) {
-						const linkName = this.extractStringValue(stringToken.text);
-						this.addWord(words, linkName, stringToken);
+					if (options.normalizeCase) {
+						value = value.toLowerCase();
 					}
+					this.addWord(words, value, stringToken);
 				}
 			}
 		}
@@ -212,47 +186,21 @@ export class TokenBasedExtractor {
 	}
 
 	/**
-	 * Generic extraction for function calls with string arguments
+	 * Match a function name against one or more extraction keywords.
+	 * Uses token boundaries so "role" does not match unrelated names like "controller".
 	 */
-	private extractStringsForFunctions(
-		functionNames: string[],
-		options: {
-			argumentIndex?: number;
-			normalizeCase?: boolean;
-			allowCommaSeparated?: boolean;
-		} = {}
-	): Word[] {
-		const words: Word[] = [];
-		const argIndex = options.argumentIndex ?? 0;
+	private matchesFunctionKeywords(functionName: string, keywords: string[]): boolean {
+		const normalizedName = functionName.toLowerCase();
 
-		for (let i = 0; i < this.tokens.length; i++) {
-			const token = this.tokens[i];
-			
-			if (token.type === 'function' && functionNames.includes(token.text)) {
-				const stringToken = this.findNthStringToken(i, argIndex);
-				if (stringToken) {
-					let value = this.extractStringValue(stringToken.text);
-					
-					if (options.allowCommaSeparated) {
-						// Split by comma and process each value
-						const values = value.split(',').map(v => v.trim());
-						for (let val of values) {
-							if (options.normalizeCase) {
-								val = val.toLowerCase();
-							}
-							this.addWord(words, val, stringToken);
-						}
-					} else {
-						if (options.normalizeCase) {
-							value = value.toLowerCase();
-						}
-						this.addWord(words, value, stringToken);
-					}
-				}
+		for (const keyword of keywords) {
+			const escaped = keyword.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+			const re = new RegExp(`(^|_)${escaped}(s)?(_|$)`);
+			if (re.test(normalizedName)) {
+				return true;
 			}
 		}
 
-		return this.mergeWords(words);
+		return false;
 	}
 
 	/**
@@ -263,36 +211,77 @@ export class TokenBasedExtractor {
 	}
 
 	/**
-	 * Find the Nth string token after a given position (0-indexed)
+	 * Find all top-level string tokens in a function call's argument list.
 	 */
-	private findNthStringToken(startIndex: number, n: number): Token | null {
-		let count = 0;
-		
-		for (let i = startIndex + 1; i < this.tokens.length; i++) {
+	private findAllStringTokensInCall(startIndex: number): Token[] {
+		const results: Token[] = [];
+
+		let i = startIndex + 1;
+		while (i < this.tokens.length && !(this.tokens[i].type === 'operator' && this.tokens[i].text === '(')) {
+			i++;
+		}
+
+		if (i >= this.tokens.length) {
+			return results;
+		}
+
+		let parenDepth = 1;
+
+		for (i = i + 1; i < this.tokens.length; i++) {
 			const token = this.tokens[i];
-			
-			// Stop if we hit certain boundaries (new statement, etc.)
-			if (token.type === 'keyword' || token.type === 'label') {
-				break;
-			}
-			
-			if (token.type === 'string') {
-				if (count === n) {
-					return token;
+
+			if (token.type === 'operator') {
+				if (token.text === '(') {
+					parenDepth++;
+					continue;
 				}
-				count++;
+
+				if (token.text === ')') {
+					parenDepth--;
+					if (parenDepth === 0) {
+						break;
+					}
+					continue;
+				}
+
+			}
+
+			if (parenDepth === 1 && token.type === 'string') {
+				results.push(token);
 			}
 		}
-		
-		return null;
+
+		return results;
+	}
+
+	/**
+	 * Find the string token at argument index N for a function call (0-indexed)
+	 */
+	private findNthStringToken(startIndex: number, n: number): Token | null {
+		const strings = this.findAllStringTokensInCall(startIndex);
+		return n >= 0 && n < strings.length ? strings[n] : null;
 	}
 
 	/**
 	 * Extract the string content from a string token (remove quotes)
 	 */
 	private extractStringValue(tokenText: string): string {
-		// Remove surrounding quotes
-		return tokenText.replace(/^["']|["']$/g, '');
+		let value = tokenText.trim();
+
+		// Handle optional Python string prefixes (f, r, b, u, fr, rf, etc.)
+		value = value.replace(/^[furbFURB]{1,2}(?=["'])/, '');
+
+		// Triple-quoted strings
+		if ((value.startsWith('"""') && value.endsWith('"""')) || (value.startsWith("'''") && value.endsWith("'''"))) {
+			return value.slice(3, -3);
+		}
+
+		// Single/double-quoted strings
+		if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+			return value.slice(1, -1);
+		}
+
+		return value;
 	}
 
 	/**

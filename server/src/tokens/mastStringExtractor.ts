@@ -17,67 +17,60 @@ export function convertMastTokens(tokens: TokenInfo[]): Token[] {
 }
 
 /**
- * Extract MAST framework strings from a MAST file using the token-based approach
+ * Tokenize a MAST file once for reuse across multiple extractions
  */
-export function extractStringsFromMastFile(doc: TextDocument): ExtractedStrings {
-	// Tokenize the document using the MAST lexer
+export function tokenizeMastFile(doc: TextDocument): Token[] {
 	const lexer = new MastStateMachineLexer(doc);
 	const mastTokens = lexer.tokenize();
-	
-	// Convert to common token format
-	const tokens = convertMastTokens(mastTokens);
-	
-	// Extract strings using token-based extractor
-	const extractor = new TokenBasedExtractor(doc, tokens);
-	return extractor.extractAll();
+	return convertMastTokens(mastTokens);
+}
+
+/**
+ * Create an extractor with optional pre-computed tokens
+ */
+function createExtractor(doc: TextDocument, tokens?: Token[]): TokenBasedExtractor {
+	const resolvedTokens = tokens ?? tokenizeMastFile(doc);
+	return new TokenBasedExtractor(doc, resolvedTokens);
+}
+
+/**
+ * Extract MAST framework strings from a MAST file using the token-based approach
+ */
+export function extractStringsFromMastFile(doc: TextDocument, tokens?: Token[]): ExtractedStrings {
+	return createExtractor(doc, tokens).extractAll();
 }
 
 /**
  * Get just the roles from a MAST file
  */
-export function extractRolesFromMastFile(doc: TextDocument): ReturnType<TokenBasedExtractor['extractRoles']> {
-	const lexer = new MastStateMachineLexer(doc);
-	const tokens = convertMastTokens(lexer.tokenize());
-	const extractor = new TokenBasedExtractor(doc, tokens);
-	return extractor.extractRoles();
+export function extractRolesFromMastFile(doc: TextDocument, tokens?: Token[]): ReturnType<TokenBasedExtractor['extractRoles']> {
+	return createExtractor(doc, tokens).extractRoles();
 }
 
 /**
  * Get just the signals from a MAST file
  */
-export function extractSignalsFromMastFile(doc: TextDocument): ReturnType<TokenBasedExtractor['extractSignals']> {
-	const lexer = new MastStateMachineLexer(doc);
-	const tokens = convertMastTokens(lexer.tokenize());
-	const extractor = new TokenBasedExtractor(doc, tokens);
-	return extractor.extractSignals();
+export function extractSignalsFromMastFile(doc: TextDocument, tokens?: Token[]): ReturnType<TokenBasedExtractor['extractSignals']> {
+	return createExtractor(doc, tokens).extractSignals();
 }
 
 /**
  * Get just the inventory keys from a MAST file
  */
-export function extractInventoryKeysFromMastFile(doc: TextDocument): ReturnType<TokenBasedExtractor['extractInventoryKeys']> {
-	const lexer = new MastStateMachineLexer(doc);
-	const tokens = convertMastTokens(lexer.tokenize());
-	const extractor = new TokenBasedExtractor(doc, tokens);
-	return extractor.extractInventoryKeys();
+export function extractInventoryKeysFromMastFile(doc: TextDocument, tokens?: Token[]): ReturnType<TokenBasedExtractor['extractInventoryKeys']> {
+	return createExtractor(doc, tokens).extractInventoryKeys();
 }
 
 /**
  * Get just the blob keys from a MAST file
  */
-export function extractBlobKeysFromMastFile(doc: TextDocument): ReturnType<TokenBasedExtractor['extractBlobKeys']> {
-	const lexer = new MastStateMachineLexer(doc);
-	const tokens = convertMastTokens(lexer.tokenize());
-	const extractor = new TokenBasedExtractor(doc, tokens);
-	return extractor.extractBlobKeys();
+export function extractBlobKeysFromMastFile(doc: TextDocument, tokens?: Token[]): ReturnType<TokenBasedExtractor['extractBlobKeys']> {
+	return createExtractor(doc, tokens).extractBlobKeys();
 }
 
 /**
  * Get just the links from a MAST file
  */
-export function extractLinksFromMastFile(doc: TextDocument): ReturnType<TokenBasedExtractor['extractLinks']> {
-	const lexer = new MastStateMachineLexer(doc);
-	const tokens = convertMastTokens(lexer.tokenize());
-	const extractor = new TokenBasedExtractor(doc, tokens);
-	return extractor.extractLinks();
+export function extractLinksFromMastFile(doc: TextDocument, tokens?: Token[]): ReturnType<TokenBasedExtractor['extractLinks']> {
+	return createExtractor(doc, tokens).extractLinks();
 }

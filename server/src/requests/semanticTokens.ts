@@ -1298,7 +1298,7 @@ export class MastStateMachineLexer {
 					});
 					this.advance();
 					const cms = this.scanCommsMessage()
-					this.tokens = this.tokens.concat(this.tokens, cms);
+					this.tokens = this.tokens.concat(cms);
 					this.advance();
 					continue;
 				}
@@ -1316,7 +1316,7 @@ export class MastStateMachineLexer {
 				this.advance();
 				this.advance();
 				const cms = this.scanCommsMessage()
-				this.tokens = this.tokens.concat(this.tokens, cms);
+				this.tokens = this.tokens.concat(cms);
 				this.advance();
 				continue;
 			}
