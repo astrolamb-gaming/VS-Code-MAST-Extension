@@ -597,6 +597,47 @@ export class MastStateMachineLexer {
 		};
 	}
 
+	// Scan a block comment starting at current pos ('/*') and ending at the
+	// next '*/' or EOF. Returns one comment token per covered line.
+	private scanBlockComment(): TokenInfo[] {
+		const tokens: TokenInfo[] = [];
+		const startPos = this.pos;
+		const startLine = this.line;
+		const startChar = this.char;
+
+		this.advance(); // '/'
+		this.advance(); // '*'
+
+		while (this.pos < this.text.length) {
+			if (this.text[this.pos] === '*' && this.peek() === '/') {
+				this.advance(); // '*'
+				this.advance(); // '/'
+				break;
+			}
+			this.advance();
+		}
+
+		const fullText = this.text.substring(startPos, this.pos);
+		const lines = fullText.split('\n');
+		for (let i = 0; i < lines.length; i++) {
+			const lineText = lines[i];
+			// Keep newline width on non-final lines so the full span remains covered.
+			const tokenLength = i < lines.length - 1 ? lineText.length + 1 : lineText.length;
+			if (tokenLength === 0) {
+				continue;
+			}
+			tokens.push({
+				type: 'comment',
+				line: startLine + i,
+				character: i === 0 ? startChar : 0,
+				length: tokenLength,
+				text: lineText
+			});
+		}
+
+		return tokens;
+	}
+
 	// Scan a route label if current position begins with '//' followed by
 	// non-whitespace.  Returns an array of tokens or null if not a label.
 	private scanRouteLabel(): TokenInfo | null {
@@ -1323,6 +1364,12 @@ export class MastStateMachineLexer {
 
 			// Comments
 			//#region Comments
+			if (current === '/' && this.peek() === '*') {
+				const blockCommentTokens = this.scanBlockComment();
+				this.tokens.push(...blockCommentTokens);
+				continue;
+			}
+
 			if (current === '#') {
 				const token = this.scanComment();
 
