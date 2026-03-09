@@ -60,6 +60,7 @@ export class ClassObject {
 		for (const n of replaceNames) {
 			if (this.name === n[0]) {
 				this.name = n[1];
+				debug("Replaced: " + this.name);
 			}
 		}
 
@@ -78,6 +79,9 @@ export class ClassObject {
 			if (this.methods[i].functionType === "constructor") {
 				this.constructorFunction = this.methods[i];
 			}
+		}
+		if (this.name === "sim" || this.name === "simulation") {
+			debug(this);
 		}
 		return this;
 	}

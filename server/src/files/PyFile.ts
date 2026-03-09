@@ -87,11 +87,6 @@ export class PyFile extends FileCache {
 			this.classes = classes;
 			this.defaultFunctions = functions;
 			
-			if (this.uri.includes("inventory")) {
-				debug(`Parsed ${classes.length} classes and ${functions.length} functions in ${this.uri}`);
-				debug(classes)
-				debug(functions)
-			}
 		} catch (e) {
 			// If PythonLexer fails, continue without class/function info
 			debug("PythonLexer error for " + this.uri + ": " + e);

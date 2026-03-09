@@ -31,7 +31,8 @@ export const TOKEN_TYPES = [
 	'yaml.key',          // 14
 	'yaml.value',        // 15
 	'codetag',           // 16
-	'style-definition'
+	'style-definition',
+	'comms.button'
 ] as const;
 
 export const TOKEN_MODIFIERS = [
@@ -1181,14 +1182,18 @@ export class MastStateMachineLexer {
 			// + and * identifiers not included because they've already been checked.	
 		]
 
+		this.skipWhitespace();
+
 
 		const tokenList:TokenInfo[] = [];
 
-		for (const c in commsThings) {
+		for (const c of commsThings) {
 			if (this.text.substring(this.pos).startsWith(c)) {
+				// debug(c)
+				// debug(this.text[this.pos] + this.peek())
 				// const commsStart = this.pos;
 				tokenList.push({
-					type: 'keyword',
+					type: 'comms.button',
 					line: this.line,
 					character: this.char,
 					length: c.length,
@@ -1360,6 +1365,16 @@ export class MastStateMachineLexer {
 				this.tokens = this.tokens.concat(cms);
 				this.advance();
 				continue;
+			}
+
+			// Comms targets like <all>, <scan>, <var ...> at line start
+			if (current === "<" && this.isLineStart()) {
+				const cms = this.scanCommsMessage();
+				if (cms.length > 0) {
+					this.tokens = this.tokens.concat(cms);
+					this.advance();
+					continue;
+				}
 			}
 
 			// Comments
