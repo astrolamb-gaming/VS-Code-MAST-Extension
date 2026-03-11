@@ -53,7 +53,6 @@ import { getCache } from './cache';
 import { onReferences } from './requests/references';
 import { onRenameRequest } from './requests/renameSymbol';
 import { getWordRangeAtPosition } from './tokens/words';
-import { PyFile } from './files/PyFile';
 import { getSemanticTokens, TOKEN_TYPES, TOKEN_MODIFIERS, getEmptySemanticTokens } from './requests/semanticTokens';
 import { getSemanticTokensCache } from './requests/semanticTokensCache';
 
@@ -603,10 +602,19 @@ export function myDebug(str:any) {
     if (str === undefined) {
         str = "UNDEFINED";
     }
-    str = "\n" + str;
-    fs.writeFileSync('outputLog.txt', str, { flag: "a+" });
-	debug(str);
-	console.log(str);
+	const out = "\n" + String(str);
+	// Async append to avoid blocking the event loop on every log
+	fs.appendFile('outputLog.txt', out, (err) => {
+		if (err) {
+			try { connection.console.error(String(err)); } catch {}
+		}
+	});
+	try {
+		connection.console.log(out);
+	} catch {
+		// If connection not ready, fallback to console.debug
+		debug(out);
+	}
 }
 
 
