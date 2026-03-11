@@ -101,6 +101,10 @@ export class MissionCache {
 		// this.startWatchers();
 	}
 
+	// Promise that resolves when the cache has finished loading
+	private _loadedPromise: Promise<void> = Promise.resolve();
+	private _loadedResolve: (() => void) | null = null;
+
 	async load() {
 		if (this.missionURI === "") {
 			debug("Mission folder not valid: " + this.missionURI + "\nNot loading cache.")
@@ -112,6 +116,9 @@ export class MissionCache {
 		this.missionFilesLoaded = false;
 		this.sbsLoaded = false;
 		debug("Starting MissionCache.load()");
+		const loadStart = Date.now();
+		// create a new loaded promise for callers waiting on awaitLoaded()
+		this._loadedPromise = new Promise((resolve) => { this._loadedResolve = resolve; });
 		showProgressBar(true);
 		// (re)set all the arrays before (re)populating them.
 		// this.missionClasses = [];
@@ -190,9 +197,19 @@ export class MissionCache {
 		
 		//this.checkForInitFolder(this.missionURI);
 		debug("Number of py files: "+this.pyFileCache.length);
-		await this.awaitLoaded();
 		debug("Everything is loaded");
 		this.startWatchers();
+		const loadElapsed = Date.now() - loadStart;
+		try {
+			connection.console.log(`Cache load for ${this.missionName} took ${loadElapsed}ms`);
+			debug(`Cache load for ${this.missionName} took ${loadElapsed}ms`);
+		} catch (e) {
+			debug(e);
+		}
+		if (this._loadedResolve) {
+			this._loadedResolve();
+			this._loadedResolve = null;
+		}
 	}
 
 	/**
@@ -505,6 +522,7 @@ export class MissionCache {
 	 * @returns Promise<void>
 	 */
 	async modulesLoaded() {
+		const modulesStart = Date.now();
 		if (testingPython) return;
 		const uri = this.missionURI;
 		let globals = getArtemisGlobals();
@@ -574,6 +592,13 @@ export class MissionCache {
 			debug("Error in modulesLoaded()");
 			debug(e);
 		}
+		const modulesElapsed = Date.now() - modulesStart;
+		try {
+			connection.console.log(`modulesLoaded for ${this.missionName} took ${modulesElapsed}ms`);
+			debug(`modulesLoaded for ${this.missionName} took ${modulesElapsed}ms`);
+		} catch (e) {
+			debug(e);
+		}
 	}
 
 	/**
@@ -635,7 +660,7 @@ export class MissionCache {
 	updateFileInfo(doc: TextDocument) {
 		if (doc.languageId === "mast") {
 			// debug("Updating " + doc.uri);
-			this.getMastFile(doc.uri).parse(doc.getText());
+			this.getMastFile(doc.uri).updateFromDocument(doc);
 		} else if (doc.languageId === "py") {
 			// debug("Updating " + doc.uri);
 			this.getPyFile(doc.uri).parseWholeFile(doc.getText());
@@ -1005,10 +1030,10 @@ export class MissionCache {
 			words = words.concat(m.blob_keys);
 		}
 		for (const m of this.missionMastModules) {
-			words = words.concat(m.blob_keys)
+			words = words.concat(m.blob_keys);
 		}
 		for (const p of this.pyFileCache) {
-			words = words.concat(p.blob_keys)
+			words = words.concat(p.blob_keys);
 		}
 		return words;
 	}
@@ -1034,8 +1059,8 @@ export class MissionCache {
 		return words;
 	}
 
-	getLinks() {
-		let ret:Word[] = [];
+	getLinks(): Word[] {
+		let ret: Word[] = [];
 		for (const m of this.mastFileCache) {
 			ret = ret.concat(m.links);
 		}
@@ -1340,15 +1365,12 @@ export class MissionCache {
 	}
 
 	async awaitLoaded() {
-		while (!(this.sbsLoaded && this.storyJsonLoaded && this.pyInfoLoaded && this.missionFilesLoaded)) {
-			// debug("Loaded status:");
-			// debug(this.sbsLoaded);
-			// debug(this.storyJsonLoaded);
-			// debug(this.pyInfoLoaded);
-			await sleep(100);
+		// Await the promise that is resolved when load() completes.
+		try {
+			await this._loadedPromise;
+		} finally {
+			showProgressBar(false);
 		}
-		// debug("Hiding progress bar")
-		showProgressBar(false);
 	}
 
 }
@@ -1498,7 +1520,8 @@ let files: string[] = [
 	"sbs_utils/procedural/timers"
 ];
 
-let caches: MissionCache[] = [];
+// Map of missionURI -> MissionCache for O(1) lookups
+let caches: Map<string, MissionCache> = new Map();
 
 
 /**
@@ -1507,27 +1530,33 @@ let caches: MissionCache[] = [];
  * @returns 
  */
 export function getCache(name:string, reloadCache:boolean = false): MissionCache {
-	let ret = undefined;
 	if (name.startsWith("file")) {
 		name = URI.parse(name).fsPath;
 	}
-	//debug("Trying to get cache with name: " + name);
 	const mf = getMissionFolder(name);
 
-	//debug(mf);
-	for (const cache of caches) {
-		if (cache.missionName === name || cache.missionURI === mf) {
+	// First try direct lookup by mission folder
+	const existing = caches.get(mf);
+	if (existing) {
+		if (reloadCache) existing.load();
+		existing.lastAccessed = Date.now();
+		return existing;
+	}
+
+	// Fall back: try match by mission name (legacy behavior)
+	for (const cache of caches.values()) {
+		if (cache.missionName === name) {
 			if (reloadCache) cache.load();
-			cache.lastAccessed = new Date().getTime();
+			cache.lastAccessed = Date.now();
 			return cache;
 		}
 	}
-	if (ret === undefined) {
-		ret = new MissionCache(name);
-		caches.push(ret);
-		ret.load();
-	}
-	ret.lastAccessed = new Date().getTime();
+
+	// Create a new cache
+	const ret = new MissionCache(name);
+	caches.set(ret.missionURI, ret);
+	ret.load();
+	ret.lastAccessed = Date.now();
 	return ret;
 }
 
@@ -1538,16 +1567,20 @@ export function getCache(name:string, reloadCache:boolean = false): MissionCache
  * TODO: Make this a user-customizable option.
  */
 function cacheGC() {
-	setTimeout(()=>{
-		for (const c of caches) {
-			if (new Date().getTime() - c.lastAccessed > 1000 * 60 * 7) { // 7 minutes
-				const index = caches.indexOf(c, 0);
-				caches.splice(index, 1)
+	setInterval(()=>{
+		const now = Date.now();
+		for (const [key, c] of caches.entries()) {
+			if (now - c.lastAccessed > 1000 * 60 * 7) { // 7 minutes
+				// stop watchers and free resources
+				try { c.endWatchers(); } catch (e) { debug(e); }
+				caches.delete(key);
 			}
 		}
-
-	}, 1000 * 60 * 5) // 5 minutes
+	}, 1000 * 60 * 5); // run every 5 minutes
 }
+
+// start GC loop
+cacheGC();
 
 function saveZipTempFile(uri:string, contents:string) : string{
 	const tempPath = fixFileName(path.join(os.tmpdir(),"cosmosModules",uri));
