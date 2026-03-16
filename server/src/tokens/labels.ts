@@ -6,7 +6,7 @@ import { getCache } from '../cache';
 import { URI } from 'vscode-uri';
 import path = require('path');
 import { fileFromUri, fixFileName, getFolders, getMissionFolder } from '../fileFunctions';
-import { isInComment, isInYaml } from './comments';
+import { getTokenTypeAtOffset, isInComment } from './comments';
 import { start } from 'repl';
 import { getCurrentLineFromTextDocument } from '../requests/hover';
 import { documents } from '../server';
@@ -486,6 +486,8 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
  */
 function findBadLabels(t: TextDocument) : Diagnostic[] {
 	const text = t.getText();
+	const cache = getCache(t.uri);
+	const tokens = cache.getMastFile(t.uri)?.tokens;
 	const diagnostics: Diagnostic[] = [];
 	const any: RegExp = /(^ *?=+?.*?$)|(^ *?-+?.*?$)/gm;
 	const whiteSpaceWarning: RegExp = /^ +?/;
@@ -506,7 +508,9 @@ function findBadLabels(t: TextDocument) : Diagnostic[] {
 		if (lbl.startsWith("->")) {
 			continue;
 		}
-		if (isInYaml(t,m.index) || isInComment(t,m.index)) {
+		let isInYaml = getTokenTypeAtOffset(t, tokens || [], m.index) === "yaml";
+		let isInComment = getTokenTypeAtOffset(t, tokens || [], m.index) === "comment";
+		if (isInYaml || isInComment) {
 			continue;
 		}
 		//debug("Testing " + m[0]);

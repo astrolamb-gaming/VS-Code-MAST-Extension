@@ -320,14 +320,20 @@ export class TokenBasedExtractor {
 
 		for (const word of words) {
 			if (word.name === name) {
-				word.locations.push(location);
+				for (const loc of word.locations) {
+					if (loc.uri === location.uri) {
+						loc.ranges.push(location.range);
+						return;
+					}
+				}
+				word.locations.push({uri: location.uri, ranges: [location.range]});
 				return;
 			}
 		}
 
 		words.push({
 			name,
-			locations: [location]
+			locations: [{uri: location.uri, ranges: [location.range]}]
 		});
 	}
 

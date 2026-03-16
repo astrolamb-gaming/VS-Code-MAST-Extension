@@ -261,8 +261,17 @@ export class ShipData {
 					let found = false;
 					for (const w of ret) {
 						if (w.name === v) {
-							w.locations.push({uri: fileFromUri(doc.uri), range: range});
-							found = true;
+							for (const loc of w.locations) {
+								if (loc.uri === doc.uri) {
+									loc.ranges.push(range);
+									found = true;
+									break;
+								}
+							}
+							if (!found) {
+								w.locations.push({uri: fileFromUri(doc.uri), ranges: [range]});
+								found = true;
+							}
 							break;
 						}
 					}
@@ -271,7 +280,7 @@ export class ShipData {
 							name: v,
 							locations: [{
 								uri: fileFromUri(doc.uri),
-								range: range
+								ranges: [range]
 							}]
 						}
 						ret.push(var1);

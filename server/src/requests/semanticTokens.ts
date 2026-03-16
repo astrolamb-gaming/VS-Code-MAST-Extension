@@ -513,6 +513,7 @@ export class MastStateMachineLexer {
     private line: number = 0;
     private char: number = 0;
 	private expectSignalReference: boolean = false;
+	private activeLineStringDelimiter: string | null = null;
 	// When a line begins with a single '+' we expect a string to follow;
 	// after that string the next identifier should be treated as a label reference.
 	private expectPlusDirective: boolean = false;
@@ -884,6 +885,17 @@ export class MastStateMachineLexer {
 				text
 			};
 		}
+
+		// All-caps identifiers (with optional underscores/digits) are treated as constants
+		if (/^[A-Z][A-Z0-9_]+$/.test(text)) {
+			return {
+				type: 'builtInConstant',
+				line: startLine,
+				character: startChar,
+				length: text.length,
+				text
+			};
+		}
 		
 		if (keywords.includes(text)) {
 			return null; // Keywords are parsed but not emitted
@@ -1026,6 +1038,220 @@ export class MastStateMachineLexer {
 			length: text.length,
 			text
 		};
+	}
+
+	/**
+	 * Treat all MAST strings as f-strings.
+	 * Splits string ranges around { ... } expressions:
+	 * - string segments are emitted as `string`
+	 * - expression content is emitted as `variable`
+	 * Handles {{ and }} as escaped braces (remain part of string text).
+	 */
+	private scanFStringInterpolations(stringStartPos: number, stringEndPos: number): TokenInfo[] {
+		const tokens: TokenInfo[] = [];
+		let segmentStart = stringStartPos;
+		let i = stringStartPos;
+		while (i < stringEndPos) {
+			if (this.text[i] === '{') {
+				// {{ is an escaped brace, skip both
+				if (i + 1 < stringEndPos && this.text[i + 1] === '{') {
+					i += 2;
+					continue;
+				}
+
+				// Emit string segment before interpolation
+				if (i > segmentStart) {
+					const strPos = this.doc.positionAt(segmentStart);
+					tokens.push({
+						type: 'string',
+						line: strPos.line,
+						character: strPos.character,
+						length: i - segmentStart,
+						text: this.text.substring(segmentStart, i)
+					});
+				}
+
+				// Otherwise it's an interpolation expression
+				const exprStart = i + 1;
+				let depth = 1;
+				let j = exprStart;
+				let quote: string | null = null;
+				let escaped = false;
+				while (j < stringEndPos && depth > 0) {
+					const ch = this.text[j];
+
+					if (quote !== null) {
+						if (escaped) {
+							escaped = false;
+						} else if (ch === '\\') {
+							escaped = true;
+						} else if (ch === quote) {
+							quote = null;
+						}
+					} else {
+						if (ch === '"' || ch === "'") {
+							quote = ch;
+						} else if (ch === '{') {
+							depth++;
+						} else if (ch === '}') {
+							depth--;
+						}
+					}
+					if (depth > 0) j++;
+					else break;
+				}
+				// text[exprStart..j] is the expression content
+				const exprLen = j - exprStart;
+				if (exprLen > 0) {
+					tokens.push(...this.tokenizeInterpolationExpression(exprStart, j));
+				}
+				i = j + 1; // skip past '}'
+				segmentStart = i;
+			} else {
+				// }} is an escaped brace, keep as string text
+				if (this.text[i] === '}' && i + 1 < stringEndPos && this.text[i + 1] === '}') {
+					i += 2;
+					continue;
+				}
+				i++;
+			}
+		}
+
+		// Emit trailing string segment
+		if (stringEndPos > segmentStart) {
+			const strPos = this.doc.positionAt(segmentStart);
+			tokens.push({
+				type: 'string',
+				line: strPos.line,
+				character: strPos.character,
+				length: stringEndPos - segmentStart,
+				text: this.text.substring(segmentStart, stringEndPos)
+			});
+		}
+
+		return tokens;
+	}
+
+	/**
+	 * Tokenizes expression content inside a single f-string interpolation { ... }.
+	 * - quoted literals are emitted as `string`
+	 * - everything else is emitted as `variable`
+	 */
+	private tokenizeInterpolationExpression(exprStart: number, exprEnd: number): TokenInfo[] {
+		const tokens: TokenInfo[] = [];
+		let pos = exprStart;
+		const keywords = new Set([
+			'def', 'async', 'await', 'shared', 'import', 'if', 'elif', 'else', 'match', 'case', 'yield',
+			'return', 'break', 'continue', 'pass', 'raise', 'try', 'except', 'finally', 'with', 'class',
+			'while', 'for', 'in', 'is', 'and', 'or', 'not', 'lambda', 'on', 'change', 'signal', 'jump'
+		]);
+		const builtInConstants = new Set(['True', 'False', 'None']);
+
+		while (pos < exprEnd) {
+			const ch = this.text[pos];
+
+			// Whitespace
+			if (ch === ' ' || ch === '\t' || ch === '\r' || ch === '\n') {
+				pos++;
+				continue;
+			}
+
+			// String literal
+			if (ch === '"' || ch === "'") {
+				const start = pos;
+				const quote = ch;
+				pos++;
+				let escaped = false;
+				while (pos < exprEnd) {
+					const c = this.text[pos];
+					if (escaped) {
+						escaped = false;
+						pos++;
+						continue;
+					}
+					if (c === '\\') {
+						escaped = true;
+						pos++;
+						continue;
+					}
+					if (c === quote) {
+						pos++;
+						break;
+					}
+					pos++;
+				}
+				const p = this.doc.positionAt(start);
+				tokens.push({ type: 'string', line: p.line, character: p.character, length: pos - start, text: this.text.substring(start, pos) });
+				continue;
+			}
+
+			// Number literal
+			if (this.isDigit(ch)) {
+				const start = pos;
+				if (this.text[pos] === '0' && pos + 1 < exprEnd && (this.text[pos + 1] === 'x' || this.text[pos + 1] === 'X')) {
+					pos += 2;
+					while (pos < exprEnd && /[0-9a-fA-F_]/.test(this.text[pos])) pos++;
+				} else if (this.text[pos] === '0' && pos + 1 < exprEnd && (this.text[pos + 1] === 'b' || this.text[pos + 1] === 'B')) {
+					pos += 2;
+					while (pos < exprEnd && /[01_]/.test(this.text[pos])) pos++;
+				} else if (this.text[pos] === '0' && pos + 1 < exprEnd && (this.text[pos + 1] === 'o' || this.text[pos + 1] === 'O')) {
+					pos += 2;
+					while (pos < exprEnd && /[0-7_]/.test(this.text[pos])) pos++;
+				} else {
+					while (pos < exprEnd && /[0-9_]/.test(this.text[pos])) pos++;
+					if (pos < exprEnd && this.text[pos] === '.' && pos + 1 < exprEnd && /[0-9]/.test(this.text[pos + 1])) {
+						pos++;
+						while (pos < exprEnd && /[0-9_]/.test(this.text[pos])) pos++;
+					}
+				}
+				const p = this.doc.positionAt(start);
+				tokens.push({ type: 'number', line: p.line, character: p.character, length: pos - start, text: this.text.substring(start, pos) });
+				continue;
+			}
+
+			// Identifier / keyword / constant / function reference
+			if (this.isIdentifierStart(ch)) {
+				const start = pos;
+				pos++;
+				while (pos < exprEnd && this.isIdentifierPart(this.text[pos])) pos++;
+				const ident = this.text.substring(start, pos);
+
+				let tokenType: TokenInfo['type'] = 'variable';
+				let modifier: TokenInfo['modifier'] | undefined = undefined;
+				if (builtInConstants.has(ident) || /^[A-Z][A-Z0-9_]+$/.test(ident)) {
+					tokenType = 'builtInConstant';
+				} else if (keywords.has(ident)) {
+					tokenType = 'keyword';
+				} else {
+					let check = pos;
+					while (check < exprEnd && /[\t ]/.test(this.text[check])) check++;
+					if (check < exprEnd && this.text[check] === '(') {
+						tokenType = 'function';
+						modifier = 'reference';
+					}
+				}
+
+				const p = this.doc.positionAt(start);
+				tokens.push({ type: tokenType, modifier, line: p.line, character: p.character, length: pos - start, text: ident });
+				continue;
+			}
+
+			// Operator / punctuation
+			const start = pos;
+			const two = pos + 1 < exprEnd ? this.text.substring(pos, pos + 2) : '';
+			const twoOps = new Set(['==', '!=', '<=', '>=', '<<', '>>', '**', '->']);
+			if (twoOps.has(two)) {
+				pos += 2;
+			} else {
+				pos += 1;
+			}
+			if (/[+\-*/%&|^~<>=()\[\],.:]/.test(this.text[start])) {
+				const p = this.doc.positionAt(start);
+				tokens.push({ type: this.text.substring(start, pos) === '->' ? 'keyword' : 'operator', line: p.line, character: p.character, length: pos - start, text: this.text.substring(start, pos) });
+			}
+		}
+
+		return tokens;
 	}
 
 	private scanLabel(): TokenInfo[] {
@@ -1211,10 +1437,9 @@ export class MastStateMachineLexer {
 		}
 		this.skipWhitespace();
 		if (this.text[this.pos] === '"' || this.text[this.pos] === "'") {
-			const str = this.scanString(this.text[this.pos]);
-			// if (str) {
-			// 	tokenList.push(str);
-			// }
+			const strStart = this.pos;
+			this.scanString(this.text[this.pos]);
+			tokenList.push(...this.scanFStringInterpolations(strStart, this.pos));
 		}
 		this.skipWhitespace();
 		if (this.text[this.pos] === ":") {
@@ -1271,21 +1496,115 @@ export class MastStateMachineLexer {
 						}
 						continue;
 					}
-					// } else {
-					// 	const id = this.scanIdentifierOrKeyword();
-					// 	if (id) {
-					// 		id.type = 'yaml.key'
-					// 		this.tokens.push(id);
-					// 	}
-					// 	continue;
-					// }
+
+					// Tokenize the current YAML line
+					const lineStart = this.pos;
+					while (this.pos < this.text.length && this.text[this.pos] !== '\n') {
+						this.advance();
+					}
+					const lineEnd = this.pos;
+					const lineText = this.text.substring(lineStart, lineEnd);
+
+					if (lineText.trim().length > 0) {
+						const colonRel = lineText.indexOf(':');
+						if (colonRel > -1) {
+							const preColon = lineText.substring(0, colonRel);
+							const keyTrimmed = preColon.trim();
+							if (keyTrimmed.length > 0) {
+								const keyLeadingWs = preColon.length - preColon.trimStart().length;
+								const keyStart = lineStart + keyLeadingWs;
+								const keyPos = this.doc.positionAt(keyStart);
+								this.tokens.push({
+									type: 'yaml.key',
+									line: keyPos.line,
+									character: keyPos.character,
+									length: keyTrimmed.length,
+									text: keyTrimmed
+								});
+							}
+
+							let valueStartRel = colonRel + 1;
+							while (valueStartRel < lineText.length && /[\t ]/.test(lineText[valueStartRel])) {
+								valueStartRel++;
+							}
+							if (valueStartRel < lineText.length) {
+								const valueStart = lineStart + valueStartRel;
+								const valuePos = this.doc.positionAt(valueStart);
+								this.tokens.push({
+									type: 'yaml.value',
+									line: valuePos.line,
+									character: valuePos.character,
+									length: lineEnd - valueStart,
+									text: this.text.substring(valueStart, lineEnd)
+								});
+							}
+						} else {
+							const valuePos = this.doc.positionAt(lineStart);
+							this.tokens.push({
+								type: 'yaml.key',
+								line: valuePos.line,
+								character: valuePos.character,
+								length: lineEnd - lineStart,
+								text: lineText
+							});
+						}
+					}
+
+					if (this.pos < this.text.length && this.text[this.pos] === '\n') {
+						this.advance();
+					}
+					continue;
 				}
-				// otherwise skip current character
+				// Safety fallback when inside YAML and not at line start
 				this.advance();
 				continue;
 			}
 
 			const current = this.text[this.pos];
+
+			// If we are inside a multi-line delimiter-based string block (e.g. ^^^...^^^ or """..."""),
+			// treat each full line as f-string content until a closing delimiter is encountered.
+			if (this.activeLineStringDelimiter !== null && this.isLineStart()) {
+				const lineStart = this.pos;
+				let firstNonWs = this.pos;
+				while (firstNonWs < this.text.length && (this.text[firstNonWs] === ' ' || this.text[firstNonWs] === '\t')) {
+					firstNonWs++;
+				}
+
+				// Closing delimiter line: only the delimiter portion is string;
+				// tokenize the remainder of the line normally (e.g. trailing `if ...`).
+				const isCaretBlock = this.activeLineStringDelimiter === '^';
+				const caretCloseMatch = isCaretBlock ? this.text.substring(firstNonWs).match(/^(\^{3,})/) : null;
+				if ((isCaretBlock && caretCloseMatch !== null) || (!isCaretBlock && this.text.substring(firstNonWs).startsWith(this.activeLineStringDelimiter))) {
+					const closeLen = isCaretBlock ? caretCloseMatch![1].length : this.activeLineStringDelimiter.length;
+					const closeEnd = firstNonWs + closeLen;
+					this.advanceTo(closeEnd);
+					this.tokens.push(...this.scanFStringInterpolations(lineStart, this.pos));
+					this.activeLineStringDelimiter = null;
+
+					// Trailing content after a closing delimiter (e.g. `if ...`) is parsed as an expression
+					// so keywords/operators/constants get semantic tokens.
+					const trailingStart = this.pos;
+					let trailingEnd = this.pos;
+					while (trailingEnd < this.text.length && this.text[trailingEnd] !== '\n') {
+						trailingEnd++;
+					}
+					if (trailingEnd > trailingStart) {
+						this.tokens.push(...this.tokenizeInterpolationExpression(trailingStart, trailingEnd));
+						this.advanceTo(trailingEnd);
+					}
+					continue;
+				}
+
+				while (this.pos < this.text.length && this.text[this.pos] !== '\n') {
+					this.advance();
+				}
+				this.tokens.push(...this.scanFStringInterpolations(lineStart, this.pos));
+				if (this.pos < this.text.length && this.text[this.pos] === '\n') {
+					this.advance();
+				}
+				continue;
+			}
 
 			// // when a plus directive is in effect, skip any whitespace or
 			// // optional bracketed metadata before the string itself.
@@ -1305,9 +1624,60 @@ export class MastStateMachineLexer {
 			// 		continue;
 			// 	}
 			// }
-			if (this.isLineStart() && (current === '"' || current === "'" || current === '%')) {
-				this.scanLineStartString(); // Parse but don't emit
-				continue;
+			if (this.isLineStart() && (current === '"' || current === "'" || current === '%' || current === '^')) {
+				if (current === '"' || current === "'" || current === '^') {
+					let runLen = 0;
+					while (this.pos + runLen < this.text.length && this.text[this.pos + runLen] === current) {
+						runLen++;
+					}
+					if (runLen >= 3) {
+						const delimiter = current === '^' ? '^' : current.repeat(runLen);
+						const lineStart = this.pos;
+						const lineEnd = this.text.indexOf('\n', lineStart) === -1
+							? this.text.length
+							: this.text.indexOf('\n', lineStart);
+						let sameLineClose = -1;
+						let sameLineCloseLen = runLen;
+						if (current === '^') {
+							const rem = this.text.substring(lineStart + runLen, lineEnd);
+							const m = rem.match(/\^{3,}/);
+							if (m && m.index !== undefined) {
+								sameLineClose = lineStart + runLen + m.index;
+								sameLineCloseLen = m[0].length;
+							}
+						} else {
+							sameLineClose = this.text.indexOf(delimiter, lineStart + runLen);
+						}
+
+						// Inline delimited string: ^^^ ... ^^^ (or repeated quote delimiters)
+						if (sameLineClose !== -1 && sameLineClose < lineEnd) {
+							const strStart = this.pos;
+							this.advanceTo(sameLineClose + sameLineCloseLen);
+							this.tokens.push(...this.scanFStringInterpolations(strStart, this.pos));
+							continue;
+						}
+
+						// Multi-line block start: consume this line as string, then stay in block mode
+						const strStart = this.pos;
+						while (this.pos < this.text.length && this.text[this.pos] !== '\n') {
+							this.advance();
+						}
+						this.tokens.push(...this.scanFStringInterpolations(strStart, this.pos));
+						this.activeLineStringDelimiter = delimiter;
+						if (this.pos < this.text.length && this.text[this.pos] === '\n') {
+							this.advance();
+						}
+						continue;
+					}
+				}
+
+				// Standard line-start string (single-line)
+				if (current === '%' || current === '"' || current === "'") {
+					const strStart = this.pos;
+					this.scanLineStartString();
+					this.tokens.push(...this.scanFStringInterpolations(strStart, this.pos));
+					continue;
+				}
 			}
 
 			// Route label definitions take precedence over comments.  They
@@ -1446,7 +1816,9 @@ export class MastStateMachineLexer {
 				const next = this.text[this.pos + 1];
 				if (next === '"' || next === "'") {
 					this.advance(); // skip the 'f' prefix
-					this.scanString(next); // Parse but don't emit
+					const strStart = this.pos;
+					this.scanString(next); // Parse but don't emit outer string
+					this.tokens.push(...this.scanFStringInterpolations(strStart, this.pos));
 					continue;
 				}
 			}
@@ -1457,7 +1829,9 @@ export class MastStateMachineLexer {
 					this.expectPlusDirective = false;
 					this.expectPlusLabelReference = true;
 				}
-				this.scanString(current); // Parse but don't emit
+				const strStart = this.pos;
+				this.scanString(current); // Parse but don't emit outer string
+				this.tokens.push(...this.scanFStringInterpolations(strStart, this.pos));
 				continue;
 			}
 
@@ -1542,10 +1916,8 @@ export function buildSemanticTokens(tokens: TokenInfo[]): SemanticTokens {
 	return builder.build();
 }
 
-/**
- * Get semantic tokens for a document
- */
-export function getSemanticTokens(document: TextDocument): SemanticTokens {
+
+export function tokenizeDocument(document: TextDocument): TokenInfo[] {
 	// Use regex-based lexer (set to false to benchmark state machine)
 	const USE_REGEX_LEXER = document.uri.includes("gamemaster");
 	
@@ -1557,7 +1929,14 @@ export function getSemanticTokens(document: TextDocument): SemanticTokens {
 		const lexer = new MastStateMachineLexer(document);
 		tokens = lexer.tokenize();
 	}
-	
+	return tokens
+}
+
+/**
+ * Get semantic tokens for a document
+ */
+export function getSemanticTokens(document: TextDocument): SemanticTokens {
+	let tokens: TokenInfo[] = tokenizeDocument(document);
 	return buildSemanticTokens(tokens);
 }
 

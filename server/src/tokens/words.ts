@@ -7,6 +7,11 @@ import { getCurrentLineFromTextDocument } from '../requests/hover';
 import { showProgressBar } from '../server';
 import { fileFromUri } from '../fileFunctions';
 
+export interface WordFileLocation {
+	uri: string,
+	ranges: Range[]
+}
+
 export interface Word {
 	/**
 	 * The text of the Word
@@ -15,7 +20,7 @@ export interface Word {
 	/**
 	 * The location of the word
 	 */
-	locations: Location[]
+	locations: WordFileLocation[]
 }
 
 const ignore = [
@@ -32,6 +37,24 @@ const ignore = [
 	"shared",
 	"while"
 ]
+
+export function convertWordFileLocationToLocations(loc: WordFileLocation): Location[] {
+	let locs: Location[] = [];
+	for (const r of loc.ranges) {
+		locs.push({uri: loc.uri, range: r});
+	}
+	return locs;
+}
+
+export function convertWordsToLocations(words: Word[]): Location[] {
+	let locs: Location[] = [];
+	for (const w of words) {
+		for (const loc of w.locations) {
+			locs.push(...convertWordFileLocationToLocations(loc));
+		}
+	}
+	return locs;
+}
 
 
 export function parseWords(doc: TextDocument): Word[] {
@@ -50,7 +73,7 @@ export function parseWords(doc: TextDocument): Word[] {
 			let found = false;
 			for (const w of ret) {
 				if (w.name === v) {
-					w.locations.push({uri: fileFromUri(doc.uri), range: range});
+					w.locations.push({uri: fileFromUri(doc.uri), ranges: [range]});
 					found = true;
 					break;
 				}
@@ -60,7 +83,7 @@ export function parseWords(doc: TextDocument): Word[] {
 					name: v,
 					locations: [{
 						uri: fileFromUri(doc.uri),
-						range: range
+						ranges: [range]
 					}]
 				}
 				ret.push(var1);

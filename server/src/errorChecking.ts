@@ -2,7 +2,7 @@ import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 import { Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, integer } from 'vscode-languageserver/node';
 import {ErrorInstance, hasDiagnosticRelatedInformationCapability} from './server';
 import { debug } from 'console';
-import { isInComment, isInString, isInYaml, replaceRegexMatchWithUnderscore, getComments, getStrings, isInSquareBrackets } from './tokens/comments';
+import { isInComment, isInString, replaceRegexMatchWithUnderscore, getComments, getStrings, isInSquareBrackets, getTokenTypeAtOffset } from './tokens/comments';
 import { getCache } from './cache';
 
 /**
@@ -40,6 +40,8 @@ export function checkLastLine(textDocument: TextDocument): Diagnostic | undefine
 // export function findDiagnostic(pattern: RegExp, textDocument: TextDocument, severity: DiagnosticSeverity, message: string, source: string, relatedInfo: string, maxProblems: integer, problems: integer): Diagnostic[] {
 export function findDiagnostic(e:ErrorInstance, textDocument: TextDocument, problems:integer, maxProblems:integer) {
 	let text = textDocument.getText();
+	const cache = getCache(textDocument.uri);
+	const tokens = cache.getMastFile(textDocument.uri)?.tokens || [];
 	const commentsStrings = getComments(textDocument).concat(getStrings(textDocument));
 	// TODO: This doesn't work right for weighted text in particular.
 	for (const c of commentsStrings) {
@@ -53,17 +55,20 @@ export function findDiagnostic(e:ErrorInstance, textDocument: TextDocument, prob
 		//debug(JSON.stringify(m));
 		
 		if (e.excludeFrom.includes("string")) {
-			if (isInString(textDocument,m.index)) {
+			let isInString = getTokenTypeAtOffset(textDocument, tokens, m.index) === "string";
+			if (isInString) {
 				continue;
 			}
 		}
 		if (e.excludeFrom.includes("metadata")) {
-			if (isInYaml(textDocument, m.index)) {
+			let isInYaml = getTokenTypeAtOffset(textDocument, tokens, m.index) === "yaml";
+			if (isInYaml) {
 				continue;
 			}
 		}
 		if (e.excludeFrom.includes("comment")) {
-			if (isInComment(textDocument, m.index)) {
+			let isInComment = getTokenTypeAtOffset(textDocument, tokens, m.index) === "comment";
+			if (isInComment) {
 				continue;
 			}
 		}
@@ -130,6 +135,8 @@ interface FunctionInstance {
  */
 export function checkFunctionSignatures(textDocument: TextDocument) : Diagnostic[] {
 	const text = textDocument.getText();
+	const cache = getCache(textDocument.uri);
+	const tokens = cache.getMastFile(textDocument.uri)?.tokens || [];
 	debug("Starting function signature checking")
 	const diagnostics : Diagnostic[] = [];
 
@@ -140,8 +147,11 @@ export function checkFunctionSignatures(textDocument: TextDocument) : Diagnostic
 	while (m = functionRegex.exec(text)) {
 		const functions: FunctionInstance[] = [];
 		const line = m[0];
-		if (isInComment(textDocument,m.index)) continue;
-		if (isInString(textDocument,m.index) && !isInYaml(textDocument,m.index)) continue;
+		let isInComment = getTokenTypeAtOffset(textDocument, tokens, m.index) === 'comment';
+		if (isInComment) continue;
+		let isInString = getTokenTypeAtOffset(textDocument, tokens, m.index) === 'string';
+		let isInYaml = getTokenTypeAtOffset(textDocument, tokens, m.index) === 'yaml';
+		if (isInString && !isInYaml) continue;
 		const functionName = line.match(singleFunc);
 		debug(functionName)
 		let end = line.lastIndexOf(")");

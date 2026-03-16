@@ -1,7 +1,7 @@
 import { debug } from 'console';
 import { Hover, integer, Location, MarkupContent, Position, TextDocumentPositionParams } from 'vscode-languageserver';
 import { Range, TextDocument } from 'vscode-languageserver-textdocument';
-import { CRange, isInComment, isInString } from '../tokens/comments';
+import { CRange, getTokenContextAtPosition, getTokenTypeAtPosition, isInComment, isInString } from '../tokens/comments';
 import { getCache } from '../cache';
 import { getArtemisGlobals } from '../artemisGlobals';
 import { getClassOfMethod, isClassMethod, isFunction } from '../tokens/tokens';
@@ -27,6 +27,12 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 	const before: string = text.getText().substring(startOfLine,pos);
 	
 	const cache = getCache(text.uri);
+	const tokens = cache.getMastFile(text.uri)?.tokens;
+	const tokenType = getTokenContextAtPosition(text, tokens || [], _pos.position).token?.type ?? "unknown";
+	const hover1: Hover = {
+		contents: "Token type: " + tokenType
+	}
+	return hover1;
 	
 	// const range: Range = {
 	// 	start: t.positionAt(m.index),

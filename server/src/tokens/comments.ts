@@ -4,6 +4,8 @@ import { integer } from 'vscode-languageserver';
 import exp = require('constants');
 import { fixFileName } from '../fileFunctions';
 import { debug } from 'console';
+import { Token } from './tokenBasedExtractor';
+import { getCache } from '../cache';
 
 
 /**
@@ -127,14 +129,118 @@ export function isInString(doc: TextDocument, loc:integer) : boolean {
 	return false;
 }
 
-export function isInYaml(doc: TextDocument, loc:integer): boolean {
-	let yamlRanges = getYamls(doc);
-	for (const r in yamlRanges) {
-		if (yamlRanges[r].start <= loc && yamlRanges[r].end >= loc) {
-			return true;
+// export function isInYaml(doc: TextDocument, loc:integer): boolean {
+// 	let yamlRanges = getYamls(doc);
+// 	for (const r in yamlRanges) {
+// 		if (yamlRanges[r].start <= loc && yamlRanges[r].end >= loc) {
+// 			return true;
+// 		}
+// 	}
+// 	return false;
+// }
+
+export type DocumentTokenType = 'yaml' | 'comment' | 'string' | 'square-bracket' | 'code';
+
+function mapSemanticTokenTypeToDocumentType(token: Token): DocumentTokenType {
+	if (token.type === 'comment' || token.type === 'codetag') return 'comment';
+	if (token.type === 'string' || token.type === 'stringOption') return 'string';
+	if (token.type.startsWith('yaml')) return 'yaml';
+	if (token.type === 'style-definition' || (token.type === 'operator' && (token.text === '[' || token.text === ']'))) return 'square-bracket';
+	return 'code';
+}
+
+/**
+ * Get the most specific token at a given character offset from a pre-tokenized list.
+ * If multiple tokens overlap, prefer the smallest token range.
+ */
+export function getTokenAtOffsetFromTokens(doc: TextDocument, tokens: Token[], offset: integer): Token | undefined {
+	if (tokens.length === 0) {
+		const cache = getCache(doc.uri);
+		tokens = cache.getMastFile(doc.uri)?.tokens || [];
+	}
+	let best: Token | undefined = undefined;
+	let bestLen = Number.MAX_SAFE_INTEGER;
+	for (const t of tokens) {
+		const start = doc.offsetAt({ line: t.line, character: t.character });
+		const end = start + t.length; // end-exclusive
+		if (offset >= start && offset < end) {
+			if (t.length < bestLen) {
+				best = t;
+				bestLen = t.length;
+			}
 		}
 	}
-	return false;
+	return best;
+}
+
+/**
+ * Determine the token category at an offset using ONLY tokenized output.
+ */
+export function getTokenTypeAtOffset(doc: TextDocument, tokens: Token[], offset: integer): DocumentTokenType {
+	if (tokens.length === 0) {
+		const cache = getCache(doc.uri);
+		tokens = cache.getMastFile(doc.uri)?.tokens || [];
+	}
+	const token = getTokenAtOffsetFromTokens(doc, tokens, offset);
+	if (!token) return 'code';
+	return mapSemanticTokenTypeToDocumentType(token);
+}
+
+/**
+ * Determine the token category at a line/character position using ONLY tokenized output.
+ */
+export function getTokenTypeAtPosition(doc: TextDocument, tokens: Token[], position: { line: integer, character: integer }): DocumentTokenType {
+	
+	if (tokens.length === 0) {
+		const cache = getCache(doc.uri);
+		tokens = cache.getMastFile(doc.uri)?.tokens || [];
+	}
+	return getTokenTypeAtOffset(doc, tokens, doc.offsetAt(position));
+}
+
+export function getTokenContextAtPosition(doc: TextDocument, tokens: Token[], position: { line: integer, character: integer }): {
+	type: DocumentTokenType,
+	inYaml: boolean,
+	inComment: boolean,
+	inString: boolean,
+	inSquareBrackets: boolean,
+	token?: Token
+} {
+	const offset = doc.offsetAt(position);
+	
+	if (tokens.length === 0) {
+		const cache = getCache(doc.uri);
+		tokens = cache.getMastFile(doc.uri)?.tokens || [];
+	}
+	const token = getTokenContextAtOffset(doc, tokens, offset);
+	return token;
+}
+/**
+ * Utility helper for callers that need all token-derived containment flags at once.
+ */
+export function getTokenContextAtOffset(doc: TextDocument, tokens: Token[], offset: integer): {
+	type: DocumentTokenType,
+	inYaml: boolean,
+	inComment: boolean,
+	inString: boolean,
+	inSquareBrackets: boolean,
+	token?: Token
+} {
+	const token = getTokenAtOffsetFromTokens(doc, tokens, offset);
+	const type = token ? mapSemanticTokenTypeToDocumentType(token) : 'code';
+
+	return {
+		type,
+		inYaml: type === 'yaml',
+		inComment: type === 'comment',
+		inString: type === 'string',
+		inSquareBrackets: type === 'square-bracket',
+		token
+	};
+}
+
+export function isTokenTypeAtOffset(doc: TextDocument, tokens: Token[], offset: integer, type: DocumentTokenType): boolean {
+	return getTokenTypeAtOffset(doc, tokens, offset) === type;
 }
 
 /**

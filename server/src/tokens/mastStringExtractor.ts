@@ -26,6 +26,19 @@ export function tokenizeMastFile(doc: TextDocument): Token[] {
 }
 
 /**
+ * Tokenize a slice of the given document between startOffset (inclusive)
+ * and endOffset (exclusive). The slice should begin at the start of a line
+ * (character 0) to simplify position mapping.
+ */
+export function tokenizeMastSlice(doc: TextDocument, sliceStartOffset: number, sliceEndOffset: number): Token[] {
+	const baseLine = doc.positionAt(sliceStartOffset).line;
+	const text = doc.getText().substring(sliceStartOffset, sliceEndOffset);
+	const tempDoc = TextDocument.create(doc.uri, 'mast', doc.version, text);
+	const tokens = tokenizeMastFile(tempDoc);
+	return tokens.map(t => ({ ...t, line: t.line + baseLine }));
+}
+
+/**
  * Create an extractor with optional pre-computed tokens
  */
 function createExtractor(doc: TextDocument, tokens?: Token[]): TokenBasedExtractor {

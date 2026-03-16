@@ -2,7 +2,7 @@ import { debug } from 'console';
 import * as path from 'path';
 import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
 import { getCache } from './../cache';
-import { parseComments, parseStrings, parseYamls, isInString, isInComment, parseSquareBrackets, isInYaml, getStrings } from './../tokens/comments';
+import { parseComments, parseStrings, parseYamls, isInString, isInComment, parseSquareBrackets, getStrings, getTokenTypeAtOffset } from './../tokens/comments';
 import { checkForDeprecatedFunctions, checkFunctionSignatures, checkLastLine, findDiagnostic } from './../errorChecking';
 import { checkLabels } from './../tokens/labels';
 import { ErrorInstance, getDocumentSettings, hasDiagnosticRelatedInformationCapability } from './../server';
@@ -149,6 +149,7 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 
 
 	const cache = getCache(textDocument.uri);
+	const tokens = cache.getMastFile(textDocument.uri)?.tokens;
 	await cache.awaitLoaded();
 	const folder = path.dirname(URI.parse(textDocument.uri).fsPath);
 	if (!exclude.includes(folder)) {
@@ -167,10 +168,10 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	}
 	// These all don't happen in cache.updateFileInfo() above, since this data is stored separately
 	// TODO: This probably SHOULD be on a per-doc basis
-	let squareBrackets = parseSquareBrackets(textDocument);
-	let strs = parseStrings(textDocument);
-	let comments = parseComments(textDocument);
-	let yamls = parseYamls(textDocument);
+	// let squareBrackets = parseSquareBrackets(textDocument);
+	// let strs = parseStrings(textDocument);
+	// let comments = parseComments(textDocument);
+	// let yamls = parseYamls(textDocument);
 
 	
 
@@ -350,9 +351,10 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	diagnostics = diagnostics.filter((d)=>{
 		const start = textDocument.offsetAt(d.range.start);
 		const end = textDocument.offsetAt(d.range.end);
-		const inStr = !isInString(textDocument, start) || !isInString(textDocument,end);
-		const inCom = !isInComment(textDocument,start) || !isInComment(textDocument,end);
-		const isInMeta = !isInYaml(textDocument, start) || !isInYaml(textDocument,end);
+		const inStr = getTokenTypeAtOffset(textDocument, tokens, start) === 'string'// || getTokenTypeAtOffset(textDocument, end) === 'string';
+		const inCom = getTokenTypeAtOffset(textDocument, tokens, start) === 'comment'// || getTokenTypeAtOffset(textDocument, end) === 'comment';
+		const isInMeta = getTokenTypeAtOffset(textDocument, tokens, start) === 'yaml'// || getTokenTypeAtOffset(textDocument, end) === 'metadata';
+		// const isInMeta = !isInYaml(textDocument, start) || !isInYaml(textDocument,end);
 		return inStr || inCom || isInMeta;
 	})
 
@@ -387,8 +389,10 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	const functionRegex = /(\.)?(\w+)\(/g;
 	// Check for functions that don't exist
 	while (m = functionRegex.exec(textDocument.getText())) {
-		if (isInComment(textDocument,m.index)) continue;
-		if (isInString(textDocument,m.index)) continue;
+		let isInComment = getTokenTypeAtOffset(textDocument, tokens, m.index) === 'comment';
+		let isInString = getTokenTypeAtOffset(textDocument, tokens, m.index) === 'string';
+		if (isInComment) continue;
+		if (isInString) continue;
 		let offset = 0;
 		if (m[1] === ".") {
 			// Is a class method

@@ -3,9 +3,10 @@ import { getCache } from './../cache';
 import { debug } from 'console';
 import { getCurrentLineFromTextDocument, getHoveredSymbol } from './hover';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { isInComment, isInString, isInYaml } from './../tokens/comments';
+import { getTokenTypeAtPosition, isInComment, isInString } from './../tokens/comments';
 import { fileFromUri } from '../fileFunctions';
 import path = require('path');
+import { convertWordsToLocations } from '../tokens/words';
 
 export async function onReferences(doc: TextDocument, params:ReferenceParams): Promise<Location[] | undefined> {
 	debug("Trying to find word...");
@@ -16,6 +17,8 @@ export async function onReferences(doc: TextDocument, params:ReferenceParams): P
 		debug("Undefined doc..."); 
 		return locs;
 	}
+	const cache = getCache(doc.uri);
+	const tokens = cache.getMastFile(doc.uri)?.tokens || [];
 
 	// If it's in a comment, or in a string but not in metadata, then return empty
 	if (isInComment(doc, doc.offsetAt(pos))) return locs;
@@ -36,28 +39,28 @@ export async function onReferences(doc: TextDocument, params:ReferenceParams): P
 	let blob_keys = getCache(doc.uri).getBlobKeys();
 	for (const k of blob_keys) {
 		if (k.name === word) {
-			locs = locs.concat(k.locations);
+			locs = convertWordsToLocations([k]);
 		}
 	}
 
 	let inventory_keys = getCache(doc.uri).getKeys(doc.uri);
 	for (const k of inventory_keys) {
 		if (k.name === word) {
-			locs = locs.concat(k.locations);
+			locs = convertWordsToLocations([k]);
 		}
 	}
 
 	let links = getCache(doc.uri).getLinks();
 	for (const l of links) {
 		if (l.name === word) {
-			locs = locs.concat(l.locations);
+			locs = convertWordsToLocations([l]);
 		}
 	}
 
 	let roles = getCache(doc.uri).getRoles(doc.uri);
 	for (const r of roles) {
 		if (r.name === word) {
-			locs = locs.concat(r.locations);
+			locs = convertWordsToLocations([r]);
 		}
 	}
 
@@ -69,7 +72,9 @@ export async function onReferences(doc: TextDocument, params:ReferenceParams): P
 
 	// }
 
-	if (isInString(doc,doc.offsetAt(pos)) && !isInYaml(doc,doc.offsetAt(pos))) return locs;
+	const isInYaml = getTokenTypeAtPosition(doc, [], pos) === 'yaml';
+	const isInString = getTokenTypeAtPosition(doc, [], pos) === 'string';
+	if (isInString && !isInYaml) return locs;
 
 	// Now we'll check for any instance where it COULD be a function name. Because Python.
 	let func = getCache(doc.uri).getMethod(word);

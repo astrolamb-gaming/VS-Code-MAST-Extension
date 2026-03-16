@@ -10,7 +10,7 @@ import { fixFileName } from '../fileFunctions';
 import { Word, parseWords } from '../tokens/words';
 import { parseSignalsInFile, SignalInfo } from '../tokens/signals';
 import { CRange, getMatchesForRegex, replaceRegexMatchWithUnderscore } from '../tokens/comments';
-import { getBlobKeysForFile, getInventoryKeysForFile, getLinksForFile, getRolesForFile } from '../tokens/roles';
+// legacy role/blob/inventory/link scanners replaced by token-based extractors
 import { extractBlobKeysFromPythonFile, extractInventoryKeysFromPythonFile, extractLinksFromPythonFile, extractRolesFromPythonFile, extractSignalsFromPythonFile, tokenizePythonFile } from '../tokens/pythonStringExtractor';
 import { PythonLexer } from '../data/pythonLexer';
 

@@ -4,7 +4,7 @@ import { buildLabelDocs, getLabelMetadataKeys, getLabelsAsCompletionItems, getMa
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { asClasses, replaceNames } from './../data';
 import { getRouteLabelVars } from './../tokens/routeLabels';
-import { isInComment, isInString, isInYaml, isTextInBracket, replaceRegexMatchWithUnderscore } from './../tokens/comments';
+import { getTokenTypeAtPosition, isTextInBracket, replaceRegexMatchWithUnderscore } from './../tokens/comments';
 import { getCache, MissionCache } from './../cache';
 import path = require('path');
 import { fixFileName, getFilesInDir } from './../fileFunctions';
@@ -28,6 +28,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// return buildFaction("kra","Kralien_Set");
 	// debug("Staring onCompletion");
 	const cache = getCache(text.uri);
+	const tokens = cache.getMastFile(text.uri)?.tokens || [];
 	// return getGlobals().artFiles;
 	
 	// This updates the file's info with any new info from other files.
@@ -146,10 +147,12 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	
 	//debug("" + startOfLine as string);
 	//
-	
+	const isInString = getTokenTypeAtPosition(text, [], _textDocumentPosition.position) === 'string';
+	const isInSquareBrackets = getTokenTypeAtPosition(text, [], _textDocumentPosition.position) === 'square-bracket';
 
 	// If we're inside a comment or a string, we don't want autocompletion.
-	if (isInComment(text,pos)) {
+	const isInComment = getTokenTypeAtPosition(text, [], _textDocumentPosition.position) === 'comment';
+	if (isInComment) {
 		if (iStr.endsWith("#")) {
 			const regions = [
 				"region",
@@ -168,7 +171,8 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		return ci;
 	}
 	
-	if (isInYaml(text,pos)) {
+	const isInYaml = getTokenTypeAtPosition(text, [], _textDocumentPosition.position) === 'yaml';
+	if (isInYaml) {
 		debug("Is in Yaml")
 		ci = ci.concat(cache.getCompletions());
 		return ci;
@@ -223,7 +227,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// debug(blobStr)
 	// Check if there's an odd number of quotes, if it starts with quotes, or is within a string
 	// TODO: this doesn't account for f-strings....
-	if (countMatches(iStr,/[\"']/g) % 2 !== 0 || iStr.endsWith("\"") || iStr.endsWith("'") || isInString(text,pos)) {
+	if (countMatches(iStr,/[\"']/g) % 2 !== 0 || iStr.endsWith("\"") || iStr.endsWith("'") || isInString) {
 		debug("Is in string (probably)")
 		// if (blobStr.endsWith("signal_emit(")) {
 		if (func === "signal_emit") {

@@ -53,7 +53,7 @@ import { getCache } from './cache';
 import { onReferences } from './requests/references';
 import { onRenameRequest } from './requests/renameSymbol';
 import { getWordRangeAtPosition } from './tokens/words';
-import { getSemanticTokens, TOKEN_TYPES, TOKEN_MODIFIERS, getEmptySemanticTokens } from './requests/semanticTokens';
+import { getSemanticTokens, TOKEN_TYPES, TOKEN_MODIFIERS, getEmptySemanticTokens, tokenizeDocument, buildSemanticTokens } from './requests/semanticTokens';
 import { getSemanticTokensCache } from './requests/semanticTokensCache';
 
 // Create a connection for the server, using Node's IPC as a transport.
@@ -775,8 +775,13 @@ connection.languages.semanticTokens.on((params: SemanticTokensParams) => {
 		}
 
 		// Compute tokens and cache result
-		const tokens = getSemanticTokens(document);
-		cache.set(params.textDocument.uri, document.version, tokens);
+		const allTokens = tokenizeDocument(document);
+		// filter out strings because they're weird in mast sometimes and I don't want to take too much time
+		// figuring out how to handle them properly in the semantic tokens. This is a temporary solution.
+		const filteredTokens = allTokens.filter(t => t.type !== "string");
+		const tokens = buildSemanticTokens(filteredTokens);
+
+		cache.set(params.textDocument.uri, document.version, buildSemanticTokens(allTokens));
 		return tokens;
 	} catch (e) {
 		debug(`Error computing semantic tokens: ${e}`);

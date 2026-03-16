@@ -44,7 +44,7 @@ function getRolesForRegEx(re: RegExp, doc:TextDocument) : Word[] {
 					let found = false;
 					for (const w of ret) {
 						if (w.name === v) {
-							w.locations.push({uri: fileFromUri(doc.uri), range: range});
+							w.locations.push({uri: fileFromUri(doc.uri), ranges: [range]});
 							found = true;
 							break;
 						}
@@ -54,7 +54,7 @@ function getRolesForRegEx(re: RegExp, doc:TextDocument) : Word[] {
 							name: v,
 							locations: [{
 								uri: fileFromUri(doc.uri),
-								range: range
+								ranges: [range]
 							}]
 						}
 						ret.push(var1);
@@ -124,6 +124,7 @@ export function getInventoryKeysForFile(doc:TextDocument):Word[] {
 	let regex:RegExp = /((((get|set|remove)_)?(shared_)?inventory_value)|(inventory_set))\([^,]*?,[ \t]*(?<val>([\"\']))([^\"\'\n\r]*)\k<val>,[ \t]*(.*)?\)/g;
 	let m: RegExpExecArray | null;
 	let ret: Word[]=[];
+	const fileUri = fileFromUri(doc.uri);
 	while (m = regex.exec(doc.getText())) {
 		if (m[9]!== undefined) {
 			let v = m[9];
@@ -134,8 +135,8 @@ export function getInventoryKeysForFile(doc:TextDocument):Word[] {
 				const range: Range = { start: doc.positionAt(start), end: doc.positionAt(end)}
 				let found = false;
 				for (const w of ret) {
-					if (w.name === v) {
-						w.locations.push({uri: fileFromUri(doc.uri), range: range});
+					if (w.name === v && w.locations[0].uri === fileUri) {
+						w.locations[0].ranges.push(range);
 						found = true;
 						break;
 					}
@@ -145,7 +146,7 @@ export function getInventoryKeysForFile(doc:TextDocument):Word[] {
 						name: v,
 						locations: [{
 							uri: fileFromUri(doc.uri),
-							range: range
+							ranges: [range]
 						}]
 					}
 					ret.push(var1);
@@ -175,7 +176,7 @@ export function getLinksForFile(doc:TextDocument): Word[] {
 				let found = false;
 				for (const w of ret) {
 					if (w.name === v) {
-						w.locations.push({uri: fileFromUri(doc.uri), range: range});
+						w.locations.push({uri: fileFromUri(doc.uri), ranges: [range]});
 						found = true;
 						break;
 					}
@@ -185,7 +186,7 @@ export function getLinksForFile(doc:TextDocument): Word[] {
 						name: v,
 						locations: [{
 							uri: fileFromUri(doc.uri),
-							range: range
+							ranges: [range]
 						}]
 					}
 					ret.push(var1);
@@ -205,8 +206,8 @@ export function getLinksForFile(doc:TextDocument): Word[] {
 				const range: Range = { start: doc.positionAt(start), end: doc.positionAt(end)}
 				let found = false;
 				for (const w of ret) {
-					if (w.name === v) {
-						w.locations.push({uri: fileFromUri(doc.uri), range: range});
+					if (w.name === v && w.locations[0].uri === fileFromUri(doc.uri)) {
+						w.locations[0].ranges.push(range);
 						found = true;
 						break;
 					}
@@ -216,7 +217,7 @@ export function getLinksForFile(doc:TextDocument): Word[] {
 						name: v,
 						locations: [{
 							uri: fileFromUri(doc.uri),
-							range: range
+							ranges: [range]
 						}]
 					}
 					ret.push(var1);
@@ -242,7 +243,7 @@ export function getBlobKeysForFile(doc:TextDocument) {
 			let found = false;
 			for (const w of ret) {
 				if (w.name === v) {
-					w.locations.push({uri: fileFromUri(doc.uri), range: range});
+					w.locations.push({uri: fileFromUri(doc.uri), ranges: [range]});
 					found = true;
 					break;
 				}
@@ -252,7 +253,7 @@ export function getBlobKeysForFile(doc:TextDocument) {
 					name: v,
 					locations: [{
 						uri: fileFromUri(doc.uri),
-						range: range
+						ranges: [range]
 					}]
 				}
 				ret.push(var1);
@@ -269,7 +270,7 @@ export function getBlobKeysForFile(doc:TextDocument) {
 			let found = false;
 			for (const w of ret) {
 				if (w.name === v) {
-					w.locations.push({uri: fileFromUri(doc.uri), range: range});
+					w.locations.push({uri: fileFromUri(doc.uri), ranges: [range]});
 					found = true;
 					break;
 				}
@@ -279,7 +280,7 @@ export function getBlobKeysForFile(doc:TextDocument) {
 					name: v,
 					locations: [{
 						uri: fileFromUri(doc.uri),
-						range: range
+						ranges: [range]
 					}]
 				}
 				ret.push(var1);
