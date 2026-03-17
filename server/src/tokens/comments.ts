@@ -14,48 +14,48 @@ import { getCache } from '../cache';
  * 		When switching to another tab, the cache doesn't update
  */
 
-const commentCache: Map<string,CRange[]> = new Map();
+// const commentCache: Map<string,CRange[]> = new Map();
 /**
  * Get all comments within the specified {@link TextDocument TextDocument}.
  * @param doc The {@link TextDocument TextDocument}
  * @returns An array of {@link CRange CRange}
  */
-export function getComments(doc: TextDocument): CRange[] {
-	// for (const f of commentCache.keys()) {
-	// 	debug(f);
-	// }
-	let comments = commentCache.get(fixFileName(doc.uri));
-	if (comments === undefined) {
-		comments = parseComments(doc);
-	}
-	return comments;
-}
+// export function getComments(doc: TextDocument): CRange[] {
+// 	// for (const f of commentCache.keys()) {
+// 	// 	debug(f);
+// 	// }
+// 	let comments = commentCache.get(fixFileName(doc.uri));
+// 	if (comments === undefined) {
+// 		comments = parseComments(doc);
+// 	}
+// 	return comments;
+// }
 const stringCache: Map<string,CRange[]> = new Map();
 /**
  * Get all strings within the specified {@link TextDocument TextDocument}.
  * @param doc The {@link TextDocument TextDocument}
  * @returns An array of {@link CRange CRange}
  */
-export function getStrings(doc: TextDocument): CRange[] {
-	let strings = stringCache.get(fixFileName(doc.uri));
-	if (strings === undefined) {
-		strings = parseStrings(doc);
-	}
-	return strings;
-}
-const yamlCache: Map<string,CRange[]> = new Map();
+// export function getStrings(doc: TextDocument): CRange[] {
+// 	let strings = stringCache.get(fixFileName(doc.uri));
+// 	if (strings === undefined) {
+// 		strings = parseStrings(doc);
+// 	}
+// 	return strings;
+// }
+// const yamlCache: Map<string,CRange[]> = new Map();
 /**
  * Get all metadata within the specified {@link TextDocument TextDocument}.
  * @param doc The {@link TextDocument TextDocument}
  * @returns An array of {@link CRange CRange}
  */
-export function getYamls(doc: TextDocument): CRange[] {
-	let yamls = yamlCache.get(fixFileName(doc.uri));
-	if (yamls === undefined) {
-		yamls = parseYamls(doc);
-	}
-	return yamls;
-}
+// export function getYamls(doc: TextDocument): CRange[] {
+// 	let yamls = yamlCache.get(fixFileName(doc.uri));
+// 	if (yamls === undefined) {
+// 		yamls = parseYamls(doc);
+// 	}
+// 	return yamls;
+// }
 const squareBracketCache: Map<string,CRange[]> = new Map();
 /**
  * Get all square brackets within the specified {@link TextDocument TextDocument}.
@@ -75,7 +75,8 @@ export interface CRange {
 	end: integer
 }
 export function isInComment(doc: TextDocument, loc:integer):boolean {
-	let commentRanges = getComments(doc);
+	return getTokenTypeAtOffset(doc, [], loc) === "comment";
+	let commentRanges: CRange[] = []//getComments(doc);
 	for (const r in commentRanges) {
 		if (commentRanges[r].start <= loc && commentRanges[r].end >= loc) {
 			return true;
@@ -120,7 +121,8 @@ export function isInSquareBrackets(loc:integer): boolean {
 }
 
 export function isInString(doc: TextDocument, loc:integer) : boolean {
-	let stringRanges = getStrings(doc);
+	return getTokenTypeAtOffset(doc, [], loc) === "string";
+	let stringRanges: CRange[] = []// = getStrings(doc);
 	for (const r in stringRanges) {
 		if (stringRanges[r].start <= loc && stringRanges[r].end >= loc) {
 			return true;
@@ -139,14 +141,12 @@ export function isInString(doc: TextDocument, loc:integer) : boolean {
 // 	return false;
 // }
 
-export type DocumentTokenType = 'yaml' | 'comment' | 'string' | 'square-bracket' | 'code';
-
-function mapSemanticTokenTypeToDocumentType(token: Token): DocumentTokenType {
+function mapSemanticTokenTypeToDocumentType(token: Token): string {
 	if (token.type === 'comment' || token.type === 'codetag') return 'comment';
 	if (token.type === 'string' || token.type === 'stringOption') return 'string';
-	if (token.type.startsWith('yaml')) return 'yaml';
+	if (token.type.includes('yaml')) return 'yaml';
 	if (token.type === 'style-definition' || (token.type === 'operator' && (token.text === '[' || token.text === ']'))) return 'square-bracket';
-	return 'code';
+	return token.type;
 }
 
 /**
@@ -176,7 +176,7 @@ export function getTokenAtOffsetFromTokens(doc: TextDocument, tokens: Token[], o
 /**
  * Determine the token category at an offset using ONLY tokenized output.
  */
-export function getTokenTypeAtOffset(doc: TextDocument, tokens: Token[], offset: integer): DocumentTokenType {
+export function getTokenTypeAtOffset(doc: TextDocument, tokens: Token[], offset: integer): string {
 	if (tokens.length === 0) {
 		const cache = getCache(doc.uri);
 		tokens = cache.getMastFile(doc.uri)?.tokens || [];
@@ -189,7 +189,7 @@ export function getTokenTypeAtOffset(doc: TextDocument, tokens: Token[], offset:
 /**
  * Determine the token category at a line/character position using ONLY tokenized output.
  */
-export function getTokenTypeAtPosition(doc: TextDocument, tokens: Token[], position: { line: integer, character: integer }): DocumentTokenType {
+export function getTokenTypeAtPosition(doc: TextDocument, tokens: Token[], position: { line: integer, character: integer }): string {
 	
 	if (tokens.length === 0) {
 		const cache = getCache(doc.uri);
@@ -199,7 +199,7 @@ export function getTokenTypeAtPosition(doc: TextDocument, tokens: Token[], posit
 }
 
 export function getTokenContextAtPosition(doc: TextDocument, tokens: Token[], position: { line: integer, character: integer }): {
-	type: DocumentTokenType,
+	type: string,
 	inYaml: boolean,
 	inComment: boolean,
 	inString: boolean,
@@ -219,7 +219,7 @@ export function getTokenContextAtPosition(doc: TextDocument, tokens: Token[], po
  * Utility helper for callers that need all token-derived containment flags at once.
  */
 export function getTokenContextAtOffset(doc: TextDocument, tokens: Token[], offset: integer): {
-	type: DocumentTokenType,
+	type: string,
 	inYaml: boolean,
 	inComment: boolean,
 	inString: boolean,
@@ -239,7 +239,7 @@ export function getTokenContextAtOffset(doc: TextDocument, tokens: Token[], offs
 	};
 }
 
-export function isTokenTypeAtOffset(doc: TextDocument, tokens: Token[], offset: integer, type: DocumentTokenType): boolean {
+export function isTokenTypeAtOffset(doc: TextDocument, tokens: Token[], offset: integer, type: string): boolean {
 	return getTokenTypeAtOffset(doc, tokens, offset) === type;
 }
 
@@ -259,7 +259,7 @@ export function isTokenTypeAtOffset(doc: TextDocument, tokens: Token[], offset: 
 export function parseComments(textDocument: TextDocument): CRange[] {
 	let text = textDocument.getText();
 	let strRng:CRange[] = [];
-	strRng = getStrings(textDocument);
+	// strRng = getStrings(textDocument);
 	let commentRanges: CRange[] = [];
 	let comment = /^[ \t]*(#.*)($|\n)/gm;
 	let comments = getMatchesForRegex(comment,text);
@@ -312,7 +312,7 @@ export function parseComments(textDocument: TextDocument): CRange[] {
 			// Do nothing, with new regex of #+...\#\n it will go to next # in line anyways, if it exists
 		}
 	}
-	commentCache.set(fixFileName(textDocument.uri), commentRanges);
+	// commentCache.set(fixFileName(textDocument.uri), commentRanges);
 	return commentRanges;
 }
 
@@ -327,7 +327,7 @@ export function parseYamls(textDocument: TextDocument) {
 	let yamls: CRange[] = [];
 	let yaml = /```[ \t]*.*?[ \t]*?```/gms;
 	yamls = getMatchesForRegex(yaml,text);
-	yamlCache.set(fixFileName(textDocument.uri),yamls);
+	// yamlCache.set(fixFileName(textDocument.uri),yamls);
 	return yamls;
 }
 

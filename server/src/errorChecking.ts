@@ -2,7 +2,7 @@ import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 import { Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, integer } from 'vscode-languageserver/node';
 import {ErrorInstance, hasDiagnosticRelatedInformationCapability} from './server';
 import { debug } from 'console';
-import { isInComment, isInString, replaceRegexMatchWithUnderscore, getComments, getStrings, isInSquareBrackets, getTokenTypeAtOffset } from './tokens/comments';
+import { isInComment, isInString, replaceRegexMatchWithUnderscore, isInSquareBrackets, getTokenTypeAtOffset } from './tokens/comments';
 import { getCache } from './cache';
 
 /**
@@ -42,11 +42,11 @@ export function findDiagnostic(e:ErrorInstance, textDocument: TextDocument, prob
 	let text = textDocument.getText();
 	const cache = getCache(textDocument.uri);
 	const tokens = cache.getMastFile(textDocument.uri)?.tokens || [];
-	const commentsStrings = getComments(textDocument).concat(getStrings(textDocument));
-	// TODO: This doesn't work right for weighted text in particular.
-	for (const c of commentsStrings) {
-		text = replaceRegexMatchWithUnderscore(text,c)
-	}
+	// const commentsStrings = getComments(textDocument).concat(getStrings(textDocument));
+	// // TODO: This doesn't work right for weighted text in particular.
+	// for (const c of commentsStrings) {
+	// 	text = replaceRegexMatchWithUnderscore(text,c)
+	// }
 	
 	
 	let m: RegExpExecArray | null;

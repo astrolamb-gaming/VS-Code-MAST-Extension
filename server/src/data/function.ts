@@ -358,14 +358,31 @@ export class Function implements IFunction {
 		// debug(functionDetails);
 		// debug(docs);
 		// debug(source);
+
+		const line = this.location.range.start.line + 1;
+		const col = this.location.range.start.character + 1;
+		let uri = this.location.uri; // should already be a URI string (file://...)
+		if (!uri.startsWith("file://")) {
+			uri = "file:///" + uri;
+		}
+		// debug(uri);
+
+		// Simple file link (works reliably)
+		// const fileLink = `[Open source](${uri})`;
+
+		// Attempt line/column deep link (client-dependent)
+		const locLink = `[Open Source](${uri}#L${line},${col})`;
+
+
 		const ret: MarkupContent = {
 			kind: MarkupKind.Markdown,
 			// value: "```javascript\n" + functionDetails + "\n```  \r\n" + docs + source
 			value:[
 				functionDetails,
 				docs,
+				locLink,
 				source
-			].join("\n")
+			].join("\n\n")
 			// value: functionDetails + "\n" + documentation + "\n\n" + source
 		}
 		// debug(ret.value);

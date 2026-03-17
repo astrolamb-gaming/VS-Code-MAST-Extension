@@ -2,7 +2,7 @@ import { debug } from 'console';
 import * as path from 'path';
 import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
 import { getCache } from './../cache';
-import { parseComments, parseStrings, parseYamls, isInString, isInComment, parseSquareBrackets, getStrings, getTokenTypeAtOffset } from './../tokens/comments';
+import { getTokenTypeAtOffset } from './../tokens/comments';
 import { checkForDeprecatedFunctions, checkFunctionSignatures, checkLastLine, findDiagnostic } from './../errorChecking';
 import { checkLabels } from './../tokens/labels';
 import { ErrorInstance, getDocumentSettings, hasDiagnosticRelatedInformationCapability } from './../server';
@@ -135,6 +135,10 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 
 	if (textDocument.languageId === "json") {
 		debug("THIS IS A JSON FILE");
+		return [];
+	}
+	if (textDocument.languageId === "yaml") {
+		debug("THIS IS A YAML FILE");
 		return [];
 	}
 	if (textDocument.languageId !== "mast") return[];

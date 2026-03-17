@@ -1,6 +1,6 @@
 import { integer, Location, Position, Range } from 'vscode-languageserver';
 import { fileFromUri, readFile } from '../fileFunctions';
-import { isInComment, isInString } from '../tokens/comments';
+import { getTokenContextAtPosition, getTokenTypeAtOffset, getTokenTypeAtPosition, isInComment, isInString } from '../tokens/comments';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
 import { getCurrentLineFromTextDocument, getHoveredSymbol, getHoveredWordRange } from './hover';
@@ -14,9 +14,19 @@ import { getCurrentArgumentNames } from './autocompletion';
 export async function onDefinition(doc:TextDocument,pos:Position): Promise<Location | undefined> {
 	// parseVariables(doc);
 	// return;
+	const cache = getCache(doc.uri);
+	const tokens = cache.getMastFile(doc.uri)?.tokens;
+	const tokenContext = getTokenContextAtPosition(doc, tokens || [], pos);
+	if (!tokenContext.token) {
+		debug("No token found at position");
+		return undefined;
+	}
+	const isInComment = tokenContext.inComment;
+	const isInString = tokenContext.inString;
+	
 	// First, let's check if it's in a comment or string
 	// TODO: Check if it's a styestring or blob string, in which case we should open the applicable file?
-	if(isInComment(doc,doc.offsetAt(pos)) || isInString(doc,doc.offsetAt(pos))) {
+	if(isInComment || isInString) {
 		debug("Is a comment, string, or metadata");
 		return undefined;
 	}
@@ -26,7 +36,8 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 	let hoveredLine = getCurrentLineFromTextDocument(pos, doc);
 	debug(hoveredLine);
 	const range = getHoveredWordRange(hoveredLine, pos.character);
-	const symbol = hoveredLine.substring(range.start,range.end);
+	// const symbol = hoveredLine.substring(range.start,range.end);
+	const symbol = tokenContext.token?.text || hoveredLine.substring(range.start,range.end);
 	debug(symbol);
 	// Now we determine what type of symbol it is.
 	// TODO: Expand on this.
@@ -36,10 +47,12 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 	// We're going to focus on just stuff within the current mission folder.
 
 	// First, let's check if it has a period in front of it
-	const s = hoveredLine.indexOf(symbol);
-	const icm = isClassMethod(hoveredLine,pos.character);
+	const s = tokenContext.token?.character || 0;//hoveredLine.indexOf(symbol);
+	// const icm = isClassMethod(hoveredLine,pos.character);
+	const icm = tokenContext.type === "method";
 	debug("Is class method: " + icm);
-	const isFunc = isFunction(hoveredLine,symbol);
+	// const isFunc = isFunction(hoveredLine,symbol);
+	const isFunc = tokenContext.type === "function" || icm
 	// Apparently the given position is based off of the last character
 	// if (s <= pos.character && pos.character <= s + symbol.length) {
 		if (icm) {

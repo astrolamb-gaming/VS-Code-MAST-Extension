@@ -2,7 +2,7 @@ import { debug } from 'console';
 import { Range, TextDocument } from 'vscode-languageserver-textdocument';
 import * as fs from 'fs';
 import { integer, Position } from 'vscode-languageserver';
-import { CRange, getComments, getStrings } from '../tokens/comments';
+import { CRange } from '../tokens/comments';
 import { getHoveredWordRange } from '../requests/hover';
 
 // export function getAllTokens(textDocument: TextDocument) {
@@ -73,7 +73,7 @@ function tokenizeDoc(doc: TextDocument) {
 	const tokens: Token[] = [];
 
 	// Start with just strings
-	const strings: CRange[] = getStrings(doc);
+	const strings: CRange[] = []//getStrings(doc);
 	for (const s of strings) {
 		const token: Token = {
 			type: TokenType.STRING,
@@ -85,7 +85,7 @@ function tokenizeDoc(doc: TextDocument) {
 	}
 
 	// Then we add comments
-	const comments: CRange[] = getComments(doc);
+	const comments: CRange[] = []//getComments(doc);
 	for (const c of comments) {
 		const token: Token = {
 			type: TokenType.COMMENT,

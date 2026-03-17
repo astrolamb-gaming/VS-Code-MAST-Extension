@@ -2,7 +2,7 @@ import { debug } from 'console';
 import { integer, Location, Position, Range } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { getCache } from '../cache';
-import { getComments, getStrings, isInComment, isInString } from './comments';
+import { isInComment, isInString } from './comments';
 import { getCurrentLineFromTextDocument } from '../requests/hover';
 import { showProgressBar } from '../server';
 import { fileFromUri } from '../fileFunctions';
@@ -63,7 +63,7 @@ export function parseWords(doc: TextDocument): Word[] {
 	const num = /(\d+)/;
 	const text = doc.getText();
 	let m: RegExpExecArray | null;
-	const strings = getStrings(doc).concat(getComments(doc));
+	// const strings = getStrings(doc).concat(getComments(doc));
 	while (m = variableRX.exec(text)) {
 		const v = m[1];
 		const start = m[0].indexOf(v) + m.index;

@@ -5,7 +5,6 @@ import { SemanticTokens, SemanticTokensBuilder, integer } from 'vscode-languages
 // compatibility/benchmarking but the state-machine lexer should avoid them
 // entirely.  We still need the CRange type for range bookkeeping.
 // the regex helpers are still required by MastLexer
-import { getComments, getStrings, getYamls } from '../tokens/comments';
 import { CRange } from '../tokens/comments';
 import { Token } from '../tokens/tokens';
 
@@ -20,17 +19,19 @@ export const TOKEN_TYPES = [
 	'string',            // 3
 	'comment',           // 4
 	'function',          // 5
-	'class',             // 6
-	'operator',          // 7
-	'number',            // 8
-	'route-label',       // 9
-	'media-label',       // 10
-	'resource-label',    // 11
-	'builtInConstant',   // 12
-	'stringOption',      // 13
-	'yaml.key',          // 14
-	'yaml.value',        // 15
-	'codetag',           // 16
+	'method',            // 6
+	'property',          // 7
+	'class',             // 8
+	'operator',          // 9
+	'number',            // 10
+	'route-label',       // 11
+	'media-label',       // 12
+	'resource-label',    // 13
+	'builtInConstant',   // 14
+	'stringOption',      // 15
+	'yaml.key',          // 16
+	'yaml.value',        // 17
+	'codetag',           // 18
 	'style-definition',
 	'comms.button'
 ] as const;
@@ -68,9 +69,9 @@ export class MastLexer {
 		this.doc = document;
 		this.text = document.getText();
 		// MastLexer continues to use regex helpers; keep original initialization
-		this.commentRanges = getComments(document);
-		this.stringRanges = getStrings(document);
-		this.yamlRanges = getYamls(document);
+		this.commentRanges = []//getComments(document);
+		this.stringRanges = []//getStrings(document);
+		this.yamlRanges = []//getYamls(document);
 	}
 
 	/**
@@ -729,6 +730,99 @@ export class MastStateMachineLexer {
 		return /\d/.test(char);
 	}
 
+	private isHexDigit(char: string): boolean {
+		return /[0-9a-fA-F]/.test(char);
+	}
+
+	// Treat #RGB, #RGBA, #RRGGBB, #RRGGBBAA as YAML value color literals,
+	// not comment starts.
+	private isYamlColorCodeAt(lineText: string, hashIndex: number): boolean {
+		if (lineText[hashIndex] !== '#') {
+			return false;
+		}
+
+		const prev = hashIndex > 0 ? lineText[hashIndex - 1] : ' ';
+		if (prev !== ' ' && prev !== '\t' && prev !== ':' && prev !== '[' && prev !== ',') {
+			return false;
+		}
+
+		for (const len of [3, 4, 6, 8]) {
+			const end = hashIndex + 1 + len;
+			if (end > lineText.length) {
+				continue;
+			}
+
+			let allHex = true;
+			for (let i = hashIndex + 1; i < end; i++) {
+				if (!this.isHexDigit(lineText[i])) {
+					allHex = false;
+					break;
+				}
+			}
+			if (!allHex) {
+				continue;
+			}
+
+			if (end < lineText.length && this.isHexDigit(lineText[end])) {
+				continue;
+			}
+
+			return true;
+		}
+
+		return false;
+	}
+
+	private findYamlCommentStart(lineText: string, startAt: number = 0): number {
+		let inSingleQuote = false;
+		let inDoubleQuote = false;
+		let escaped = false;
+
+		for (let i = startAt; i < lineText.length; i++) {
+			const ch = lineText[i];
+
+			if (inDoubleQuote) {
+				if (escaped) {
+					escaped = false;
+					continue;
+				}
+				if (ch === '\\') {
+					escaped = true;
+					continue;
+				}
+				if (ch === '"') {
+					inDoubleQuote = false;
+				}
+				continue;
+			}
+
+			if (inSingleQuote) {
+				if (ch === "'") {
+					inSingleQuote = false;
+				}
+				continue;
+			}
+
+			if (ch === '"') {
+				inDoubleQuote = true;
+				continue;
+			}
+			if (ch === "'") {
+				inSingleQuote = true;
+				continue;
+			}
+
+			if (ch === '#') {
+				if (this.isYamlColorCodeAt(lineText, i)) {
+					continue;
+				}
+				return i;
+			}
+		}
+
+		return -1;
+	}
+
 	private scanStringOption(): TokenInfo | null {
 		if (this.text[this.pos] !== '<') {
 			return null;
@@ -920,10 +1014,12 @@ export class MastStateMachineLexer {
 			checkPos++;
 		}
 		const isFunctionCall = checkPos < this.text.length && this.text[checkPos] === '(';
+		const isDotAccess = this.isPrecededByDot(startPos);
+		const isMethodCall = isFunctionCall && isDotAccess;
 
 		if (isFunctionCall) {
 			return {
-				type: 'function',
+				type: isMethodCall ? 'method' : 'function',
 				modifier: 'reference',
 				line: startLine,
 				character: startChar,
@@ -933,12 +1029,20 @@ export class MastStateMachineLexer {
 		}
 
 		return {
-			type: 'variable',
+			type: isDotAccess ? 'property' : 'variable',
 			line: startLine,
 			character: startChar,
 			length: text.length,
 			text
 		};
+	}
+
+	private isPrecededByDot(offset: number): boolean {
+		let i = offset - 1;
+		while (i >= 0 && /[\t ]/.test(this.text[i])) {
+			i--;
+		}
+		return i >= 0 && this.text[i] === '.';
 	}
 
 	private scanNumber(): TokenInfo {
@@ -1225,9 +1329,12 @@ export class MastStateMachineLexer {
 				} else {
 					let check = pos;
 					while (check < exprEnd && /[\t ]/.test(this.text[check])) check++;
+					const isDotAccess = this.isPrecededByDot(start);
 					if (check < exprEnd && this.text[check] === '(') {
-						tokenType = 'function';
+						tokenType = isDotAccess ? 'method' : 'function';
 						modifier = 'reference';
+					} else if (isDotAccess) {
+						tokenType = 'property';
 					}
 				}
 
@@ -1504,11 +1611,15 @@ export class MastStateMachineLexer {
 					}
 					const lineEnd = this.pos;
 					const lineText = this.text.substring(lineStart, lineEnd);
+					const commentRel = this.findYamlCommentStart(lineText);
+					const contentEndRel = commentRel === -1 ? lineText.length : commentRel;
+					const contentEnd = lineStart + contentEndRel;
+					const contentText = lineText.substring(0, contentEndRel);
 
-					if (lineText.trim().length > 0) {
-						const colonRel = lineText.indexOf(':');
+					if (contentText.trim().length > 0) {
+						const colonRel = contentText.indexOf(':');
 						if (colonRel > -1) {
-							const preColon = lineText.substring(0, colonRel);
+							const preColon = contentText.substring(0, colonRel);
 							const keyTrimmed = preColon.trim();
 							if (keyTrimmed.length > 0) {
 								const keyLeadingWs = preColon.length - preColon.trimStart().length;
@@ -1524,18 +1635,18 @@ export class MastStateMachineLexer {
 							}
 
 							let valueStartRel = colonRel + 1;
-							while (valueStartRel < lineText.length && /[\t ]/.test(lineText[valueStartRel])) {
+							while (valueStartRel < contentText.length && /[\t ]/.test(contentText[valueStartRel])) {
 								valueStartRel++;
 							}
-							if (valueStartRel < lineText.length) {
+							if (valueStartRel < contentText.length) {
 								const valueStart = lineStart + valueStartRel;
 								const valuePos = this.doc.positionAt(valueStart);
 								this.tokens.push({
 									type: 'yaml.value',
 									line: valuePos.line,
 									character: valuePos.character,
-									length: lineEnd - valueStart,
-									text: this.text.substring(valueStart, lineEnd)
+									length: contentEnd - valueStart,
+									text: this.text.substring(valueStart, contentEnd)
 								});
 							}
 						} else {
@@ -1544,10 +1655,22 @@ export class MastStateMachineLexer {
 								type: 'yaml.key',
 								line: valuePos.line,
 								character: valuePos.character,
-								length: lineEnd - lineStart,
-								text: lineText
+								length: contentEnd - lineStart,
+								text: contentText
 							});
 						}
+					}
+
+					if (commentRel !== -1) {
+						const commentStart = lineStart + commentRel;
+						const commentPos = this.doc.positionAt(commentStart);
+						this.tokens.push({
+							type: 'comment',
+							line: commentPos.line,
+							character: commentPos.character,
+							length: lineEnd - commentStart,
+							text: this.text.substring(commentStart, lineEnd)
+						});
 					}
 
 					if (this.pos < this.text.length && this.text[this.pos] === '\n') {
