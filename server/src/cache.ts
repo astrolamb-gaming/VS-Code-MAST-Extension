@@ -77,6 +77,14 @@ export class MissionCache {
 	awaitingReload = false;
 	lastAccessed: integer = 0;
 	deprecatedFunctions: Function[] = [];
+	private methodsCache: Function[] | null = null;
+	private methodIndex: Map<string, Function[]> | null = null;
+	private classMethodIndex: Map<string, Function[]> | null = null;
+	private classesCache: ClassObject[] | null = null;
+	private blobKeysCache: Word[] | null = null;
+	private linksCache: Word[] | null = null;
+	private rolesCache: Word[] | null = null;
+	private inventoryKeysCache: Word[] | null = null;
 
 	constructor(workspaceUri: string) {
 		//debug(workspaceUri);
@@ -129,6 +137,7 @@ export class MissionCache {
 		this.resourceLabels = [];
 		this.mediaLabels = [];
 		this.mastFileCache = [];
+		this.invalidateMethodCaches();
 		this.storyJson = new StoryJson(path.join(this.missionURI,"story.json"));
 		
 		await this.storyJson.readFile()
@@ -649,6 +658,7 @@ export class MissionCache {
 			const m = new MastFile(file, data);
 			m.inZip = true;
 			this.missionMastModules.push(m);
+			this.invalidateMethodCaches();
 		}
 		// debug("Finished loading: " + path.basename(file))
 	}
@@ -661,10 +671,178 @@ export class MissionCache {
 		if (doc.languageId === "mast") {
 			// debug("Updating " + doc.uri);
 			this.getMastFile(doc.uri).updateFromDocument(doc);
+			this.invalidateMethodCaches();
 		} else if (doc.languageId === "py") {
 			// debug("Updating " + doc.uri);
 			this.getPyFile(doc.uri).parseWholeFile(doc.getText());
+			this.invalidateMethodCaches();
 		}
+	}
+
+	private invalidateMethodCaches() {
+		this.methodsCache = null;
+		this.methodIndex = null;
+		this.classMethodIndex = null;
+		this.classesCache = null;
+		this.blobKeysCache = null;
+		this.linksCache = null;
+		this.rolesCache = null;
+		this.inventoryKeysCache = null;
+	}
+
+	private ensureBlobKeysCache() {
+		if (this.blobKeysCache !== null) {
+			return;
+		}
+		let words: Word[] = [];
+		for (const m of this.mastFileCache) {
+			words = words.concat(m.blob_keys);
+		}
+		for (const m of this.missionMastModules) {
+			words = words.concat(m.blob_keys);
+		}
+		for (const p of this.pyFileCache) {
+			words = words.concat(p.blob_keys);
+		}
+		this.blobKeysCache = words;
+	}
+
+	private ensureLinksCache() {
+		if (this.linksCache !== null) {
+			return;
+		}
+		let links: Word[] = [];
+		for (const m of this.mastFileCache) {
+			links = links.concat(m.links);
+		}
+		for (const m of this.missionMastModules) {
+			links = links.concat(m.links);
+		}
+		for (const p of this.pyFileCache) {
+			links = links.concat(p.links);
+		}
+		for (const p of this.missionPyModules) {
+			links = links.concat(p.links);
+		}
+		this.linksCache = links;
+	}
+
+	private ensureRolesCache() {
+		if (this.rolesCache !== null) {
+			return;
+		}
+		let roles: Word[] = [];
+		for (const m of this.mastFileCache) {
+			roles = roles.concat(m.roles);
+		}
+		for (const m of this.missionMastModules) {
+			roles = roles.concat(m.roles);
+		}
+		for (const p of this.pyFileCache) {
+			roles = roles.concat(p.roles);
+		}
+		for (const p of this.missionPyModules) {
+			roles = roles.concat(p.roles);
+		}
+		roles = roles.concat(getArtemisGlobals().shipData.roles);
+		this.rolesCache = roles;
+	}
+
+	private ensureInventoryKeysCache() {
+		if (this.inventoryKeysCache !== null) {
+			return;
+		}
+		let keys: Word[] = [];
+		for (const m of this.mastFileCache) {
+			keys = keys.concat(m.inventory_keys);
+		}
+		for (const m of this.missionMastModules) {
+			keys = keys.concat(m.inventory_keys);
+		}
+		this.inventoryKeysCache = keys;
+	}
+
+	private ensureClassCache() {
+		if (this.classesCache !== null) {
+			return;
+		}
+
+		let ret: ClassObject[] = [];
+		for (const p of this.pyFileCache) {
+			ret = ret.concat(p.classes);
+		}
+		for (const p of this.missionPyModules) {
+			ret = ret.concat(p.classes);
+		}
+		this.classesCache = ret;
+	}
+
+	private addMethodToIndex(index: Map<string, Function[]>, method: Function) {
+		const methods = index.get(method.name);
+		if (methods) {
+			methods.push(method);
+		} else {
+			index.set(method.name, [method]);
+		}
+	}
+
+	private ensureMethodCaches() {
+		if (this.methodsCache !== null && this.methodIndex !== null && this.classMethodIndex !== null) {
+			return;
+		}
+
+		const methods: Function[] = [];
+		const methodIndex = new Map<string, Function[]>();
+		const classMethodIndex = new Map<string, Function[]>();
+
+		for (const py of this.pyFileCache) {
+			if (!py.isGlobal) {
+				continue;
+			}
+			for (const method of py.defaultFunctions) {
+				methods.push(method);
+				this.addMethodToIndex(methodIndex, method);
+			}
+		}
+
+		for (const py of this.missionPyModules) {
+			for (const method of py.defaultFunctions) {
+				methods.push(method);
+				this.addMethodToIndex(methodIndex, method);
+			}
+		}
+
+		for (const py of this.pyFileCache) {
+			for (const c of py.classes) {
+				for (const method of c.methods) {
+					this.addMethodToIndex(methodIndex, method);
+					this.addMethodToIndex(classMethodIndex, method);
+				}
+			}
+		}
+
+		for (const py of this.missionPyModules) {
+			for (const c of py.classes) {
+				for (const method of c.methods) {
+					this.addMethodToIndex(methodIndex, method);
+					this.addMethodToIndex(classMethodIndex, method);
+				}
+			}
+		}
+
+		methods.sort((a, b) => {
+			if (a.name < b.name) {
+				return -1;
+			}
+			if (a.name > b.name) {
+				return 1;
+			}
+			return 0;
+		});
+
+		this.methodsCache = methods;
+		this.methodIndex = methodIndex;
+		this.classMethodIndex = classMethodIndex;
 	}
 
 	/**
@@ -679,6 +857,7 @@ export class MissionCache {
 		}
 		// Only do this if the file doesn't exist yet
 		this.missionPyModules.push(p);
+		this.invalidateMethodCaches();
 		// this.missionClasses = this.missionClasses.concat(p.classes);
 	}
 
@@ -712,6 +891,7 @@ export class MissionCache {
 
 		// Now add it to the cache
 		this.pyFileCache.push(p);
+		this.invalidateMethodCaches();
 	}
 
 	tryApplyFileAsGlobal(f:PyFile, g:string[]) {
@@ -865,40 +1045,8 @@ export class MissionCache {
 	 * @returns List of {@link Function Function}
 	 */
 	getMethods(): Function[] {
-		// let count = 0;
-		let methods: Function[] = [];
-		// debug(this.pyFileCache)
-		// let keys = [...new Map(this.missionPyModules.map(v => [v.uri, v])).values()];
-		// debug(keys);
-
-		for (const py of this.pyFileCache) {
-			if (py.isGlobal) {
-				methods = methods.concat(py.defaultFunctions);
-				// count += py.defaultFunctions.length;
-				// debug("From: "+ py.uri)
-				// debug(py.defaultFunctions)
-			}
-		}
-		for (const py of this.missionPyModules) {
-			methods = methods.concat(py.defaultFunctions);
-			// count += py.defaultFunctions.length;
-			// debug("From: "+ py.uri)
-			// debug(py.defaultFunctions)
-		}
-
-		// debug(count)
-		
-		methods.sort((a, b) => {
-			if (a.name < b.name) {
-				return -1;
-			}
-			if (a.name > b.name) {
-				return 1;
-			}
-			return 0;
-		});
-		// debug(methods)
-		return methods;
+		this.ensureMethodCaches();
+		return this.methodsCache ? [...this.methodsCache] : [];
 	}
 
 	/**
@@ -908,19 +1056,8 @@ export class MissionCache {
 	 * @returns The function with the given name.
 	 */
 	getMethod(name:string): Function | undefined {
-		for (const m of this.getMethods()) {
-			if (m.name === name) {
-				return m;
-			}
-		}
-		for (const c of this.getClasses()) {
-			for (const m of c.methods) {
-				if (m.name === name) {
-					return m;
-				}
-			}
-		}
-		return undefined;
+		this.ensureMethodCaches();
+		return this.methodIndex?.get(name)?.[0];
 	}
 
 	/**
@@ -929,15 +1066,8 @@ export class MissionCache {
 	 * @returns A list of all {@link Function Function}s with that name
 	 */
 	getPossibleMethods(name:string): Function[] {
-		let list:Function[] = [];
-		for (const c of this.getClasses()) {
-			for (const m of c.methods) {
-				if (m.name === name) {
-					list.push(m);
-				}
-			}
-		}
-		return list;
+		this.ensureMethodCaches();
+		return [...(this.classMethodIndex?.get(name) || [])];
 	}
 
 	/**
@@ -945,14 +1075,8 @@ export class MissionCache {
 	 * @returns All the classes in scope for this mission cache
 	 */
 	getClasses(): ClassObject[] {
-		let ret: ClassObject[] = [];
-		for (const p of this.pyFileCache) {
-			ret = ret.concat(p.classes);
-		}
-		for (const p of this.missionPyModules) {
-			ret = ret.concat(p.classes);
-		}
-		return ret;
+		this.ensureClassCache();
+		return this.classesCache ? [...this.classesCache] : [];
 	}
 
 	/**
@@ -1025,17 +1149,8 @@ export class MissionCache {
 	}
 
 	getBlobKeys(): Word[] {
-		let words: Word[] = [];
-		for (const m of this.mastFileCache) {
-			words = words.concat(m.blob_keys);
-		}
-		for (const m of this.missionMastModules) {
-			words = words.concat(m.blob_keys);
-		}
-		for (const p of this.pyFileCache) {
-			words = words.concat(p.blob_keys);
-		}
-		return words;
+		this.ensureBlobKeysCache();
+		return this.blobKeysCache ? [...this.blobKeysCache] : [];
 	}
 
 	/**
@@ -1060,20 +1175,8 @@ export class MissionCache {
 	}
 
 	getLinks(): Word[] {
-		let ret: Word[] = [];
-		for (const m of this.mastFileCache) {
-			ret = ret.concat(m.links);
-		}
-		for (const m of this.missionMastModules) {
-			ret = ret.concat(m.links);
-		}
-		for (const p of this.pyFileCache) {
-			ret = ret.concat(p.links);
-		}
-		for (const p of this.missionPyModules) {
-			ret = ret.concat(p.links);
-		}
-		return ret;
+		this.ensureLinksCache();
+		return this.linksCache ? [...this.linksCache] : [];
 	}
 	
 	/**
@@ -1238,21 +1341,8 @@ export class MissionCache {
 	 * @returns an array of strings
 	 */
 	getRoles(folder: string): Word[] {
-		let roles: Word[] = [];
-		for (const m of this.mastFileCache) {
-			roles = roles.concat(m.roles);
-		}
-		for (const m of this.missionMastModules) {
-			roles = roles.concat(m.roles);
-		}
-		for (const p of this.pyFileCache) {
-			roles = roles.concat(p.roles)
-		}
-		for (const p of this.missionPyModules) {
-			roles = roles.concat(p.roles);
-		}
-		roles = roles.concat(getArtemisGlobals().shipData.roles);
-		return roles;
+		this.ensureRolesCache();
+		return this.rolesCache ? [...this.rolesCache] : [];
 	}
 
 	/**
@@ -1262,19 +1352,8 @@ export class MissionCache {
 	 */
 	getKeys(folder: string): Word[] {
 		// folder = fixFileName(folder);
-		let keys: Word[] = [];
-		// const ini = getInitContents(folder);
-		// debug(ini);
-		// debug(this.mastFileCache.length)
-		for (const m of this.mastFileCache) {
-			// if (ini.includes(path.basename(m.uri))) {
-			keys = keys.concat(m.inventory_keys);
-			// }
-		}
-		for (const m of this.missionMastModules) {
-			keys = keys.concat(m.inventory_keys);
-		}
-		return keys;
+		this.ensureInventoryKeysCache();
+		return this.inventoryKeysCache ? [...this.inventoryKeysCache] : [];
 	}
 
 	/**
@@ -1292,6 +1371,7 @@ export class MissionCache {
 		// debug("Creating Mast File: " + uri);
 		const m: MastFile = new MastFile(uri);
 		this.mastFileCache.push(m);
+		this.invalidateMethodCaches();
 		return m;
 	}
 
@@ -1308,6 +1388,7 @@ export class MissionCache {
 			}
 		}
 		this.mastFileCache = newCache;
+		this.invalidateMethodCaches();
 	}
 
 	/**
@@ -1324,6 +1405,7 @@ export class MissionCache {
 			}
 		}
 		this.missionPyModules = newCache;
+		this.invalidateMethodCaches();
 	}
 
 	/**
