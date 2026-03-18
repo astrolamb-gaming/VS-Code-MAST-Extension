@@ -370,28 +370,43 @@ function log(str:any) {
 	fs.writeFileSync('MAST_VSCode_OutputLog.txt', str, {flag: "a+"})
 }
 
-/**
- * This function may be completely unnecessary
- */
-export function getBrackets(textDocument: TextDocument) {
-	const text = textDocument.getText();
-	let brackets: CRange[] = [];
-	let pattern = /{.*?}/g;
-	brackets = getMatchesForRegex(pattern,text);
-	return brackets;
+
+export function isTextInBracket(text: string, start: number, target: number): boolean {
+    let depth = 0;
+    let quote: '"' | "'" | null = null;
+    let escaped = false;
+
+    for (let i = start; i < target && i < text.length; i++) {
+        const ch = text[i];
+        const next = i + 1 < text.length ? text[i + 1] : '';
+
+        if (quote) {
+            if (escaped) {
+                escaped = false;
+            } else if (ch === '\\') {
+                escaped = true;
+            } else if (ch === quote) {
+                quote = null;
+            }
+            continue;
+        }
+
+        if (ch === '"' || ch === "'") {
+            quote = ch as '"' | "'";
+            continue;
+        }
+
+        // f-string escaped braces
+        if (ch === '{' && next === '{') { i++; continue; }
+        if (ch === '}' && next === '}') { i++; continue; }
+
+        if (ch === '{') depth++;
+        else if (ch === '}' && depth > 0) depth--;
+    }
+
+    return depth > 0;
 }
 
-export function isTextInBracket(text:string, pos: integer) {
-	let brackets: CRange[] = [];
-	let pattern = /{.*?}/g;
-	brackets = getMatchesForRegex(pattern,text);
-	for (const b of brackets) {
-		if (b.start<pos && b.end > pos) {
-			return true;
-		}
-	}
-	return false;
-}
 
 /**
  * Parses a {@link TextDocument TextDocument} for all strings within it.

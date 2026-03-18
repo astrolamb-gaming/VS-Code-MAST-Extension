@@ -2041,8 +2041,10 @@ export function buildSemanticTokens(tokens: TokenInfo[]): SemanticTokens {
 
 
 export function tokenizeDocument(document: TextDocument): TokenInfo[] {
-	// Use regex-based lexer (set to false to benchmark state machine)
-	const USE_REGEX_LEXER = document.uri.includes("gamemaster");
+	// Always use the state-machine lexer.
+	// The regex lexer does not currently build exclusion ranges for strings/comments,
+	// which can incorrectly emit keyword/operator/number tokens inside string text.
+	const USE_REGEX_LEXER = false;
 	
 	let tokens: TokenInfo[];
 	if (USE_REGEX_LEXER) {

@@ -1,4 +1,4 @@
-import { SignatureHelpParams, SignatureHelp, integer, SignatureInformation, ParameterInformation } from 'vscode-languageserver';
+import { SignatureHelpParams, SignatureHelp, integer, SignatureInformation, ParameterInformation, Position } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
 import { getCache } from './../cache';
@@ -6,6 +6,7 @@ import { CRange, replaceRegexMatchWithUnderscore } from './../tokens/comments';
 import { getCurrentLineFromTextDocument, getHoveredSymbol } from './hover';
 import { isClassMethod } from './../tokens/tokens';
 import { findNamedArg } from './autocompletion';
+import { TokenInfo } from './../requests/semanticTokens';
 
 
 
@@ -26,6 +27,30 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 	}
 
 	const cache = getCache(text.uri);
+
+	// Try token-based approach first (more reliable)
+	const tokens = cache.getMastFile(text.uri)?.tokens || [];
+	let callContext = getCallContextFromTokens(tokens, _textDocPos.position, text);
+	
+	if (callContext) {
+		const func = callContext.functionName;
+		const pNum = callContext.parameterIndex;
+		debug(`Token-based: func="${func}", param=${pNum}`);
+		
+		// Get the method and build signature
+		const method = cache.getMethod(func);
+		if (method) {
+			const sig = method.buildSignatureInformation();
+			sh.activeParameter = pNum;
+			if (sig && sig.parameters && pNum < sig.parameters.length) {
+				sh.signatures.push(sig);
+				return sh;
+			}
+		}
+	}
+
+	// Fallback to line-based parsing
+	debug("Falling back to line-based parsing");
 
 	// Calculate the position in the text's string value using the Position value.
 	const pos : integer = text.offsetAt(_textDocPos.position);
@@ -173,4 +198,93 @@ export function getCurrentMethodName(iStr: string): string {
 	let symbol = getHoveredSymbol(iStr,last);
 	// debug(symbol);
 	return symbol;
+}
+
+/**
+ * Walk backward through tokens from cursor position to find the current function call
+ * and determine which parameter we're on.
+ * 
+ * @param tokens TokenInfo array from the lexer
+ * @param position Cursor position (line, character)
+ * @param document TextDocument
+ * @returns { functionName: string, parameterIndex: number } or undefined if not in a call
+ */
+export function getCallContextFromTokens(
+	tokens: TokenInfo[],
+	position: Position,
+	document: TextDocument
+): { functionName: string; parameterIndex: number } | undefined {
+	const targetOffset = document.offsetAt(position);
+
+	// Find the token at or before the cursor
+	let tokenAtCursor = -1;
+	for (let i = tokens.length - 1; i >= 0; i--) {
+		const tok = tokens[i];
+		const tokOffset = document.offsetAt({ line: tok.line, character: tok.character });
+		if (tokOffset <= targetOffset) {
+			tokenAtCursor = i;
+			break;
+		}
+	}
+
+	if (tokenAtCursor === -1) {
+		return undefined;
+	}
+
+	// Walk backward from cursor, tracking parenthesis depth
+	let parenDepth = 0;
+	let commaCount = 0;
+	let foundOpenParen = false;
+	let openParenIndex = -1;
+
+	for (let i = tokenAtCursor; i >= 0; i--) {
+		const tok = tokens[i];
+
+		// Skip string tokens (unless inside interpolation)
+		if (tok.type === 'string') {
+			continue;
+		}
+
+		if (tok.type === 'operator') {
+			if (tok.text === ')') {
+				parenDepth++;
+			} else if (tok.text === '(') {
+				if (parenDepth === 0) {
+					foundOpenParen = true;
+					openParenIndex = i;
+					break;
+				}
+				parenDepth--;
+			} else if (tok.text === ',' && parenDepth === 0) {
+				commaCount++;
+			}
+		}
+	}
+
+	if (!foundOpenParen || openParenIndex === -1) {
+		return undefined;
+	}
+
+	// Look backward from the opening paren for the function/method name
+	let funcIndex = -1;
+	for (let i = openParenIndex - 1; i >= 0; i--) {
+		const tok = tokens[i];
+		if (tok.type === 'function' || tok.type === 'method') {
+			funcIndex = i;
+			break;
+		}
+		// Skip whitespace/operator tokens like '.', but stop on other operators
+		if (tok.type === 'operator' && tok.text !== '.') {
+			break;
+		}
+	}
+
+	if (funcIndex === -1) {
+		return undefined;
+	}
+
+	return {
+		functionName: tokens[funcIndex].text,
+		parameterIndex: commaCount
+	};
 }

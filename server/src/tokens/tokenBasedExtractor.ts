@@ -124,18 +124,14 @@ export class TokenBasedExtractor {
 	 * Extract inventory key strings
 	 */
 	public extractInventoryKeys(): Word[] {
-		return this.extractStringsByFunctionKeywords(['inventory'], {
-			normalizeCase: true
-		});
+		return this.extractStringsByFunctionKeywords(['inventory']);
 	}
 
 	/**
 	 * Extract blob/dataset key strings
 	 */
 	public extractBlobKeys(): Word[] {
-		return this.extractStringsByFunctionKeywords(['blob', 'data_set'], {
-			normalizeCase: true
-		});
+		return this.extractStringsByFunctionKeywords(['blob', 'data_set']);
 	}
 
 	/**

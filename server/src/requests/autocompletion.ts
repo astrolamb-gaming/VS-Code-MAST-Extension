@@ -9,7 +9,7 @@ import { getCache, MissionCache } from './../cache';
 import path = require('path');
 import { fixFileName, getFilesInDir } from './../fileFunctions';
 import { getArtemisGlobals } from '../artemisGlobals';
-import { getCurrentMethodName, onSignatureHelp } from './signatureHelp';
+import { getCurrentMethodName, onSignatureHelp, getCallContextFromTokens } from './signatureHelp';
 import { getWordsAsCompletionItems, getRolesForFile } from './../tokens/roles';
 import { variableModifiers } from './../tokens/variables';
 import { isClassMethod } from './../tokens/tokens';
@@ -53,31 +53,13 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// Calculate the position in the text's string value using the Position value.
 	const pos : integer = text.offsetAt(_textDocumentPosition.position);
 	const startOfLine : integer = pos - _textDocumentPosition.position.character;
-	// const eolPos: Position = _textDocumentPosition.position;
-	// eolPos.line += 1;
-	// eolPos.character = 0;
-	// const endOfLine: integer = pos + text.offsetAt(eolPos)-1;
 	const iStr : string = t.substring(startOfLine,pos);
 	debug(iStr)
 	if (iStr.trim().endsWith(")")) {
 		debug("Ends with ), should have no completions")
 		return [];
 	}
-	// const eStr: string = t.substring(pos, endOfLine);
-	// const line = iStr + eStr;
 	const line = getCurrentLineFromTextDocument(_textDocumentPosition.position, text)
-	// debug(line);
-	const eStr = line.replace(iStr,"");
-	// debug(iStr)
-	// debug(eStr);
-	// if (iStr.endsWith("/") && !iStr.endsWith("//")) {
-	// 	return routeCompletions;
-	// }
-	// debug(iStr);
-	// if (iStr.includes("(")) {
-	// 	let arg = getCurrentArgumentNames(iStr,text);
-	// 	debug(arg);
-	// }
 	
 //#region __init__.mast Completions
 	if (fixFileName(text.uri).endsWith("__init__.mast")) {
@@ -183,41 +165,50 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// TODO: Faces: Add ability to get the desired image from tiles: https://stackoverflow.com/questions/11533606/javascript-splitting-a-tileset-image-to-be-stored-in-2d-image-array
 
 
-// TODO: Verify that this isn't necessary, should not be if validate.js is working as intended
-	// if (iStr.endsWith("\"") || iStr.endsWith("'")) {
-	// 	debug("Updating strings...")
-	// 	parseStrings(text);
-	// }
-
-
-	/// Piggy-backing on the Signature Help logic, since it works better than this ever did...
-	const params: SignatureHelpParams = {
-		textDocument: _textDocumentPosition.textDocument,
-		position: _textDocumentPosition.position
-	}
-	const sig = onSignatureHelp(params, text);
+	/// Try token-based function/parameter detection first (more reliable than line parsing)
+	let callContext = getCallContextFromTokens(tokens, _textDocumentPosition.position, text);
 	let currentParam:ParameterInformation|undefined;
 	let currentParamName: string = "";
 	let func: string = "";
-	debug(sig);
-	if (sig && sig.signatures) {
-		let curSig = sig.signatures[0];
-		debug(curSig)
-		if (curSig.parameters) {
-			func = curSig.label;
-			// debug(func)
-			if (sig.activeParameter === undefined) {
-				sig.activeParameter = 0
-				// debug(currentParamName)
+	let currentParamType: string | undefined = undefined;
+
+	if (callContext) {
+		func = callContext.functionName;
+		const method = cache.getMethod(func);
+		if (method) {
+			const params = method.parameters;
+			if (callContext.parameterIndex < params.length) {
+				currentParamName = params[callContext.parameterIndex].name;
+				currentParamType = params[callContext.parameterIndex].type;
+				debug(`Token-based: func="${func}", param="${currentParamName}"`);
 			}
-			currentParam = curSig.parameters[sig.activeParameter]
-			currentParamName = currentParam.label as string
-			
 		}
 	}
 
-	debug("arg: " + currentParamName)
-	debug("func: " + func)
+	// Fallback to signature help if token method didn't find it
+	// if (!func) {
+	// 	debug("Falling back to signature help");
+	// 	const params: SignatureHelpParams = {
+	// 		textDocument: _textDocumentPosition.textDocument,
+	// 		position: _textDocumentPosition.position
+	// 	}
+	// 	const sig = onSignatureHelp(params, text);
+	// 	if (sig && sig.signatures) {
+	// 		let curSig = sig.signatures[0];
+	// 		debug(curSig)
+	// 		if (curSig.parameters) {
+	// 			func = curSig.label;
+	// 			if (sig.activeParameter === undefined) {
+	// 				sig.activeParameter = 0
+	// 			}
+	// 			currentParam = curSig.parameters[sig.activeParameter]
+	// 			currentParamName = currentParam.label as string
+	// 		}
+	// 	}
+	// }
+
+	// debug("arg: " + currentParamName)
+	// debug("func: " + func)
 
 
 
@@ -227,14 +218,15 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// debug(blobStr)
 	// Check if there's an odd number of quotes, if it starts with quotes, or is within a string
 	// TODO: this doesn't account for f-strings....
-	if (countMatches(iStr,/[\"']/g) % 2 !== 0 || iStr.endsWith("\"") || iStr.endsWith("'") || isInString) {
+	// if (countMatches(iStr,/[\"']/g) % 2 !== 0 || iStr.endsWith("\"") || iStr.endsWith("'") || isInString) {
+	if (isInString) {
 		debug("Is in string (probably)")
 		// if (blobStr.endsWith("signal_emit(")) {
 		if (func === "signal_emit") {
 			const signals = cache.getSignals();
 			return buildSignalInfoListAsCompletionItems(signals);
 		}
-		if (!isTextInBracket(iStr,pos)) {
+		if (!isTextInBracket(iStr,0,pos)) {
 			// Here we check for blob info
 			if (blobStr.endsWith(".set(") || blobStr.endsWith(".get(")) {
 				debug("Is BLobe");
@@ -252,7 +244,8 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			}
 
 			// Here we check for roles
-			if (blobStr.endsWith("role(") || blobStr.endsWith("roles(")) {
+			// if (blobStr.endsWith("role(") || blobStr.endsWith("roles(")) {
+			if (func.includes("role")) {
 				debug("Getting roles")
 				// let roles = getRolesForFile(text);
 				let roles = cache.getRoles(text.uri);
@@ -376,6 +369,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 						"behav_station",
 						"behav_planet",
 						"behav_nebula",
+						"behav_missile",
 						"behav_mine",
 						"behav_maelstrom",
 						"behav_pickup",
@@ -443,7 +437,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// If we're defining a label, we don't want autocomplete.
 	// TODO: ++ labels should have specific names
 	if (iStr.trim().startsWith("--") || iStr.trim().startsWith("==") || iStr.trim().startsWith("++")) {
-		return ci;
+		return [];
 	}
 
 	let trimmed = iStr.trim();
@@ -695,7 +689,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	const cm = getCurrentMethodName(iStr)
 	let wholeFunc = iStr.substring(iStr.lastIndexOf(cm));
 	wholeFunc = wholeFunc.substring(wholeFunc.indexOf("("));
-	if (sig) {
+	if (func) {
 	// if (isFunction(iStr, cm)) {
 		// Check for named argument
 		let named = /(\w+)\=$/m;

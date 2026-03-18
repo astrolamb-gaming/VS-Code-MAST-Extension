@@ -120,7 +120,7 @@ connection.onInitialize((params: InitializeParams) => {
 			completionProvider: {
 				resolveProvider: false, // FOR NOW - MAY USE LATER
 				// TODO: The /, >, and especially the space are hopefully temporary workarounds.
-				triggerCharacters: [".","/",">","<"," ","\"","\'","@","=","(","{"]
+				triggerCharacters: [".","/",">","<"," ","\"","\'","@","=","(","{",","]
 			},
 			diagnosticProvider: {
 				interFileDependencies: false,
@@ -778,7 +778,7 @@ connection.languages.semanticTokens.on((params: SemanticTokensParams) => {
 		const allTokens = tokenizeDocument(document);
 		// filter out strings because they're weird in mast sometimes and I don't want to take too much time
 		// figuring out how to handle them properly in the semantic tokens. This is a temporary solution.
-		const filteredTokens = allTokens.filter(t => t.type !== "string");
+		const filteredTokens = allTokens//.filter(t => t.type !== "string");
 		const tokens = buildSemanticTokens(filteredTokens);
 
 		cache.set(params.textDocument.uri, document.version, buildSemanticTokens(allTokens));
