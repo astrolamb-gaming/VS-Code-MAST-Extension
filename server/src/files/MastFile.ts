@@ -121,6 +121,14 @@ export class MastFile extends FileCache {
 		this.roles = extractRolesFromMastFile(textDocument, tokens);
 		this.blob_keys = extractBlobKeysFromMastFile(textDocument, tokens);
 		this.inventory_keys = extractInventoryKeysFromMastFile(textDocument, tokens);
+		if (this.uri.includes("gamemaster")) {
+			debug(tokens);
+			debug("Inventory keys");
+			debug(this.inventory_keys)
+			debug(this.roles)
+			debug(this.links)
+		}
+		
 		this.links = extractLinksFromMastFile(textDocument, tokens);
 		this.signals = extractSignalsFromMastFile(textDocument, tokens);
 
@@ -136,19 +144,30 @@ export class MastFile extends FileCache {
 		const items: ExtractedItem[] = [];
 		function extractStringValue(tokenText: string): string {
 			let value = tokenText.trim();
-			value = value.replace(/^[furbFURB]{1,2}(?=["'])/, '');
+			value = value.replace(/^[furbFURB]+(?=["'])/, '');
 			if ((value.startsWith('"""') && value.endsWith('"""')) || (value.startsWith("'''") && value.endsWith("'''"))) {
 				return value.slice(3, -3);
 			}
-			if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-				return value.slice(1, -1);
+			if (value.startsWith('"""')) {
+				value = value.slice(3);
+			} else if (value.startsWith("'''")) {
+				value = value.slice(3);
+			} else if (value.startsWith('"') || value.startsWith("'")) {
+				value = value.slice(1);
+			}
+			if (value.endsWith('"""')) {
+				value = value.slice(0, -3);
+			} else if (value.endsWith("'''")) {
+				value = value.slice(0, -3);
+			} else if (value.endsWith('"') || value.endsWith("'")) {
+				value = value.slice(0, -1);
 			}
 			return value;
 		}
 
 		for (let i = 0; i < tokens.length; i++) {
 			const token = tokens[i];
-			if (token.type === 'function') {
+			if (token.type === 'function' || token.type === 'method') {
 				const name = token.text.toLowerCase();
 				if (/(_|^)role(s)?(_|$)/.test(name) || name.includes('role')) {
 					let j = i + 1;
@@ -162,8 +181,13 @@ export class MastFile extends FileCache {
 							if (tk.text === ')') { parenDepth--; if (parenDepth === 0) break; continue; }
 						}
 						if (parenDepth === 1 && tk.type === 'string') {
-							const val = extractStringValue(tk.text);
-							items.push({ kind: 'role', value: val, tokenIndex: k, line: tk.line, character: tk.character, length: tk.length });
+							const values = extractStringValue(tk.text)
+								.split(',')
+								.map(v => v.trim())
+								.filter(Boolean);
+							for (const val of values) {
+								items.push({ kind: 'role', value: val, tokenIndex: k, line: tk.line, character: tk.character, length: tk.length });
+							}
 						}
 					}
 				}
@@ -249,6 +273,10 @@ export class MastFile extends FileCache {
 		this.inventory_keys = extractInventoryKeysFromMastFile(doc, this.tokens);
 		this.links = extractLinksFromMastFile(doc, this.tokens);
 		this.signals = extractSignalsFromMastFile(doc, this.tokens);
+		debug("Inventory keys");
+		debug(this.inventory_keys)
+		debug(this.roles)
+		debug(this.links)
 
 		// For labels and variables, parse from full text to remain correct
 		this.labelNames = parseLabelsInFile(newText, this.uri);

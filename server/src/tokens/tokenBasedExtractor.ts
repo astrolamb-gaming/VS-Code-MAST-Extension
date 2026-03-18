@@ -34,6 +34,10 @@ export class TokenBasedExtractor {
 	private doc: TextDocument;
 	private tokens: Token[];
 
+	private isCallableToken(token: Token): boolean {
+		return token.type === 'function' || token.type === 'method';
+	}
+
 	constructor(document: TextDocument, tokens: Token[]) {
 		this.doc = document;
 		this.tokens = tokens;
@@ -72,7 +76,7 @@ export class TokenBasedExtractor {
 		for (let i = 0; i < this.tokens.length - 1; i++) {
 			const token = this.tokens[i];
 			
-			if (token.type === 'function' && token.text === 'signal_emit') {
+			if (this.isCallableToken(token) && token.text === 'signal_emit') {
 				const stringToken = this.findNextStringToken(i);
 				if (stringToken) {
 					const signalName = this.extractStringValue(stringToken.text);
@@ -143,7 +147,7 @@ export class TokenBasedExtractor {
 
 	/**
 	 * Generic extraction for function calls with string arguments.
-	 * Matches functions by keyword(s) and extracts all top-level string args.
+	 * Matches functions by keyword(s) and extracts only the first top-level string arg.
 	 */
 	private extractStringsByFunctionKeywords(
 		keywords: string[],
@@ -157,28 +161,33 @@ export class TokenBasedExtractor {
 		for (let i = 0; i < this.tokens.length; i++) {
 			const token = this.tokens[i];
 			
-			if (token.type !== 'function' || !this.matchesFunctionKeywords(token.text, keywords)) {
+			if (!this.isCallableToken(token) || !this.matchesFunctionKeywords(token.text, keywords)) {
 				continue;
 			}
 
-			const stringTokens = this.findAllStringTokensInCall(i);
-			for (const stringToken of stringTokens) {
-				let value = this.extractStringValue(stringToken.text);
+			const stringToken = this.findNextStringToken(i);
+			if (!stringToken) {
+				continue;
+			}
 
-				if (options.allowCommaSeparated) {
-					const values = value.split(',').map(v => v.trim());
-					for (let val of values) {
-						if (options.normalizeCase) {
-							val = val.toLowerCase();
-						}
-						this.addWord(words, val, stringToken);
+			let value = this.extractStringValue(stringToken.text);
+
+			if (options.allowCommaSeparated) {
+				const values = value.split(',').map(v => v.trim());
+				for (let val of values) {
+					if (!val) {
+						continue;
 					}
-				} else {
 					if (options.normalizeCase) {
-						value = value.toLowerCase();
+						val = val.toLowerCase();
 					}
-					this.addWord(words, value, stringToken);
+					this.addWord(words, val, stringToken);
 				}
+			} else {
+				if (options.normalizeCase) {
+					value = value.toLowerCase();
+				}
+				this.addWord(words, value, stringToken);
 			}
 		}
 
@@ -269,16 +278,28 @@ export class TokenBasedExtractor {
 		let value = tokenText.trim();
 
 		// Handle optional Python string prefixes (f, r, b, u, fr, rf, etc.)
-		value = value.replace(/^[furbFURB]{1,2}(?=["'])/, '');
+		value = value.replace(/^[furbFURB]+(?=["'])/, '');
 
 		// Triple-quoted strings
 		if ((value.startsWith('"""') && value.endsWith('"""')) || (value.startsWith("'''") && value.endsWith("'''"))) {
 			return value.slice(3, -3);
 		}
 
-		// Single/double-quoted strings
-		if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-			return value.slice(1, -1);
+		// F-string segments may contain only the opening or closing quote.
+		if (value.startsWith('"""')) {
+			value = value.slice(3);
+		} else if (value.startsWith("'''")) {
+			value = value.slice(3);
+		} else if (value.startsWith('"') || value.startsWith("'")) {
+			value = value.slice(1);
+		}
+
+		if (value.endsWith('"""')) {
+			value = value.slice(0, -3);
+		} else if (value.endsWith("'''")) {
+			value = value.slice(0, -3);
+		} else if (value.endsWith('"') || value.endsWith("'")) {
+			value = value.slice(0, -1);
 		}
 
 		return value;

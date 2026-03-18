@@ -254,16 +254,20 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			// Here we check for roles
 			if (blobStr.endsWith("role(") || blobStr.endsWith("roles(")) {
 				debug("Getting roles")
-				let roles = getRolesForFile(text);
-				roles = roles.concat(cache.getRoles(text.uri));
-				roles = roles.concat(getArtemisGlobals().shipData.roles);
+				// let roles = getRolesForFile(text);
+				let roles = cache.getRoles(text.uri);
+				// roles = roles.concat(cache.getRoles(text.uri));
+				// roles = roles.concat(getArtemisGlobals().shipData.roles);
 				ci = getWordsAsCompletionItems("Role", roles, text);
 				return ci;
 			}
 
 			// Now for inventory keys
 			if (func.includes("inventory")) {
-				return getInventoryKeysForFile(cache, text);
+				// return getInventoryKeysForFile(cache, text);
+				debug("Inventory key")
+				debug(cache.getInventoryKeys(text.uri))
+				return getWordsAsCompletionItems("Inventory Key", cache.getInventoryKeys(text.uri), text)
 			}
 
 			// Here we check for stylestrings, art_ids, etc.
@@ -287,9 +291,9 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			for (const a of args) {
 				if (a === "role" || a === "roles") {
 					debug("Getting roles")
-					let roles = getRolesForFile(text);
-					roles = roles.concat(cache.getRoles(text.uri));
-					roles = roles.concat(getArtemisGlobals().shipData.roles);
+					let roles = cache.getRoles(text.uri);
+					// roles = roles.concat(cache.getRoles(text.uri));
+					// roles = roles.concat(getArtemisGlobals().shipData.roles);
 					ci = getWordsAsCompletionItems("Role", roles, text);
 				return ci;
 				}
@@ -1159,7 +1163,7 @@ function getCompletionsForMethodParams(iStr:string, paramName: string, doc:TextD
 }
 
 function getInventoryKeysForFile(cache: MissionCache, text: TextDocument): CompletionItem[] {
-	let keys = cache.getKeys(text.uri);
+	let keys = cache.getInventoryKeys(text.uri);
 	// debug(keys);
 	// ci = getKeysAsCompletionItem(keys);
 	let ci = getWordsAsCompletionItems("Inventory Key", keys, text)

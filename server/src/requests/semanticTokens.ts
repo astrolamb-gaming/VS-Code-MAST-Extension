@@ -1469,7 +1469,7 @@ export class MastStateMachineLexer {
 		}
 
 		// Single character operators
-		if (/[+\-*/%&|^~<>=]/.test(char)) {
+		if (/[+\-*/%&|^~<>=(,)]/.test(char)) {
 			this.advance();
 			return {
 				type: 'operator',
@@ -1977,7 +1977,7 @@ export class MastStateMachineLexer {
 			}
 
 			// Operators
-			if (/[+\-*/%&|^~<>=]/.test(current)) {
+			if (/[+\-*/%&|^~<>=(,)]/.test(current)) {
 				const token = this.scanOperator();
 				if (token) {
 					if (token.text === '->') {

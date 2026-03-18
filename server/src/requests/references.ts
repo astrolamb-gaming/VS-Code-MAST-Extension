@@ -3,7 +3,7 @@ import { getCache } from './../cache';
 import { debug } from 'console';
 import { getCurrentLineFromTextDocument, getHoveredSymbol } from './hover';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { getTokenTypeAtPosition, isInComment, isInString } from './../tokens/comments';
+import { getTokenContextAtPosition, getTokenTypeAtPosition, isInComment, isInString } from './../tokens/comments';
 import { fileFromUri } from '../fileFunctions';
 import path = require('path');
 import { convertWordsToLocations } from '../tokens/words';
@@ -19,10 +19,17 @@ export async function onReferences(doc: TextDocument, params:ReferenceParams): P
 	}
 	const cache = getCache(doc.uri);
 	const tokens = cache.getMastFile(doc.uri)?.tokens || [];
+	const tokenContext = getTokenContextAtPosition(doc, tokens, params.position);
+	if (!tokenContext.token) {
+		debug("No token found at position");
+		return undefined;
+	}
 
 	// If it's in a comment, or in a string but not in metadata, then return empty
-	if (isInComment(doc, doc.offsetAt(pos))) return locs;
-	let word = getHoveredSymbol(getCurrentLineFromTextDocument(pos, doc),pos.character);  //getWordRangeAtPosition(doc,pos);
+	const isInComment = tokenContext.inComment;
+	if (isInComment) return locs;
+	// let word = getHoveredSymbol(getCurrentLineFromTextDocument(pos, doc),pos.character);  //getWordRangeAtPosition(doc,pos);
+	let word = tokenContext.token?.text || "";
 	if (word.startsWith("/")) {
 		word = word.substring(1,word.length);
 	}
@@ -43,7 +50,7 @@ export async function onReferences(doc: TextDocument, params:ReferenceParams): P
 		}
 	}
 
-	let inventory_keys = getCache(doc.uri).getKeys(doc.uri);
+	let inventory_keys = getCache(doc.uri).getInventoryKeys(doc.uri);
 	for (const k of inventory_keys) {
 		if (k.name === word) {
 			locs = convertWordsToLocations([k]);
@@ -72,8 +79,8 @@ export async function onReferences(doc: TextDocument, params:ReferenceParams): P
 
 	// }
 
-	const isInYaml = getTokenTypeAtPosition(doc, [], pos) === 'yaml';
-	const isInString = getTokenTypeAtPosition(doc, [], pos) === 'string';
+	const isInYaml = tokenContext.inYaml;
+	const isInString = tokenContext.inString;
 	if (isInString && !isInYaml) return locs;
 
 	// Now we'll check for any instance where it COULD be a function name. Because Python.

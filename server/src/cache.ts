@@ -690,10 +690,21 @@ export class MissionCache {
 		this.inventoryKeysCache = null;
 	}
 
-	private ensureBlobKeysCache() {
-		if (this.blobKeysCache !== null) {
-			return;
+	private hasUnloadedMastFiles(): boolean {
+		for (const m of this.mastFileCache) {
+			if (!m.loaded) {
+				return true;
+			}
 		}
+		for (const m of this.missionMastModules) {
+			if (!m.loaded) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private computeBlobKeys(): Word[] {
 		let words: Word[] = [];
 		for (const m of this.mastFileCache) {
 			words = words.concat(m.blob_keys);
@@ -704,13 +715,10 @@ export class MissionCache {
 		for (const p of this.pyFileCache) {
 			words = words.concat(p.blob_keys);
 		}
-		this.blobKeysCache = words;
+		return words;
 	}
 
-	private ensureLinksCache() {
-		if (this.linksCache !== null) {
-			return;
-		}
+	private computeLinks(): Word[] {
 		let links: Word[] = [];
 		for (const m of this.mastFileCache) {
 			links = links.concat(m.links);
@@ -724,13 +732,10 @@ export class MissionCache {
 		for (const p of this.missionPyModules) {
 			links = links.concat(p.links);
 		}
-		this.linksCache = links;
+		return links;
 	}
 
-	private ensureRolesCache() {
-		if (this.rolesCache !== null) {
-			return;
-		}
+	private computeRoles(): Word[] {
 		let roles: Word[] = [];
 		for (const m of this.mastFileCache) {
 			roles = roles.concat(m.roles);
@@ -745,13 +750,10 @@ export class MissionCache {
 			roles = roles.concat(p.roles);
 		}
 		roles = roles.concat(getArtemisGlobals().shipData.roles);
-		this.rolesCache = roles;
+		return roles;
 	}
 
-	private ensureInventoryKeysCache() {
-		if (this.inventoryKeysCache !== null) {
-			return;
-		}
+	private computeInventoryKeys(): Word[] {
 		let keys: Word[] = [];
 		for (const m of this.mastFileCache) {
 			keys = keys.concat(m.inventory_keys);
@@ -759,7 +761,35 @@ export class MissionCache {
 		for (const m of this.missionMastModules) {
 			keys = keys.concat(m.inventory_keys);
 		}
-		this.inventoryKeysCache = keys;
+		return keys;
+	}
+
+	private ensureBlobKeysCache() {
+		if (this.blobKeysCache !== null) {
+			return;
+		}
+		this.blobKeysCache = this.computeBlobKeys();
+	}
+
+	private ensureLinksCache() {
+		if (this.linksCache !== null) {
+			return;
+		}
+		this.linksCache = this.computeLinks();
+	}
+
+	private ensureRolesCache() {
+		if (this.rolesCache !== null) {
+			return;
+		}
+		this.rolesCache = this.computeRoles();
+	}
+
+	private ensureInventoryKeysCache() {
+		if (this.inventoryKeysCache !== null) {
+			return;
+		}
+		this.inventoryKeysCache = this.computeInventoryKeys();
 	}
 
 	private ensureClassCache() {
@@ -1149,6 +1179,9 @@ export class MissionCache {
 	}
 
 	getBlobKeys(): Word[] {
+		if (this.hasUnloadedMastFiles()) {
+			return this.computeBlobKeys();
+		}
 		this.ensureBlobKeysCache();
 		return this.blobKeysCache ? [...this.blobKeysCache] : [];
 	}
@@ -1175,6 +1208,9 @@ export class MissionCache {
 	}
 
 	getLinks(): Word[] {
+		if (this.hasUnloadedMastFiles()) {
+			return this.computeLinks();
+		}
 		this.ensureLinksCache();
 		return this.linksCache ? [...this.linksCache] : [];
 	}
@@ -1341,6 +1377,9 @@ export class MissionCache {
 	 * @returns an array of strings
 	 */
 	getRoles(folder: string): Word[] {
+		if (this.hasUnloadedMastFiles()) {
+			return this.computeRoles();
+		}
 		this.ensureRolesCache();
 		return this.rolesCache ? [...this.rolesCache] : [];
 	}
@@ -1350,8 +1389,11 @@ export class MissionCache {
 	 * @param folder The folder the current file is in, or just the file uri
 	 * @returns an array of strings representing all the inventory keys in scope
 	 */
-	getKeys(folder: string): Word[] {
+	getInventoryKeys(folder: string): Word[] {
 		// folder = fixFileName(folder);
+		if (this.hasUnloadedMastFiles()) {
+			return this.computeInventoryKeys();
+		}
 		this.ensureInventoryKeysCache();
 		return this.inventoryKeysCache ? [...this.inventoryKeysCache] : [];
 	}
@@ -1369,7 +1411,19 @@ export class MissionCache {
 			}
 		}
 		// debug("Creating Mast File: " + uri);
-		const m: MastFile = new MastFile(uri);
+		let m: MastFile;
+		try {
+			if (fs.existsSync(uri)) {
+				const contents = readFileSync(uri);
+				m = new MastFile(uri, contents);
+			} else {
+				m = new MastFile(uri);
+			}
+		} catch (e) {
+			debug("Failed to synchronously load mast file, falling back to async constructor: " + uri);
+			debug(e);
+			m = new MastFile(uri);
+		}
 		this.mastFileCache.push(m);
 		this.invalidateMethodCaches();
 		return m;
