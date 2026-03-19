@@ -778,10 +778,10 @@ connection.languages.semanticTokens.on((params: SemanticTokensParams) => {
 		const allTokens = tokenizeDocument(document);
 		// filter out strings because they're weird in mast sometimes and I don't want to take too much time
 		// figuring out how to handle them properly in the semantic tokens. This is a temporary solution.
-		const filteredTokens = allTokens//.filter(t => t.type !== "string");
+		const filteredTokens = allTokens.filter(t => t.type !== "comment");
 		const tokens = buildSemanticTokens(filteredTokens);
 
-		cache.set(params.textDocument.uri, document.version, buildSemanticTokens(allTokens));
+		cache.set(params.textDocument.uri, document.version, tokens);
 		return tokens;
 	} catch (e) {
 		debug(`Error computing semantic tokens: ${e}`);

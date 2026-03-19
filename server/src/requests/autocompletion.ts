@@ -263,6 +263,12 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				return getWordsAsCompletionItems("Inventory Key", cache.getInventoryKeys(text.uri), text)
 			}
 
+			// Link names in link()/linked_to()/has_link()/etc.
+			if (func.includes("link")) {
+				const links = cache.getLinks();
+				return getWordsAsCompletionItems("Link", links, text);
+			}
+
 			// Here we check for stylestrings, art_ids, etc.
 			
 			// const func = getCurrentMethodName(iStr);

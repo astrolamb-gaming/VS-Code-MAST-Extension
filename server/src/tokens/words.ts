@@ -18,6 +18,10 @@ export interface Word {
 	 */
 	name: string,
 	/**
+	 * Optional documentation/description for the word.
+	 */
+	description?: string,
+	/**
 	 * The location of the word
 	 */
 	locations: WordFileLocation[]

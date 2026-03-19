@@ -97,6 +97,9 @@ export function getWordsAsCompletionItems(type:string, roles: Word[], doc:TextDo
 			labelDetails: {description: deets},
 			sortText: filter
 		}
+		if (r.description) {
+			c.documentation = r.description;
+		}
 		ci.push(c);
 	}
 	return ci;
@@ -112,6 +115,9 @@ function mergeWordList(roles:Word[]):Word[] {
 		let word = map.get(r.name);
 		if (word) {
 			word.locations = word.locations.concat(r.locations);
+			if (!word.description && r.description) {
+				word.description = r.description;
+			}
 			map.set(r.name, word);
 		} else {
 			map.set(r.name,r);

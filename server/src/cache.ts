@@ -690,20 +690,6 @@ export class MissionCache {
 		this.inventoryKeysCache = null;
 	}
 
-	private hasUnloadedMastFiles(): boolean {
-		for (const m of this.mastFileCache) {
-			if (!m.loaded) {
-				return true;
-			}
-		}
-		for (const m of this.missionMastModules) {
-			if (!m.loaded) {
-				return true;
-			}
-		}
-		return false;
-	}
-
 	private computeBlobKeys(): Word[] {
 		let words: Word[] = [];
 		for (const m of this.mastFileCache) {
@@ -760,6 +746,12 @@ export class MissionCache {
 		}
 		for (const m of this.missionMastModules) {
 			keys = keys.concat(m.inventory_keys);
+		}
+		for (const p of this.pyFileCache) {
+			keys = keys.concat(p.inventory_keys);
+		}
+		for (const p of this.missionPyModules) {
+			keys = keys.concat(p.inventory_keys);
 		}
 		return keys;
 	}
@@ -1179,9 +1171,6 @@ export class MissionCache {
 	}
 
 	getBlobKeys(): Word[] {
-		if (this.hasUnloadedMastFiles()) {
-			return this.computeBlobKeys();
-		}
 		this.ensureBlobKeysCache();
 		return this.blobKeysCache ? [...this.blobKeysCache] : [];
 	}
@@ -1208,9 +1197,6 @@ export class MissionCache {
 	}
 
 	getLinks(): Word[] {
-		if (this.hasUnloadedMastFiles()) {
-			return this.computeLinks();
-		}
 		this.ensureLinksCache();
 		return this.linksCache ? [...this.linksCache] : [];
 	}
@@ -1377,9 +1363,6 @@ export class MissionCache {
 	 * @returns an array of strings
 	 */
 	getRoles(folder: string): Word[] {
-		if (this.hasUnloadedMastFiles()) {
-			return this.computeRoles();
-		}
 		this.ensureRolesCache();
 		return this.rolesCache ? [...this.rolesCache] : [];
 	}
@@ -1391,9 +1374,6 @@ export class MissionCache {
 	 */
 	getInventoryKeys(folder: string): Word[] {
 		// folder = fixFileName(folder);
-		if (this.hasUnloadedMastFiles()) {
-			return this.computeInventoryKeys();
-		}
 		this.ensureInventoryKeysCache();
 		return this.inventoryKeysCache ? [...this.inventoryKeysCache] : [];
 	}
@@ -1475,7 +1455,19 @@ export class MissionCache {
 		}
 		/// Should never get to this point unless a new py file was created.
 		// debug("New py file: " + uri);
-		const p: PyFile = new PyFile(uri);
+		let p: PyFile;
+		try {
+			if (fs.existsSync(uri)) {
+				const contents = readFileSync(uri);
+				p = new PyFile(uri, contents);
+			} else {
+				p = new PyFile(uri);
+			}
+		} catch (e) {
+			debug("Failed to synchronously load python file, falling back to async constructor: " + uri);
+			debug(e);
+			p = new PyFile(uri);
+		}
 		if (uri.includes("sbs_utils")) {
 			this.addSbsPyFile(p);
 		} else {

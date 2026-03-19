@@ -119,15 +119,11 @@ export class MastFile extends FileCache {
 
 		// Parse framework strings using token-based extractors (reuse tokens)
 		this.roles = extractRolesFromMastFile(textDocument, tokens);
+		if (this.uri.includes("admiral")) {
+			debug("Extracted roles: " + this.roles.map(r => r.name).join(", "));
+		}
 		this.blob_keys = extractBlobKeysFromMastFile(textDocument, tokens);
 		this.inventory_keys = extractInventoryKeysFromMastFile(textDocument, tokens);
-		if (this.uri.includes("gamemaster")) {
-			debug(tokens);
-			debug("Inventory keys");
-			debug(this.inventory_keys)
-			debug(this.roles)
-			debug(this.links)
-		}
 		
 		this.links = extractLinksFromMastFile(textDocument, tokens);
 		this.signals = extractSignalsFromMastFile(textDocument, tokens);
@@ -267,16 +263,12 @@ export class MastFile extends FileCache {
 
 		// Rebuild extracted items from updated token stream
 		this.extractedItems = this.buildExtractedItems(this.tokens, doc);
-		this.roles = this.extractedItems.filter(i => i.kind === 'role').map(i => ({ name: i.value, locations: [{ uri: this.uri, range: { start: { line: i.line, character: i.character }, end: { line: i.line, character: i.character + i.length } } }] } as any));
+		this.roles = extractRolesFromMastFile(doc, this.tokens);
 		// Keep other token-based arrays for now using existing extractors
 		this.blob_keys = extractBlobKeysFromMastFile(doc, this.tokens);
 		this.inventory_keys = extractInventoryKeysFromMastFile(doc, this.tokens);
 		this.links = extractLinksFromMastFile(doc, this.tokens);
 		this.signals = extractSignalsFromMastFile(doc, this.tokens);
-		debug("Inventory keys");
-		debug(this.inventory_keys)
-		debug(this.roles)
-		debug(this.links)
 
 		// For labels and variables, parse from full text to remain correct
 		this.labelNames = parseLabelsInFile(newText, this.uri);

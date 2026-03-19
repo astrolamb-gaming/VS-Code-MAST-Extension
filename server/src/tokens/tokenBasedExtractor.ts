@@ -3,6 +3,7 @@ import { Range, Location } from 'vscode-languageserver';
 import { fileFromUri } from '../fileFunctions';
 import { Word } from './words';
 import { SignalInfo } from './signals';
+import { debug } from 'console';
 
 /**
  * Token-based string extractor that works with lexer output
@@ -26,6 +27,15 @@ export interface ExtractedStrings {
 	links: Word[];
 }
 
+interface DocumentedKeyTag {
+	keyType: string;
+	name: string;
+	description: string;
+	line: number;
+	character: number;
+	length: number;
+}
+
 /**
  * Token-based string extractor
  * Uses pre-tokenized output from lexers for efficient extraction
@@ -33,6 +43,7 @@ export interface ExtractedStrings {
 export class TokenBasedExtractor {
 	private doc: TextDocument;
 	private tokens: Token[];
+	private documentedKeyTags: DocumentedKeyTag[] | null = null;
 
 	private isCallableToken(token: Token): boolean {
 		return token.type === 'function' || token.type === 'method';
@@ -60,10 +71,16 @@ export class TokenBasedExtractor {
 	 * Extract role strings by finding add_role/has_role function calls
 	 */
 	public extractRoles(): Word[] {
-		return this.extractStringsByFunctionKeywords(['role'], {
-			normalizeCase: true,
-			allowCommaSeparated: true
-		});
+		return this.mergeWords([
+			...this.extractStringsByFunctionKeywords(['role'], {
+				normalizeCase: true,
+				allowCommaSeparated: true
+			}),
+			...this.extractDocumentedWords(['role'], {
+				normalizeCase: true,
+				allowCommaSeparated: true
+			})
+		]);
 	}
 
 	/**
@@ -124,21 +141,30 @@ export class TokenBasedExtractor {
 	 * Extract inventory key strings
 	 */
 	public extractInventoryKeys(): Word[] {
-		return this.extractStringsByFunctionKeywords(['inventory']);
+		return this.mergeWords([
+			...this.extractStringsByFunctionKeywords(['inventory']),
+			...this.extractDocumentedWords(['inventory'])
+		]);
 	}
 
 	/**
 	 * Extract blob/dataset key strings
 	 */
 	public extractBlobKeys(): Word[] {
-		return this.extractStringsByFunctionKeywords(['blob', 'data_set']);
+		return this.mergeWords([
+			...this.extractStringsByFunctionKeywords(['blob', 'data_set']),
+			...this.extractDocumentedWords(['blob', 'data_set'])
+		]);
 	}
 
 	/**
 	 * Extract link strings
 	 */
 	public extractLinks(): Word[] {
-		return this.extractStringsByFunctionKeywords(['link']);
+		return this.mergeWords([
+			...this.extractStringsByFunctionKeywords(['link']),
+			...this.extractDocumentedWords(['link'])
+		]);
 	}
 
 	/**
@@ -206,6 +232,223 @@ export class TokenBasedExtractor {
 		}
 
 		return false;
+	}
+
+	private extractDocumentedWords(
+		keywords: string[],
+		options: {
+			normalizeCase?: boolean;
+			allowCommaSeparated?: boolean;
+		} = {}
+	): Word[] {
+		const words: Word[] = [];
+		
+		const tags = this.getDocumentedKeyTags();
+		if (tags.length > 0) {
+			debug("KEY TAGS:")
+			debug(tags);
+			debug("KEYWORDS:")
+			debug(keywords);
+		}
+		for (const tag of tags) {
+			debug("Processing tag: " + tag.name + " of type " + tag.keyType);
+			if (!(keywords.includes(tag.keyType))) {
+				debug("Tag type: " + tag.keyType + " not in keywords");
+				continue;
+			}
+			debug("Matched tag: " + tag.name + " of type " + tag.keyType);
+
+			const token: Token = {
+				type: 'string',
+				text: tag.name,
+				line: tag.line,
+				character: tag.character,
+				length: tag.length
+			};
+
+			if (options.allowCommaSeparated) {
+				const values = tag.name.split(',').map(v => v.trim());
+				for (let value of values) {
+					if (!value) {
+						continue;
+					}
+					if (options.normalizeCase) {
+						value = value.toLowerCase();
+					}
+					this.addWord(words, value, token, tag.description);
+				}
+			} else {
+				let value = tag.name;
+				if (options.normalizeCase) {
+					value = value.toLowerCase();
+				}
+				this.addWord(words, value, token, tag.description);
+			}
+		}
+		if (tags.length > 0) {
+			debug("Extracted documented keys:");
+			debug(words);
+		}
+		return this.mergeWords(words);
+	}
+
+	private getDocumentedKeyTags(): DocumentedKeyTag[] {
+		if (this.documentedKeyTags === null) {
+			this.documentedKeyTags = this.scanDocumentedKeyTags();
+		}
+		return this.documentedKeyTags;
+	}
+
+	private scanDocumentedKeyTags(): DocumentedKeyTag[] {
+		const tags: DocumentedKeyTag[] = [];
+
+		for (const token of this.tokens) {
+			if (token.type === 'comment') {
+				tags.push(...this.parseTagsFromCommentToken(token));
+				continue;
+			}
+
+			if (token.type === 'string' && (this.isDocstringToken(token.text) || this.isLineStartQuoteStringToken(token))) {
+				tags.push(...this.parseTagsFromStringToken(token));
+			}
+		}
+
+		return tags;
+	}
+
+	private parseTagsFromCommentToken(token: Token): DocumentedKeyTag[] {
+		return this.parseTagsFromTokenText(token, (rawLine, isFirstLine, isLastLine, lineCharacterBase) => {
+			let content = rawLine;
+			let shift = 0;
+
+			const leadingWhitespace = content.match(/^\s*/)?.[0].length ?? 0;
+			if (leadingWhitespace > 0) {
+				content = content.slice(leadingWhitespace);
+				shift += leadingWhitespace;
+			}
+
+			if (isFirstLine && content.startsWith('/*')) {
+				content = content.slice(2);
+				shift += 2;
+			}
+
+			if (!isFirstLine && content.startsWith('*')) {
+				content = content.slice(1);
+				shift += 1;
+			}
+
+			if (content.startsWith('#')) {
+				content = content.slice(1);
+				shift += 1;
+			}
+
+			if (isLastLine && content.endsWith('*/')) {
+				content = content.slice(0, -2);
+			}
+
+			return {
+				content,
+				baseCharacter: lineCharacterBase + shift
+			};
+		});
+	}
+
+	private parseTagsFromStringToken(token: Token): DocumentedKeyTag[] {
+		return this.parseTagsFromTokenText(token, (rawLine, isFirstLine, isLastLine, lineCharacterBase) => {
+			let content = rawLine;
+			let shift = 0;
+
+			if (isFirstLine) {
+				const openMatch = /^(?:[furbFURB]+)?("""|'''|"|')/.exec(content);
+				if (openMatch) {
+					content = content.slice(openMatch[0].length);
+					shift += openMatch[0].length;
+				}
+			}
+
+			if (isLastLine) {
+				content = content.replace(/("""|'''|"|')\s*$/, '');
+			}
+
+			return {
+				content,
+				baseCharacter: lineCharacterBase + shift
+			};
+		});
+	}
+
+	private parseTagsFromTokenText(
+		token: Token,
+		normalizeLine: (
+			rawLine: string,
+			isFirstLine: boolean,
+			isLastLine: boolean,
+			lineCharacterBase: number
+		) => { content: string; baseCharacter: number }
+	): DocumentedKeyTag[] {
+		const tags: DocumentedKeyTag[] = [];
+		const text = token.text;
+		let line = token.line;
+		let segmentStart = 0;
+		let isFirstLine = true;
+
+		for (let i = 0; i <= text.length; i++) {
+			if (i < text.length && text[i] !== '\n') {
+				continue;
+			}
+
+			const rawLine = text.substring(segmentStart, i);
+			const lineCharacterBase = isFirstLine ? token.character : 0;
+			const normalized = normalizeLine(rawLine, isFirstLine, i === text.length, lineCharacterBase);
+			const tag = this.parseDocumentedKeyTag(normalized.content, line, normalized.baseCharacter);
+			if (tag) {
+				tags.push(tag);
+			}
+
+			line++;
+			segmentStart = i + 1;
+			isFirstLine = false;
+		}
+
+		return tags;
+	}
+
+	private isDocstringToken(value: string): boolean {
+		const trimmed = value.trimStart();
+		return /^(?:[furbFURB]+)?("""|''')/.test(trimmed);
+	}
+
+	private isLineStartQuoteStringToken(token: Token): boolean {
+		if (!token.text.startsWith('"')) {
+			return false;
+		}
+
+		const lineStartOffset = this.doc.offsetAt({ line: token.line, character: 0 });
+		const tokenOffset = this.doc.offsetAt({ line: token.line, character: token.character });
+		const prefix = this.doc.getText().substring(lineStartOffset, tokenOffset);
+		return /^\s*$/.test(prefix);
+	}
+
+	private parseDocumentedKeyTag(content: string, line: number, baseCharacter: number): DocumentedKeyTag | null {
+		const match = /^\s*@([a-zA-Z_][\w-]*)\s+([^:\s]+)\s*:\s*(.*?)\s*$/.exec(content);
+		if (!match) {
+			return null;
+		}
+
+		const [, keyType, name, description] = match;
+		const nameIndex = match[0].indexOf(name);
+		if (nameIndex === -1) {
+			return null;
+		}
+
+		return {
+			keyType: keyType.toLowerCase(),
+			name,
+			description: description.trim(),
+			line,
+			character: baseCharacter + nameIndex,
+			length: name.length
+		};
 	}
 
 	/**
@@ -332,11 +575,14 @@ export class TokenBasedExtractor {
 	/**
 	 * Add a word to the list or update existing entry
 	 */
-	private addWord(words: Word[], name: string, token: Token): void {
+	private addWord(words: Word[], name: string, token: Token, description?: string): void {
 		const location = this.createLocation(token);
 
 		for (const word of words) {
 			if (word.name === name) {
+				if (!word.description && description) {
+					word.description = description;
+				}
 				for (const loc of word.locations) {
 					if (loc.uri === location.uri) {
 						loc.ranges.push(location.range);
@@ -350,6 +596,7 @@ export class TokenBasedExtractor {
 
 		words.push({
 			name,
+			description,
 			locations: [{uri: location.uri, ranges: [location.range]}]
 		});
 	}
@@ -364,6 +611,9 @@ export class TokenBasedExtractor {
 			const existing = map.get(word.name);
 			if (existing) {
 				existing.locations.push(...word.locations);
+				if (!existing.description && word.description) {
+					existing.description = word.description;
+				}
 			} else {
 				map.set(word.name, word);
 			}

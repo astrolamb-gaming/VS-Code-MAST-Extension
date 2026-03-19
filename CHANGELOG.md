@@ -9,6 +9,13 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * TODO: Add more info about shipdata entries to the art arguments for space objects
 * WIP: Get mast complier errors from the compiler itself, so the game doesn't have to be running to check for compiler errors.
 
+### 0.18.0 - WIP
+
+* Massive rewrite of file parsing logic, which allows for:
+	* Significant performance improvements
+	* Semantic tokens
+* Add capability to assign descriptions for roles, inventory keys, blob keys, and links.
+
 
 ### 0.17.2
 

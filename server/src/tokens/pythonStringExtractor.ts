@@ -30,7 +30,7 @@ export class SimplePythonTokenizer {
 
 			// Comments
 			if (ch === '#') {
-				this.skipComment();
+				this.scanComment();
 				continue;
 			}
 
@@ -102,11 +102,23 @@ export class SimplePythonTokenizer {
 		}
 	}
 
-	private skipComment(): void {
+	private scanComment(): void {
+		const startLine = this.line;
+		const startChar = this.character;
+		const startPos = this.pos;
+
 		while (this.pos < this.text.length && this.text[this.pos] !== '\n') {
 			this.pos++;
 			this.character++;
 		}
+
+		this.tokens.push({
+			type: 'comment',
+			text: this.text.substring(startPos, this.pos),
+			line: startLine,
+			character: startChar,
+			length: this.pos - startPos
+		});
 	}
 
 	/**
