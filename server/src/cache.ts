@@ -81,6 +81,7 @@ export class MissionCache {
 	private methodIndex: Map<string, Function[]> | null = null;
 	private classMethodIndex: Map<string, Function[]> | null = null;
 	private classesCache: ClassObject[] | null = null;
+	private signalsCache: SignalInfo[] | null = null;
 	private blobKeysCache: Word[] | null = null;
 	private linksCache: Word[] | null = null;
 	private rolesCache: Word[] | null = null;
@@ -549,9 +550,10 @@ export class MissionCache {
 			const lib = this.storyJson.mastlib.concat(this.storyJson.sbslib);
 			debug("Beginning to load modules");
 			const total = lib.length;
+			showProgressBar(true);
 			for (const zip of lib) {
 				debug("Unzipping: " + zip);
-				showProgressBar(true);
+				
 				let found = false;
 				let missions = globals.getAllMissions()
 				for (const m of missions) {
@@ -562,9 +564,9 @@ export class MissionCache {
 						const files = getFilesInDir(missionFolder,true);
 						for (const f of files) {
 							if (f.endsWith(".py")|| f.endsWith(".mast")) {
-								showProgressBar(true);
+								// showProgressBar(true);
 								const data = await readFile(f)//.then((data)=>{
-									showProgressBar(true);
+									// showProgressBar(true);
 									// debug("Loading: " + path.basename(f));
 									this.handleZipData(data, f);
 								// });
@@ -684,10 +686,28 @@ export class MissionCache {
 		this.methodIndex = null;
 		this.classMethodIndex = null;
 		this.classesCache = null;
+		this.signalsCache = null;
 		this.blobKeysCache = null;
 		this.linksCache = null;
 		this.rolesCache = null;
 		this.inventoryKeysCache = null;
+	}
+
+	private computeSignals(): SignalInfo[] {
+		let ret: SignalInfo[] = [];
+		for (const m of this.mastFileCache) {
+			ret = ret.concat(m.signals);
+		}
+		for (const m of this.missionMastModules) {
+			ret = ret.concat(m.signals);
+		}
+		for (const p of this.pyFileCache) {
+			ret = ret.concat(p.signals);
+		}
+		for (const p of this.missionPyModules) {
+			ret = ret.concat(p.signals);
+		}
+		return mergeSignalInfo(ret);
 	}
 
 	private computeBlobKeys(): Word[] {
@@ -761,6 +781,13 @@ export class MissionCache {
 			return;
 		}
 		this.blobKeysCache = this.computeBlobKeys();
+	}
+
+	private ensureSignalsCache() {
+		if (this.signalsCache !== null) {
+			return;
+		}
+		this.signalsCache = this.computeSignals();
 	}
 
 	private ensureLinksCache() {
@@ -961,7 +988,6 @@ export class MissionCache {
 		}
 		if (!found) {
 			for (const p of this.pyFileCache) {
-				let isP = false;
 				for (const f of files) {
 					if (f === fixFileName(p.uri)) found = true; break;
 				}
@@ -1006,7 +1032,6 @@ export class MissionCache {
 		for (const r of this.routeLabels) {
 			str.push(r.route);
 		}
-		debug(str);
 		return str;
 	}
 
@@ -1152,22 +1177,8 @@ export class MissionCache {
 	 * @returns an array of {@link string string}s representing the signals used elsewhere in the mission
 	 */
 	getSignals(): SignalInfo[] {
-		let ret: SignalInfo[] = [];
-		for (const m of this.mastFileCache) {
-			ret = ret.concat(m.signals);
-		}
-		for (const m of this.missionMastModules) {
-			ret = ret.concat(m.signals);
-		}
-		for (const p of this.pyFileCache) {
-			ret = ret.concat(p.signals);
-		}
-		for (const p of this.missionPyModules) {
-			ret = ret.concat(p.signals)
-		}
-		ret = mergeSignalInfo(ret);
-		// ret = [...new Set(ret)]; // Don't want duplicates, I think...
-		return ret;
+		this.ensureSignalsCache();
+		return this.signalsCache ? [...this.signalsCache] : [];
 	}
 
 	getBlobKeys(): Word[] {
@@ -1225,7 +1236,7 @@ export class MissionCache {
 
 		// Remove duplicates (should just be a bunch of END entries)
 		// Could also include labels that exist in another file
-		const arrUniq = [...new Map(li.map(v => [v.name, v])).values()]
+		// const arrUniq = [...new Map(li.map(v => [v.name, v])).values()]
 		return li;
 	}
 
@@ -1503,154 +1514,11 @@ export class MissionCache {
 
 }
 
-
-
 const sourceFiles: PyFile[] = []
 export function getSourceFiles(): PyFile[] { return sourceFiles; }
 
-async function loadTypings(): Promise<void> {
-	try {
-		//const { default: fetch } = await import("node-fetch");
-		//const fetch = await import('node-fetch');
-		//let github : string = "https://github.com/artemis-sbs/sbs_utils/raw/refs/heads/master/mock/sbs.py";
-		let gh : string = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/typings/";
-		// TODO: try getting local files. If this fails, then use the github files.
-		for (const page in files) {
-			let url = gh+files[page]+".pyi";
-			const data = await fetch(url);
-			const textData = await data.text();
-			//sourceFiles.push(parseWholeFile(textData, files[page]));
-			sourceFiles.push(new PyFile(url));
-		}
-		// prepCompletions(sourceFiles);
-		// prepSignatures(sourceFiles);
-	} catch (err) {
-		debug("\nFailed to load\n"+err as string);
-	}
-}
-
-async function loadSbs(): Promise<PyFile|null>{
-	// return null;
-	if (testingPython) return null;
-	let gh: string = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/typings/sbs/__init__.pyi";
-	// Testing fake bad url
-	// gh = "https://raw.githubusercontent.com/artemis-sbs/sbs_utils/master/typings/sbs/__iniit__.pyi";
-	let text = "";
-	try {
-		const data = await fetch(gh);
-		text = await data.text();
-
-		// If the url isn't valid or not connected to internet
-		if (text === "404: Not Found") {
-			debug("Using local copy, if it exists")
-			text = await loadTempFile("sbs.py")
-			gh = path.join(os.tmpdir(), "cosmosModules", "sbs.py");
-			const p = new PyFile(gh, text);
-			return p;
-		}
-		// If able to find the url
-		gh = saveZipTempFile("sbs.py",text);
-		const p = new PyFile(gh, text);
-		return p;
-
-	} catch (e) {
-		// TODO: This section is probably unnecessary and obsolete.
-		// I did delete the sbs zip file as part of this repo, so it's doubly obsolete.
-		// But I kinda want a backup...
-		// What if I want to code without access to the internet?
-		debug("Can't find sbs.py on github");
-		try {
-			text = await loadTempFile("sbs.py")
-			gh = path.join(os.tmpdir(), "cosmosModules", "sbs.py");
-			// text = await readFile(gh);
-			const p = new PyFile(gh, text);
-			debug("SBS py file generated")
-			return p;
-		} catch (ex) {
-			debug("Can't find sbs.py locally either.");
-		}
-	}
-	return null;
-}
-
-const expressions: RX[] = [];
-const exp: Map<string, RegExp> = new Map();
-async function getRexEx(src: string) :Promise<void> {
-	const data = await fetch(src);
-	const txt = await data.text();
-	parse(txt, exp);
-	let name: string = "Geralt";
-	let age: number = 95;
-	let message: string = `The Witcher is of age ${age} and his name is ${name}`;
-}
-
-let files: string[] = [
-	"sbs/__init__",
-	"sbs_utils/agent",
-	"sbs_utils/consoledispatcher",
-	"sbs_utils/damagedispatcher",
-	"sbs_utils/extra_dispatcher",
-	"sbs_utils/faces",
-	"sbs_utils/fs",
-	"sbs_utils/futures",
-	"sbs_utils/griddispatcher",
-	"sbs_utils/gridobject",
-	"sbs_utils/gui",
-	"sbs_utils/handlerhooks",
-	"sbs_utils/helpers",
-	"sbs_utils/layout",
-	"sbs_utils/lifetimedispatchers",
-	"sbs_utils/objects",
-	"sbs_utils/scatter",
-	"sbs_utils/spaceobject",
-	"sbs_utils/tickdispatcher",
-	"sbs_utils/vec",
-	"sbs_utils/mast/label",
-	"sbs_utils/mast/mast",
-	"sbs_utils/mast/mast_sbs_procedural",
-	"sbs_utils/mast/mastmission",
-	"sbs_utils/mast/mastobjects",
-	"sbs_utils/mast/mastscheduler",
-	"sbs_utils/mast/maststory",
-	"sbs_utils/mast/maststorypage",
-	"sbs_utils/mast/maststoryscheduler",
-	"sbs_utils/mast/parsers",
-	"sbs_utils/mast/pollresults",
-	"sbs_utils/pages/avatar",
-	"sbs_utils/pages/shippicker",
-	"sbs_utils/pages/start",
-	"sbs_utils/pages/layout/layout",
-	"sbs_utils/pages/layout/text_area",
-	"sbs_utils/pages/widgets/control",
-	"sbs_utils/pages/widgets/layout_listbox",
-	"sbs_utils/pages/widgets/listbox",
-	"sbs_utils/pages/widgets/shippicker",
-	"sbs_utils/procedural/behavior",
-	"sbs_utils/procedural/comms",
-	"sbs_utils/procedural/cosmos",
-	"sbs_utils/procedural/execution",
-	"sbs_utils/procedural/grid",
-	"sbs_utils/procedural/gui",
-	"sbs_utils/procedural/internal_damage",
-	"sbs_utils/procedural/inventory",
-	"sbs_utils/procedural/links",
-	"sbs_utils/procedural/maps",
-	"sbs_utils/procedural/query",
-	"sbs_utils/procedural/roles",
-	"sbs_utils/procedural/routes",
-	"sbs_utils/procedural/science",
-	"sbs_utils/procedural/screen_shot",
-	"sbs_utils/procedural/ship_data",
-	"sbs_utils/procedural/signal",
-	"sbs_utils/procedural/space_objects",
-	"sbs_utils/procedural/spawn",
-	"sbs_utils/procedural/style",
-	"sbs_utils/procedural/timers"
-];
-
 // Map of missionURI -> MissionCache for O(1) lookups
 let caches: Map<string, MissionCache> = new Map();
-
 
 /**
  * 

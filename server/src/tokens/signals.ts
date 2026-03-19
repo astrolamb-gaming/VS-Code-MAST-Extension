@@ -8,6 +8,10 @@ import { isInComment } from './comments';
 
 export interface SignalInfo {
 	name: string,
+	/**
+	 * Optional documentation/description for the signal.
+	 */
+	description?: string,
 	emit: Location[],
 	triggered: Location[]
 }	
@@ -27,6 +31,9 @@ export function mergeSignalInfo(sigs: SignalInfo[]): SignalInfo[] {
 			sig = s;
 			signals.set(s.name, s)
 		} else {
+			if (!sig.description && s.description) {
+				sig.description = s.description;
+			}
 			for (const r1 of s.emit) {
 				let found = false;
 				for (const r2 of sig.emit) {
@@ -58,6 +65,9 @@ export function buildSignalInfoListAsCompletionItems(sigs: SignalInfo[]) {
 			label: s.name,
 			kind: CompletionItemKind.Event,
 			labelDetails: {description: "Signal Route Label"}
+		}
+		if (s.description) {
+			ci.documentation = s.description;
 		}
 		ret.push(ci);
 	}

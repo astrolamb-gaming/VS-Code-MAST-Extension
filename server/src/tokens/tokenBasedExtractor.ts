@@ -134,6 +134,22 @@ export class TokenBasedExtractor {
 			}
 		}
 
+		// Find documented signal keys: @signal name: description
+		for (const tag of this.getDocumentedKeyTags()) {
+			if (tag.keyType !== 'signal') {
+				continue;
+			}
+
+			const token: Token = {
+				type: 'string',
+				text: tag.name,
+				line: tag.line,
+				character: tag.character,
+				length: tag.name.length
+			};
+			this.addSignalUsage(signalMap, tag.name, token, true, tag.description || undefined);
+		}
+
 		return Array.from(signalMap.values());
 	}
 
@@ -551,7 +567,8 @@ export class TokenBasedExtractor {
 		map: Map<string, SignalInfo>,
 		name: string,
 		token: Token,
-		isEmit: boolean
+		isEmit: boolean,
+		description?: string
 	): void {
 		const location = this.createLocation(token);
 		
@@ -559,10 +576,13 @@ export class TokenBasedExtractor {
 		if (!signal) {
 			signal = {
 				name,
+				description,
 				emit: [],
 				triggered: []
 			};
 			map.set(name, signal);
+		} else if (!signal.description && description) {
+			signal.description = description;
 		}
 		
 		if (isEmit) {
