@@ -1971,7 +1971,8 @@ export class MastStateMachineLexer {
 			if (this.isLineStart() && (current === '=' || current === '-' || current === '+')) {
 				const labelTokens = this.scanLabel();
 				if (labelTokens.length > 0) {
-					// Labels are parsed but not emitted as tokens
+					// Emit parsed label definition tokens
+					this.tokens.push(...labelTokens);
 					continue;
 				}
 			}

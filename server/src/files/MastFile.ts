@@ -4,7 +4,7 @@ import * as path from 'path';
 import { CompletionItem, CompletionItemKind, Location } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { FileCache } from '../data';
-import { LabelInfo, parseLabelsInFile } from '../tokens/labels';
+import { LabelInfo, parseLabelsInFile, parseLabelsFromTokens } from '../tokens/labels';
 import { parsePrefabs } from '../tokens/prefabs';
 // role/inventory/blob/link helpers replaced by token-driven extractedItems
 import { Variable, parseVariables } from '../tokens/variables';
@@ -108,7 +108,7 @@ export class MastFile extends FileCache {
 		this.roles = this.extractedItems.filter(i => i.kind === 'role').map(i => ({ name: i.value, locations: [{ uri: this.uri, range: { start: { line: i.line, character: i.character }, end: { line: i.line, character: i.character + i.length } } }] } as any));
 
 		// Parse labels and prefabs (labels rely on raw text parsing)
-		this.labelNames = parseLabelsInFile(text, this.uri);
+		this.labelNames = parseLabelsFromTokens(textDocument, tokens);
 		this.prefabs = parsePrefabs(this.labelNames);
 
 		// Parse variables
@@ -271,7 +271,7 @@ export class MastFile extends FileCache {
 		this.signals = extractSignalsFromMastFile(doc, this.tokens);
 
 		// For labels and variables, parse from full text to remain correct
-		this.labelNames = parseLabelsInFile(newText, this.uri);
+		this.labelNames = parseLabelsFromTokens(doc, this.tokens);
 		this.prefabs = parsePrefabs(this.labelNames);
 		this.variables = parseVariables(doc);
 		this.words = [];// parseWords(doc);

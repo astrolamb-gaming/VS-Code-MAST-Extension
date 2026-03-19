@@ -1,4 +1,5 @@
 import { CompletionItem, CompletionItemKind, Diagnostic, DiagnosticSeverity, integer, Location, MarkupContent, Position, Range } from 'vscode-languageserver';
+import { Token } from './tokenBasedExtractor';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { relatedMessage } from '../errorChecking';
 import { debug } from 'console';
@@ -207,6 +208,141 @@ function getLabelDocs(text:string):string {
 	// I THINK it'll be just all comments right under the label definition.
 	// But I need to check that the comments should always be prior to the metadata
 	return ret;
+}
+
+/**
+ * Token-based label parser. Builds {@link LabelInfo} from an already-computed
+ * token stream, avoiding a second regex scan over the raw text.
+ * Replaces {@link parseLabelsInFile} in paths that have tokens readily available
+ * (i.e. {@link MastFile.parse} and {@link MastFile.updateFromDocument}).
+ *
+ * @param doc The {@link TextDocument} (used for offset/position math)
+ * @param tokens The pre-computed token stream from {@link tokenizeMastFile}
+ */
+export function parseLabelsFromTokens(doc: TextDocument, tokens: Token[]): LabelInfo[] {
+	const text = doc.getText();
+	const srcFile = fixFileName(doc.uri);
+	const mainLabels: LabelInfo[] = [];
+	const inlineLabels: LabelInfo[] = [];
+
+	for (const token of tokens) {
+		if (token.modifier !== 'definition') continue;
+		if (token.type !== 'label' && token.type !== 'route-label' && token.type !== 'media-label') continue;
+
+		const nameOffset = doc.offsetAt({ line: token.line, character: token.character });
+
+		// Determine label type.
+		// route-label and media-label have dedicated token types.
+		// For 'label' tokens (both main == and inline --/++) inspect the prefix
+		// on the same line: if it contains '=' it's a main label, otherwise inline.
+		let type: string;
+		if (token.type === 'route-label') {
+			type = 'route';
+		} else if (token.type === 'media-label') {
+			type = 'media';
+		} else {
+			const lineStart = doc.offsetAt({ line: token.line, character: 0 });
+			const prefix = text.substring(lineStart, nameOffset);
+			type = prefix.includes('=') ? 'main' : 'inline';
+		}
+
+		// Collect documentation: lines immediately after the label definition
+		// that begin with a quote character (same logic as parseLabels).
+		let comments = '';
+		for (let checkLine = token.line + 1; checkLine < doc.lineCount; checkLine++) {
+			const lineStartOffset = doc.offsetAt({ line: checkLine, character: 0 });
+			const lineEndOffset = checkLine + 1 < doc.lineCount
+				? doc.offsetAt({ line: checkLine + 1, character: 0 }) - 1
+				: text.length;
+			const line = text.substring(lineStartOffset, lineEndOffset).trim();
+			if (line.startsWith('"') || line.startsWith("'")) {
+				comments += line.substring(1).trim() + '  \n';
+			} else {
+				break;
+			}
+		}
+
+		const range: Range = {
+			start: { line: token.line, character: token.character },
+			end: { line: token.line, character: token.character + token.length }
+		};
+
+		const li: LabelInfo = {
+			type,
+			name: token.text,
+			start: nameOffset,
+			end: 0,
+			length: token.length,
+			metadata: '',
+			comments: comments.trim(),
+			subLabels: [],
+			srcFile,
+			range
+		};
+
+		if (type === 'inline') {
+			inlineLabels.push(li);
+		} else {
+			mainLabels.push(li);
+		}
+	}
+
+	// Ensure both lists are in document order (tokens are sorted but filter may not preserve order)
+	mainLabels.sort((a, b) => a.start - b.start);
+	inlineLabels.sort((a, b) => a.start - b.start);
+
+	// Set end offsets and extract metadata for main/route/media labels.
+	// Each label "owns" content up to the next label's start.
+	for (let i = 0; i < mainLabels.length - 1; i++) {
+		mainLabels[i].end = mainLabels[i + 1].start - 1;
+		mainLabels[i].metadata = getMetadata(text.substring(mainLabels[i].start, mainLabels[i].end));
+	}
+	if (mainLabels.length > 0) {
+		const last = mainLabels[mainLabels.length - 1];
+		last.end = text.length;
+		last.metadata = getMetadata(text.substring(last.start));
+	}
+
+	// Set end offsets for inline labels (within their own sorted group).
+	for (let i = 0; i < inlineLabels.length - 1; i++) {
+		inlineLabels[i].end = inlineLabels[i + 1].start - 1;
+	}
+	if (inlineLabels.length > 0) {
+		inlineLabels[inlineLabels.length - 1].end = text.length;
+	}
+
+	// Add synthetic END label (matches original parseLabels behaviour).
+	const safeLen = Math.max(0, text.length - 1);
+	mainLabels.push({
+		range: { start: doc.positionAt(safeLen), end: doc.positionAt(text.length) },
+		type: 'main', name: 'END',
+		start: safeLen, end: text.length,
+		length: 3, metadata: '', comments: '', subLabels: [], srcFile
+	});
+
+	// Add synthetic 'main' label covering everything before the first real label.
+	let firstStart = text.length;
+	for (const ml of mainLabels) {
+		if (ml.name !== 'END' && ml.start < firstStart) firstStart = ml.start;
+	}
+	const mainEnd = firstStart > 0 ? firstStart - 1 : 0;
+	mainLabels.push({
+		range: { start: doc.positionAt(0), end: doc.positionAt(mainEnd) },
+		type: 'main', name: 'main',
+		start: 0, end: mainEnd,
+		length: 4, metadata: '', comments: '', subLabels: [], srcFile
+	});
+
+	// Nest inline labels within their parent main labels.
+	for (const ml of mainLabels) {
+		for (const sl of inlineLabels) {
+			if (sl.start > ml.start && sl.start < ml.end) {
+				ml.subLabels.push(sl);
+			}
+		}
+	}
+
+	return mainLabels;
 }
 
 export function parseLabelsInFile(text: string, src: string): LabelInfo[] {

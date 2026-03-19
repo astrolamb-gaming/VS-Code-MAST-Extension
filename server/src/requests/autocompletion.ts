@@ -409,7 +409,8 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 					}
 					// Otherwise, just use regular labels
 					const labels = cache.getLabels(text);
-					const main = getMainLabelAtPos(pos, labels);
+					const currentFileLabels = cache.getLabels(text, true);
+					const main = getMainLabelAtPos(pos, currentFileLabels);
 					return getLabelsAsCompletionItems(text, labels, main).concat(ci);
 				}
 				// If it even just INCLUDES "widget", then we'll try to add it.
@@ -590,7 +591,8 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	if (jump.test(iStr)) {
 
 		const labels = cache.getLabels(text);
-		const main = getMainLabelAtPos(pos, labels);
+		const currentFileLabels = cache.getLabels(text, true);
+		const main = getMainLabelAtPos(pos, currentFileLabels);
 		return getLabelsAsCompletionItems(text, labels, main);
 
 		// let labelNames = cache.getLabels(text);
@@ -743,6 +745,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			let arg = a.replace(/=\w+/,"");
 			if (arg === "label" || arg === "on_press") {
 				let labelNames = cache.getLabels(text);
+				const currentFileLabels = cache.getLabels(text, true);
 				// Iterate over parent label info objects
 				for (const i in labelNames) {
 					if (labelNames[i].name === "main") continue;
@@ -750,7 +753,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 					if (fixFileName(labelNames[i].srcFile) !== fixFileName(text.uri) && labelNames[i].name === "END") continue;
 					ci.push({documentation: buildLabelDocs(labelNames[i]),label: labelNames[i].name, kind: CompletionItemKind.Event, labelDetails: {description: path.basename(labelNames[i].srcFile)}});
 				}
-				const lbl = getMainLabelAtPos(startOfLine,labelNames);
+				const lbl = getMainLabelAtPos(startOfLine, currentFileLabels);
 				if (lbl === undefined) {
 					return [];
 				} else {

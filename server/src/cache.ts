@@ -1,15 +1,14 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { CompletionItem, CompletionItemKind, integer, Location, SignatureInformation } from 'vscode-languageserver';
+import { CompletionItem, integer, Location, SignatureInformation } from 'vscode-languageserver';
 import { MastFile } from './files/MastFile';
 import { PyFile } from './files/PyFile';
 import { parseLabelsInFile, LabelInfo, getMainLabelAtPos } from './tokens/labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { debug, time } from 'console';
-import { parse, RX } from './rx';
+import { debug } from 'console';
 import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } from './tokens/routeLabels';
-import { fixFileName, getFileContents, getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readFileSync, readZipArchive } from './fileFunctions';
-import { connection, documents, showProgressBar as showProgressBar } from './server';
+import { fixFileName, getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readFileSync, readZipArchive } from './fileFunctions';
+import { connection, showProgressBar as showProgressBar } from './server';
 import { URI } from 'vscode-uri';
 import { getArtemisGlobals, initializeArtemisGlobals } from './artemisGlobals';
 import * as os from 'os';
@@ -18,11 +17,10 @@ import { getMusicFiles } from './resources/audioFiles';
 import { Function, Parameter } from "./data/function";
 import { ClassObject } from './data/class';
 import { StoryJson } from './data/storyJson';
-import { getGlobalFunctions, getSpecificGlobals, sleep } from './python/python';
+import { getSpecificGlobals } from './python/python';
 import { loadStyleDefs } from './data/styles';
 import { Word } from './tokens/words';
 import { mergeSignalInfo, SignalInfo } from './tokens/signals';
-import { ShipData } from './shipData';
 
 export const testingPython = false;
 
@@ -1589,11 +1587,4 @@ function saveZipTempFile(uri:string, contents:string) : string{
 	return tempPath;
 }
 
-async function loadTempFile(uri:string) {
-	const temPath = path.join(os.tmpdir(),"cosmosModules",uri);
-	if (fs.existsSync(path.dirname(temPath))) {
-		const text = await readFile(temPath);
-		return text;
-	}
-	return "";
-}
+
