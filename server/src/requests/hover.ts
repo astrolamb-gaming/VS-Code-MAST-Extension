@@ -18,7 +18,7 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 	const _prof = (label: string) => debug(`[hover] ${label}: ${(performance.now() - _t0).toFixed(2)}ms`);
 
 	if (text.languageId !== "mast") {
-		_prof('exit: not mast');
+		// _prof('exit: not mast');
 		return undefined;
 	}
 	//return {contents:""}
@@ -33,41 +33,27 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 	
 	const cache = getCache(text.uri);
 	const tokens = cache.getMastFile(text.uri)?.tokens;
-	_prof('cache + tokens fetched');
+	// _prof('cache + tokens fetched');
 	const tokenContext = getTokenContextAtPosition(text, tokens || [], _pos.position);
-	_prof('getTokenContextAtPosition');
-	// const mk: MarkupContent = {
-	// 	kind: 'markdown',
-	// 	value: "Token type: \n```\n" + JSON.stringify(tokenType, null, 2) + "\n```"
-	// }
-	// const hover1: Hover = {
-	// 	contents: mk
-	// }
-	// _prof('total (debug return)');
-	// return hover1;
-	
-	// const range: Range = {
-	// 	start: t.positionAt(m.index),
-	// 	end: t.positionAt(m.index + m[0].length)
-	// }
-	//debug("Getting line");
+	// _prof('getTokenContextAtPosition');
+
 	let hoveredLine = getCurrentLineFromTextDocument(_pos.position, text);
 	// const symbol = getHoveredSymbol(hoveredLine, _pos.position.character);
 	let symbol = tokenContext.token?.text;
 	if (symbol === undefined) {
-		_prof('exit: no symbol');
+		// _prof('exit: no symbol');
 		symbol = getHoveredSymbol(hoveredLine, _pos.position.character);
 	}
-	_prof('get hovered symbol');
+	// _prof('get hovered symbol');
 	// If it's a comment, we'll just ignore it.
 	const isInComment = getTokenTypeAtOffset(text, tokens, pos) === "comment";
 	if (isInComment) {
-		_prof('exit: in comment');
+		// _prof('exit: in comment');
 		return undefined;
 	}
 	const isInString = getTokenTypeAtOffset(text, tokens, pos) === "string";
 	if (isInString) {
-		_prof('in string check');
+		// _prof('in string check');
 		const func = before.lastIndexOf("(");
 		if (func > 0) {
 			const end = before.substring(0,func);
@@ -184,9 +170,9 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 		// debug("Checking if it's a label");
 		// debug(path.basename(text.uri));
 
-		_prof('before getLabelsAtPos');
+		// _prof('before getLabelsAtPos');
 		const mainLabels = getCache(text.uri).getLabelsAtPos(text, text.offsetAt(_pos.position), false);
-		_prof('getLabelsAtPos');
+		// _prof('getLabelsAtPos');
 
 		// debug("Labels at Pos")
 		// debug(getCache(text.uri).getLabelsAtPos(text,text.offsetAt(_pos.position),true));
@@ -223,11 +209,11 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 	}
 
 	// Now we'll check for any instance where it COULD be a function name. Because Python.
-	_prof('before getMethod');
+	// _prof('before getMethod');
 	let func = getCache(text.uri).getMethod(symbol);
-	_prof('getMethod');
+	// _prof('getMethod');
 	if (func) {
-		_prof('exit: found method');
+		// _prof('exit: found method');
 		return {contents: func.buildMarkUpContent()}
 	}
 

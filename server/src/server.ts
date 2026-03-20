@@ -427,15 +427,23 @@ connection.languages.diagnostics.on(async (params) => {
  * {@link TextDocument TextDocument}
  * {@link TextDocumentChangeEvent TextDocumentChangeEvent}
  */
-// documents.onDidChangeContent(change => {
-// 	try {
-// 		//debug("onDidChangeContent");
-// 		validateTextDocument(change.document);
-// 	} catch (e) {
-// 		debug(e);
-// 		console.error(e);
-// 	}
-// });
+documents.onDidChangeContent(change => {
+	try {
+		const doc = change.document;
+		if (!doc.uri.endsWith('.mast') && !doc.uri.endsWith('.py')) {
+			return;
+		}
+
+		const cache = getCache(doc.uri);
+		cache.updateFileInfo(doc);
+
+		// Invalidate semantic token cache so next request recomputes from new text
+		getSemanticTokensCache().invalidate(doc.uri);
+	} catch (e) {
+		debug(e);
+		console.error(e);
+	}
+});
 
 
 

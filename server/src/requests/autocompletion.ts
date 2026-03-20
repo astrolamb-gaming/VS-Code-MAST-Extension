@@ -16,7 +16,6 @@ import { isClassMethod } from './../tokens/tokens';
 import { Function } from './../data/function';
 import { getCurrentLineFromTextDocument } from './hover';
 import { countMatches } from './../rx';
-import { showProgressBar } from './../server';
 import { buildSignalInfoListAsCompletionItems } from './../tokens/signals';
 
 // https://stackoverflow.com/questions/78755236/how-can-i-prioritize-vs-code-extension-code-completion
@@ -30,14 +29,6 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	const cache = getCache(text.uri);
 	const tokens = cache.getMastFile(text.uri)?.tokens || [];
 	// return getGlobals().artFiles;
-	
-	// This updates the file's info with any new info from other files.
-	if (!getArtemisGlobals().isCurrentFile(text.uri)) {
-		showProgressBar(true);
-		cache.updateFileInfo(text);
-		getArtemisGlobals().setCurrentFile(text.uri);
-		showProgressBar(false);
-	}
 	
 	let ci : CompletionItem[] = [];
 	// debug("Cache loaded.");
