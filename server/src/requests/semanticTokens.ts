@@ -1796,6 +1796,54 @@ export class MastStateMachineLexer {
 
 				// Standard line-start string (single-line)
 				if (current === '%' || current === '"' || current === "'") {
+					// For quoted strings ("..." or '...'), check for a key:value pattern
+					// like `"start_time": sim.time_tick_counter` where the value after ':'
+					// should NOT be tokenized as a string.
+					if (current === '"' || current === "'") {
+						const quote = current;
+						let scanAhead = this.pos + 1;
+						let closePos = -1;
+						while (scanAhead < this.text.length && this.text[scanAhead] !== '\n') {
+							if (this.text[scanAhead] === '\\') {
+								scanAhead += 2;
+								continue;
+							}
+							if (this.text[scanAhead] === quote) {
+								closePos = scanAhead + 1; // position after closing quote
+								break;
+							}
+							scanAhead++;
+						}
+						if (closePos !== -1) {
+							// Skip optional whitespace after closing quote
+							let afterClose = closePos;
+							while (afterClose < this.text.length && /[ \t]/.test(this.text[afterClose])) {
+								afterClose++;
+							}
+							// If followed by ':' (but not '::'), it's a key:value pattern
+							if (afterClose < this.text.length && this.text[afterClose] === ':' &&
+								this.text[afterClose + 1] !== ':') {
+								// Emit the quoted key as a string token
+								const strStart = this.pos;
+								this.advanceTo(closePos);
+								this.tokens.push(...this.scanFStringInterpolations(strStart, this.pos));
+								// Skip the colon and any trailing whitespace
+								this.advanceTo(afterClose + 1); // skip ':'
+								this.skipWhitespace();
+								// Tokenize the value as an expression
+								const valueStart = this.pos;
+								let valueEnd = this.pos;
+								while (valueEnd < this.text.length && this.text[valueEnd] !== '\n') {
+									valueEnd++;
+								}
+								if (valueEnd > valueStart) {
+									this.tokens.push(...this.tokenizeInterpolationExpression(valueStart, valueEnd));
+									this.advanceTo(valueEnd);
+								}
+								continue;
+							}
+						}
+					}
 					const strStart = this.pos;
 					this.scanLineStartString();
 					this.tokens.push(...this.scanFStringInterpolations(strStart, this.pos));

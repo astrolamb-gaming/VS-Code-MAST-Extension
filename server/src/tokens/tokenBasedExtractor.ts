@@ -169,8 +169,48 @@ export class TokenBasedExtractor {
 	public extractBlobKeys(): Word[] {
 		return this.mergeWords([
 			...this.extractStringsByFunctionKeywords(['blob', 'data_set']),
+			...this.extractStringsByBlobAccessorSetGet(),
 			...this.extractDocumentedWords(['blob', 'data_set'])
 		]);
+	}
+
+	/**
+	 * Extract blob keys from chained accessor calls like:
+	 * anything.data_set.set("key", value, 0)
+	 * anything.blob.get("key", default)
+	 */
+	private extractStringsByBlobAccessorSetGet(): Word[] {
+		const words: Word[] = [];
+
+		for (let i = 0; i < this.tokens.length; i++) {
+			const token = this.tokens[i];
+			if (!this.isCallableToken(token)) {
+				continue;
+			}
+
+			const callable = token.text.toLowerCase();
+			if (callable !== 'set' && callable !== 'get') {
+				continue;
+			}
+
+			if (!this.isBlobAccessorSetGetCall(i)) {
+				continue;
+			}
+
+			const keyToken = this.findNthStringToken(i, 0);
+			if (!keyToken) {
+				continue;
+			}
+
+			const key = this.extractStringValue(keyToken.text);
+			if (!key) {
+				continue;
+			}
+
+			this.addWord(words, key, keyToken);
+		}
+
+		return this.mergeWords(words);
 	}
 
 	/**
@@ -245,6 +285,35 @@ export class TokenBasedExtractor {
 			if (re.test(normalizedName)) {
 				return true;
 			}
+		}
+
+		return false;
+	}
+
+	private isBlobAccessorSetGetCall(callableIndex: number): boolean {
+		const isBlobLikeAccessorName = (name: string): boolean => {
+			const n = name.toLowerCase();
+			return n === 'data_set' || n.includes('blob') || n.includes('data_set');
+		};
+
+		for (let i = callableIndex - 1; i >= 0; i--) {
+			const token = this.tokens[i];
+			if (token.type === 'operator') {
+				if (token.text === '.') {
+					continue;
+				}
+				break;
+			}
+
+			if (token.type === 'property' || token.type === 'variable' || token.type === 'function' || token.type === 'method') {
+				const name = token.text.toLowerCase();
+				if (isBlobLikeAccessorName(name)) {
+					return true;
+				}
+				continue;
+			}
+
+			break;
 		}
 
 		return false;
