@@ -2387,6 +2387,11 @@ export function buildSemanticTokens(tokens: TokenInfo[]): SemanticTokens {
 	const builder = new SemanticTokensBuilder();
 
 	for (const token of tokens) {
+		// Keep string tokens available to server-side analyzers, but do not
+		// emit them in the semantic token stream returned to the client.
+		if (token.type === 'string') {
+			continue;
+		}
 		const typeIndex = TOKEN_TYPES.indexOf(token.type as any);
 		if (typeIndex === -1) {
 			debug(`Unknown token type: ${token.type}`);

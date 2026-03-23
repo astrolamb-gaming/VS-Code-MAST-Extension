@@ -8,7 +8,7 @@ import { URI } from 'vscode-uri';
 import path = require('path');
 import { fileFromUri, fixFileName, getFolders, getMissionFolder } from '../fileFunctions';
 import { getTokenTypeAtOffset, isInComment } from './comments';
-import { getDefaultVariableNamesInRange } from './variables';
+import { getDefaultVariableNamesInRange, variableModifiers } from './variables';
 import { start } from 'repl';
 import { getCurrentLineFromTextDocument } from '../requests/hover';
 import { documents } from '../server';
@@ -799,25 +799,102 @@ export function getMainLabelAtPos(pos: integer, labels: LabelInfo[]): LabelInfo 
 	return closestLabel;
 }
 
-export function getLabelMetadataKeys(label:LabelInfo) {
+const LABEL_SCOPE_KEYWORDS = new Set<string>([
+	'def', 'async', 'await', 'import', 'if', 'elif', 'else', 'match', 'case', 'yield',
+	'return', 'break', 'continue', 'pass', 'raise', 'try', 'except', 'finally', 'with',
+	'class', 'while', 'for', 'in', 'is', 'and', 'or', 'not', 'lambda', 'on', 'change', 'signal', 'jump',
+	'True', 'False', 'None'
+]);
+
+function getUndefinedVariableReferenceNamesInLabel(doc: TextDocument, label: LabelInfo, tokens: Token[]): string[] {
+	if (!tokens || tokens.length === 0) {
+		return [];
+	}
+
+	const fullText = doc.getText();
+	const textLength = fullText.length;
+	const start = Math.max(0, label.start);
+	const end = Math.min(label.end + 1, textLength);
+	if (end <= start) {
+		return [];
+	}
+
+	// Variables defined anywhere in this label scope (default/shared/temp/etc. are all definitions).
+	const definedNames = new Set<string>();
+	const scopeText = fullText.substring(start, end);
+	const defRX = /^[\t ]*(default[ \t]+)?((shared|assigned|client|temp)[ \t]+)?([a-zA-Z_]\w*)[\t ]*(?==[^=])/gm;
+	let dm: RegExpExecArray | null;
+	while (dm = defRX.exec(scopeText)) {
+		definedNames.add(dm[4]);
+	}
+
+	const refs = new Set<string>();
+	for (const tok of tokens) {
+		if (tok.type !== 'variable' && tok.type !== 'builtInConstant') {
+			continue;
+		}
+		const tokenStart = doc.offsetAt({ line: tok.line, character: tok.character });
+		if (tokenStart < start || tokenStart >= end) {
+			continue;
+		}
+		const name = tok.text;
+		if (!/^[a-zA-Z_]\w*$/.test(name)) {
+			continue;
+		}
+		if (LABEL_SCOPE_KEYWORDS.has(name) || variableModifiers.some(v => v[0] === name)) {
+			continue;
+		}
+
+		// Skip property access (obj.foo).
+		let prev = tokenStart - 1;
+		while (prev >= start && /[ \t]/.test(fullText[prev])) {
+			prev--;
+		}
+		if (prev >= start && fullText[prev] === '.') {
+			continue;
+		}
+
+		// Skip named args and assignment LHS (identifier directly followed by '=' token text).
+		let next = tokenStart + tok.length;
+		while (next < end && /[ \t]/.test(fullText[next])) {
+			next++;
+		}
+		if (next < end && fullText[next] === '=') {
+			continue;
+		}
+
+		if (!definedNames.has(name)) {
+			refs.add(name);
+		}
+	}
+
+	return Array.from(refs.values());
+}
+
+export function getLabelMetadataKeys(label:LabelInfo, doc?: TextDocument, tokens?: Token[]) {
 	const meta = label.metadata;
 	const re: RegExp = /^[ \t]*(\w+):(.*)/gm;
 	let m: RegExpExecArray | null;
 	let keys = [];
-	// debug(label)
-	// debug(meta)
 	while (m = re.exec(meta)) {
 		let key = m[1];
 		let def = m[2].trim();
 		keys.push([key,def]);
 	}
-	// debug(keys)
 	keys.push(["START_X",""]);
 	keys.push(["START_Y",""]);
 	keys.push(["START_Z",""]);
+
+	if (doc && tokens) {
+		for (const name of getDefaultVariableNamesForLabel(doc, label)) {
+			keys.push([name, ""]);
+		}
+		for (const name of getUndefinedVariableReferenceNamesInLabel(doc, label, tokens)) {
+			keys.push([name, ""]);
+		}
+	}
+
 	keys = [...new Map(keys.map(v => [v[0], v])).values()];
-	// debug(arrUniq);
-	// debug(keys);
 	return keys;
 }
 

@@ -1,6 +1,6 @@
 import { debug } from 'console';
 import { CompletionItem, CompletionItemKind, integer, MarkupContent, ParameterInformation, SignatureHelpParams, SignatureInformation, TextDocumentPositionParams } from 'vscode-languageserver';
-import { buildLabelDocs, getDefaultVariableNamesForLabel, getLabelMetadataKeys, getLabelsAsCompletionItems, getMainLabelAtPos } from './../tokens/labels';
+import { buildLabelDocs, getLabelMetadataKeys, getLabelsAsCompletionItems, getMainLabelAtPos } from './../tokens/labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { asClasses, replaceNames } from './../data';
 import { getRouteLabelVars } from './../tokens/routeLabels';
@@ -188,7 +188,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			debug("Getting object key completions");
 			const lbl = tokenContextAtPos.recentLabelInfo;
 			if (lbl) {
-				const keys = getLabelMetadataKeys(lbl);
+				const keys = getLabelMetadataKeys(lbl, text, tokens);
 				for (const k of keys) {
 					const c: CompletionItem = {
 						label: k[0],
@@ -201,20 +201,6 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 					}
 					if (k[1] !== "") {
 						c.documentation = "Default value: " + k[1];
-					}
-					ci.push(c);
-				}
-				const defaults = getDefaultVariableNamesForLabel(text, lbl);
-				for (const d of defaults) {
-					const c: CompletionItem = {
-						label: d,
-						kind: CompletionItemKind.Variable,
-						documentation: "Default variable for this label"
-					}
-					if (tokenContextAtPos.inString) {
-						c.insertText = d;
-					} else {
-						c.insertText = "\"" + d + "\": ";
 					}
 					ci.push(c);
 				}
@@ -265,7 +251,8 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			const signals = cache.getSignals();
 			return buildSignalInfoListAsCompletionItems(signals);
 		}
-		if (!isTextInBracket(iStr,0,pos)) {
+		if (!tokenContextAtPos.inObject) {
+		// if (!isTextInBracket(iStr,0,pos)) {
 			// Here we check for blob info
 			if (blobStr.endsWith(".set(") || blobStr.endsWith(".get(")) {
 				debug("Is BLobe");
@@ -831,7 +818,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				for (const label of labels) {
 					// If the name matches, return the metadata for that label, if any.
 					if (labelStr.includes(label.name)) {
-						const keys = getLabelMetadataKeys(label);
+						const keys = getLabelMetadataKeys(label, text, tokens);
 						for (const k of keys) {
 							const c: CompletionItem = {
 								label: k[0],
@@ -991,7 +978,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		// }
 	} else {
 		// If it's a main or inline label
-		const keys = getLabelMetadataKeys(lbl);
+		const keys = getLabelMetadataKeys(lbl, text, tokens);
 		for (const k of keys) {
 			const c: CompletionItem = {
 				label: k[0],

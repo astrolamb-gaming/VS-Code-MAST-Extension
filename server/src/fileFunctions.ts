@@ -126,16 +126,6 @@ export function getInitFileInFolder(uri: string): string | undefined {
 }
 
 
-
-export function readAllFilesIn(folder: WorkspaceFolder) {
-	const files = getFilesInDir(folder.uri, false);
-	for (const f in files) {
-		debug(files[f]);
-	}
-}
-
-
-
 export async function readZipArchive(filepath: string) {
 	const map: Map<string, string> = new Map();
 	//debug(filepath);
