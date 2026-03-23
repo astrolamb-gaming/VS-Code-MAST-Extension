@@ -8,6 +8,13 @@ import { isClassMethod } from './../tokens/tokens';
 import { findNamedArg } from './autocompletion';
 import { TokenInfo } from './../requests/semanticTokens';
 
+function toParameterName(name: string | undefined): string | undefined {
+	if (!name) {
+		return undefined;
+	}
+	const cleaned = name.split('=')[0].split(':')[0].trim();
+	return cleaned.length > 0 ? cleaned : undefined;
+}
 
 
 export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocument): SignatureHelp | undefined {
@@ -35,14 +42,17 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 	if (callContext) {
 		const func = callContext.functionName;
 		let pNum = callContext.parameterIndex;
-		debug(`Token-based: func="${func}", param=${pNum}, named=${callContext.parameterName || ''}`);
 		
 		// Get the method and build signature
-		const method = cache.getMethod(func);
+		const method = cache.getMethod(func) || cache.getPossibleMethods(func)[0];
 		if (method) {
+			if (!callContext.parameterName && method.parameters && method.parameters.length > 0 && pNum >= 0 && pNum < method.parameters.length) {
+				callContext.parameterName = toParameterName(method.parameters[pNum].name);
+			}
+			debug(`Token-based: func="${func}", param=${pNum}, named=${callContext.parameterName || ''}`);
 			const sig = method.buildSignatureInformation();
 			if (callContext.parameterName && method.parameters && method.parameters.length > 0) {
-				const namedIndex = method.parameters.findIndex(p => p.name === callContext.parameterName);
+				const namedIndex = method.parameters.findIndex(p => toParameterName(p.name) === callContext.parameterName);
 				if (namedIndex >= 0) {
 					pNum = namedIndex;
 				}
@@ -118,7 +128,7 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 	
 	
 	/**The {@link Function Function} in question */
-	let method = cache.getMethod(func);
+	let method = cache.getMethod(func) || cache.getPossibleMethods(func)[0];
 
 	// TODO:
 	// - Keep copy of arg list from param list

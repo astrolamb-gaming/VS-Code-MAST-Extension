@@ -15,7 +15,11 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 	* Significant performance improvements
 	* Semantic tokens
 * Add capability to assign descriptions for roles, inventory keys, blob keys, and links.
+* Add capability to assign descriptions for label variables.
 * `default` variables are now included in label metadata suggestions.
+* Any variable in a label that is not defined in the label is included in label metadata suggestions.
+* Better hover and autocompletion logic.
+* Better caching (more performant).
 
 
 ### 0.17.2

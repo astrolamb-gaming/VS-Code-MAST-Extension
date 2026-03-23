@@ -170,11 +170,15 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 
 	if (callContext) {
 		func = callContext.functionName;
-		const method = cache.getMethod(func);
+		const method = cache.getMethod(func) || cache.getPossibleMethods(func)[0];
 		if (method) {
 			const params = method.parameters;
 			if (callContext.parameterIndex < params.length) {
-				currentParamName = params[callContext.parameterIndex].name;
+				const rawName = params[callContext.parameterIndex].name;
+				currentParamName = rawName.split('=')[0].split(':')[0].trim();
+				if (!callContext.parameterName && currentParamName) {
+					callContext.parameterName = currentParamName;
+				}
 				currentParamType = params[callContext.parameterIndex].type;
 				debug(`Token-based: func="${func}", param="${currentParamName}"`);
 			}
@@ -252,6 +256,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			return buildSignalInfoListAsCompletionItems(signals);
 		}
 		if (!tokenContextAtPos.inObject) {
+			debug("Not an object, checking for other in-string completions")
 		// if (!isTextInBracket(iStr,0,pos)) {
 			// Here we check for blob info
 			if (blobStr.endsWith(".set(") || blobStr.endsWith(".get(")) {
@@ -313,6 +318,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			// debug("Current function: " + func);
 			// debug("arg: " + args);
 			args = [currentParamName];
+			debug("Checking args...." + currentParamName)
 			for (const a of args) {
 				if (a === "role" || a === "roles") {
 					debug("Getting roles")
@@ -376,11 +382,13 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				}
 				if (a === "art_id" || a === "art" || a === "ship_key" || a === "ship_data_key") {
 					// ci = getGlobals().shipData.getCompletionItemsForShips();
+					debug("Ship data key")
 					ci = [];
 					const ships = getArtemisGlobals().shipData.ships;
 					for (const ship of ships) {
 						ci.push(ship.completionItem);
 					}
+					debug(ci);
 					return ci;
 				}
 				if (a === "key") {
@@ -657,6 +665,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 //#region Class, Method, and Function Completions
 	debug("Class, method, and function completions")
 	// Check if this is a class
+	debug(iStr);
 	if (iStr.endsWith(".")) {
 		debug("Getting Classes...");
 		debug(iStr);
@@ -734,7 +743,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		}
 
 		// Add named-argument completions for parameters not yet explicitly used.
-		const argNames = cache.getMethod(activeFunctionName);
+		const argNames = cache.getMethod(activeFunctionName) || cache.getPossibleMethods(activeFunctionName)[0];
 		if (argNames) {
 			debug(argNames.parameters)
 			let defaultVal = /\=(.*?)$/;

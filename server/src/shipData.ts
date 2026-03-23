@@ -10,6 +10,7 @@ import { getArtemisGlobals } from './artemisGlobals';
 import sharp = require('sharp');
 import { Word } from './tokens/words';
 import { TextDocument } from 'vscode-languageserver-textdocument';
+import { pathToFileURL } from 'url';
 
 
 export class ShipData {
@@ -137,6 +138,9 @@ export class ShipData {
 	}
 
 	private findArtFile(artfileroot: string): string {
+		if (!artfileroot || artfileroot.trim() === '') {
+			return "";
+		}
 		const tempPath = path.join(os.tmpdir(),"cosmosImages");
 		if (!fs.existsSync(tempPath)) {
 			fs.mkdirSync(tempPath, {recursive: true});
@@ -179,8 +183,10 @@ export class ShipData {
 			}
 		}
 
-		// Now that we know the 150p files exist, we can get them
-		let ret = "!["+ artfileroot +"](/"+ tempFile +")\n![diffuse](/" + tempDiffuse + ")";
+		// Build markdown with file:// URIs so VS Code can render local images on all OSes.
+		const shipImgUri = pathToFileURL(tempFile).toString();
+		const diffuseImgUri = pathToFileURL(tempDiffuse).toString();
+		let ret = `![${artfileroot}](${shipImgUri})\n![diffuse](${diffuseImgUri})`;
 		// debug(ret);
 		return ret;
 	}
