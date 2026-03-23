@@ -359,18 +359,6 @@ export function getHoveredWordRange(str:string, pos: integer): CRange {
 	return r;
 }
 
-export function getHoveredRoute(str: string) {
-	const routeLabel: RegExp = /^([ \t]*)(\/{2,})(\w+)(\/\w+)*/m;
-	let m: RegExpMatchArray | null;
-	let res = "";
-	m = str.match(routeLabel);
-	if (m) {
-		return true;
-	}
-	return false;
-}
-
-
 
 /**
  * a shared variable is shared by all tasks. i.e. global.

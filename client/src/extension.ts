@@ -281,40 +281,6 @@ export function deactivate(): Thenable<void> | undefined {
 	return client.stop();
 }
 
-function getIndentations(td: vscode.TextDocument) {
-	for (let i = 0; i < td.lineCount; i++) {
-		let indents = td.lineAt(i).firstNonWhitespaceCharacterIndex;
-		debug("Indents: "+indents);
-		debug(td.lineAt(i).text);
-		let pattern = /.*/g;
-		let m: RegExpExecArray;
-		let c = 0;
-		while (m = pattern.exec(td.lineAt(i).text)) {
-			debug(m[0]);
-			c = c + 1;
-			if (c > 10) { break; }
-		}
-	}
-}
-
-// class GoCompletionItemProvider implements vscode.CompletionItemProvider {
-//     public provideCompletionItems(
-//         document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken):
-//         Thenable<vscode.CompletionItem[]> {
-// 			vscode.execute
-//     }
-// }
-
-function mydebug(str:any) {
-    if (str === undefined) {
-        str = "UNDEFINED";
-    }
-    str = "\n" + str;
-    fs.writeFileSync('outputLog.txt', str, { flag: "a+" });
-	console.debug(str);
-	console.log(str);
-}
-
 export function debug(str:any) {
 	outputChannel.appendLine(str);
 	if (client) {

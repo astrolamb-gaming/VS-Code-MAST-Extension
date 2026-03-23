@@ -735,9 +735,3 @@ export function extractStringsFromTokens(doc: TextDocument, tokens: Token[]): Ex
 	return extractor.extractAll();
 }
 
-/**
- * Compatibility helper; signals are already in SignalInfo format.
- */
-export function convertToSignalInfo(signals: SignalInfo[]): SignalInfo[] {
-	return signals;
-}

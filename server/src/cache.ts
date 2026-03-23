@@ -1512,9 +1512,6 @@ export class MissionCache {
 
 }
 
-const sourceFiles: PyFile[] = []
-export function getSourceFiles(): PyFile[] { return sourceFiles; }
-
 // Map of missionURI -> MissionCache for O(1) lookups
 let caches: Map<string, MissionCache> = new Map();
 

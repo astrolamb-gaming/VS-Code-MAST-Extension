@@ -561,29 +561,6 @@ connection.onCompletion(
 	}
 );
 
-export function updateLabelNames(li: LabelInfo[]) {
-	labelNames = li;
-}
-
-// This handler resolves additional information for the item selected in
-// the completion list.
-
-// connection.onCompletionResolve(
-// 	(item: CompletionItem): CompletionItem => {
-// 		if (item.data === 1) {
-// 			item.detail = 'TypeScript details';
-// 			item.documentation = 'TypeScript documentation';
-// 		} else if (item.data === 2) {
-// 			item.detail = 'JavaScript details';
-// 			item.documentation = 'JavaScript documentation';
-// 		}
-// 		if (item.label === "sbs") {
-// 			item.detail = "artemis_sbs details",
-// 			item.documentation = "artemis_sbs details"
-// 		}
-// 		return item;
-// 	}
-// );
 
 connection.onHover(async (_textDocumentPosition: TextDocumentPositionParams): Promise<Hover | undefined> => {
 	if (!_textDocumentPosition.textDocument.uri.endsWith(".mast")) return undefined;
