@@ -592,7 +592,9 @@ connection.onHover(async (_textDocumentPosition: TextDocumentPositionParams): Pr
 		debug("Undefined");
 		return undefined;
 	}
-	await getCache(_textDocumentPosition.textDocument.uri).awaitLoaded();
+	const cache = getCache(_textDocumentPosition.textDocument.uri);
+	await cache.awaitLoaded();
+	cache.updateFileInfo(text);
 	let h = onHover(_textDocumentPosition,text);
 	// if (h) {
 	// 	debug(h);
@@ -692,6 +694,7 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | u
 	if (document !== undefined) {
 		let cache = getCache(params.textDocument.uri);
 		await cache.awaitLoaded();
+		cache.updateFileInfo(document);
 		if (!cache.isLoaded()) debug("NOT LOADED YET")
 		def = await onDefinition(document,params.position);
 		// debug(def);
@@ -705,10 +708,12 @@ connection.onReferences(async (params:ReferenceParams): Promise<Location[] | und
 	if (!params.textDocument.uri.endsWith(".mast")) {
 		return undefined;
 	}
-	await getCache(params.textDocument.uri).awaitLoaded();
+	const cache = getCache(params.textDocument.uri);
+	await cache.awaitLoaded();
 	const document = documents.get(params.textDocument.uri);
 	let def = undefined;
 	if (document !== undefined) {
+		cache.updateFileInfo(document);
 		def = await onReferences(document, params);
 		// debug(def);
 	}

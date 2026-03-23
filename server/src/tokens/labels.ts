@@ -231,6 +231,7 @@ export function parseLabelsFromTokens(doc: TextDocument, tokens: Token[]): Label
 		if (token.type !== 'label' && token.type !== 'route-label' && token.type !== 'media-label') continue;
 
 		const nameOffset = doc.offsetAt({ line: token.line, character: token.character });
+		const lineStartOffset = doc.offsetAt({ line: token.line, character: 0 });
 
 		// Determine label type.
 		// route-label and media-label have dedicated token types.
@@ -271,7 +272,7 @@ export function parseLabelsFromTokens(doc: TextDocument, tokens: Token[]): Label
 		const li: LabelInfo = {
 			type,
 			name: token.text,
-			start: nameOffset,
+			start: lineStartOffset,
 			end: 0,
 			length: token.length,
 			metadata: '',
@@ -785,13 +786,13 @@ function findBadLabels(t: TextDocument) : Diagnostic[] {
 
 export function getMainLabelAtPos(pos: integer, labels: LabelInfo[]): LabelInfo {
 	let closestLabel = labels[0];
-	for (const i in labels) {
-		// Could be route or main label
-		//debug(labels[i]);
-		if (labels[i].type !== "inline") {
-			if (labels[i].start <= pos && labels[i].end >= pos) {
-				closestLabel = labels[i];
-				return closestLabel
+	for (const label of labels) {
+		if (label.type === "inline") {
+			continue;
+		}
+		if (label.start <= pos && label.end >= pos) {
+			if (!closestLabel || label.start >= closestLabel.start) {
+				closestLabel = label;
 			}
 		}
 	}

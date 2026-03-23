@@ -208,6 +208,17 @@ export class MastFile extends FileCache {
 		const oldText = this.lastText;
 		const oldLen = oldText.length;
 		const newLen = newText.length;
+		const oldLineCount = TextDocument.create(this.uri, 'mast', 0, oldText).lineCount;
+		const newLineCount = doc.lineCount;
+
+		// Line insertions/removals are currently the main source of label-range
+		// corruption in the incremental token updater. Fall back to a full parse
+		// for any line-count change so label hover/definition stays correct.
+		if (oldLineCount !== newLineCount) {
+			this.parse(newText);
+			return;
+		}
+
 		let start = 0;
 		const minLen = Math.min(oldLen, newLen);
 		while (start < minLen && oldText[start] === newText[start]) start++;
@@ -218,9 +229,13 @@ export class MastFile extends FileCache {
 			endNew--;
 		}
 
-		// compute line boundaries to re-tokenize whole affected lines
-		const sliceStartLine = doc.positionAt(start).line;
-		const sliceEndLine = doc.positionAt(Math.max(endNew, start)).line;
+		// Compute line boundaries to re-tokenize whole affected lines, plus one
+		// surrounding line of context on each side. Pure insertions/deletions at
+		// line boundaries can otherwise drop tokens from the adjacent line.
+		const newStartLineRaw = doc.positionAt(start).line;
+		const newEndLineRaw = doc.positionAt(Math.max(endNew, start)).line;
+		const sliceStartLine = Math.max(0, newStartLineRaw - 1);
+		const sliceEndLine = Math.min(doc.lineCount - 1, newEndLineRaw + 1);
 		const sliceStartOffset = doc.offsetAt({ line: sliceStartLine, character: 0 });
 		let sliceEndOffset: number;
 		if (sliceEndLine + 1 >= doc.lineCount) {
@@ -232,10 +247,13 @@ export class MastFile extends FileCache {
 		// tokenize affected slice and map lines back to document
 		const newSliceTokens = tokenizeMastSlice(doc, sliceStartOffset, sliceEndOffset);
 
-		// Determine old slice line boundaries using lastText
+		// Determine old slice line boundaries using lastText, with the same one-line
+		// context expansion to keep token replacement stable around insertions.
 		const lastDoc = TextDocument.create(this.uri, 'mast', 0, oldText);
-		const oldSliceStartLine = lastDoc.positionAt(start).line;
-		const oldSliceEndLine = lastDoc.positionAt(Math.max(endOld, start)).line;
+		const oldStartLineRaw = lastDoc.positionAt(start).line;
+		const oldEndLineRaw = lastDoc.positionAt(Math.max(endOld, start)).line;
+		const oldSliceStartLine = Math.max(0, oldStartLineRaw - 1);
+		const oldSliceEndLine = Math.min(lastDoc.lineCount - 1, oldEndLineRaw + 1);
 
 		// Build new token list by keeping tokens outside old slice and inserting newSliceTokens
 		const before: Token[] = [];
