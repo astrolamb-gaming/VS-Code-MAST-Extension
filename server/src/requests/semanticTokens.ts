@@ -7,6 +7,7 @@ import { SemanticTokens, SemanticTokensBuilder, integer } from 'vscode-languages
 // the regex helpers are still required by MastLexer
 import { CRange } from '../tokens/comments';
 import { Token } from '../tokens/tokens';
+import { getCache } from '../cache';
 
 /**
  * Semantic token types supported by the MAST language server.
@@ -519,10 +520,77 @@ export class MastStateMachineLexer {
 	// after that string the next identifier should be treated as a label reference.
 	private expectPlusDirective: boolean = false;
 	private expectPlusLabelReference: boolean = false;
+	private knownLabelNames: Set<string> = new Set();
 
-	constructor(document: TextDocument) {
+	private addKnownLabelName(name: string): void {
+		const n = (name || '').trim();
+		if (!n) return;
+
+		this.knownLabelNames.add(n.toLowerCase());
+		if (n.startsWith('//')) {
+			this.knownLabelNames.add(n.substring(2).toLowerCase());
+		} else {
+			this.knownLabelNames.add(`//${n}`.toLowerCase());
+		}
+	}
+
+	private hydrateKnownLabelsFromCache(): void {
+		try {
+			const cache = getCache(this.doc.uri);
+			const labels = cache.getLabels(this.doc, false);
+			const stack: any[] = [...labels];
+			while (stack.length > 0) {
+				const current = stack.pop();
+				if (!current) continue;
+				this.addKnownLabelName(current.name || '');
+				if (Array.isArray(current.subLabels)) {
+					for (const sub of current.subLabels) {
+						stack.push(sub);
+					}
+				}
+			}
+		} catch (e) {
+			debug(`hydrateKnownLabelsFromCache failed: ${e}`);
+		}
+	}
+
+	private hydrateKnownLabelsFromDocumentText(): void {
+		// Main labels: ==name==
+		const mainLabelRegex = /^([ \t]*)(={2,}[ \t]*)(\w+)([ \t]*(={2,})?)/gm;
+		let m: RegExpExecArray | null;
+		while ((m = mainLabelRegex.exec(this.text)) !== null) {
+			this.addKnownLabelName(m[3]);
+		}
+
+		// Inline labels: --name-- / ++name++
+		const inlineLabelRegex = /^([ \t]*)((-|\+){2,}[ \t]*)(\w+)([ \t]*((-|\+){2,})?)/gm;
+		while ((m = inlineLabelRegex.exec(this.text)) !== null) {
+			this.addKnownLabelName(m[4]);
+		}
+
+		// Route labels: //name or //name/subroute
+		const routeLabelRegex = /^([ \t]*)(\/{2,}\w+(?:\/\w+)*)/gm;
+		while ((m = routeLabelRegex.exec(this.text)) !== null) {
+			this.addKnownLabelName(m[2]);
+		}
+
+		// Media labels: @name
+		const mediaLabelRegex = /^([ \t]*)@([\w\/]+)/gm;
+		while ((m = mediaLabelRegex.exec(this.text)) !== null) {
+			this.addKnownLabelName(m[2]);
+		}
+	}
+
+	constructor(document: TextDocument, knownLabelNames?: Set<string>) {
 		this.doc = document;
 		this.text = document.getText();
+		if (knownLabelNames) {
+			for (const name of knownLabelNames) {
+				this.addKnownLabelName(name);
+			}
+		}
+		this.hydrateKnownLabelsFromCache();
+		this.hydrateKnownLabelsFromDocumentText();
 	}
 
 
@@ -823,6 +891,121 @@ export class MastStateMachineLexer {
 		return -1;
 	}
 
+	private normalizeYamlLabelCandidate(raw: string): string {
+		let candidate = (raw || '').trim();
+		if ((candidate.startsWith('"') && candidate.endsWith('"')) || (candidate.startsWith("'") && candidate.endsWith("'"))) {
+			candidate = candidate.slice(1, -1).trim();
+		}
+		return candidate;
+	}
+
+	private isKnownLabelReferenceName(candidate: string): boolean {
+		const normalized = this.normalizeYamlLabelCandidate(candidate).toLowerCase();
+		if (!normalized) {
+			return false;
+		}
+
+		if (this.knownLabelNames.has(normalized)) {
+			return true;
+		}
+
+		if (normalized.startsWith('//') && this.knownLabelNames.has(normalized.substring(2))) {
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Extract label references from YAML values by matching against known labels
+	 * in the current mission cache.
+	 */
+	private scanYamlLabelReferences(lineStart: number, contentText: string): TokenInfo[] {
+		const refs: TokenInfo[] = [];
+		const seen = new Set<string>();
+
+		const addRef = (absoluteStart: number, value: string) => {
+			const trimmed = this.normalizeYamlLabelCandidate(value);
+			if (!trimmed || !this.isKnownLabelReferenceName(trimmed)) {
+				return;
+			}
+
+			const isRoute = trimmed.startsWith('//');
+			const key = `${absoluteStart}:${trimmed.length}:${isRoute ? 'route-label' : 'label'}`;
+			if (seen.has(key)) {
+				return;
+			}
+			seen.add(key);
+
+			const pos = this.doc.positionAt(absoluteStart);
+			refs.push({
+				type: isRoute ? 'route-label' : 'label',
+				modifier: 'reference',
+				line: pos.line,
+				character: pos.character,
+				length: trimmed.length,
+				text: trimmed
+			});
+		};
+
+		// Value portion of "key: value" (or full content when there is no key).
+		let valueStartRel = 0;
+		const colonRel = contentText.indexOf(':');
+		if (colonRel > -1) {
+			valueStartRel = colonRel + 1;
+			while (valueStartRel < contentText.length && /[\t ]/.test(contentText[valueStartRel])) {
+				valueStartRel++;
+			}
+		}
+
+		const valueText = contentText.substring(valueStartRel);
+		if (!valueText.trim()) {
+			return refs;
+		}
+
+		// Route-style references can appear inline in longer YAML values.
+		const routeRefRegex = /\/\/[A-Za-z_][A-Za-z0-9_]*(?:\/[A-Za-z_][A-Za-z0-9_]*)*/g;
+		let routeMatch: RegExpExecArray | null;
+		while ((routeMatch = routeRefRegex.exec(valueText)) !== null) {
+			const absStart = lineStart + valueStartRel + routeMatch.index;
+			addRef(absStart, routeMatch[0]);
+		}
+
+		const trimmedValue = valueText.trim();
+		// YAML list scalar entry: "- label_name" (optionally quoted).
+		if (trimmedValue.startsWith('-')) {
+			const listMatch = trimmedValue.match(/^-[\t ]*(.+)$/);
+			if (listMatch && listMatch[1]) {
+				const rawCandidate = listMatch[1].trim();
+				const candidate = this.normalizeYamlLabelCandidate(rawCandidate);
+				if (candidate) {
+					const valueIdx = valueText.indexOf(trimmedValue);
+					const candidateInTrimmed = trimmedValue.indexOf(rawCandidate);
+					const candidateInRaw = rawCandidate.indexOf(candidate);
+					if (valueIdx > -1 && candidateInTrimmed > -1 && candidateInRaw > -1) {
+						const scalarStartRel = valueIdx + candidateInTrimmed + candidateInRaw;
+						const absStart = lineStart + valueStartRel + scalarStartRel;
+						addRef(absStart, candidate);
+					}
+				}
+			}
+		}
+
+		if (/^(?:"[^"]+"|'[^']+'|(?:\/\/)?[A-Za-z_][A-Za-z0-9_]*(?:\/[A-Za-z_][A-Za-z0-9_]*)*)$/.test(trimmedValue)) {
+			const scalar = this.normalizeYamlLabelCandidate(trimmedValue);
+			if (scalar) {
+				const scalarIdx = valueText.indexOf(trimmedValue);
+				if (scalarIdx > -1) {
+					const scalarStartRel = scalarIdx + trimmedValue.indexOf(scalar);
+					const absStart = lineStart + valueStartRel + scalarStartRel;
+					addRef(absStart, scalar);
+				}
+			}
+		}
+
+		return refs;
+	}
+
 	private scanStringOption(): TokenInfo | null {
 		if (this.text[this.pos] !== '<') {
 			return null;
@@ -1016,10 +1199,22 @@ export class MastStateMachineLexer {
 		const isFunctionCall = checkPos < this.text.length && this.text[checkPos] === '(';
 		const isDotAccess = this.isPrecededByDot(startPos);
 		const isMethodCall = isFunctionCall && isDotAccess;
+		const isKnownLabelRef = this.isKnownLabelReferenceName(text);
 
 		if (isFunctionCall) {
 			return {
 				type: isMethodCall ? 'method' : 'function',
+				modifier: 'reference',
+				line: startLine,
+				character: startChar,
+				length: text.length,
+				text
+			};
+		}
+
+		if (!isDotAccess && isKnownLabelRef) {
+			return {
+				type: text.startsWith('//') ? 'route-label' : 'label',
 				modifier: 'reference',
 				line: startLine,
 				character: startChar,
@@ -1338,6 +1533,11 @@ export class MastStateMachineLexer {
 					}
 				}
 
+				if (tokenType === 'variable' && !this.isPrecededByDot(start) && this.isKnownLabelReferenceName(ident)) {
+					tokenType = ident.startsWith('//') ? 'route-label' : 'label';
+					modifier = 'reference';
+				}
+
 				const p = this.doc.positionAt(start);
 				tokens.push({ type: tokenType, modifier, line: p.line, character: p.character, length: pos - start, text: ident });
 				continue;
@@ -1615,6 +1815,7 @@ export class MastStateMachineLexer {
 					const contentEndRel = commentRel === -1 ? lineText.length : commentRel;
 					const contentEnd = lineStart + contentEndRel;
 					const contentText = lineText.substring(0, contentEndRel);
+					const yamlLabelRefs = this.scanYamlLabelReferences(lineStart, contentText);
 
 					if (contentText.trim().length > 0) {
 						const colonRel = contentText.indexOf(':');
@@ -1640,25 +1841,90 @@ export class MastStateMachineLexer {
 							}
 							if (valueStartRel < contentText.length) {
 								const valueStart = lineStart + valueStartRel;
-								const valuePos = this.doc.positionAt(valueStart);
+								const valueEnd = contentEnd;
+
+								// Keep yaml.value segments only for spans that are not explicit
+								// label references inside YAML values.
+								const refRanges = yamlLabelRefs
+									.map((ref) => {
+										const start = this.doc.offsetAt({ line: ref.line, character: ref.character });
+										return { start, end: start + ref.length };
+									})
+									.filter((r) => r.end > valueStart && r.start < valueEnd)
+									.sort((a, b) => a.start - b.start);
+
+								let cursor = valueStart;
+								for (const r of refRanges) {
+									const start = Math.max(cursor, r.start);
+									if (start > cursor) {
+										const valuePos = this.doc.positionAt(cursor);
+										this.tokens.push({
+											type: 'yaml.value',
+											line: valuePos.line,
+											character: valuePos.character,
+											length: start - cursor,
+											text: this.text.substring(cursor, start)
+										});
+									}
+									cursor = Math.max(cursor, r.end);
+								}
+
+								if (cursor < valueEnd) {
+									const valuePos = this.doc.positionAt(cursor);
+									this.tokens.push({
+										type: 'yaml.value',
+										line: valuePos.line,
+										character: valuePos.character,
+										length: valueEnd - cursor,
+										text: this.text.substring(cursor, valueEnd)
+									});
+								}
+							}
+						} else {
+							// No key:value separator on this line (e.g. list scalar `- value`).
+							// Emit as yaml.value, split around label refs so label refs own
+							// their exact spans.
+							const valueStart = lineStart;
+							const valueEnd = contentEnd;
+							const refRanges = yamlLabelRefs
+								.map((ref) => {
+									const start = this.doc.offsetAt({ line: ref.line, character: ref.character });
+									return { start, end: start + ref.length };
+								})
+								.filter((r) => r.end > valueStart && r.start < valueEnd)
+								.sort((a, b) => a.start - b.start);
+
+							let cursor = valueStart;
+							for (const r of refRanges) {
+								const start = Math.max(cursor, r.start);
+								if (start > cursor) {
+									const valuePos = this.doc.positionAt(cursor);
+									this.tokens.push({
+										type: 'yaml.value',
+										line: valuePos.line,
+										character: valuePos.character,
+										length: start - cursor,
+										text: this.text.substring(cursor, start)
+									});
+								}
+								cursor = Math.max(cursor, r.end);
+							}
+
+							if (cursor < valueEnd) {
+								const valuePos = this.doc.positionAt(cursor);
 								this.tokens.push({
 									type: 'yaml.value',
 									line: valuePos.line,
 									character: valuePos.character,
-									length: contentEnd - valueStart,
-									text: this.text.substring(valueStart, contentEnd)
+									length: valueEnd - cursor,
+									text: this.text.substring(cursor, valueEnd)
 								});
 							}
-						} else {
-							const valuePos = this.doc.positionAt(lineStart);
-							this.tokens.push({
-								type: 'yaml.key',
-								line: valuePos.line,
-								character: valuePos.character,
-								length: contentEnd - lineStart,
-								text: contentText
-							});
 						}
+
+						// Detect label-like references in YAML values (e.g. //route or list items)
+						// and emit first-class label tokens for navigation features.
+						this.tokens.push(...yamlLabelRefs);
 					}
 
 					if (commentRel !== -1) {
@@ -2089,18 +2355,52 @@ export function buildSemanticTokens(tokens: TokenInfo[]): SemanticTokens {
 }
 
 
+function collectKnownLabelNames(document: TextDocument): Set<string> {
+	const names = new Set<string>();
+	try {
+		const cache = getCache(document.uri);
+		const all = cache.getLabels(document, false);
+		const stack = [...all];
+		while (stack.length > 0) {
+			const current: any = stack.pop();
+			if (!current) continue;
+			const name = (current.name || '').trim();
+			if (name) {
+				names.add(name);
+				names.add(name.toLowerCase());
+				if (name.startsWith('//')) {
+					names.add(name.substring(2));
+					names.add(name.substring(2).toLowerCase());
+				} else {
+					names.add(`//${name}`);
+					names.add(`//${name}`.toLowerCase());
+				}
+			}
+			if (Array.isArray(current.subLabels)) {
+				for (const sub of current.subLabels) {
+					stack.push(sub);
+				}
+			}
+		}
+	} catch (e) {
+		debug(`collectKnownLabelNames failed: ${e}`);
+	}
+	return names;
+}
+
 export function tokenizeDocument(document: TextDocument): TokenInfo[] {
 	// Always use the state-machine lexer.
 	// The regex lexer does not currently build exclusion ranges for strings/comments,
 	// which can incorrectly emit keyword/operator/number tokens inside string text.
 	const USE_REGEX_LEXER = false;
+	const knownLabelNames = collectKnownLabelNames(document);
 	
 	let tokens: TokenInfo[];
 	if (USE_REGEX_LEXER) {
 		const lexer = new MastLexer(document);
 		tokens = lexer.tokenize();
 	} else {
-		const lexer = new MastStateMachineLexer(document);
+		const lexer = new MastStateMachineLexer(document, knownLabelNames);
 		tokens = lexer.tokenize();
 	}
 	return tokens

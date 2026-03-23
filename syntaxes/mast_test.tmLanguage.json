@@ -5273,14 +5273,14 @@
     },
     "yaml-label-ref":{
       "name": "label.brain",
-      "match": "(?m)-[\\t ]*[a-zA-Z_].*(\n|$)"
+      "match": "(?m)^[ \\t]*-[\\t ]*[a-zA-Z_][^:\\n]*(\\n|$)"
     },
     "key-value-pair":{
       "name":"meta.injection.yaml.key-value-pair",
-      "match":"(?m)^[ \\t]*([\\w ]+:)(.*$)",
+      "match":"(?m)^[ \\t]*(?:-[ \\t]*)?([\\w ]+:)(.*$)",
       "captures":{
-        "0":{"name":"meta.injection.yaml.key"},
-        "1":{"name":"meta.injection.yaml.value"}
+        "1":{"name":"meta.injection.yaml.key"},
+        "2":{"name":"meta.injection.yaml.value"}
       }
     },
     "yaml-value" :{

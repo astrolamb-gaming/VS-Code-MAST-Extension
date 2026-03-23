@@ -821,6 +821,25 @@ export function getLabelMetadataKeys(label:LabelInfo) {
 
 let extraDebug = false;
 export function getLabelLocation(symbol:string, doc:TextDocument, pos:Position) {
+	const normalize = (s: string): string => {
+		let ret = (s || '').trim();
+		if ((ret.startsWith('"') && ret.endsWith('"')) || (ret.startsWith("'") && ret.endsWith("'"))) {
+			ret = ret.slice(1, -1).trim();
+		}
+		return ret;
+	};
+
+	const baseSymbol = normalize(symbol);
+	const candidateNames = new Set<string>();
+	if (baseSymbol.length > 0) {
+		candidateNames.add(baseSymbol);
+		if (baseSymbol.startsWith('//')) {
+			candidateNames.add(baseSymbol.substring(2));
+		} else {
+			candidateNames.add(`//${baseSymbol}`);
+		}
+	}
+
 	// debug("Getting location of label: `" + symbol + "` in\n" + doc.uri + " at:")
 	// debug(pos)
 	// Now let's check over all the labels, to see if it's a label. This will be most useful for most people I think.
@@ -837,7 +856,7 @@ export function getLabelLocation(symbol:string, doc:TextDocument, pos:Position) 
 	debug(symbol);
 	debug(mainLabelAtPos.subLabels)
 	for (const sub of mainLabelAtPos.subLabels) {
-		if (sub.name === symbol) {
+		if (candidateNames.has(sub.name)) {
 			debug(sub);
 			const loc:Location = {
 				uri: fileFromUri(sub.srcFile),
@@ -848,7 +867,7 @@ export function getLabelLocation(symbol:string, doc:TextDocument, pos:Position) 
 	}
 	mainLabels = getCache(doc.uri).getLabels(doc,false);
 	for (const main of mainLabels) {
-		if (main.name === symbol) {
+		if (candidateNames.has(main.name)) {
 			// debug(main);
 			const loc:Location = {
 				uri: fileFromUri(main.srcFile),

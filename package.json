@@ -211,6 +211,12 @@
 						}
 					}
 				]
+			},
+			"editor.semanticTokenColorCustomizations": {
+				"enabled": true,
+				"rules": {
+					"label": {"foreground":"#89549e", "fontStyle": "bold"}
+				}
 			}
 		},
 		"configuration": {

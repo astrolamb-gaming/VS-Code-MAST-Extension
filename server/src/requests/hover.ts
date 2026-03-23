@@ -80,6 +80,18 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 	//hover.contents = symbol;
 	
 	let hoverText: string|MarkupContent|undefined = symbol;
+	const symbolCandidates = new Set<string>();
+	if (symbol) {
+		const base = symbol.trim();
+		if (base.length > 0) {
+			symbolCandidates.add(base);
+			if (base.startsWith('//')) {
+				symbolCandidates.add(base.substring(2));
+			} else {
+				symbolCandidates.add(`//${base}`);
+			}
+		}
+	}
 	// debug(hoveredLine);
 	if (isClassMethod(hoveredLine, _pos.position.character)) {
 		debug("class method")
@@ -191,7 +203,7 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 		// 	}
 		// }
 		for (const main of mainLabels) {
-			if (main.name === symbol) {
+			if (symbolCandidates.has(main.name)) {
 				// debug(main);
 				return {contents: buildLabelDocs(main)}
 			}
