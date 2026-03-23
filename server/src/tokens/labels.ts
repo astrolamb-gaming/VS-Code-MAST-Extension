@@ -828,6 +828,27 @@ function getUndefinedVariableReferenceNamesInLabel(doc: TextDocument, label: Lab
 		definedNames.add(dm[4]);
 	}
 
+	// Known labels should never be treated as undefined metadata variables,
+	// even when referenced as bare identifiers (e.g. task_schedule(some_label)).
+	const knownLabelNames = new Set<string>();
+	const allLabels = getCache(doc.uri).getLabels(doc, false);
+	const labelStack = [...allLabels];
+	while (labelStack.length > 0) {
+		const current = labelStack.pop();
+		if (!current) continue;
+		const n = (current.name || '').trim();
+		if (!n) continue;
+		knownLabelNames.add(n);
+		if (n.startsWith('//')) {
+			knownLabelNames.add(n.substring(2));
+		} else {
+			knownLabelNames.add(`//${n}`);
+		}
+		for (const sub of current.subLabels || []) {
+			labelStack.push(sub);
+		}
+	}
+
 	const refs = new Set<string>();
 	for (const tok of tokens) {
 		if (tok.type !== 'variable' && tok.type !== 'builtInConstant') {
@@ -839,6 +860,9 @@ function getUndefinedVariableReferenceNamesInLabel(doc: TextDocument, label: Lab
 		}
 		const name = tok.text;
 		if (!/^[a-zA-Z_]\w*$/.test(name)) {
+			continue;
+		}
+		if (knownLabelNames.has(name) || knownLabelNames.has(`//${name}`)) {
 			continue;
 		}
 		if (LABEL_SCOPE_KEYWORDS.has(name) || variableModifiers.some(v => v[0] === name)) {
@@ -937,18 +961,22 @@ export function getLabelLocation(symbol:string, doc:TextDocument, pos:Position) 
 	// 		debug(l)
 	// 	}
 	// }
-	const mainLabelAtPos = getMainLabelAtPos(doc.offsetAt(pos),mainLabels);
-	debug("Main Label: " + mainLabelAtPos.name);
-	debug(symbol);
-	debug(mainLabelAtPos.subLabels)
-	for (const sub of mainLabelAtPos.subLabels) {
-		if (candidateNames.has(sub.name)) {
-			debug(sub);
-			const loc:Location = {
-				uri: fileFromUri(sub.srcFile),
-				range: sub.range
+	if (mainLabels.length > 0) {
+		const mainLabelAtPos = getMainLabelAtPos(doc.offsetAt(pos),mainLabels);
+		if (mainLabelAtPos) {
+			debug("Main Label: " + mainLabelAtPos.name);
+			debug(symbol);
+			debug(mainLabelAtPos.subLabels)
+			for (const sub of mainLabelAtPos.subLabels) {
+				if (candidateNames.has(sub.name)) {
+					debug(sub);
+					const loc:Location = {
+						uri: fileFromUri(sub.srcFile),
+						range: sub.range
+					}
+					return loc
+				}
 			}
-			return loc
 		}
 	}
 	mainLabels = getCache(doc.uri).getLabels(doc,false);

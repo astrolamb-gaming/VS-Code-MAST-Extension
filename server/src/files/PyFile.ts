@@ -13,6 +13,7 @@ import { CRange, getMatchesForRegex, replaceRegexMatchWithUnderscore } from '../
 // legacy role/blob/inventory/link scanners replaced by token-based extractors
 import { extractBlobKeysFromPythonFile, extractInventoryKeysFromPythonFile, extractLinksFromPythonFile, extractRolesFromPythonFile, extractSignalsFromPythonFile, tokenizePythonFile } from '../tokens/pythonStringExtractor';
 import { PythonLexer } from '../data/pythonLexer';
+import { Token } from '../tokens/tokenBasedExtractor';
 
 
 export class PyFile extends FileCache {
@@ -25,6 +26,7 @@ export class PyFile extends FileCache {
 	inventory_keys: Word[] = [];
 	links:Word[] = [];
 	blob_keys: Word[] = [];
+	pyTokens: Token[] = [];
 	globals: string[][] = [];
 	isGlobal: boolean = false;
 	constructor(uri: string, fileContents: string = "") {
@@ -58,6 +60,7 @@ export class PyFile extends FileCache {
 		this.classes = [];
 		this.defaultFunctions = [];
 		this.variableNames = [];
+		this.pyTokens = [];
 		const originalText = text;
 
 		// Remove comments
@@ -71,6 +74,7 @@ export class PyFile extends FileCache {
 
 		// Extract MAST framework strings using token-based extractor (lightweight)
 		const tokens = tokenizePythonFile(doc);
+		this.pyTokens = tokens;
 		this.roles = extractRolesFromPythonFile(doc, tokens);
 		this.blob_keys = extractBlobKeysFromPythonFile(doc, tokens);
 		this.inventory_keys = extractInventoryKeysFromPythonFile(doc, tokens);

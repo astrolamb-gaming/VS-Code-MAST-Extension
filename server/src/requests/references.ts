@@ -70,14 +70,46 @@ function getLabelLocations(doc: TextDocument, name: string): Location[] {
 			// Also include variable tokens — label names can be used as first-class
 			// values in expressions, e.g. task_schedule(some_label).
 			const isVariableToken = token.type === 'variable';
-			if (!isLabelToken && !isVariableToken) {
+			// Also include string tokens so quoted label refs are found,
+			// e.g. task_schedule("some_label").
+			const isStringToken = token.type === 'string' || token.type === 'stringOption';
+			if (!isLabelToken && !isVariableToken && !isStringToken) {
 				continue;
 			}
-			if (token.text !== name && token.text !== `//${name}`) {
+
+			if (isStringToken) {
+				const normalized = normalizeTokenWord(token.text || '', token.type);
+				if (normalized !== name && normalized !== `//${name}`) {
+					continue;
+				}
+			} else {
+				if (token.text !== name && token.text !== `//${name}`) {
+					continue;
+				}
+			}
+
+			locs.push({
+				uri: fileFromUri(mastFile.uri),
+				range: {
+					start: { line: token.line, character: token.character },
+					end: { line: token.line, character: token.character + token.length }
+				}
+			});
+		}
+	}
+
+	for (const pyFile of cache.pyFileCache.concat(cache.missionPyModules)) {
+		for (const token of pyFile.pyTokens || []) {
+			const isStringToken = token.type === 'string' || token.type === 'stringOption';
+			if (!isStringToken) {
+				continue;
+			}
+			const normalized = normalizeTokenWord(token.text || '', token.type);
+			if (normalized !== name && normalized !== `//${name}`) {
 				continue;
 			}
 			locs.push({
-				uri: fileFromUri(mastFile.uri),
+				uri: fileFromUri(pyFile.uri),
 				range: {
 					start: { line: token.line, character: token.character },
 					end: { line: token.line, character: token.character + token.length }

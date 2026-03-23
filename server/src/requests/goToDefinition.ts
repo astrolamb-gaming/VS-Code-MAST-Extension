@@ -15,18 +15,19 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 	// parseVariables(doc);
 	// return;
 	const cache = getCache(doc.uri);
-	const tokens = cache.getMastFile(doc.uri)?.tokens;
-	const tokenContext = getTokenContextAtPosition(doc, tokens || [], pos);
-	if (!tokenContext.token) {
+	const isMastDoc = doc.languageId === 'mast';
+	const tokens = isMastDoc ? (cache.getMastFile(doc.uri)?.tokens || []) : [];
+	const tokenContext = isMastDoc ? getTokenContextAtPosition(doc, tokens, pos) : undefined;
+	if (isMastDoc && !tokenContext?.token) {
 		debug("No token found at position");
 		return undefined;
 	}
-	const isInComment = tokenContext.inComment;
-	const isInString = tokenContext.inString;
+	const isInComment = tokenContext?.inComment || false;
+	const isInString = tokenContext?.inString || false;
 	
 	// First, let's check if it's in a comment or string
 	// TODO: Check if it's a styestring or blob string, in which case we should open the applicable file?
-	if(isInComment || isInString) {
+	if(isInComment) {
 		debug("Is a comment, string, or metadata");
 		return undefined;
 	}
@@ -37,8 +38,19 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 	debug(hoveredLine);
 	const range = getHoveredWordRange(hoveredLine, pos.character);
 	// const symbol = hoveredLine.substring(range.start,range.end);
-	const symbol = tokenContext.token?.text || hoveredLine.substring(range.start,range.end);
+	const symbol = tokenContext?.token?.text || hoveredLine.substring(range.start,range.end);
 	debug(symbol);
+
+	// For quoted label references, allow lookup from both mast and python files.
+	if (isInString || !isMastDoc) {
+		const labelLoc = getLabelLocation(symbol, doc, pos);
+		if (labelLoc) {
+			return labelLoc;
+		}
+		if (!isMastDoc) {
+			return undefined;
+		}
+	}
 	// Now we determine what type of symbol it is.
 	// TODO: Expand on this.
 	// NOTE:
@@ -47,12 +59,12 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 	// We're going to focus on just stuff within the current mission folder.
 
 	// First, let's check if it has a period in front of it
-	const s = tokenContext.token?.character || 0;//hoveredLine.indexOf(symbol);
+	const s = tokenContext?.token?.character || 0;//hoveredLine.indexOf(symbol);
 	// const icm = isClassMethod(hoveredLine,pos.character);
-	const icm = tokenContext.type === "method";
+	const icm = tokenContext?.type === "method";
 	debug("Is class method: " + icm);
 	// const isFunc = isFunction(hoveredLine,symbol);
-	const isFunc = tokenContext.type === "function" || icm
+	const isFunc = tokenContext?.type === "function" || icm
 	// Apparently the given position is based off of the last character
 	// if (s <= pos.character && pos.character <= s + symbol.length) {
 		if (icm) {
