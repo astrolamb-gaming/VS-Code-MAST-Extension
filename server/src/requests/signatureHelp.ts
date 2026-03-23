@@ -221,57 +221,69 @@ export function getCallContextFromTokens(
 	document: TextDocument
 ): { functionName: string; parameterIndex: number; parameterName?: string } | undefined {
 	const targetOffset = document.offsetAt(position);
+	if (targetOffset <= 0 || tokens.length === 0) {
+		return undefined;
+	}
+	const tokenOffsets = tokens.map(tok => document.offsetAt({ line: tok.line, character: tok.character }));
 
-	// Find the token at or before the cursor
 	let tokenAtCursor = -1;
 	for (let i = tokens.length - 1; i >= 0; i--) {
-		const tok = tokens[i];
-		const tokOffset = document.offsetAt({ line: tok.line, character: tok.character });
-		if (tokOffset <= targetOffset) {
+		if (tokenOffsets[i] <= targetOffset) {
 			tokenAtCursor = i;
 			break;
 		}
 	}
-
 	if (tokenAtCursor === -1) {
 		return undefined;
 	}
 
-	// Walk backward from cursor, tracking parenthesis depth
-	let parenDepth = 0;
-	let commaCount = 0;
-	let foundOpenParen = false;
 	let openParenIndex = -1;
-
+	let parenDepth = 0;
+	let bracketDepth = 0;
+	let braceDepth = 0;
 	for (let i = tokenAtCursor; i >= 0; i--) {
 		const tok = tokens[i];
-
-		// Skip string tokens (unless inside interpolation)
-		if (tok.type === 'string') {
+		if (tok.type !== 'operator') {
 			continue;
 		}
-
-		if (tok.type === 'operator') {
-			if (tok.text === ')') {
+		switch (tok.text) {
+			case ')':
 				parenDepth++;
-			} else if (tok.text === '(') {
-				if (parenDepth === 0) {
-					foundOpenParen = true;
+				break;
+			case ']':
+				bracketDepth++;
+				break;
+			case '}':
+				braceDepth++;
+				break;
+			case '(':
+				if (parenDepth === 0 && bracketDepth === 0 && braceDepth === 0) {
 					openParenIndex = i;
 					break;
 				}
-				parenDepth--;
-			} else if (tok.text === ',' && parenDepth === 0) {
-				commaCount++;
-			}
+				if (parenDepth > 0) {
+					parenDepth--;
+				}
+				break;
+			case '[':
+				if (bracketDepth > 0) {
+					bracketDepth--;
+				}
+				break;
+			case '{':
+				if (braceDepth > 0) {
+					braceDepth--;
+				}
+				break;
+		}
+		if (openParenIndex !== -1) {
+			break;
 		}
 	}
-
-	if (!foundOpenParen || openParenIndex === -1) {
+	if (openParenIndex === -1) {
 		return undefined;
 	}
 
-	// Look backward from the opening paren for the function/method name
 	let funcIndex = -1;
 	for (let i = openParenIndex - 1; i >= 0; i--) {
 		const tok = tokens[i];
@@ -279,76 +291,151 @@ export function getCallContextFromTokens(
 			funcIndex = i;
 			break;
 		}
-		// Skip whitespace/operator tokens like '.', but stop on other operators
-		if (tok.type === 'operator' && tok.text !== '.') {
-			break;
+		if (tok.type === 'operator' && tok.text === '.') {
+			continue;
 		}
+		break;
 	}
-
 	if (funcIndex === -1) {
 		return undefined;
 	}
 
-	// Determine whether the current argument segment is named (e.g. foo(bar=1)).
-	let argDepth = 0;
-	let activeArgStart = openParenIndex + 1;
+	let parameterIndex = 0;
+	let segmentStart = tokenOffsets[openParenIndex] + tokens[openParenIndex].length;
+	parenDepth = 0;
+	bracketDepth = 0;
+	braceDepth = 0;
 	for (let i = openParenIndex + 1; i <= tokenAtCursor; i++) {
 		const tok = tokens[i];
 		if (tok.type !== 'operator') {
 			continue;
 		}
-		if (tok.text === '(' || tok.text === '[' || tok.text === '{') {
-			argDepth++;
-			continue;
-		}
-		if (tok.text === ')' || tok.text === ']' || tok.text === '}') {
-			if (argDepth > 0) {
-				argDepth--;
-			}
-			continue;
-		}
-		if (tok.text === ',' && argDepth === 0) {
-			activeArgStart = i + 1;
+		switch (tok.text) {
+			case '(':
+				parenDepth++;
+				break;
+			case ')':
+				if (parenDepth > 0) {
+					parenDepth--;
+				}
+				break;
+			case '[':
+				bracketDepth++;
+				break;
+			case ']':
+				if (bracketDepth > 0) {
+					bracketDepth--;
+				}
+				break;
+			case '{':
+				braceDepth++;
+				break;
+			case '}':
+				if (braceDepth > 0) {
+					braceDepth--;
+				}
+				break;
+			case ',':
+				if (parenDepth === 0 && bracketDepth === 0 && braceDepth === 0) {
+					parameterIndex++;
+					segmentStart = tokenOffsets[i] + tok.length;
+				}
+				break;
 		}
 	}
 
+	const text = document.getText();
+	const segmentText = text.substring(segmentStart, targetOffset);
 	let parameterName: string | undefined = undefined;
-	argDepth = 0;
-	for (let i = activeArgStart; i <= tokenAtCursor; i++) {
-		const tok = tokens[i];
-		if (tok.type === 'operator') {
-			if (tok.text === '(' || tok.text === '[' || tok.text === '{') {
-				argDepth++;
+	let quote: string | null = null;
+	let escaped = false;
+	let inLineComment = false;
+	let inBlockComment = false;
+	let nestedParenDepth = 0;
+	let nestedBracketDepth = 0;
+	let nestedBraceDepth = 0;
+
+	for (let i = 0; i < segmentText.length; i++) {
+		const ch = segmentText[i];
+		const next = i + 1 < segmentText.length ? segmentText[i + 1] : '';
+
+		if (inLineComment) {
+			if (ch === '\n') {
+				inLineComment = false;
+			}
+			continue;
+		}
+		if (inBlockComment) {
+			if (ch === '*' && next === '/') {
+				inBlockComment = false;
+				i++;
+			}
+			continue;
+		}
+		if (quote !== null) {
+			if (escaped) {
+				escaped = false;
 				continue;
 			}
-			if (tok.text === ')' || tok.text === ']' || tok.text === '}') {
-				if (argDepth > 0) {
-					argDepth--;
-				}
+			if (ch === '\\') {
+				escaped = true;
 				continue;
 			}
-			if (tok.text === '=' && argDepth === 0) {
-				for (let j = i - 1; j >= activeArgStart; j--) {
-					const prev = tokens[j];
-					if (prev.type === 'operator') {
-						if (prev.text === '.') {
-							continue;
-						}
-						break;
-					}
-					if (/^[a-zA-Z_]\w*$/.test(prev.text)) {
-						parameterName = prev.text;
-					}
-					break;
-				}
-				break;
+			if (ch === quote) {
+				quote = null;
 			}
+			continue;
+		}
+		if (ch === '#') {
+			inLineComment = true;
+			continue;
+		}
+		if (ch === '/' && next === '*') {
+			inBlockComment = true;
+			i++;
+			continue;
+		}
+		if (ch === '"' || ch === "'") {
+			quote = ch;
+			continue;
+		}
+		if (ch === '(') {
+			nestedParenDepth++;
+			continue;
+		}
+		if (ch === ')' && nestedParenDepth > 0) {
+			nestedParenDepth--;
+			continue;
+		}
+		if (ch === '[') {
+			nestedBracketDepth++;
+			continue;
+		}
+		if (ch === ']' && nestedBracketDepth > 0) {
+			nestedBracketDepth--;
+			continue;
+		}
+		if (ch === '{') {
+			nestedBraceDepth++;
+			continue;
+		}
+		if (ch === '}' && nestedBraceDepth > 0) {
+			nestedBraceDepth--;
+			continue;
+		}
+		if (ch === '=' && nestedParenDepth === 0 && nestedBracketDepth === 0 && nestedBraceDepth === 0) {
+			const leftSide = segmentText.substring(0, i).trim();
+			const nameMatch = leftSide.match(/^([A-Za-z_]\w*)$/);
+			if (nameMatch) {
+				parameterName = nameMatch[1];
+			}
+			break;
 		}
 	}
 
 	return {
 		functionName: tokens[funcIndex].text,
-		parameterIndex: commaCount,
+		parameterIndex,
 		parameterName
 	};
 }

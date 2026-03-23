@@ -4,17 +4,17 @@ import { buildLabelDocs, getDefaultVariableNamesForLabel, getLabelMetadataKeys, 
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { asClasses, replaceNames } from './../data';
 import { getRouteLabelVars } from './../tokens/routeLabels';
-import { getTokenContextAtPosition, getTokenTypeAtPosition, isTextInBracket, replaceRegexMatchWithUnderscore } from './../tokens/comments';
+import { CRange, getTokenContextAtPosition, getTokenTypeAtPosition, isTextInBracket, replaceRegexMatchWithUnderscore } from './../tokens/comments';
 import { getCache, MissionCache } from './../cache';
 import path = require('path');
 import { fixFileName, getFilesInDir } from './../fileFunctions';
 import { getArtemisGlobals } from '../artemisGlobals';
-import { getCurrentMethodName, onSignatureHelp, getCallContextFromTokens } from './signatureHelp';
+import { onSignatureHelp, getCallContextFromTokens } from './signatureHelp';
 import { getWordsAsCompletionItems, getRolesForFile } from './../tokens/roles';
 import { variableModifiers } from './../tokens/variables';
 import { isClassMethod } from './../tokens/tokens';
 import { Function } from './../data/function';
-import { getCurrentLineFromTextDocument } from './hover';
+import { getCurrentLineFromTextDocument, getHoveredSymbol } from './hover';
 import { countMatches } from './../rx';
 import { buildSignalInfoListAsCompletionItems } from './../tokens/signals';
 
@@ -27,7 +27,6 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// return buildFaction("kra","Kralien_Set");
 	// debug("Staring onCompletion");
 	const cache = getCache(text.uri);
-	const tokens = cache.getMastFile(text.uri)?.tokens || [];
 	// return getGlobals().artFiles;
 	
 	let ci : CompletionItem[] = [];
@@ -41,6 +40,11 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		debug("Document text is undefined");
 		return ci;
 	}
+
+	// Keep token-derived context in sync with the latest document content.
+	cache.updateFileInfo(text);
+	const tokens = cache.getMastFile(text.uri)?.tokens || [];
+
 	// Calculate the position in the text's string value using the Position value.
 	const pos : integer = text.offsetAt(_textDocumentPosition.position);
 	const startOfLine : integer = pos - _textDocumentPosition.position.character;
@@ -728,57 +732,63 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		}
 		return ci;
 	}
+	debug("Not a class reference, checking functions...");
+	const activeFunctionName = callContext?.functionName || func;
+	debug(callContext?.functionName);
+	debug(func)
+	debug("Active function name: " + activeFunctionName);
+	if (activeFunctionName) {
+		debug("Active function: " + activeFunctionName);
+		const callStart = iStr.lastIndexOf(activeFunctionName);
+		let wholeFunc = callStart >= 0 ? iStr.substring(callStart) : iStr;
+		const openParen = wholeFunc.indexOf("(");
+		if (openParen >= 0) {
+			wholeFunc = wholeFunc.substring(openParen);
+		}
 
-	const cm = getCurrentMethodName(iStr)
-	let wholeFunc = iStr.substring(iStr.lastIndexOf(cm));
-	wholeFunc = wholeFunc.substring(wholeFunc.indexOf("("));
-	if (func) {
-	// if (isFunction(iStr, cm)) {
-		// Check for named argument
-		let named = /(\w+)\=$/m;
-		let test = iStr.match(named);
-		let args = [];
-		args = [currentParamName]
-		if (test) {
-			// args = [test[1]];
-			// TODO: Add style completions. `=$gamemaster`
-		} else {
-			// args = getCurrentArgumentNames(iStr,text);
-			
-			// Add the argument names
-			// Don't want to do this with a named argument
-			const argNames = cache.getMethod(cm);
-			if (argNames) {
-				debug(argNames.parameters)
-				let defaultVal = /\=(.*?)$/;
-				for (const a of argNames.parameters) {
-					// If the argument is already used in the function call, don't include it
-					if (wholeFunc.includes(a.name+"=") || wholeFunc.includes(a.name+" =")) {
-						continue;
-					}
-					const test = a.name.match(defaultVal);
-					const name = a.name.replace(defaultVal,"");
-					const c: CompletionItem = {
-						label: a.name,
-						kind: CompletionItemKind.TypeParameter,
-						documentation: a.documentation,
-						labelDetails: {description: "Argument Name"},
-						sortText: "___"+name,
-						insertText: name // TODO: Add '=' and trigger completions
-					}
-					if (test) {
-						c.detail = test[1];	
-					}
-
-					// debug(c);
-					ci.push(c);
+		// Add named-argument completions for parameters not yet explicitly used.
+		const argNames = cache.getMethod(activeFunctionName);
+		if (argNames) {
+			debug(argNames.parameters)
+			let defaultVal = /\=(.*?)$/;
+			for (const a of argNames.parameters) {
+				if (wholeFunc.includes(a.name+"=") || wholeFunc.includes(a.name+" =")) {
+					continue;
 				}
+				const test = a.name.match(defaultVal);
+				const name = a.name.replace(defaultVal,"");
+				const c: CompletionItem = {
+					label: a.name,
+					kind: CompletionItemKind.TypeParameter,
+					documentation: a.documentation,
+					labelDetails: {description: "Argument Name"},
+					sortText: "___"+name,
+					insertText: name
+				}
+				if (test) {
+					c.detail = test[1];
+				}
+				ci.push(c);
+			}
+		}
+
+		const args: string[] = [];
+		if (callContext?.parameterName) {
+			args.push(callContext.parameterName);
+		} else if (currentParamName) {
+			args.push(currentParamName);
+		}
+		// Infer label argument for well-known MAST scheduling/control functions not in method cache
+		if (args.length === 0 && callContext?.parameterIndex === 0) {
+			if (activeFunctionName === 'task_schedule' || activeFunctionName === 'task_wait' ||
+				activeFunctionName === 'objective_add' || activeFunctionName === 'brain_add') {
+				args.push('label');
 			}
 		}
 
 		// Get specific completions for each parameter
 		for (const a of args) {
-			let arg = a.replace(/=\w+/,"");
+			let arg = a.replace(/=.*/,"").trim();
 			if (arg === "label" || arg === "on_press") {
 				let labelNames = cache.getLabels(text);
 				const currentFileLabels = cache.getLabels(text, true);
@@ -791,7 +801,8 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				}
 				const lbl = getMainLabelAtPos(startOfLine, currentFileLabels);
 				if (lbl === undefined) {
-					return [];
+					debug("No label found at pos for sublabels");
+					return ci;
 				} else {
 					// Check for the parent label at this point (to get sublabels within the same parent)
 					if (lbl.srcFile === fixFileName(text.uri)) {
@@ -808,7 +819,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			}
 			if (arg === "data") {
 				debug("Data argument found.")
-				let labelStr = iStr.substring(iStr.lastIndexOf(cm)+cm.length);
+				let labelStr = callStart >= 0 ? iStr.substring(callStart + activeFunctionName.length) : iStr;
 				if (!labelStr.includes("{")) continue;
 				labelStr = labelStr.replace(/{.*?(}|$)/m,"");
 				// Get all labels, including sublabels of the current main label
@@ -1045,6 +1056,24 @@ export function findNamedArg(str:string): string|undefined {
 	return ret;
 }
 
+function inferCurrentMethodName(iStr: string): string {
+	let working = iStr;
+	let t: RegExpMatchArray | null;
+	t = working.match(/\w+\(([^\(\)])*\)/g);
+	while (t) {
+		let s = working.indexOf(t[0]);
+		let r: CRange = {
+			start: s,
+			end: t[0].length + s
+		};
+		working = replaceRegexMatchWithUnderscore(working, r);
+		t = working.match(/\w+\(([^\(\)])*\)/g);
+	}
+	let last = working.lastIndexOf("(");
+	if (last < 0) return "";
+	return getHoveredSymbol(working, last);
+}
+
 
 export function getCurrentArgumentNames(iStr:string, doc:TextDocument): string[] {
 	let ret: string[] = [];
@@ -1056,7 +1085,7 @@ export function getCurrentArgumentNames(iStr:string, doc:TextDocument): string[]
 	}
 
 	// Otherwise we have to find the function name, remove commas in strings, figure out which ordered argument it is, etc.
-	const func = getCurrentMethodName(iStr);
+	const func = inferCurrentMethodName(iStr);
 	const fstart = iStr.lastIndexOf(func);
 	let wholeFunc = iStr.substring(fstart,iStr.length);
 	let obj = /{.*?(}|$)/gm;
@@ -1094,7 +1123,7 @@ export function getCurrentArgumentNames(iStr:string, doc:TextDocument): string[]
 
 function getCompletionsForMethodParameters(iStr:string, paramName: string, doc:TextDocument, pos:integer): CompletionItem[] {
 	let ci:CompletionItem[] = [];
-	const func = getCurrentMethodName(iStr);
+	const func = inferCurrentMethodName(iStr);
 	const fstart = iStr.lastIndexOf(func);
 	const wholeFunc = iStr.substring(fstart,iStr.length);
 	const arr = wholeFunc.split(",");
@@ -1161,7 +1190,7 @@ function getCompletionsForMethodParameters(iStr:string, paramName: string, doc:T
 
 function getCompletionsForMethodParams(iStr:string, paramName: string, doc:TextDocument): CompletionItem[] {
 	let ci:CompletionItem[] = [];
-	const func = getCurrentMethodName(iStr);
+	const func = inferCurrentMethodName(iStr);
 	const sig: SignatureInformation|undefined = getCache(doc.uri).getSignatureOfMethod(func);
 	const fstart = iStr.lastIndexOf(func);
 	const wholeFunc = iStr.substring(fstart,iStr.length);

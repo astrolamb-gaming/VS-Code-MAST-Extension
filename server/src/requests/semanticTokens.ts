@@ -716,6 +716,9 @@ export class MastStateMachineLexer {
 		if (this.text[this.pos] !== '/' || this.peek() !== '/') {
 			return null;
 		}
+		if (!this.isLineStart()) {
+			return null;
+		}
 		// look ahead to see if next char after slashes is non-whitespace
 		const after = this.text[this.pos + 2];
 		if (after === ' ' || after === '\t' || after === '\n' || after === undefined) {
@@ -724,7 +727,6 @@ export class MastStateMachineLexer {
 
 		const startLine = this.line;
 		const startChar = this.char;
-		const lineStart = this.isLineStart();
 		// consume the slashes
 		this.advance();
 		this.advance();
@@ -744,6 +746,48 @@ export class MastStateMachineLexer {
 			text: path
 		};
 		return token;
+	}
+
+	// Scan an inline route label reference (//foo/bar) and emit it only if it
+	// is known in the current label set. If unknown, do not consume input.
+	private scanInlineRouteReference(): TokenInfo | null {
+		if (this.text[this.pos] !== '/' || this.peek() !== '/') {
+			return null;
+		}
+		const startPos = this.pos;
+		const startLine = this.line;
+		const startChar = this.char;
+
+		// look ahead to see if next char after slashes is non-whitespace
+		const after = this.text[this.pos + 2];
+		if (after === ' ' || after === '\t' || after === '\n' || after === undefined) {
+			return null;
+		}
+
+		// consume the reference candidate
+		this.advance();
+		this.advance();
+		while (this.pos < this.text.length && !/[ \t\r\n]/.test(this.text[this.pos])) {
+			this.advance();
+		}
+
+		const candidate = this.text.substring(startPos, this.pos);
+		if (!this.isKnownLabelReferenceName(candidate)) {
+			// Unknown route; revert so normal tokenization can handle it.
+			this.pos = startPos;
+			this.line = startLine;
+			this.char = startChar;
+			return null;
+		}
+
+		return {
+			type: 'route-label',
+			modifier: 'reference',
+			line: startLine,
+			character: startChar,
+			length: candidate.length,
+			text: candidate
+		};
 	}
 
 	// Scan a media label that begins with '@' at the start of a line and
@@ -1672,7 +1716,7 @@ export class MastStateMachineLexer {
 		}
 
 		// Single character operators
-		if (/[+\-*/%&|^~<>=(,)]/.test(char)) {
+		if (/[+\-*/%&|^~<>=(,\[\]{}]/.test(char)) {
 			this.advance();
 			return {
 				type: 'operator',
@@ -2124,10 +2168,18 @@ export class MastStateMachineLexer {
 			// begin with // followed by non-whitespace and run until the
 			// first space or newline.
 			if (current === '/' && this.peek() === '/') {
-				const routeToken = this.scanRouteLabel();
-				if (routeToken) {
-					this.tokens.push(routeToken);
-					continue;
+				if (this.isLineStart()) {
+					const routeToken = this.scanRouteLabel();
+					if (routeToken) {
+						this.tokens.push(routeToken);
+						continue;
+					}
+				} else {
+					const routeRefToken = this.scanInlineRouteReference();
+					if (routeRefToken) {
+						this.tokens.push(routeRefToken);
+						continue;
+					}
 				}
 			}
 
@@ -2295,7 +2347,7 @@ export class MastStateMachineLexer {
 			}
 
 			// Operators
-			if (/[+\-*/%&|^~<>=(,)]/.test(current)) {
+			if (/[+\-*/%&|^~<>=(,\[\]{}]/.test(current)) {
 				const token = this.scanOperator();
 				if (token) {
 					if (token.text === '->') {
