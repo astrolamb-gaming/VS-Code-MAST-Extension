@@ -32,44 +32,7 @@ import { LabelInfo } from './labels';
 // 	return comments;
 // }
 const stringCache: Map<string,CRange[]> = new Map();
-/**
- * Get all strings within the specified {@link TextDocument TextDocument}.
- * @param doc The {@link TextDocument TextDocument}
- * @returns An array of {@link CRange CRange}
- */
-// export function getStrings(doc: TextDocument): CRange[] {
-// 	let strings = stringCache.get(fixFileName(doc.uri));
-// 	if (strings === undefined) {
-// 		strings = parseStrings(doc);
-// 	}
-// 	return strings;
-// }
-// const yamlCache: Map<string,CRange[]> = new Map();
-/**
- * Get all metadata within the specified {@link TextDocument TextDocument}.
- * @param doc The {@link TextDocument TextDocument}
- * @returns An array of {@link CRange CRange}
- */
-// export function getYamls(doc: TextDocument): CRange[] {
-// 	let yamls = yamlCache.get(fixFileName(doc.uri));
-// 	if (yamls === undefined) {
-// 		yamls = parseYamls(doc);
-// 	}
-// 	return yamls;
-// }
-const squareBracketCache: Map<string,CRange[]> = new Map();
-/**
- * Get all square brackets within the specified {@link TextDocument TextDocument}.
- * @param doc The {@link TextDocument TextDocument}
- * @returns An array of {@link CRange CRange}
- */
-export function getSquareBrackets(doc: TextDocument): CRange[] {
-	let sqbs = squareBracketCache.get(fixFileName(doc.uri));
-	if (sqbs === undefined) {
-		sqbs = parseSquareBrackets(doc);
-	}
-	return sqbs;
-}
+
 
 export interface CRange {
 	start: integer,
@@ -570,25 +533,6 @@ export function parseYamls(textDocument: TextDocument) {
 	return yamls;
 }
 
-const indents: integer[] = [];
-const dedents: integer[] = [];
-/**
- * TODO: Finish this function
- * @param textDocument 
- */
-export function getIndentations(textDocument: TextDocument) {
-	let text = textDocument.getText();
-	let m: RegExpExecArray | null;
-	let pattern = /^[\\t ]*/gm
-	while (m = pattern.exec(text)) {
-		let comment = m[0];
-		const r: CRange = {
-			start: m.index,
-			end: m.index + m[0].length
-		}
-	}
-
-}
 
 export function getMatchesForRegex(pattern: RegExp, text: string) {
 	let matches: CRange[] = [];
