@@ -6,6 +6,7 @@ import { fixFileName } from '../fileFunctions';
 import { debug } from 'console';
 import { Token } from './tokenBasedExtractor';
 import { getCache } from '../cache';
+import { LabelInfo } from './labels';
 
 
 /**
@@ -198,12 +199,231 @@ export function getTokenTypeAtPosition(doc: TextDocument, tokens: Token[], posit
 	return getTokenTypeAtOffset(doc, tokens, doc.offsetAt(position));
 }
 
+export type ObjectRole = 'key' | 'value' | 'unknown';
+
+function normalizeLabelName(name: string): string {
+	let n = (name || '').trim();
+	if ((n.startsWith('"') && n.endsWith('"')) || (n.startsWith("'") && n.endsWith("'"))) {
+		n = n.slice(1, -1).trim();
+	}
+	return n;
+}
+
+function buildLabelNameCandidates(name: string): Set<string> {
+	const n = normalizeLabelName(name);
+	const candidates = new Set<string>();
+	if (!n) {
+		return candidates;
+	}
+	candidates.add(n);
+	if (n.startsWith('//')) {
+		candidates.add(n.substring(2));
+	} else {
+		candidates.add(`//${n}`);
+	}
+	return candidates;
+}
+
+function flattenLabels(labels: LabelInfo[]): LabelInfo[] {
+	const flat: LabelInfo[] = [];
+	const stack = [...labels];
+	while (stack.length > 0) {
+		const label = stack.pop();
+		if (!label) continue;
+		flat.push(label);
+		if (Array.isArray(label.subLabels) && label.subLabels.length > 0) {
+			for (const sub of label.subLabels) {
+				stack.push(sub);
+			}
+		}
+	}
+	return flat;
+}
+
+function isLabelReferenceToken(token: Token): boolean {
+	const isLabelType = token.type === 'label' || token.type === 'route-label' || token.type === 'media-label';
+	return isLabelType && token.modifier === 'reference';
+}
+
+export function getMostRecentLabelReferenceAtOffset(doc: TextDocument, tokens: Token[], offset: integer): Token | undefined {
+	if (tokens.length === 0) {
+		const cache = getCache(doc.uri);
+		tokens = cache.getMastFile(doc.uri)?.tokens || [];
+	}
+
+	let mostRecent: Token | undefined = undefined;
+	let mostRecentStart = -1;
+
+	for (const t of tokens) {
+		if (!isLabelReferenceToken(t)) {
+			continue;
+		}
+		const start = doc.offsetAt({ line: t.line, character: t.character });
+		if (start <= offset && start >= mostRecentStart) {
+			mostRecent = t;
+			mostRecentStart = start;
+		}
+	}
+
+	return mostRecent;
+}
+
+export function getMostRecentLabelReferenceAtPosition(doc: TextDocument, tokens: Token[], position: { line: integer, character: integer }): Token | undefined {
+	return getMostRecentLabelReferenceAtOffset(doc, tokens, doc.offsetAt(position));
+}
+
+export function getMostRecentLabelInfoAtOffset(doc: TextDocument, tokens: Token[], offset: integer): LabelInfo | undefined {
+	const recentRef = getMostRecentLabelReferenceAtOffset(doc, tokens, offset);
+	if (!recentRef) {
+		return undefined;
+	}
+
+	const cache = getCache(doc.uri);
+	const candidates = buildLabelNameCandidates(recentRef.text);
+	if (candidates.size === 0) {
+		return undefined;
+	}
+
+	const scoped = flattenLabels(cache.getLabelsAtPos(doc, offset, false));
+	for (const label of scoped) {
+		if (candidates.has(label.name)) {
+			return label;
+		}
+	}
+
+	const all = flattenLabels(cache.getLabels(doc, false));
+	for (const label of all) {
+		if (candidates.has(label.name)) {
+			return label;
+		}
+	}
+
+	return undefined;
+}
+
+export function getMostRecentLabelInfoAtPosition(doc: TextDocument, tokens: Token[], position: { line: integer, character: integer }): LabelInfo | undefined {
+	return getMostRecentLabelInfoAtOffset(doc, tokens, doc.offsetAt(position));
+}
+
+function getObjectContextAtOffset(doc: TextDocument, tokens: Token[], offset: integer): {
+	inObject: boolean,
+	objectRole: ObjectRole,
+	objectDepth: integer
+} {
+	if (tokens.length === 0) {
+		const cache = getCache(doc.uri);
+		tokens = cache.getMastFile(doc.uri)?.tokens || [];
+	}
+
+	const text = doc.getText();
+	if (text.length === 0) {
+		return { inObject: false, objectRole: 'unknown', objectDepth: 0 };
+	}
+
+	const maxOffset = Math.min(Math.max(0, offset), text.length - 1);
+
+	const excludedRanges: Array<{ start: integer, endExclusive: integer }> = [];
+	for (const t of tokens) {
+		const category = mapSemanticTokenTypeToDocumentType(t);
+		if (category !== 'string' && category !== 'comment') {
+			continue;
+		}
+		const start = doc.offsetAt({ line: t.line, character: t.character });
+		excludedRanges.push({ start, endExclusive: start + t.length });
+	}
+	excludedRanges.sort((a, b) => a.start - b.start);
+
+	type ScopeEntry = {
+		kind: 'object' | 'array' | 'paren',
+		objectRole?: ObjectRole
+	};
+	const scopeStack: ScopeEntry[] = [];
+
+	let excludedIndex = 0;
+	for (let i = 0; i <= maxOffset; i++) {
+		while (excludedIndex < excludedRanges.length && excludedRanges[excludedIndex].endExclusive <= i) {
+			excludedIndex++;
+		}
+		if (excludedIndex < excludedRanges.length) {
+			const ex = excludedRanges[excludedIndex];
+			if (i >= ex.start && i < ex.endExclusive) {
+				continue;
+			}
+		}
+
+		const ch = text[i];
+		if (ch === '{') {
+			scopeStack.push({ kind: 'object', objectRole: 'key' });
+			continue;
+		}
+		if (ch === '[') {
+			scopeStack.push({ kind: 'array' });
+			continue;
+		}
+		if (ch === '(') {
+			scopeStack.push({ kind: 'paren' });
+			continue;
+		}
+
+		if (ch === '}' || ch === ']' || ch === ')') {
+			const expected = ch === '}' ? 'object' : ch === ']' ? 'array' : 'paren';
+			if (scopeStack.length > 0 && scopeStack[scopeStack.length - 1].kind === expected) {
+				scopeStack.pop();
+			}
+			continue;
+		}
+
+		if (scopeStack.length === 0) {
+			continue;
+		}
+
+		const top = scopeStack[scopeStack.length - 1];
+		if (top.kind !== 'object') {
+			continue;
+		}
+
+		if (ch === ':') {
+			top.objectRole = 'value';
+			continue;
+		}
+		if (ch === ',') {
+			top.objectRole = 'key';
+			continue;
+		}
+	}
+
+	let objectDepth = 0;
+	let objectRole: ObjectRole = 'unknown';
+	for (let i = scopeStack.length - 1; i >= 0; i--) {
+		if (scopeStack[i].kind === 'object') {
+			objectDepth++;
+			if (objectRole === 'unknown') {
+				objectRole = scopeStack[i].objectRole || 'unknown';
+			}
+		}
+	}
+
+	return {
+		inObject: objectDepth > 0,
+		objectRole,
+		objectDepth
+	};
+}
+
 export function getTokenContextAtPosition(doc: TextDocument, tokens: Token[], position: { line: integer, character: integer }): {
 	type: string,
 	inYaml: boolean,
 	inComment: boolean,
 	inString: boolean,
 	inSquareBrackets: boolean,
+	inObject: boolean,
+	inObjectKey: boolean,
+	inObjectValue: boolean,
+	objectRole: ObjectRole,
+	objectDepth: integer,
+	recentLabelReference?: Token,
+	recentLabelReferenceName?: string,
+	recentLabelInfo?: LabelInfo,
 	token?: Token
 } {
 	const offset = doc.offsetAt(position);
@@ -224,10 +444,21 @@ export function getTokenContextAtOffset(doc: TextDocument, tokens: Token[], offs
 	inComment: boolean,
 	inString: boolean,
 	inSquareBrackets: boolean,
+	inObject: boolean,
+	inObjectKey: boolean,
+	inObjectValue: boolean,
+	objectRole: ObjectRole,
+	objectDepth: integer,
+	recentLabelReference?: Token,
+	recentLabelReferenceName?: string,
+	recentLabelInfo?: LabelInfo,
 	token?: Token
 } {
 	const token = getTokenAtOffsetFromTokens(doc, tokens, offset);
 	const type = token ? mapSemanticTokenTypeToDocumentType(token) : 'code';
+	const objectCtx = getObjectContextAtOffset(doc, tokens, offset);
+	const recentLabelReference = getMostRecentLabelReferenceAtOffset(doc, tokens, offset);
+	const recentLabelInfo = getMostRecentLabelInfoAtOffset(doc, tokens, offset);
 
 	return {
 		type,
@@ -235,6 +466,14 @@ export function getTokenContextAtOffset(doc: TextDocument, tokens: Token[], offs
 		inComment: type === 'comment',
 		inString: type === 'string',
 		inSquareBrackets: type === 'square-bracket',
+		inObject: objectCtx.inObject,
+		inObjectKey: objectCtx.inObject && objectCtx.objectRole === 'key',
+		inObjectValue: objectCtx.inObject && objectCtx.objectRole === 'value',
+		objectRole: objectCtx.objectRole,
+		objectDepth: objectCtx.objectDepth,
+		recentLabelReference,
+		recentLabelReferenceName: recentLabelReference?.text,
+		recentLabelInfo,
 		token
 	};
 }

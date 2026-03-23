@@ -8,6 +8,7 @@ import { SemanticTokens, SemanticTokensBuilder, integer } from 'vscode-languages
 import { CRange } from '../tokens/comments';
 import { Token } from '../tokens/tokens';
 import { getCache } from '../cache';
+import { variableModifiers } from '../tokens/variables';
 
 /**
  * Semantic token types supported by the MAST language server.
@@ -1104,8 +1105,10 @@ export class MastStateMachineLexer {
 		}
 
 		const text = this.text.substring(startPos, this.pos);
-		const keywords = ['def', 'async', 'await', 'shared', 'import', 'if', 'elif', 'else', 'match', 'case', 'yield', 'return', 'break', 'continue', 'pass', 'raise', 'try', 'except', 'finally', 'with', 'class', 'while', 'for', 'in', 'is', 'and', 'or', 'not', 'lambda', 'on', 'change', 'signal'];
-		
+		const keywords = ['def', 'async', 'await', 'import', 'if', 'elif', 'else', 'match', 'case', 'yield', 'return', 'break', 'continue', 'pass', 'raise', 'try', 'except', 'finally', 'with', 'class', 'while', 'for', 'in', 'is', 'and', 'or', 'not', 'lambda', 'on', 'change', 'signal'];
+		for (const kw of variableModifiers) {
+			keywords.push(kw[0]);
+		}
 		// Special-case `jump` keyword: emit following identifier as label
 		if (text === 'jump') {
 			const jt = this.scanJumpTarget();

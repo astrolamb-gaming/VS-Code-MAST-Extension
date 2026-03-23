@@ -43,6 +43,27 @@ export function getVariableNamesInDoc(doc: TextDocument): string[] {
 	return vars;
 }
 
+export function getDefaultVariableNamesInRange(doc: TextDocument, startOffset: number = 0, endOffset?: number): string[] {
+	const fullText = doc.getText();
+	const safeStart = Math.max(0, startOffset);
+	const safeEnd = Math.min(endOffset ?? fullText.length, fullText.length);
+	if (safeEnd <= safeStart) {
+		return [];
+	}
+
+	const text = fullText.substring(safeStart, safeEnd);
+	const variableRX = /^[\t ]*(default[ \t]+)((shared|assigned|client|temp)[ \t]+)?([a-zA-Z_]\w*)[\t ]*(?==[^=])/gm;
+	const vars: string[] = [];
+	let m: RegExpExecArray | null;
+	while (m = variableRX.exec(text)) {
+		const v = m[4];
+		if (!vars.includes(v)) {
+			vars.push(v);
+		}
+	}
+	return vars;
+}
+
 /**
  * 
  * @param doc 

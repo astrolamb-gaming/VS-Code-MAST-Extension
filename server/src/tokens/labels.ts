@@ -8,6 +8,7 @@ import { URI } from 'vscode-uri';
 import path = require('path');
 import { fileFromUri, fixFileName, getFolders, getMissionFolder } from '../fileFunctions';
 import { getTokenTypeAtOffset, isInComment } from './comments';
+import { getDefaultVariableNamesInRange } from './variables';
 import { start } from 'repl';
 import { getCurrentLineFromTextDocument } from '../requests/hover';
 import { documents } from '../server';
@@ -817,6 +818,13 @@ export function getLabelMetadataKeys(label:LabelInfo) {
 	// debug(arrUniq);
 	// debug(keys);
 	return keys;
+}
+
+export function getDefaultVariableNamesForLabel(doc: TextDocument, label: LabelInfo): string[] {
+	const textLength = doc.getText().length;
+	const start = Math.max(0, label.start);
+	const end = Math.min(label.end + 1, textLength);
+	return getDefaultVariableNamesInRange(doc, start, end);
 }
 
 let extraDebug = false;

@@ -1,10 +1,10 @@
 import { debug } from 'console';
 import { CompletionItem, CompletionItemKind, integer, MarkupContent, ParameterInformation, SignatureHelpParams, SignatureInformation, TextDocumentPositionParams } from 'vscode-languageserver';
-import { buildLabelDocs, getLabelMetadataKeys, getLabelsAsCompletionItems, getMainLabelAtPos } from './../tokens/labels';
+import { buildLabelDocs, getDefaultVariableNamesForLabel, getLabelMetadataKeys, getLabelsAsCompletionItems, getMainLabelAtPos } from './../tokens/labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { asClasses, replaceNames } from './../data';
 import { getRouteLabelVars } from './../tokens/routeLabels';
-import { getTokenTypeAtPosition, isTextInBracket, replaceRegexMatchWithUnderscore } from './../tokens/comments';
+import { getTokenContextAtPosition, getTokenTypeAtPosition, isTextInBracket, replaceRegexMatchWithUnderscore } from './../tokens/comments';
 import { getCache, MissionCache } from './../cache';
 import path = require('path');
 import { fixFileName, getFilesInDir } from './../fileFunctions';
@@ -100,7 +100,8 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		return ci;
 	}
 //#endregion
-	
+	const tokenTypeAtPos = getTokenTypeAtPosition(text, tokens, _textDocumentPosition.position);
+	const tokenContextAtPos = getTokenContextAtPosition(text, tokens, _textDocumentPosition.position);
 
 	// if (currentLine != _textDocumentPosition.position.line) {
 	// 	currentLine = _textDocumentPosition.position.line;
@@ -120,11 +121,11 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	
 	//debug("" + startOfLine as string);
 	//
-	const isInString = getTokenTypeAtPosition(text, [], _textDocumentPosition.position) === 'string';
-	const isInSquareBrackets = getTokenTypeAtPosition(text, [], _textDocumentPosition.position) === 'square-bracket';
+	const isInString = tokenTypeAtPos === 'string';
+	const isInSquareBrackets = tokenTypeAtPos === 'square-bracket';
 
 	// If we're inside a comment or a string, we don't want autocompletion.
-	const isInComment = getTokenTypeAtPosition(text, [], _textDocumentPosition.position) === 'comment';
+	const isInComment = tokenTypeAtPos === 'comment';
 	if (isInComment) {
 		if (iStr.endsWith("#")) {
 			const regions = [
@@ -144,7 +145,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		return ci;
 	}
 	
-	const isInYaml = getTokenTypeAtPosition(text, [], _textDocumentPosition.position) === 'yaml';
+	const isInYaml = tokenTypeAtPos === 'yaml';
 	if (isInYaml) {
 		debug("Is in Yaml")
 		ci = ci.concat(cache.getCompletions());
@@ -175,6 +176,49 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			}
 		}
 	}
+
+	//#region Object Key/Value Completions
+	if (tokenContextAtPos.inObject) {
+		debug("Is in object");
+		if (tokenContextAtPos.inObjectKey) {
+			debug("Getting object key completions");
+			const lbl = tokenContextAtPos.recentLabelInfo;
+			if (lbl) {
+				const keys = getLabelMetadataKeys(lbl);
+				for (const k of keys) {
+					const c: CompletionItem = {
+						label: k[0],
+						kind: CompletionItemKind.Text
+					}
+					if (tokenContextAtPos.inString) {
+						c.insertText = k[0];
+					} else {
+						c.insertText = "\"" + k[0] + "\": ";
+					}
+					if (k[1] !== "") {
+						c.documentation = "Default value: " + k[1];
+					}
+					ci.push(c);
+				}
+				const defaults = getDefaultVariableNamesForLabel(text, lbl);
+				for (const d of defaults) {
+					const c: CompletionItem = {
+						label: d,
+						kind: CompletionItemKind.Variable,
+						documentation: "Default variable for this label"
+					}
+					if (tokenContextAtPos.inString) {
+						c.insertText = d;
+					} else {
+						c.insertText = "\"" + d + "\": ";
+					}
+					ci.push(c);
+				}
+				return ci;
+			}
+		}
+	}
+	//#endregion
 
 	// Fallback to signature help if token method didn't find it
 	// if (!func) {
@@ -544,34 +588,34 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 //#endregion
 
 //#region Label Metadata Completions
-	debug("Label metadata")
-	// Check if there is a label at the end of these, which could include optional data
-	if ((trimmed.startsWith("+")||trimmed.startsWith("*")||trimmed.startsWith("jump")||trimmed.startsWith("->")) && !trimmed.endsWith(":")) {
-		let lbl = iStr.replace(/{.*?}/,"");
-		if (lbl.includes("{")) {
-			lbl = iStr.replace(/{.*?(}|$)/gm,"").trim();
-			debug(lbl);
-			let labels = cache.getLabels(text);
-			labels = labels.concat(getMainLabelAtPos(pos,labels).subLabels);
-			for (const l of labels) {
-				if (lbl.endsWith(l.name)) {
-					const keys = getLabelMetadataKeys(l);
-					for (const k of keys) {
-						const c: CompletionItem = {
-							label: k[0],
-							kind: CompletionItemKind.Text,
-							insertText: "\"" + k[0] + "\": "
-						}
-						if (k[1] !== "") {
-							c.documentation = "Default value: " + k[1];
-						}
-						ci.push(c);
-					}
-					return ci;
-				}
-			}
-		}
-	}
+	// debug("Label metadata")
+	// // Check if there is a label at the end of these, which could include optional data
+	// if ((trimmed.startsWith("+")||trimmed.startsWith("*")||trimmed.startsWith("jump")||trimmed.startsWith("->")) && !trimmed.endsWith(":")) {
+	// 	let lbl = iStr.replace(/{.*?}/,"");
+	// 	if (lbl.includes("{")) {
+	// 		lbl = iStr.replace(/{.*?(}|$)/gm,"").trim();
+	// 		debug(lbl);
+	// 		let labels = cache.getLabels(text);
+	// 		labels = labels.concat(getMainLabelAtPos(pos,labels).subLabels);
+	// 		for (const l of labels) {
+	// 			if (lbl.endsWith(l.name)) {
+	// 				const keys = getLabelMetadataKeys(l);
+	// 				for (const k of keys) {
+	// 					const c: CompletionItem = {
+	// 						label: k[0],
+	// 						kind: CompletionItemKind.Text,
+	// 						insertText: "\"" + k[0] + "\": "
+	// 					}
+	// 					if (k[1] !== "") {
+	// 						c.documentation = "Default value: " + k[1];
+	// 					}
+	// 					ci.push(c);
+	// 				}
+	// 				return ci;
+	// 			}
+	// 		}
+	// 	}
+	// }
 //#endregion
 
 //#region JUMP Completions
