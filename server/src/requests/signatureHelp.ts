@@ -34,13 +34,19 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 	
 	if (callContext) {
 		const func = callContext.functionName;
-		const pNum = callContext.parameterIndex;
-		debug(`Token-based: func="${func}", param=${pNum}`);
+		let pNum = callContext.parameterIndex;
+		debug(`Token-based: func="${func}", param=${pNum}, named=${callContext.parameterName || ''}`);
 		
 		// Get the method and build signature
 		const method = cache.getMethod(func);
 		if (method) {
 			const sig = method.buildSignatureInformation();
+			if (callContext.parameterName && method.parameters && method.parameters.length > 0) {
+				const namedIndex = method.parameters.findIndex(p => p.name === callContext.parameterName);
+				if (namedIndex >= 0) {
+					pNum = namedIndex;
+				}
+			}
 			sh.activeParameter = pNum;
 			if (sig && sig.parameters && pNum < sig.parameters.length) {
 				sh.signatures.push(sig);
@@ -207,13 +213,13 @@ export function getCurrentMethodName(iStr: string): string {
  * @param tokens TokenInfo array from the lexer
  * @param position Cursor position (line, character)
  * @param document TextDocument
- * @returns { functionName: string, parameterIndex: number } or undefined if not in a call
+ * @returns { functionName, parameterIndex, parameterName? } or undefined if not in a call
  */
 export function getCallContextFromTokens(
 	tokens: TokenInfo[],
 	position: Position,
 	document: TextDocument
-): { functionName: string; parameterIndex: number } | undefined {
+): { functionName: string; parameterIndex: number; parameterName?: string } | undefined {
 	const targetOffset = document.offsetAt(position);
 
 	// Find the token at or before the cursor
@@ -283,8 +289,66 @@ export function getCallContextFromTokens(
 		return undefined;
 	}
 
+	// Determine whether the current argument segment is named (e.g. foo(bar=1)).
+	let argDepth = 0;
+	let activeArgStart = openParenIndex + 1;
+	for (let i = openParenIndex + 1; i <= tokenAtCursor; i++) {
+		const tok = tokens[i];
+		if (tok.type !== 'operator') {
+			continue;
+		}
+		if (tok.text === '(' || tok.text === '[' || tok.text === '{') {
+			argDepth++;
+			continue;
+		}
+		if (tok.text === ')' || tok.text === ']' || tok.text === '}') {
+			if (argDepth > 0) {
+				argDepth--;
+			}
+			continue;
+		}
+		if (tok.text === ',' && argDepth === 0) {
+			activeArgStart = i + 1;
+		}
+	}
+
+	let parameterName: string | undefined = undefined;
+	argDepth = 0;
+	for (let i = activeArgStart; i <= tokenAtCursor; i++) {
+		const tok = tokens[i];
+		if (tok.type === 'operator') {
+			if (tok.text === '(' || tok.text === '[' || tok.text === '{') {
+				argDepth++;
+				continue;
+			}
+			if (tok.text === ')' || tok.text === ']' || tok.text === '}') {
+				if (argDepth > 0) {
+					argDepth--;
+				}
+				continue;
+			}
+			if (tok.text === '=' && argDepth === 0) {
+				for (let j = i - 1; j >= activeArgStart; j--) {
+					const prev = tokens[j];
+					if (prev.type === 'operator') {
+						if (prev.text === '.') {
+							continue;
+						}
+						break;
+					}
+					if (/^[a-zA-Z_]\w*$/.test(prev.text)) {
+						parameterName = prev.text;
+					}
+					break;
+				}
+				break;
+			}
+		}
+	}
+
 	return {
 		functionName: tokens[funcIndex].text,
-		parameterIndex: commaCount
+		parameterIndex: commaCount,
+		parameterName
 	};
 }

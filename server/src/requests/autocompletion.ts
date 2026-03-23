@@ -741,6 +741,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		args = [currentParamName]
 		if (test) {
 			// args = [test[1]];
+			// TODO: Add style completions. `=$gamemaster`
 		} else {
 			// args = getCurrentArgumentNames(iStr,text);
 			
@@ -769,7 +770,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 						c.detail = test[1];	
 					}
 
-					debug(c);
+					// debug(c);
 					ci.push(c);
 				}
 			}

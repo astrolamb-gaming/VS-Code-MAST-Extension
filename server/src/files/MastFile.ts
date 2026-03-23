@@ -7,7 +7,7 @@ import { FileCache } from '../data';
 import { LabelInfo, parseLabelsInFile, parseLabelsFromTokens } from '../tokens/labels';
 import { parsePrefabs } from '../tokens/prefabs';
 // role/inventory/blob/link helpers replaced by token-driven extractedItems
-import { Variable, parseVariables } from '../tokens/variables';
+import { Variable, parseVariablesFromTokens } from '../tokens/variables';
 import { Word, convertWordFileLocationToLocations, parseWords } from '../tokens/words';
 import { fileFromUri } from '../fileFunctions';
 import { sleep } from '../python/python';
@@ -112,7 +112,7 @@ export class MastFile extends FileCache {
 		this.prefabs = parsePrefabs(this.labelNames);
 
 		// Parse variables
-		this.variables = parseVariables(textDocument);
+		this.variables = parseVariablesFromTokens(textDocument, tokens);
 
 		// Parse routes
 		this.routes = getRoutesInFile(textDocument);
@@ -291,7 +291,7 @@ export class MastFile extends FileCache {
 		// For labels and variables, parse from full text to remain correct
 		this.labelNames = parseLabelsFromTokens(doc, this.tokens);
 		this.prefabs = parsePrefabs(this.labelNames);
-		this.variables = parseVariables(doc);
+		this.variables = parseVariablesFromTokens(doc, this.tokens);
 		this.words = [];// parseWords(doc);
 
 		this.lastText = newText;

@@ -3,6 +3,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { getCurrentLineFromTextDocument } from '../requests/hover';
 import { debug } from 'console';
 import { getCache } from '../cache';
+import { Token } from './tokenBasedExtractor';
 
 // TODO: Add these to autocomplete and hover
 export const variableModifiers: string[][] = [
@@ -144,6 +145,80 @@ export function parseVariables(doc: TextDocument): Variable[] {
 	ret = [...new Map(ret.map(v => [v.range, v])).values()];
 	// debug(ret);
 	return ret;
+}
+
+/**
+ * Token-based variable parser for MAST docs.
+ * This uses semantic tokens produced by the lexer and avoids regex rescans.
+ */
+export function parseVariablesFromTokens(doc: TextDocument, tokens: Token[]): Variable[] {
+	const text = doc.getText();
+	const ret: Variable[] = [];
+
+	for (const token of tokens) {
+		if (token.type !== 'variable' || token.modifier !== 'definition') {
+			continue;
+		}
+
+		const start = doc.offsetAt({ line: token.line, character: token.character });
+		const end = start + token.length;
+		const range: Range = {
+			start: { line: token.line, character: token.character },
+			end: { line: token.line, character: token.character + token.length }
+		};
+
+		const lineStartOffset = doc.offsetAt({ line: token.line, character: 0 });
+		const lineEndOffset = token.line + 1 < doc.lineCount
+			? doc.offsetAt({ line: token.line + 1, character: 0 })
+			: text.length;
+		const line = text.substring(lineStartOffset, lineEndOffset);
+		const eq = line.indexOf('=');
+		const equalsValue = eq > -1 ? line.substring(eq + 1).trim() : '';
+
+		ret.push({
+			name: token.text,
+			range,
+			doc: '',
+			equals: equalsValue,
+			types: []
+		});
+	}
+
+	// Keep support for <var some_name> placeholders (tokenized as stringOption).
+	for (const token of tokens) {
+		if (token.type !== 'stringOption') {
+			continue;
+		}
+		const m = token.text.match(/^<var[ \t]+([a-zA-Z_]\w*)>$/);
+		if (!m) {
+			continue;
+		}
+		const varName = m[1];
+		const relStart = token.text.indexOf(varName);
+		const absStart = doc.offsetAt({ line: token.line, character: token.character }) + relStart;
+		const range: Range = {
+			start: doc.positionAt(absStart),
+			end: doc.positionAt(absStart + varName.length)
+		};
+		ret.push({
+			name: varName,
+			range,
+			doc: '',
+			equals: 'Random Text Option',
+			types: ['string']
+		});
+	}
+
+	// De-duplicate by name + start location.
+	const uniq = new Map<string, Variable>();
+	for (const v of ret) {
+		const key = `${v.name}:${v.range.start.line}:${v.range.start.character}`;
+		if (!uniq.has(key)) {
+			uniq.set(key, v);
+		}
+	}
+
+	return Array.from(uniq.values());
 }
 
 export function getVariablesAsCompletionItem(vars: Variable[]) {

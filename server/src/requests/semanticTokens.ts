@@ -370,9 +370,9 @@ export class MastLexer {
 	}
 
 	private scanVariableDefinitions(): void {
-		// Variable assignments: name = value
+		// Variable/style assignments: name = value or $style_name = value
 		// Modifiers: default, shared, assigned, client, temp
-		const varDefRegex = /^[\t ]*(default[ \t]+)?((shared|assigned|client|temp)[ \t]+)?([a-zA-Z_]\w*)[\t ]*(?==[^=])/gm;
+		const varDefRegex = /^[\t ]*(default[ \t]+)?((shared|assigned|client|temp)[ \t]+)?(\$?[a-zA-Z_]\w*)[\t ]*(?==[^=])/gm;
 		let match: RegExpExecArray | null;
 		
 		while ((match = varDefRegex.exec(this.text)) !== null) {
@@ -381,7 +381,7 @@ export class MastLexer {
 				const offset = match.index + match[0].indexOf(varName);
 				const pos = this.doc.positionAt(offset);
 				this.tokens.push({
-					type: 'variable',
+					type: varName.startsWith('$') ? 'style-definition' : 'variable',
 					modifier: 'definition',
 					line: pos.line,
 					character: pos.character,
