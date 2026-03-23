@@ -23,7 +23,179 @@ export interface Variable {
 	types: string[]
 }
 
+interface VariableDocLookup {
+	namedDocsByScopedName: Map<string, string>;
+	lineScopedDocs: Map<number, string>;
+	labelDefinitionLines: number[];
+}
+
 export let variables: CompletionItem[] = [];
+
+function isIdentifierStartChar(c: string): boolean {
+	return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c === '_';
+}
+
+function isIdentifierChar(c: string): boolean {
+	return isIdentifierStartChar(c) || (c >= '0' && c <= '9');
+}
+
+function isLabelDefinitionToken(token: Token): boolean {
+	if (token.modifier !== 'definition') {
+		return false;
+	}
+	return token.type === 'label' || token.type === 'route-label' || token.type === 'media-label';
+}
+
+function getLabelScopeKeyForLine(line: number, labelDefinitionLines: number[]): string {
+	let scopeLine = -1;
+	for (const labelLine of labelDefinitionLines) {
+		if (labelLine > line) {
+			break;
+		}
+		scopeLine = labelLine;
+	}
+	return scopeLine >= 0 ? `L${scopeLine}` : 'global';
+}
+
+function isDefaultDefinitionPrefix(prefix: string): boolean {
+	if (!prefix.startsWith('default')) {
+		return false;
+	}
+	if (prefix.length === 'default'.length) {
+		return false;
+	}
+	const next = prefix['default'.length];
+	return next === ' ' || next === '\t';
+}
+
+function parseArgDirectiveFromComment(commentText: string): { name?: string; description: string } | null {
+	const trimmed = commentText.trimStart();
+	if (!trimmed.startsWith('#@arg')) {
+		return null;
+	}
+
+	let i = '#@arg'.length;
+	while (i < trimmed.length && (trimmed[i] === ' ' || trimmed[i] === '\t')) {
+		i++;
+	}
+
+	if (i >= trimmed.length) {
+		return null;
+	}
+
+	if (trimmed[i] === ':') {
+		return { description: trimmed.substring(i + 1).trim() };
+	}
+
+	const nameStart = i;
+	while (i < trimmed.length && isIdentifierChar(trimmed[i])) {
+		i++;
+	}
+	const name = trimmed.substring(nameStart, i);
+	if (!name || !isIdentifierStartChar(name[0])) {
+		return null;
+	}
+
+	while (i < trimmed.length && (trimmed[i] === ' ' || trimmed[i] === '\t')) {
+		i++;
+	}
+	if (i >= trimmed.length || trimmed[i] !== ':') {
+		return null;
+	}
+
+	return {
+		name,
+		description: trimmed.substring(i + 1).trim()
+	};
+}
+
+function buildVariableDocLookupFromTokens(tokens: Token[]): VariableDocLookup {
+	const namedDocsByScopedName = new Map<string, string>();
+	const lineScopedDocs = new Map<number, string>();
+	const orderedTokens = [...tokens].sort((a, b) => {
+		if (a.line !== b.line) {
+			return a.line - b.line;
+		}
+		return a.character - b.character;
+	});
+	const labelDefinitionLines: number[] = [];
+
+	let pendingAnonymous: string | undefined = undefined;
+	let pendingScopeKey = 'global';
+	let currentScopeKey = 'global';
+	for (const token of orderedTokens) {
+		if (isLabelDefinitionToken(token)) {
+			currentScopeKey = `L${token.line}`;
+			if (!labelDefinitionLines.includes(token.line)) {
+				labelDefinitionLines.push(token.line);
+			}
+			pendingAnonymous = undefined;
+			continue;
+		}
+
+		if (token.type === 'comment') {
+			const directive = parseArgDirectiveFromComment(token.text);
+			if (!directive) {
+				continue;
+			}
+			if (directive.name) {
+				namedDocsByScopedName.set(`${currentScopeKey}::${directive.name}`, directive.description);
+			} else {
+				pendingAnonymous = directive.description;
+				pendingScopeKey = currentScopeKey;
+			}
+			continue;
+		}
+
+		if (pendingAnonymous && token.type === 'variable' && token.modifier === 'definition') {
+			if (pendingScopeKey === currentScopeKey) {
+				lineScopedDocs.set(token.line, pendingAnonymous);
+			}
+			pendingAnonymous = undefined;
+		}
+	}
+
+	labelDefinitionLines.sort((a, b) => a - b);
+	return { namedDocsByScopedName, lineScopedDocs, labelDefinitionLines };
+}
+
+function buildVariableDocLookup(doc: TextDocument, tokens?: Token[]): VariableDocLookup {
+	if (tokens && tokens.length > 0) {
+		return buildVariableDocLookupFromTokens(tokens);
+	}
+
+	const namedDocsByScopedName = new Map<string, string>();
+	const lineScopedDocs = new Map<number, string>();
+	const text = doc.getText();
+	const lines = text.split(/\r?\n/);
+	const varDefLineRX = /^[\t ]*(default[ \t]+)?((shared|assigned|client|temp)[ \t]+)?([a-zA-Z_]\w*)[\t ]*(?==[^=])/;
+	const argAnonRX = /^[\t ]*#@arg:[\t ]*(.*?)\s*$/;
+	const argNamedRX = /^[\t ]*#@arg[ \t]+([a-zA-Z_]\w*)[\t]*:[\t]*(.*?)\s*$/;
+
+	let pendingAnonymous: string | undefined = undefined;
+	for (let line = 0; line < lines.length; line++) {
+		const current = lines[line] || '';
+
+		let m = current.match(argNamedRX);
+		if (m) {
+			namedDocsByScopedName.set(`global::${m[1]}`, m[2]);
+			continue;
+		}
+
+		m = current.match(argAnonRX);
+		if (m) {
+			pendingAnonymous = m[1];
+			continue;
+		}
+
+		if (pendingAnonymous && varDefLineRX.test(current)) {
+			lineScopedDocs.set(line, pendingAnonymous);
+			pendingAnonymous = undefined;
+		}
+	}
+
+	return { namedDocsByScopedName, lineScopedDocs, labelDefinitionLines: [] };
+}
 /**
  * 
  * @param doc 
@@ -52,6 +224,38 @@ export function getDefaultVariableNamesInRange(doc: TextDocument, startOffset: n
 		return [];
 	}
 
+	let tokens: Token[] = [];
+	try {
+		tokens = getCache(doc.uri).getMastFile(doc.uri).tokens || [];
+	} catch {
+		tokens = [];
+	}
+
+	if (tokens.length > 0) {
+		const vars: string[] = [];
+		for (const token of tokens) {
+			if (token.type !== 'variable' || token.modifier !== 'definition') {
+				continue;
+			}
+
+			const tokenOffset = doc.offsetAt({ line: token.line, character: token.character });
+			if (tokenOffset < safeStart || tokenOffset >= safeEnd) {
+				continue;
+			}
+
+			const lineStartOffset = doc.offsetAt({ line: token.line, character: 0 });
+			const prefix = fullText.substring(lineStartOffset, tokenOffset).trimStart();
+			if (!isDefaultDefinitionPrefix(prefix)) {
+				continue;
+			}
+
+			if (!vars.includes(token.text)) {
+				vars.push(token.text);
+			}
+		}
+		return vars;
+	}
+
 	const text = fullText.substring(safeStart, safeEnd);
 	const variableRX = /^[\t ]*(default[ \t]+)((shared|assigned|client|temp)[ \t]+)?([a-zA-Z_]\w*)[\t ]*(?==[^=])/gm;
 	const vars: string[] = [];
@@ -65,87 +269,6 @@ export function getDefaultVariableNamesInRange(doc: TextDocument, startOffset: n
 	return vars;
 }
 
-/**
- * 
- * @param doc 
- * @returns A list of {@link Variable Variable}s
- */
-export function parseVariables(doc: TextDocument): Variable[] {
-	let ret: Variable[] = [];
-	const variableRX = /^[\t ]*(default[ \t]+)?((shared|assigned|client|temp)[ \t]+)?([a-zA-Z_]\w*)[\t ]*(?==[^=])/gm;
-	const text = doc.getText();
-	let m: RegExpExecArray | null;
-	while (m = variableRX.exec(text)) {
-		const v = m[4];//.replace(/(shared|assigned|client|temp|default)/g,"").trim();
-		const start = m[0].indexOf(v) + m.index;
-		const end = start + m[0].length-1;
-		const range: Range = { start: doc.positionAt(start), end: doc.positionAt(end)}
-		const line = getCurrentLineFromTextDocument(range.start,doc);
-		let val = line.substring(line.indexOf("=")+1,line.length-1).trim();
-		let var1: Variable = {
-			name: v,
-			range: range,
-			doc: '',
-			equals: val,
-			types: []
-		}
-		// Instead of parsing the type every time an updated is made (super inefficient, loading takes forever),
-		// we're instead going to parse just the applicable variable.
-		ret.push(var1);
-	}
-	const randomTxtGen = /<var[ \t]+(\w+)>/g;
-	while (m = randomTxtGen.exec(text)) {
-		const v = m[1];
-		const start = m.index + m[0].indexOf(v);
-		const end = v.length + start;
-		const range: Range = { start: doc.positionAt(start), end: doc.positionAt(end)}
-		// const line = getCurrentLineFromTextDocument(range.start,doc);
-		let var1: Variable = {
-			name: v,
-			range: range,
-			doc: '',
-			equals: "Random Text Option",
-			types: ["string"]
-		}
-		ret.push(var1);
-	}
-	const buttonStyles = /=(\$\w+)[\t ](.*?)$/gm;
-	while (m = buttonStyles.exec(text)) {
-		const v = m[1];
-		const start = m.index + m[0].indexOf(v);
-		const end = v.length + start;
-		const range: Range = { start: doc.positionAt(start), end: doc.positionAt(end)}
-		// const line = getCurrentLineFromTextDocument(range.start,doc);
-		let var1: Variable = {
-			name: v,
-			range: range,
-			doc: m[2],
-			equals: "Button Style",
-			types: ["string"]
-		}
-		ret.push(var1);
-	}
-	const guiVar = /var[ \t]*=[ \t]*[\"\'](\w+)[\"\']/g;
-	while (m = guiVar.exec(text)) {
-		const v = m[1];
-		const start = m.index + m[0].indexOf(v);
-		const end = v.length + start;
-		const range: Range = { start: doc.positionAt(start), end: doc.positionAt(end)}
-		// const line = getCurrentLineFromTextDocument(range.start,doc);
-		let var1: Variable = {
-			name: v,
-			range: range,
-			doc: '',
-			equals: "GUI Element Value",
-			types: []
-		}
-		ret.push(var1);
-	}
-
-	ret = [...new Map(ret.map(v => [v.range, v])).values()];
-	// debug(ret);
-	return ret;
-}
 
 /**
  * Token-based variable parser for MAST docs.
@@ -154,6 +277,7 @@ export function parseVariables(doc: TextDocument): Variable[] {
 export function parseVariablesFromTokens(doc: TextDocument, tokens: Token[]): Variable[] {
 	const text = doc.getText();
 	const ret: Variable[] = [];
+	const docLookup = buildVariableDocLookup(doc, tokens);
 
 	for (const token of tokens) {
 		if (token.type !== 'variable' || token.modifier !== 'definition') {
@@ -174,11 +298,14 @@ export function parseVariablesFromTokens(doc: TextDocument, tokens: Token[]): Va
 		const line = text.substring(lineStartOffset, lineEndOffset);
 		const eq = line.indexOf('=');
 		const equalsValue = eq > -1 ? line.substring(eq + 1).trim() : '';
+		const scopeKey = getLabelScopeKeyForLine(token.line, docLookup.labelDefinitionLines);
+		const scopedNamedDoc = docLookup.namedDocsByScopedName.get(`${scopeKey}::${token.text}`);
+		const globalNamedDoc = docLookup.namedDocsByScopedName.get(`global::${token.text}`);
 
 		ret.push({
 			name: token.text,
 			range,
-			doc: '',
+			doc: scopedNamedDoc || docLookup.lineScopedDocs.get(token.line) || globalNamedDoc || '',
 			equals: equalsValue,
 			types: []
 		});
@@ -200,10 +327,13 @@ export function parseVariablesFromTokens(doc: TextDocument, tokens: Token[]): Va
 			start: doc.positionAt(absStart),
 			end: doc.positionAt(absStart + varName.length)
 		};
+		const scopeKey = getLabelScopeKeyForLine(token.line, docLookup.labelDefinitionLines);
+		const scopedNamedDoc = docLookup.namedDocsByScopedName.get(`${scopeKey}::${varName}`);
+		const globalNamedDoc = docLookup.namedDocsByScopedName.get(`global::${varName}`);
 		ret.push({
 			name: varName,
 			range,
-			doc: '',
+			doc: scopedNamedDoc || globalNamedDoc || '',
 			equals: 'Random Text Option',
 			types: ['string']
 		});
@@ -252,7 +382,11 @@ export function getVariableAsCompletionItem(vars: Variable): CompletionItem {
 			doc = doc + "\n"
 		}
 	}
-	ci.documentation = doc.trim();
+	let finalDoc = doc.trim();
+	if (vars.doc && vars.doc.trim() !== '') {
+		finalDoc = `Description:\n${vars.doc.trim()}\n\n${finalDoc}`;
+	}
+	ci.documentation = finalDoc;
 	return ci;
 }
 

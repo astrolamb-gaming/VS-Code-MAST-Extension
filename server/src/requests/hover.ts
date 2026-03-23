@@ -6,7 +6,7 @@ import { CRange, getTokenContextAtPosition, getTokenTypeAtOffset, getTokenTypeAt
 import { getCache } from '../cache';
 import { getArtemisGlobals } from '../artemisGlobals';
 import { getClassOfMethod, isClassMethod, isFunction } from '../tokens/tokens';
-import { variableModifiers } from '../tokens/variables';
+import { getVariablesAsCompletionItem, variableModifiers } from '../tokens/variables';
 import { buildLabelDocs, getMainLabelAtPos } from '../tokens/labels';
 import { getCurrentArgumentNames } from './autocompletion';
 import { Function } from '../data/function';
@@ -92,8 +92,50 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 			}
 		}
 	}
+
+	if (tokenContext.token?.type === "variable" && symbol) {
+		const vars = cache.getVariables(text);
+		const mainLabel = getMainLabelAtPos(docPos, cache.getMastFile(text.uri).labelNames);
+		const candidates = [];
+		for (const v of vars) {
+			if (v.name !== symbol || !v.doc || v.doc.trim() === '') {
+				continue;
+			}
+			const varOffset = text.offsetAt(v.range.start);
+			if (mainLabel && (varOffset < mainLabel.start || varOffset > mainLabel.end)) {
+				continue;
+			}
+			candidates.push(v);
+		}
+
+		if (candidates.length > 0) {
+			let best = candidates[0];
+			let bestOffset = text.offsetAt(best.range.start);
+			for (const v of candidates) {
+				const vOffset = text.offsetAt(v.range.start);
+				if (vOffset <= docPos && vOffset >= bestOffset) {
+					best = v;
+					bestOffset = vOffset;
+				}
+			}
+
+			let varHover = `Description:\n${best.doc.trim()}`;
+			if (best.types && best.types.length > 0) {
+				const uniqTypes = [...new Set(best.types.filter(t => t && t.trim().length > 0))];
+				if (uniqTypes.length > 0) {
+					varHover += `\n\nPossible types:\n${uniqTypes.join('\n')}`;
+				}
+			}
+
+			return { contents: varHover };
+		}
+		// Don't want to do this because python (and mast) can take function names as arguments.
+		// return undefined;
+	}
 	// debug(hoveredLine);
-	if (isClassMethod(hoveredLine, _pos.position.character)) {
+	if (tokenContext.token?.type === "method") {
+		debug(tokenContext.token.text);
+	// if (isClassMethod(hoveredLine, _pos.position.character)) {
 		debug("class method")
 		const c = getClassOfMethod(hoveredLine,symbol);
 		// debug(c);
@@ -145,12 +187,8 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 		return {
 			contents: hoverText
 		}
-
-
-		//const func = classObj?.methods.find((value)=>{value.name===symbol});
-		
-		//hoverText = ""
-	} else if (isFunction(hoveredLine,symbol)) {
+	} else if (tokenContext.token?.type === "function") {
+	// } else if (isFunction(hoveredLine,symbol)) {
 		debug("function")
 		// hoverText += "\nFunction"
 		for (const p of cache.missionPyModules) {
@@ -177,7 +215,8 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 			}
 		}
 	} else {
-		// debug("not class method or function")
+		debug("not class method or function");
+
 		// Check if it's a label
 		// debug("Checking if it's a label");
 		// debug(path.basename(text.uri));
@@ -221,9 +260,11 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 	}
 
 	// Now we'll check for any instance where it COULD be a function name. Because Python.
-	// _prof('before getMethod');
+	// _prof('before getMethod')
+	debug("Checking for method match")
 	let func = getCache(text.uri).getMethod(symbol);
 	// _prof('getMethod');
+	debug("Method: " + func?.name);
 	if (func) {
 		// _prof('exit: found method');
 		return {contents: func.buildMarkUpContent()}

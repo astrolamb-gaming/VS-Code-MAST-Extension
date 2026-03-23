@@ -1184,6 +1184,8 @@ export class MastStateMachineLexer {
 			return null;
 		}
 
+		const assignmentModifier = this.getAssignmentModifierAfterIdentifier(this.pos);
+
 		const builtInConstants = ['True', 'False', 'None'];
 		
 // If expecting a plus-line label reference, handle it first so that
@@ -1214,6 +1216,7 @@ export class MastStateMachineLexer {
 		if (/^[A-Z][A-Z0-9_]+$/.test(text)) {
 			return {
 				type: 'builtInConstant',
+				modifier: assignmentModifier,
 				line: startLine,
 				character: startChar,
 				length: text.length,
@@ -1272,11 +1275,43 @@ export class MastStateMachineLexer {
 
 		return {
 			type: isDotAccess ? 'property' : 'variable',
+			modifier: isDotAccess ? undefined : assignmentModifier,
 			line: startLine,
 			character: startChar,
 			length: text.length,
 			text
 		};
+	}
+
+	private getAssignmentModifierAfterIdentifier(checkPos: number, endExclusive: number = this.text.length): TokenInfo['modifier'] {
+		let i = checkPos;
+		while (i < endExclusive && /[\t ]/.test(this.text[i])) {
+			i++;
+		}
+
+		if (i >= endExclusive) {
+			return 'reference';
+		}
+
+		const threeCharAssignOps = ['**=', '//=', '>>=', '<<='];
+		for (const op of threeCharAssignOps) {
+			if (i + op.length <= endExclusive && this.text.substring(i, i + op.length) === op) {
+				return 'definition';
+			}
+		}
+
+		const twoCharAssignOps = ['+=', '-=', '*=', '/=', '%=', '&=', '|=', '^=', ':='];
+		for (const op of twoCharAssignOps) {
+			if (i + op.length <= endExclusive && this.text.substring(i, i + op.length) === op) {
+				return 'definition';
+			}
+		}
+
+		if (this.text[i] === '=' && (i + 1 >= endExclusive || this.text[i + 1] !== '=')) {
+			return 'definition';
+		}
+
+		return 'reference';
 	}
 
 	private isPrecededByDot(offset: number): boolean {
@@ -1561,11 +1596,15 @@ export class MastStateMachineLexer {
 				pos++;
 				while (pos < exprEnd && this.isIdentifierPart(this.text[pos])) pos++;
 				const ident = this.text.substring(start, pos);
+				const assignmentModifier = this.getAssignmentModifierAfterIdentifier(pos, exprEnd);
 
 				let tokenType: TokenInfo['type'] = 'variable';
 				let modifier: TokenInfo['modifier'] | undefined = undefined;
-				if (builtInConstants.has(ident) || /^[A-Z][A-Z0-9_]+$/.test(ident)) {
+				if (builtInConstants.has(ident)) {
 					tokenType = 'builtInConstant';
+				} else if (/^[A-Z][A-Z0-9_]+$/.test(ident)) {
+					tokenType = 'builtInConstant';
+					modifier = assignmentModifier;
 				} else if (keywords.has(ident)) {
 					tokenType = 'keyword';
 				} else {
@@ -1577,6 +1616,8 @@ export class MastStateMachineLexer {
 						modifier = 'reference';
 					} else if (isDotAccess) {
 						tokenType = 'property';
+					} else {
+						modifier = assignmentModifier;
 					}
 				}
 

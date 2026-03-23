@@ -862,7 +862,7 @@ export class MissionCache {
 		for (const py of this.pyFileCache) {
 			for (const c of py.classes) {
 				for (const method of c.methods) {
-					this.addMethodToIndex(methodIndex, method);
+					// this.addMethodToIndex(methodIndex, method);
 					this.addMethodToIndex(classMethodIndex, method);
 				}
 			}
@@ -871,7 +871,7 @@ export class MissionCache {
 		for (const py of this.missionPyModules) {
 			for (const c of py.classes) {
 				for (const method of c.methods) {
-					this.addMethodToIndex(methodIndex, method);
+					// this.addMethodToIndex(methodIndex, method);
 					this.addMethodToIndex(classMethodIndex, method);
 				}
 			}
