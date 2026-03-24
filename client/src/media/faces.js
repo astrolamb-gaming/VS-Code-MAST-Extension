@@ -309,6 +309,25 @@ async function renderPreview() {
 		}
 		drawTintedTile(previewCtx, img, layer, destSize);
 	}
+
+	// Render the currently selected tile as a temporary candidate layer.
+	if (currentEntry && selectedTile) {
+		const selectedImg = await loadImage(currentEntry);
+		if (selectedImg) {
+			drawTintedTile(
+				previewCtx,
+				selectedImg,
+				{
+					raceId: currentEntry.raceId,
+					fileName: currentEntry.fileName,
+					color: '#ffffff',
+					x: selectedTile.x,
+					y: selectedTile.y
+				},
+				destSize
+			);
+		}
+	}
 }
 
 function renderTilePreview(canvas, layer) {
@@ -803,17 +822,20 @@ function addSelectedTile() {
 		setStatus('Select a tile before adding a layer.');
 		return;
 	}
+	const tileToAdd = { ...selectedTile };
 	layers = layers.concat({
 		raceId: currentEntry.raceId,
 		fileName: currentEntry.fileName,
 		color: '#ffffff',
-		x: selectedTile.x,
-		y: selectedTile.y
+		x: tileToAdd.x,
+		y: tileToAdd.y
 	});
+	selectedTile = null;
+	drawSheet();
 	renderLayers();
 	renderPreview();
 	updateOutput();
-	setStatus(`Added ${currentEntry.raceId} tile (${selectedTile.x}, ${selectedTile.y}).`);
+	setStatus(`Added ${currentEntry.raceId} tile (${tileToAdd.x}, ${tileToAdd.y}).`);
 }
 
 sheetCanvas.addEventListener('click', (event) => {
@@ -831,6 +853,7 @@ sheetCanvas.addEventListener('click', (event) => {
 		y: Math.floor(y / tileSize)
 	};
 	drawSheet();
+	renderPreview();
 	});
 
 addLayerBtn.addEventListener('click', addSelectedTile);

@@ -26,6 +26,9 @@ let routeCompletions: CompletionItem[] = [];
 const shipPickerArgs = new Set(['art', 'art_id', 'ship_key', 'ship_data_key']);
 let lastShipPickerTriggerKey = '';
 let lastShipPickerTriggerAt = 0;
+const facePickerArgs = new Set(['face']);
+let lastFacePickerTriggerKey = '';
+let lastFacePickerTriggerAt = 0;
 
 function maybeTriggerShipPicker(argName: string, text: TextDocument, line: number): void {
 	if (!shipPickerArgs.has(argName)) {
@@ -41,6 +44,26 @@ function maybeTriggerShipPicker(argName: string, text: TextDocument, line: numbe
 	lastShipPickerTriggerKey = key;
 	lastShipPickerTriggerAt = now;
 	sendToClient('openShipPicker', {
+		argumentName: argName,
+		sourceUri: text.uri,
+		line
+	});
+}
+
+function maybeTriggerFacePicker(argName: string, text: TextDocument, line: number): void {
+	if (!facePickerArgs.has(argName)) {
+		return;
+	}
+
+	const now = Date.now();
+	const key = `${text.uri}:${line}:${argName}`;
+	if (key === lastFacePickerTriggerKey && now - lastFacePickerTriggerAt < 10000) {
+		return;
+	}
+
+	lastFacePickerTriggerKey = key;
+	lastFacePickerTriggerAt = now;
+	sendToClient('openFacePicker', {
 		argumentName: argName,
 		sourceUri: text.uri,
 		line
@@ -415,6 +438,9 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 					}
 					debug(ci);
 					return ci;
+				}
+				if (a === "face") {
+					maybeTriggerFacePicker(a, text, _textDocumentPosition.position.line);
 				}
 				if (a === "key") {
 					if (func.endsWith("data_set_value")) {

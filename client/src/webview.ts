@@ -251,6 +251,55 @@ async function resolveTargetEditor(targetUri: string): Promise<vscode.TextEditor
 	return editor;
 }
 
+function isEscaped(text: string, index: number): boolean {
+	let slashCount = 0;
+	for (let i = index - 1; i >= 0 && text[i] === '\\'; i--) {
+		slashCount++;
+	}
+	return slashCount % 2 === 1;
+}
+
+function countUnescapedQuote(text: string, quote: '"' | "'"): number {
+	let count = 0;
+	for (let i = 0; i < text.length; i++) {
+		if (text[i] === quote && !isEscaped(text, i)) {
+			count++;
+		}
+	}
+	return count;
+}
+
+function shouldStripOuterQuotes(editor: vscode.TextEditor, selection: vscode.Selection, text: string): boolean {
+	if (text.length < 2) {
+		return false;
+	}
+
+	const first = text[0];
+	const last = text[text.length - 1];
+	if ((first !== '"' && first !== "'") || first !== last) {
+		return false;
+	}
+
+	const quote = first as '"' | "'";
+	const position = selection.start;
+	const lineText = editor.document.lineAt(position.line).text;
+	const before = lineText.slice(0, position.character);
+	const after = lineText.slice(position.character);
+
+	const unescapedBeforeCount = countUnescapedQuote(before, quote);
+	const unescapedAfterCount = countUnescapedQuote(after, quote);
+
+	// Insert is inside an existing quoted string of the same quote style.
+	return unescapedBeforeCount % 2 === 1 && unescapedAfterCount > 0;
+}
+
+function normalizeInsertionText(editor: vscode.TextEditor, selection: vscode.Selection, text: string): string {
+	if (shouldStripOuterQuotes(editor, selection, text)) {
+		return text.slice(1, -1);
+	}
+	return text;
+}
+
 async function insertTextIntoEditor(targetUri: string, text: string): Promise<boolean> {
 	if (!text) {
 		return false;
@@ -263,10 +312,11 @@ async function insertTextIntoEditor(targetUri: string, text: string): Promise<bo
 
 	await editor.edit((editBuilder) => {
 		for (const selection of editor.selections) {
+			const insertionText = normalizeInsertionText(editor, selection, text);
 			if (selection.isEmpty) {
-				editBuilder.insert(selection.active, text);
+				editBuilder.insert(selection.active, insertionText);
 			} else {
-				editBuilder.replace(selection, text);
+				editBuilder.replace(selection, insertionText);
 			}
 		}
 	});

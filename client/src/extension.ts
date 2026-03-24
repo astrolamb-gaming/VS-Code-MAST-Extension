@@ -194,6 +194,20 @@ export function activate(context: ExtensionContext) {
 		}
 	});
 
+	const openFacePicker = client.onNotification('custom/openFacePicker', async (payload)=>{
+		debug('Received face picker request for arg: ' + payload?.argumentName);
+		const choice = await window.showInformationMessage(
+			`Open Face Builder to select a value for "${payload?.argumentName || 'face'}"?`,
+			'Open Face Builder',
+			'Dismiss'
+		);
+		if (choice === 'Open Face Builder') {
+			client.sendNotification('custom/openFaceBuilder', {
+				sourceUri: payload?.sourceUri || vscode.window.activeTextEditor?.document.uri.toString() || ''
+			});
+		}
+	});
+
 	context.subscriptions.push(vscode.commands.registerCommand('mast.openShipViewer', () => {
 		debug('mast.openShipViewer command triggered');
 		if (!client) {
@@ -224,6 +238,7 @@ export function activate(context: ExtensionContext) {
 	context.subscriptions.push(ships);
 	context.subscriptions.push(faces);
 	context.subscriptions.push(openShipPicker);
+	context.subscriptions.push(openFacePicker);
 
 // #endregion
 
