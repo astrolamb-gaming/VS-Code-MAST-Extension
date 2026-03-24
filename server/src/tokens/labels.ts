@@ -851,7 +851,7 @@ function getUndefinedVariableReferenceNamesInLabel(doc: TextDocument, label: Lab
 
 	const refs = new Set<string>();
 	for (const tok of tokens) {
-		if (tok.type !== 'variable' && tok.type !== 'builtInConstant') {
+		if (tok.type !== 'variable') {
 			continue;
 		}
 		const tokenStart = doc.offsetAt({ line: tok.line, character: tok.character });

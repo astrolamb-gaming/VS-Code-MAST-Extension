@@ -3255,7 +3255,7 @@
       "patterns": [
         {
           "name": "constant.language.mast",
-          "match": "\\b(True|False|None|NotImplemented|Ellipsis)\\b"
+          "match": "\\b(True|False|None|NotImplemented|Ellipsis|sbs|sim)\\b"
         },
         {
           "include": "#numeric-literal"
