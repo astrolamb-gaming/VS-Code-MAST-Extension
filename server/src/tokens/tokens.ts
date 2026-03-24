@@ -114,18 +114,6 @@ function tokenizeDoc(doc: TextDocument) {
 
 }
 
-
-export function isFunction(line:string,token:string) {
-	const start = line.indexOf(token);
-	const end = start + token.length;
-	// debug(line.substring(end).trim());
-	if (line.substring(end).trim().startsWith("(")) {
-		// debug("TRUE")
-		return true;
-	}
-	return false;
-}
-
 /**
  * Somewhat misleading of a name, since it returns true if it's just a parameter
  * E.g. class.param would return true for param

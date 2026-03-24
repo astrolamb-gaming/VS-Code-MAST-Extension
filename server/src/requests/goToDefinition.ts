@@ -4,7 +4,6 @@ import { getTokenContextAtPosition, getTokenTypeAtOffset, getTokenTypeAtPosition
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
 import { getCurrentLineFromTextDocument, getHoveredSymbol, getHoveredWordRange } from './hover';
-import { isClassMethod, isFunction } from '../tokens/tokens';
 import { getCache } from '../cache';
 import { URI } from 'vscode-uri';
 import { getLabelLocation } from '../tokens/labels';
@@ -67,17 +66,29 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 	const isFunc = tokenContext?.type === "function" || icm
 	// Apparently the given position is based off of the last character
 	// if (s <= pos.character && pos.character <= s + symbol.length) {
-		if (icm) {
-			// First, we'll check if it's a class function
-			// Get the class name
-			const className = getHoveredSymbol(hoveredLine, s-2);
-			debug(className);
-			// For now we're only checking mission py files
-			// TODO: Implement definitions for the sbs/sbs_utils stuff
-			// 		Will need to figure out a way to convert the uri
-			// for (const p of getCache(doc.uri).pyFileCache) {//.missionClasses) {
-			const classes = getCache(doc.uri).getClasses()
-			for (const c of classes) {
+	if (icm) {
+		// First, we'll check if it's a class function
+		// Get the class name
+		const className = getHoveredSymbol(hoveredLine, s-2);
+		debug(className);
+		// For now we're only checking mission py files
+		// TODO: Implement definitions for the sbs/sbs_utils stuff
+		// 		Will need to figure out a way to convert the uri
+		// for (const p of getCache(doc.uri).pyFileCache) {//.missionClasses) {
+		const classes = getCache(doc.uri).getClasses()
+		for (const c of classes) {
+			if (c.name === className) {
+				for (const f of c.methods) {
+					if (f.name === symbol) {
+						const loc:Location = f.location;
+						loc.uri = fileFromUri(loc.uri);
+						return loc;
+					}
+				}
+			}
+		}
+		for (const p of getCache(doc.uri).missionPyModules) {
+			for (const c of p.classes) {
 				if (c.name === className) {
 					for (const f of c.methods) {
 						if (f.name === symbol) {
@@ -88,87 +99,59 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 					}
 				}
 			}
-			for (const p of getCache(doc.uri).missionPyModules) {
-				for (const c of p.classes) {
-					if (c.name === className) {
-						for (const f of c.methods) {
-							if (f.name === symbol) {
-								const loc:Location = f.location;
-								loc.uri = fileFromUri(loc.uri);
-								return loc;
-							}
-						}
-					}
-				}
-			}
-			
+		}
+		
 
-			for (const c of classes) {
-				// debug(c.name);
-				if (asClasses.includes(c.name)) continue;
-				if (c.name.includes("Route")) continue;
-				if (c.name === "event") continue;
-				// if (c.name === "sim") continue;
-				for (const m of c.methods) {
-					// Don't want to include constructors, this is for properties
-					if (m.functionType === "constructor") continue;
-					if (m.name === symbol) {
-						const loc:Location = m.location;
-						loc.uri = fileFromUri(loc.uri);
-						return loc;
-					}
-					// // If it's sim, convert back to simulation for this.
-					// let className = c.name;
-					// for (const cn of replaceNames) {
-					// 	if (className === cn[1]) className = cn[0];
-					// }
+		for (const c of classes) {
+			// debug(c.name);
+			if (asClasses.includes(c.name)) continue;
+			if (c.name.includes("Route")) continue;
+			if (c.name === "event") continue;
+			// if (c.name === "sim") continue;
+			for (const m of c.methods) {
+				// Don't want to include constructors, this is for properties
+				if (m.functionType === "constructor") continue;
+				if (m.name === symbol) {
+					const loc:Location = m.location;
+					loc.uri = fileFromUri(loc.uri);
+					return loc;
+				}
+				// // If it's sim, convert back to simulation for this.
+				// let className = c.name;
+				// for (const cn of replaceNames) {
+				// 	if (className === cn[1]) className = cn[0];
+				// }
+			}
+		}
+	}
+	if (isFunc) {
+		// Check if this is a function in a .py file within the current mission.
+		for (const p of getCache(doc.uri).pyFileCache) {
+			let uri = URI.parse(p.uri).toString()
+			for (const f of p.defaultFunctions) {
+				if (f.name === symbol) {
+					// Now we know which file we need to parse
+					// await sendToClient("showFile",uri); // Probably not how to do this, though I'll keep this around for now, just in case.
+					const loc:Location = f.location;
+					loc.uri = fileFromUri(loc.uri);
+					return loc;
 				}
 			}
 		}
-		if (isFunc) {
-			// Check if this is a function in a .py file within the current mission.
-			for (const p of getCache(doc.uri).pyFileCache) {
-				let uri = URI.parse(p.uri).toString()
-				for (const f of p.defaultFunctions) {
-					if (f.name === symbol) {
-						// Now we know which file we need to parse
-						// await sendToClient("showFile",uri); // Probably not how to do this, though I'll keep this around for now, just in case.
-						const loc:Location = f.location;
-						loc.uri = fileFromUri(loc.uri);
-						return loc;
-					}
-				}
-			}
-			for (const p of getCache(doc.uri).missionPyModules) {
-				for (const f of p.defaultFunctions) {
-					if (f.name === symbol) {
-						const loc:Location = f.location;
-						loc.uri = fileFromUri(loc.uri);
-						return loc;
-					}
+		for (const p of getCache(doc.uri).missionPyModules) {
+			for (const f of p.defaultFunctions) {
+				if (f.name === symbol) {
+					const loc:Location = f.location;
+					loc.uri = fileFromUri(loc.uri);
+					return loc;
 				}
 			}
 		}
-		debug(symbol);
-		let loc = getLabelLocation(symbol, doc, pos);
-		debug(loc);
-		if (loc) return loc;
-
-		// Calculate the position in the text's string value using the Position value.
-		const posInt : integer = doc.offsetAt(pos);
-		const startOfLine : integer = posInt - pos.character;
-		const iStr : string = text.substring(startOfLine,posInt);
-		let args = getCurrentArgumentNames(hoveredLine, doc);
-		for (const a of args) {
-			if (a === "show" || a === "hide") {
-				let method = getCache(doc.uri).getMethod(symbol);
-				if (!method) continue;
-				const loc:Location = method?.location;
-				loc.uri = fileFromUri(loc.uri);
-				return loc;
-			}
-		}
-	// }
+	}
+	debug(symbol);
+	let loc = getLabelLocation(symbol, doc, pos);
+	debug(loc);
+	if (loc) return loc;
 
 	// Now we'll check for any instance where it COULD be a function name. Because Python.
 	let func = getCache(doc.uri).getMethod(symbol);
@@ -178,69 +161,5 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 		return loc;
 	}
 
-	
-
-
-	
-	// let start: Position = {line: pos.line, character: 1}
-	// let end: Position = {line: pos.line, character: 5}
-	// let range: Range = {
-	// 	start: start,
-	// 	end: end
-	// }
-	// let def: Location = {
-	// 	uri: doc.uri,
-	// 	range: range
-	// }
 	return undefined;
-}
-
-/**
- * Build a location object.
- * @param doc A {@link TextDocument TextDocument}
- * @param start An {@link integer integer} representing the start of the range in the file.
- * @param end An {@link integer integer} representing the end of the range in the file.
- * @returns 
- */
-function buildPositionFromIndices(doc:TextDocument, start: integer, end: integer): Location {
-	debug(start);
-	let startPos: Position = doc.positionAt(start);
-	debug(startPos);
-	let endPos: Position = doc.positionAt(end);
-	let range: Range = {
-		start: startPos,
-		end: endPos
-	}
-	let loc: Location = {
-		uri: doc.uri,
-		range: range
-	}
-	return loc;
-}
-
-async function getFunctionDefinitionLocation(sourceFile:string, searchFor: string): Promise<Location | undefined> {
-	
-
-/// TODO: Can't use documents, that's only using OPEN documents. So I'll have to load the file that's needed
-	
-	const text = await readFile(sourceFile);
-	const d: TextDocument = TextDocument.create(sourceFile,"py",1,text);
-	let last = text.lastIndexOf(searchFor);
-	while (last !== -1) {
-		if (text.substring(0,last).trim().endsWith("def")) {
-			break;
-		}
-	}
-	if (last === -1) return;
-	const range: Range = {
-		start: d.positionAt(last),
-		end: d.positionAt(last + searchFor.length)
-	}
-	debug(d.uri);
-
-	const loc: Location = {uri:"file:///" + d.uri,range:range};
-	debug("Location found");
-	debug(loc);
-	return loc;
-
 }

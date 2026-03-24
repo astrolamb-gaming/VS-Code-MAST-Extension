@@ -1,17 +1,14 @@
 import { debug } from 'console';
 import { performance } from 'perf_hooks';
-import { Hover, integer, Location, MarkupContent, Position, TextDocumentPositionParams } from 'vscode-languageserver';
-import { Range, TextDocument } from 'vscode-languageserver-textdocument';
+import { Hover, integer, MarkupContent, Position, TextDocumentPositionParams } from 'vscode-languageserver';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 import { CRange, getTokenContextAtPosition, getTokenTypeAtOffset, getTokenTypeAtPosition, isInComment, isInString } from '../tokens/comments';
 import { getCache } from '../cache';
 import { getArtemisGlobals } from '../artemisGlobals';
-import { getClassOfMethod, isClassMethod, isFunction } from '../tokens/tokens';
-import { getVariablesAsCompletionItem, variableModifiers } from '../tokens/variables';
+import { getClassOfMethod } from '../tokens/tokens';
+import { variableModifiers } from '../tokens/variables';
 import { buildLabelDocs, getMainLabelAtPos } from '../tokens/labels';
-import { getCurrentArgumentNames } from './autocompletion';
 import { Function } from '../data/function';
-import path = require('path');
-import { fixFileName } from '../fileFunctions';
 
 export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : Hover | undefined {
 	const _t0 = performance.now();
