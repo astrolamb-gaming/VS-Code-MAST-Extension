@@ -8,7 +8,58 @@ import { getCache } from '../cache';
 import { URI } from 'vscode-uri';
 import { getLabelLocation } from '../tokens/labels';
 import { asClasses } from '../data';
-import { getCurrentArgumentNames } from './autocompletion';
+
+function toFileLocation(loc: Location): Location {
+	return {
+		uri: fileFromUri(loc.uri),
+		range: loc.range
+	};
+}
+
+function isCandidateClass(name: string): boolean {
+	if (asClasses.includes(name)) return false;
+	if (name.includes('Route')) return false;
+	if (name === 'event') return false;
+	return true;
+}
+
+function collectMethodCandidates(docUri: string, methodName: string): Location[] {
+	const cache = getCache(docUri);
+	const seen = new Set<string>();
+	const ret: Location[] = [];
+
+	const addLoc = (loc: Location | undefined) => {
+		if (!loc) return;
+		const key = `${loc.uri}:${loc.range.start.line}:${loc.range.start.character}:${loc.range.end.line}:${loc.range.end.character}`;
+		if (seen.has(key)) return;
+		seen.add(key);
+		ret.push(toFileLocation(loc));
+	};
+
+	for (const c of cache.getClasses()) {
+		if (!isCandidateClass(c.name)) continue;
+		for (const m of c.methods) {
+			if (m.functionType === 'constructor') continue;
+			if (m.name === methodName) {
+				addLoc(m.location);
+			}
+		}
+	}
+
+	for (const p of cache.missionPyModules) {
+		for (const c of p.classes) {
+			if (!isCandidateClass(c.name)) continue;
+			for (const m of c.methods) {
+				if (m.functionType === 'constructor') continue;
+				if (m.name === methodName) {
+					addLoc(m.location);
+				}
+			}
+		}
+	}
+
+	return ret;
+}
 
 export async function onDefinition(doc:TextDocument,pos:Position): Promise<Location | undefined> {
 	// parseVariables(doc);
@@ -67,62 +118,41 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 	// Apparently the given position is based off of the last character
 	// if (s <= pos.character && pos.character <= s + symbol.length) {
 	if (icm) {
-		// First, we'll check if it's a class function
-		// Get the class name
-		const className = getHoveredSymbol(hoveredLine, s-2);
+		// First, try exact class resolution from the token context line.
+		const className = s >= 2 ? getHoveredSymbol(hoveredLine, s - 2) : '';
 		debug(className);
-		// For now we're only checking mission py files
-		// TODO: Implement definitions for the sbs/sbs_utils stuff
-		// 		Will need to figure out a way to convert the uri
-		// for (const p of getCache(doc.uri).pyFileCache) {//.missionClasses) {
-		const classes = getCache(doc.uri).getClasses()
-		for (const c of classes) {
-			if (c.name === className) {
+		const cache = getCache(doc.uri);
+
+		if (className) {
+			for (const c of cache.getClasses()) {
+				if (c.name !== className) continue;
 				for (const f of c.methods) {
 					if (f.name === symbol) {
-						const loc:Location = f.location;
-						loc.uri = fileFromUri(loc.uri);
-						return loc;
+						return toFileLocation(f.location);
 					}
 				}
 			}
-		}
-		for (const p of getCache(doc.uri).missionPyModules) {
-			for (const c of p.classes) {
-				if (c.name === className) {
+			for (const p of cache.missionPyModules) {
+				for (const c of p.classes) {
+					if (c.name !== className) continue;
 					for (const f of c.methods) {
 						if (f.name === symbol) {
-							const loc:Location = f.location;
-							loc.uri = fileFromUri(loc.uri);
-							return loc;
+							return toFileLocation(f.location);
 						}
 					}
 				}
 			}
 		}
-		
 
-		for (const c of classes) {
-			// debug(c.name);
-			if (asClasses.includes(c.name)) continue;
-			if (c.name.includes("Route")) continue;
-			if (c.name === "event") continue;
-			// if (c.name === "sim") continue;
-			for (const m of c.methods) {
-				// Don't want to include constructors, this is for properties
-				if (m.functionType === "constructor") continue;
-				if (m.name === symbol) {
-					const loc:Location = m.location;
-					loc.uri = fileFromUri(loc.uri);
-					return loc;
-				}
-				// // If it's sim, convert back to simulation for this.
-				// let className = c.name;
-				// for (const cn of replaceNames) {
-				// 	if (className === cn[1]) className = cn[0];
-				// }
-			}
+		// If class extraction failed or no exact class match, only return when unambiguous.
+		const candidates = collectMethodCandidates(doc.uri, symbol);
+		if (candidates.length === 1) {
+			return candidates[0];
 		}
+		if (candidates.length > 1) {
+			debug(`Ambiguous method definition for '${symbol}' (${candidates.length} candidates), skipping.`);
+		}
+		return undefined;
 	}
 	if (isFunc) {
 		// Check if this is a function in a .py file within the current mission.
@@ -132,18 +162,14 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 				if (f.name === symbol) {
 					// Now we know which file we need to parse
 					// await sendToClient("showFile",uri); // Probably not how to do this, though I'll keep this around for now, just in case.
-					const loc:Location = f.location;
-					loc.uri = fileFromUri(loc.uri);
-					return loc;
+					return toFileLocation(f.location);
 				}
 			}
 		}
 		for (const p of getCache(doc.uri).missionPyModules) {
 			for (const f of p.defaultFunctions) {
 				if (f.name === symbol) {
-					const loc:Location = f.location;
-					loc.uri = fileFromUri(loc.uri);
-					return loc;
+					return toFileLocation(f.location);
 				}
 			}
 		}
@@ -156,9 +182,7 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 	// Now we'll check for any instance where it COULD be a function name. Because Python.
 	let func = getCache(doc.uri).getMethod(symbol);
 	if (func) {
-		const loc:Location = func.location;
-		loc.uri = fileFromUri(loc.uri);
-		return loc;
+		return toFileLocation(func.location);
 	}
 
 	return undefined;

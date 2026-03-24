@@ -310,7 +310,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				debug("Is BLobe");
 				let blobs = getArtemisGlobals().blob_items;
 				for (const bk of cache.getBlobKeys()) {
-					if (blobs.find(item=>{item.label === bk.name})) continue;
+					if (blobs.find(item => item.label === bk.name)) continue;
 					let ci:CompletionItem = {
 						label: bk.name,
 						kind: CompletionItemKind.Text,
@@ -1120,54 +1120,6 @@ function inferCurrentMethodName(iStr: string): string {
 	if (last < 0) return "";
 	return getHoveredSymbol(working, last);
 }
-
-
-export function getCurrentArgumentNames(iStr:string, doc:TextDocument): string[] {
-	let ret: string[] = [];
-
-	let r = findNamedArg(iStr)
-	if (r !== undefined) {
-		ret.push(r);
-		return ret;
-	}
-
-	// Otherwise we have to find the function name, remove commas in strings, figure out which ordered argument it is, etc.
-	const func = inferCurrentMethodName(iStr);
-	const fstart = iStr.lastIndexOf(func);
-	let wholeFunc = iStr.substring(fstart,iStr.length);
-	let obj = /{.*?(}|$)/gm;
-	wholeFunc = wholeFunc.replace(obj, "_")
-	wholeFunc = wholeFunc.replace(/(?<quote>[\"']).*?(\k<quote>)/g, "_");
-	const doublequotes = countMatches(wholeFunc, /\"/g);
-	const singleQuotes = countMatches(wholeFunc, /'/g);
-	if (doublequotes % 2 !== 0) {
-		const last = wholeFunc.lastIndexOf("\"")
-		wholeFunc = replaceRegexMatchWithUnderscore(wholeFunc, {start: last, end: wholeFunc.length});
-	}
-	if (singleQuotes % 2 !== 0) {
-		const last = wholeFunc.lastIndexOf("\"")
-		wholeFunc = replaceRegexMatchWithUnderscore(wholeFunc, {start: last, end: wholeFunc.length});
-	}
-	const arr = wholeFunc.split(",");
-	const paramNumber = arr.length-1;
-	let methods:Function[]=[];
-	debug(func);
-	if (isClassMethod(wholeFunc,fstart)) {
-		debug("class method")
-		methods = getCache(doc.uri).getPossibleMethods(func);
-	} else {
-		debug("Not class method")
-		let f = getCache(doc.uri).getMethod(func);
-		if (f !== undefined) methods.push(f);
-	}
-	for (const m of methods) {
-		let p = m.parameters[paramNumber];
-		let name = p.name.replace(/=.*/,"").trim();
-		ret.push(name);
-	}
-	return ret;
-}
-
 
 function getInventoryKeysForFile(cache: MissionCache, text: TextDocument): CompletionItem[] {
 	let keys = cache.getInventoryKeys(text.uri);

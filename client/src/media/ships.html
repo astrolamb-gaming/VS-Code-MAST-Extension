@@ -22,11 +22,24 @@
                     <div id="title" class="title">No ship selected</div>
                     <div id="subtitle" class="sub">Choose a ship on the left.</div>
                 </div>
-                <button id="insertKeyBtn" class="insert-key-btn" hidden>Insert Selected Ship Key</button>
+                <div class="viewer-actions">
+                    <button id="copyKeyBtn" class="copy-key-btn">Copy Ship Key</button>
+                    <button id="diffuseToggleBtn" class="map-toggle-btn material-setting-btn active">Diffuse On</button>
+                    <button id="diffuseRotateBtn" class="map-rotate-btn material-setting-btn">Diffuse Rot 0deg</button>
+                    <button id="specularToggleBtn" class="map-toggle-btn material-setting-btn active">Specular On</button>
+                    <button id="specularRotateBtn" class="map-rotate-btn material-setting-btn">Specular Rot 0deg</button>
+                    <button id="emissiveToggleBtn" class="map-toggle-btn material-setting-btn active">Emissive On</button>
+                    <button id="emissiveRotateBtn" class="map-rotate-btn material-setting-btn">Emissive Rot 0deg</button>
+                    <button id="normalToggleBtn" class="map-toggle-btn material-setting-btn active">Normal On</button>
+                    <button id="normalRotateBtn" class="map-rotate-btn material-setting-btn">Normal Rot 0deg</button>
+                    <button id="mapDebugBtn" class="map-debug-btn">Show Map Debug</button>
+                    <button id="insertKeyBtn" class="insert-key-btn" hidden>Insert Selected Ship Key</button>
+                </div>
             </div>
             <div class="viewer-stage">
                 <canvas id="viewport"></canvas>
                 <div id="overlay" class="overlay">Waiting for selection...</div>
+                <div id="mapDebugPanel" class="map-debug-panel" hidden></div>
                 <div id="preview" class="preview"><img id="previewImg" alt="preview" /></div>
             </div>
         </section>

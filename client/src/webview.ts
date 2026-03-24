@@ -33,6 +33,10 @@ interface ShipViewerEntry {
 	modelFormat?: string;
 	mtlUri?: string;
 	previewUri?: string;
+	diffuseUri?: string;
+	specularUri?: string;
+	emissiveUri?: string;
+	normalUri?: string;
 }
 
 interface FaceViewerFace {
@@ -54,6 +58,11 @@ interface FaceViewerEntry {
 
 const MODEL_EXTENSIONS = ['.obj'];
 const PREVIEW_SUFFIXES = ['.png', '256.png', '1024.png'];
+const TEXTURE_EXTENSIONS = ['.png', '.jpg', '.jpeg'];
+const DIFFUSE_SUFFIXES = ['_d', '_diffuse', '_albedo', '_basecolor'];
+const SPECULAR_SUFFIXES = ['_s', '_spec', '_specular'];
+const EMISSIVE_SUFFIXES = ['_e', '_emit', '_emissive', '_illum', '_illumination'];
+const NORMAL_SUFFIXES = ['_n', '_normal', '_norm'];
 
 function getNonce(): string {
 	const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -83,6 +92,65 @@ function findExistingPath(candidates: string[]): string | undefined {
 	return undefined;
 }
 
+function findTextureForArt(basePathNoExt: string, suffixes: string[]): string | undefined {
+	for (const suffix of suffixes) {
+		for (const ext of TEXTURE_EXTENSIONS) {
+			const p = `${basePathNoExt}${suffix}${ext}`;
+			if (fs.existsSync(p)) {
+				return p;
+			}
+		}
+	}
+	return undefined;
+}
+
+function findTextureForAnyBase(basePathNoExtList: string[], suffixes: string[]): string | undefined {
+	for (const basePathNoExt of basePathNoExtList) {
+		const hit = findTextureForArt(basePathNoExt, suffixes);
+		if (hit) {
+			return hit;
+		}
+	}
+	return undefined;
+}
+
+function findMtlFromObjPath(objPath: string): string | undefined {
+	if (!fs.existsSync(objPath)) {
+		return undefined;
+	}
+
+	try {
+		const text = fs.readFileSync(objPath, 'utf8');
+		const lines = text.split(/\r?\n/);
+		for (const line of lines) {
+			const trimmed = line.trim();
+			if (!trimmed || trimmed.startsWith('#')) {
+				continue;
+			}
+
+			const match = /^mtllib\s+(.+)$/i.exec(trimmed);
+			if (!match) {
+				continue;
+			}
+
+			const relativeMtl = match[1].trim();
+			if (!relativeMtl) {
+				continue;
+			}
+
+			const objDir = path.dirname(objPath);
+			const resolved = path.resolve(objDir, relativeMtl);
+			if (fs.existsSync(resolved)) {
+				return resolved;
+			}
+		}
+	} catch (err) {
+		debug('Could not parse OBJ for mtllib: ' + objPath + ' (' + String(err) + ')');
+	}
+
+	return undefined;
+}
+
 function buildShipEntries(payload: ShipViewerPayload, panel: WebviewPanel): ShipViewerEntry[] {
 	debug('buildShipEntries called, artemisDir: ' + payload.artemisDir);
 	debug('Number of ships in payload: ' + (payload.ships?.length || 0));
@@ -100,14 +168,40 @@ function buildShipEntries(payload: ShipViewerPayload, panel: WebviewPanel): Ship
 		};
 
 		if (art.length > 0) {
+			const artBasePath = path.join(shipsDir, art);
+			let textureBasePaths: string[] = [artBasePath];
 			const modelHit = findFirstExisting(path.join(shipsDir, art), MODEL_EXTENSIONS);
 			if (modelHit) {
 				entry.modelFormat = modelHit.suffix.replace('.', '').toLowerCase();
 				entry.modelUri = panel.webview.asWebviewUri(vscode.Uri.file(modelHit.path)).toString();
 				if (entry.modelFormat === 'obj') {
 					const mtlPath = path.join(shipsDir, art + '.mtl');
-					if (fs.existsSync(mtlPath)) {
-						entry.mtlUri = panel.webview.asWebviewUri(vscode.Uri.file(mtlPath)).toString();
+					const resolvedMtlPath = fs.existsSync(mtlPath) ? mtlPath : findMtlFromObjPath(modelHit.path);
+					if (resolvedMtlPath) {
+						entry.mtlUri = panel.webview.asWebviewUri(vscode.Uri.file(resolvedMtlPath)).toString();
+						const mtlParsed = path.parse(resolvedMtlPath);
+						const mtlBasePath = path.join(mtlParsed.dir, mtlParsed.name);
+						textureBasePaths = [mtlBasePath, artBasePath];
+					}
+
+					const diffusePath = findTextureForAnyBase(textureBasePaths, DIFFUSE_SUFFIXES);
+					if (diffusePath) {
+						entry.diffuseUri = panel.webview.asWebviewUri(vscode.Uri.file(diffusePath)).toString();
+					}
+
+					const specularPath = findTextureForAnyBase(textureBasePaths, SPECULAR_SUFFIXES);
+					if (specularPath) {
+						entry.specularUri = panel.webview.asWebviewUri(vscode.Uri.file(specularPath)).toString();
+					}
+
+					const emissivePath = findTextureForAnyBase(textureBasePaths, EMISSIVE_SUFFIXES);
+					if (emissivePath) {
+						entry.emissiveUri = panel.webview.asWebviewUri(vscode.Uri.file(emissivePath)).toString();
+					}
+
+					const normalPath = findTextureForAnyBase(textureBasePaths, NORMAL_SUFFIXES);
+					if (normalPath) {
+						entry.normalUri = panel.webview.asWebviewUri(vscode.Uri.file(normalPath)).toString();
 					}
 				}
 			}

@@ -15,12 +15,24 @@ const searchEl = document.getElementById('search');
 const titleEl = document.getElementById('title');
 const subtitleEl = document.getElementById('subtitle');
 const insertKeyBtn = document.getElementById('insertKeyBtn');
+const copyKeyBtn = document.getElementById('copyKeyBtn');
+const diffuseToggleBtn = document.getElementById('diffuseToggleBtn');
+const diffuseRotateBtn = document.getElementById('diffuseRotateBtn');
+const specularToggleBtn = document.getElementById('specularToggleBtn');
+const specularRotateBtn = document.getElementById('specularRotateBtn');
+const emissiveToggleBtn = document.getElementById('emissiveToggleBtn');
+const emissiveRotateBtn = document.getElementById('emissiveRotateBtn');
+const normalToggleBtn = document.getElementById('normalToggleBtn');
+const normalRotateBtn = document.getElementById('normalRotateBtn');
+const mapDebugBtn = document.getElementById('mapDebugBtn');
 const overlayEl = document.getElementById('overlay');
+const mapDebugPanelEl = document.getElementById('mapDebugPanel');
 const previewEl = document.getElementById('preview');
 const previewImgEl = document.getElementById('previewImg');
 const canvas = document.getElementById('viewport');
+const materialSettingButtons = Array.from(document.querySelectorAll('.material-setting-btn'));
 
-if (!shipListEl || !searchEl || !titleEl || !subtitleEl || !overlayEl || !previewEl || !previewImgEl || !canvas || !insertKeyBtn) {
+if (!shipListEl || !searchEl || !titleEl || !subtitleEl || !overlayEl || !mapDebugPanelEl || !previewEl || !previewImgEl || !canvas || !insertKeyBtn || !copyKeyBtn || !mapDebugBtn || !diffuseToggleBtn || !diffuseRotateBtn || !specularToggleBtn || !specularRotateBtn || !emissiveToggleBtn || !emissiveRotateBtn || !normalToggleBtn || !normalRotateBtn) {
 	console.error('Missing required DOM elements in ships webview.');
 	throw new Error('Ship viewer DOM initialization failed.');
 }
@@ -57,6 +69,344 @@ scene.add(grid);
 
 let activeObject = null;
 let activeIndex = -1;
+let mapDebugVisible = false;
+let diffuseVisible = true;
+let specularVisible = true;
+let emissiveVisible = true;
+let normalVisible = true;
+let diffuseRotationTurns = 0;
+let specularRotationTurns = 0;
+let emissiveRotationTurns = 0;
+let normalRotationTurns = 0;
+let loadRequestId = 0;
+
+const mtlLoader = new MTLLoader();
+const textureLoader = new THREE.TextureLoader();
+
+const MATERIAL_TEXTURE_PROPS = [
+	'map',
+	'specularMap',
+	'emissiveMap',
+	'normalMap',
+	'roughnessMap',
+	'metalnessMap',
+	'aoMap',
+	'alphaMap',
+	'bumpMap',
+	'lightMap',
+	'displacementMap'
+];
+
+const DEBUG_MAP_FIELDS = [
+	{ prop: 'map', label: 'diffuse' },
+	{ prop: 'specularMap', label: 'specular' },
+	{ prop: 'emissiveMap', label: 'emissive' },
+	{ prop: 'normalMap', label: 'normal' }
+];
+
+const CHANNEL_VISIBILITY_CONFIG = {
+	diffuse: {
+		prop: 'map',
+		storedKey: '__originalDiffuseMap',
+		storedFlag: '__originalDiffuseMapStored',
+		storedRotationKey: '__originalDiffuseMapRotation',
+		button: diffuseToggleBtn,
+		rotateButton: diffuseRotateBtn,
+		label: 'Diffuse'
+	},
+	specular: {
+		prop: 'specularMap',
+		storedKey: '__originalSpecularMap',
+		storedFlag: '__originalSpecularMapStored',
+		storedRotationKey: '__originalSpecularMapRotation',
+		button: specularToggleBtn,
+		rotateButton: specularRotateBtn,
+		label: 'Specular'
+	},
+	emissive: {
+		prop: 'emissiveMap',
+		storedKey: '__originalEmissiveMap',
+		storedFlag: '__originalEmissiveMapStored',
+		storedRotationKey: '__originalEmissiveMapRotation',
+		button: emissiveToggleBtn,
+		rotateButton: emissiveRotateBtn,
+		label: 'Emissive'
+	},
+	normal: {
+		prop: 'normalMap',
+		storedKey: '__originalNormalMap',
+		storedFlag: '__originalNormalMapStored',
+		storedRotationKey: '__originalNormalMapRotation',
+		button: normalToggleBtn,
+		rotateButton: normalRotateBtn,
+		label: 'Normal'
+	}
+};
+
+const ALLOW_AGGRESSIVE_SECONDARY_FALLBACK = true;
+
+function setMapDebugVisible(isVisible) {
+	mapDebugVisible = isVisible;
+	mapDebugPanelEl.hidden = !mapDebugVisible;
+	mapDebugBtn.classList.toggle('active', mapDebugVisible);
+	mapDebugBtn.textContent = mapDebugVisible ? 'Hide Map Debug' : 'Show Map Debug';
+	for (const btn of materialSettingButtons) {
+		btn.hidden = !mapDebugVisible;
+		btn.disabled = !mapDebugVisible;
+	}
+}
+
+function normalizeQuarterTurns(turns) {
+	return ((turns % 4) + 4) % 4;
+}
+
+function quarterTurnsToRadians(turns) {
+	return normalizeQuarterTurns(turns) * (Math.PI / 2);
+}
+
+function radiansToDegrees(radians) {
+	return Math.round((radians * 180) / Math.PI);
+}
+
+function getChannelRotationTurns(channel) {
+	switch (channel) {
+		case 'diffuse':
+			return diffuseRotationTurns;
+		case 'specular':
+			return specularRotationTurns;
+		case 'emissive':
+			return emissiveRotationTurns;
+		case 'normal':
+			return normalRotationTurns;
+		default:
+			return 0;
+	}
+}
+
+function setChannelRotationTurns(channel, turns) {
+	const normalized = normalizeQuarterTurns(turns);
+	switch (channel) {
+		case 'diffuse':
+			diffuseRotationTurns = normalized;
+			break;
+		case 'specular':
+			specularRotationTurns = normalized;
+			break;
+		case 'emissive':
+			emissiveRotationTurns = normalized;
+			break;
+		case 'normal':
+			normalRotationTurns = normalized;
+			break;
+	}
+}
+
+function updateChannelRotationButtonText(channel) {
+	const cfg = CHANNEL_VISIBILITY_CONFIG[channel];
+	if (!cfg || !cfg.rotateButton) {
+		return;
+	}
+	const deg = normalizeQuarterTurns(getChannelRotationTurns(channel)) * 90;
+	cfg.rotateButton.textContent = `${cfg.label} Rot ${deg}deg`;
+}
+
+function applyChannelRotation(mat, channel) {
+	const cfg = CHANNEL_VISIBILITY_CONFIG[channel];
+	if (!cfg || !mat || !mat[cfg.prop]) {
+		return;
+	}
+
+	const tex = mat[cfg.prop];
+	const defaultRotation = typeof mat.userData[cfg.storedRotationKey] === 'number' ? mat.userData[cfg.storedRotationKey] : (typeof tex.rotation === 'number' ? tex.rotation : 0);
+	tex.center.set(0.5, 0.5);
+	tex.rotation = defaultRotation + quarterTurnsToRadians(getChannelRotationTurns(channel));
+	tex.needsUpdate = true;
+}
+
+function applyChannelVisibility(root, channel, isVisible) {
+	const cfg = CHANNEL_VISIBILITY_CONFIG[channel];
+	if (!cfg) {
+		return;
+	}
+
+	if (!root) {
+		return;
+	}
+
+	root.traverse((node) => {
+		if (!node.isMesh || !node.material) {
+			return;
+		}
+
+		const mats = Array.isArray(node.material) ? node.material : [node.material];
+		for (const mat of mats) {
+			if (!mat || !(cfg.prop in mat)) {
+				continue;
+			}
+
+			if (!mat.userData[cfg.storedFlag]) {
+				const originalMap = mat[cfg.prop] || null;
+				mat.userData[cfg.storedKey] = originalMap;
+				mat.userData[cfg.storedFlag] = true;
+				mat.userData[cfg.storedRotationKey] = originalMap && typeof originalMap.rotation === 'number' ? originalMap.rotation : 0;
+			}
+
+			mat[cfg.prop] = isVisible ? (mat.userData[cfg.storedKey] || null) : null;
+			if (isVisible && mat[cfg.prop]) {
+				applyChannelRotation(mat, channel);
+			}
+			mat.needsUpdate = true;
+		}
+	});
+}
+
+function applyAllChannelVisibility(root) {
+	applyChannelVisibility(root, 'diffuse', diffuseVisible);
+	applyChannelVisibility(root, 'specular', specularVisible);
+	applyChannelVisibility(root, 'emissive', emissiveVisible);
+	applyChannelVisibility(root, 'normal', normalVisible);
+}
+
+function setDiffuseVisible(isVisible) {
+	diffuseVisible = isVisible;
+	diffuseToggleBtn.classList.toggle('active', diffuseVisible);
+	diffuseToggleBtn.textContent = diffuseVisible ? 'Diffuse On' : 'Diffuse Off';
+	applyChannelVisibility(activeObject, 'diffuse', diffuseVisible);
+}
+
+function setSpecularVisible(isVisible) {
+	specularVisible = isVisible;
+	specularToggleBtn.classList.toggle('active', specularVisible);
+	specularToggleBtn.textContent = specularVisible ? 'Specular On' : 'Specular Off';
+	applyChannelVisibility(activeObject, 'specular', specularVisible);
+}
+
+function setEmissiveVisible(isVisible) {
+	emissiveVisible = isVisible;
+	emissiveToggleBtn.classList.toggle('active', emissiveVisible);
+	emissiveToggleBtn.textContent = emissiveVisible ? 'Emissive On' : 'Emissive Off';
+	applyChannelVisibility(activeObject, 'emissive', emissiveVisible);
+}
+
+function setNormalVisible(isVisible) {
+	normalVisible = isVisible;
+	normalToggleBtn.classList.toggle('active', normalVisible);
+	normalToggleBtn.textContent = normalVisible ? 'Normal On' : 'Normal Off';
+	applyChannelVisibility(activeObject, 'normal', normalVisible);
+}
+
+function rotateChannel(channel) {
+	setChannelRotationTurns(channel, getChannelRotationTurns(channel) + 1);
+	updateChannelRotationButtonText(channel);
+
+	if (!activeObject) {
+		return;
+	}
+
+	const cfg = CHANNEL_VISIBILITY_CONFIG[channel];
+	const channelVisible = channel === 'diffuse' ? diffuseVisible : channel === 'specular' ? specularVisible : channel === 'emissive' ? emissiveVisible : normalVisible;
+	if (!cfg || !channelVisible) {
+		return;
+	}
+
+	activeObject.traverse((node) => {
+		if (!node.isMesh || !node.material) {
+			return;
+		}
+		const mats = Array.isArray(node.material) ? node.material : [node.material];
+		for (const mat of mats) {
+			if (!mat || !(cfg.prop in mat) || !mat[cfg.prop]) {
+				continue;
+			}
+			applyChannelRotation(mat, channel);
+			mat.needsUpdate = true;
+		}
+	});
+}
+
+function getMaterialDebugName(meshName, mat, materialIndex) {
+	const meshLabel = meshName || '(unnamed mesh)';
+	const materialLabel = mat?.name || `(material ${materialIndex + 1})`;
+	return `${meshLabel} -> ${materialLabel}`;
+}
+
+function renderMapDebugReport(root, fallbackAssignments, mtlLoaded) {
+	function getTextureLabel(tex) {
+		if (!tex) {
+			return '';
+		}
+
+		const uri = typeof tex.name === 'string' ? tex.name : '';
+		if (!uri) {
+			return '';
+		}
+
+		const normalized = uri.split('?')[0];
+		const parts = normalized.split('/');
+		return parts.length > 0 ? parts[parts.length - 1] : normalized;
+	}
+
+	if (!root) {
+		mapDebugPanelEl.textContent = 'No model loaded.';
+		return;
+	}
+
+	const lines = [];
+	let materialCount = 0;
+	let fallbackCount = 0;
+	let mtlCount = 0;
+	let noneCount = 0;
+
+	root.traverse((node) => {
+		if (!node.isMesh || !node.material) {
+			return;
+		}
+
+		const mats = Array.isArray(node.material) ? node.material : [node.material];
+		for (let i = 0; i < mats.length; i++) {
+			const mat = mats[i];
+			if (!mat) {
+				continue;
+			}
+
+			materialCount += 1;
+			lines.push(getMaterialDebugName(node.name, mat, i));
+			const assigned = fallbackAssignments.get(mat.uuid) || new Set();
+
+			for (const field of DEBUG_MAP_FIELDS) {
+				let source = 'none';
+				const mapLabel = getTextureLabel(mat[field.prop]);
+				const channel = field.prop === 'map' ? 'diffuse' : field.prop === 'specularMap' ? 'specular' : field.prop === 'emissiveMap' ? 'emissive' : 'normal';
+				const cfg = CHANNEL_VISIBILITY_CONFIG[channel];
+				const defaultRotation = typeof mat.userData[cfg.storedRotationKey] === 'number' ? mat.userData[cfg.storedRotationKey] : 0;
+				const currentRotation = mat[field.prop] && typeof mat[field.prop].rotation === 'number' ? mat[field.prop].rotation : defaultRotation;
+				if (assigned.has(field.prop)) {
+					source = 'fallback';
+					fallbackCount += 1;
+				} else if (mat[field.prop]) {
+					source = mtlLoaded ? 'mtl' : 'existing';
+					mtlCount += 1;
+				} else {
+					noneCount += 1;
+				}
+
+				const fileSuffix = mapLabel ? ` (${mapLabel})` : '';
+				const rotationSuffix = ` [default:${radiansToDegrees(defaultRotation)}deg current:${radiansToDegrees(currentRotation)}deg]`;
+				lines.push(`  ${field.label}: ${source}${fileSuffix}${rotationSuffix}`);
+			}
+		}
+	});
+
+	const header = [
+		`Materials: ${materialCount}`,
+		`Fallback maps: ${fallbackCount}`,
+		`MTL/existing maps: ${mtlCount}`,
+		`Missing maps: ${noneCount}`,
+		''
+	];
+
+	mapDebugPanelEl.textContent = header.concat(lines).join('\n');
+}
 
 function resize() {
 	const rect = canvas.getBoundingClientRect();
@@ -116,6 +466,8 @@ function clearModel() {
 	if (!activeObject) {
 		return;
 	}
+
+	const texturesToDispose = new Set();
 	scene.remove(activeObject);
 	activeObject.traverse((node) => {
 		if (node.geometry) {
@@ -125,11 +477,26 @@ function clearModel() {
 			const mats = Array.isArray(node.material) ? node.material : [node.material];
 			for (const m of mats) {
 				if (m && typeof m.dispose === 'function') {
+					if (m.userData) {
+						for (const key of ['__originalDiffuseMap', '__originalSpecularMap', '__originalEmissiveMap', '__originalNormalMap']) {
+							const tex = m.userData[key];
+							if (tex && typeof tex.dispose === 'function') {
+								texturesToDispose.add(tex);
+							}
+						}
+					}
+					for (const prop of MATERIAL_TEXTURE_PROPS) {
+						const tex = m[prop];
+						if (tex && typeof tex.dispose === 'function') {
+							texturesToDispose.add(tex);
+						}
+					}
 					m.dispose();
 				}
 			}
 		}
 	});
+	texturesToDispose.forEach((tex) => tex.dispose());
 	activeObject = null;
 }
 
@@ -143,15 +510,142 @@ function showPreview(uri) {
 	previewImgEl.src = uri;
 }
 
-const objLoader = new OBJLoader();
-const mtlLoader = new MTLLoader();
-
 function getResourceBase(uri) {
 	const idx = uri.lastIndexOf('/');
 	return idx >= 0 ? uri.slice(0, idx + 1) : uri;
 }
 
+async function loadTextureSafe(uri, useSrgbColorSpace) {
+	if (!uri) {
+		return null;
+	}
+
+	try {
+		const texture = await textureLoader.loadAsync(uri);
+		texture.name = uri;
+		if (useSrgbColorSpace) {
+			texture.colorSpace = THREE.SRGBColorSpace;
+		}
+		texture.needsUpdate = true;
+		return texture;
+	} catch (err) {
+		console.warn('Failed to load texture:', uri, err);
+		return null;
+	}
+}
+
+function applyFallbackTextures(root, maps) {
+	const fallbackAssignments = new Map();
+	const existingChannelUsage = {
+		specularMap: false,
+		emissiveMap: false,
+		normalMap: false
+	};
+
+	root.traverse((node) => {
+		if (!node.isMesh || !node.material) {
+			return;
+		}
+
+		const mats = Array.isArray(node.material) ? node.material : [node.material];
+		for (const m of mats) {
+			if (!m) {
+				continue;
+			}
+			if (m.specularMap) {
+				existingChannelUsage.specularMap = true;
+			}
+			if (m.emissiveMap) {
+				existingChannelUsage.emissiveMap = true;
+			}
+			if (m.normalMap) {
+				existingChannelUsage.normalMap = true;
+			}
+		}
+	});
+
+	function markFallbackApplied(mat, prop) {
+		if (!fallbackAssignments.has(mat.uuid)) {
+			fallbackAssignments.set(mat.uuid, new Set());
+		}
+		fallbackAssignments.get(mat.uuid).add(prop);
+	}
+
+	function cloneTextureForMaterial(template, uvReference) {
+		if (!template) {
+			return null;
+		}
+
+		const texture = template.clone();
+		texture.flipY = template.flipY;
+
+		if (uvReference) {
+			texture.wrapS = uvReference.wrapS;
+			texture.wrapT = uvReference.wrapT;
+			texture.offset.copy(uvReference.offset);
+			texture.repeat.copy(uvReference.repeat);
+			texture.center.copy(uvReference.center);
+			texture.rotation = uvReference.rotation;
+			texture.matrixAutoUpdate = uvReference.matrixAutoUpdate;
+			texture.matrix.copy(uvReference.matrix);
+		}
+
+		texture.needsUpdate = true;
+		return texture;
+	}
+
+	root.traverse((node) => {
+		if (!node.isMesh || !node.material) {
+			return;
+		}
+
+		const mats = Array.isArray(node.material) ? node.material : [node.material];
+		for (const m of mats) {
+			if (!m) {
+				continue;
+			}
+			const uvReference = m.map || null;
+			const allowSpecularFallback = ALLOW_AGGRESSIVE_SECONDARY_FALLBACK || existingChannelUsage.specularMap;
+			const allowEmissiveFallback = ALLOW_AGGRESSIVE_SECONDARY_FALLBACK || existingChannelUsage.emissiveMap;
+			const allowNormalFallback = ALLOW_AGGRESSIVE_SECONDARY_FALLBACK || existingChannelUsage.normalMap;
+
+			if (maps.diffuse && !m.map && 'map' in m) {
+				m.map = cloneTextureForMaterial(maps.diffuse, null);
+				if (m.map) {
+					markFallbackApplied(m, 'map');
+				}
+			}
+			if (allowSpecularFallback && maps.specular && !m.specularMap && 'specularMap' in m) {
+				m.specularMap = cloneTextureForMaterial(maps.specular, uvReference);
+				if (m.specularMap) {
+					markFallbackApplied(m, 'specularMap');
+				}
+			}
+			if (allowEmissiveFallback && maps.emissive && !m.emissiveMap && 'emissiveMap' in m) {
+				m.emissiveMap = cloneTextureForMaterial(maps.emissive, uvReference);
+				if (m.emissiveMap) {
+					markFallbackApplied(m, 'emissiveMap');
+				}
+				if (m.emissive && typeof m.emissive.getHex === 'function' && m.emissive.getHex() === 0x000000) {
+					m.emissive.setHex(0xffffff);
+				}
+			}
+			if (allowNormalFallback && maps.normal && !m.normalMap && 'normalMap' in m) {
+				m.normalMap = cloneTextureForMaterial(maps.normal, uvReference);
+				if (m.normalMap) {
+					markFallbackApplied(m, 'normalMap');
+				}
+			}
+
+			m.needsUpdate = true;
+		}
+	});
+
+	return fallbackAssignments;
+}
+
 async function loadEntry(entry) {
+	const requestId = ++loadRequestId;
 	clearModel();
 	titleEl.textContent = entry.key || '(no key)';
 	subtitleEl.textContent = (entry.name || 'Unnamed') + ' | art root: ' + (entry.artFileRoot || '(none)');
@@ -167,7 +661,9 @@ async function loadEntry(entry) {
 
 	try {
 		if (entry.modelFormat === 'obj') {
+			const objLoader = new OBJLoader();
 			const resourceBase = getResourceBase(entry.modelUri);
+			const mtlLoaded = Boolean(entry.mtlUri);
 
 			if (entry.mtlUri) {
 				mtlLoader.setResourcePath(resourceBase);
@@ -178,9 +674,48 @@ async function loadEntry(entry) {
 			}
 
 			activeObject = await objLoader.loadAsync(entry.modelUri);
+			if (requestId !== loadRequestId) {
+				return;
+			}
+
+			const [diffuseMap, specularMap, emissiveMap, normalMap] = await Promise.all([
+				loadTextureSafe(entry.diffuseUri, true),
+				loadTextureSafe(entry.specularUri, false),
+				loadTextureSafe(entry.emissiveUri, false),
+				loadTextureSafe(entry.normalUri, false)
+			]);
+			if (requestId !== loadRequestId) {
+				for (const baseMap of [diffuseMap, specularMap, emissiveMap, normalMap]) {
+					if (baseMap && typeof baseMap.dispose === 'function') {
+						baseMap.dispose();
+					}
+				}
+				return;
+			}
+
+			const fallbackAssignments = applyFallbackTextures(activeObject, {
+				diffuse: diffuseMap,
+				specular: specularMap,
+				emissive: emissiveMap,
+				normal: normalMap
+			});
+
+			applyAllChannelVisibility(activeObject);
+
+			renderMapDebugReport(activeObject, fallbackAssignments, mtlLoaded);
+
+			for (const baseMap of [diffuseMap, specularMap, emissiveMap, normalMap]) {
+				if (baseMap && typeof baseMap.dispose === 'function') {
+					baseMap.dispose();
+				}
+			}
 		} else {
 			setOverlay('Unsupported model type: ' + entry.modelFormat, true);
 			console.warn('Unsupported model type for entry:', entry);
+			return;
+		}
+
+		if (requestId !== loadRequestId) {
 			return;
 		}
 
@@ -217,6 +752,39 @@ function insertSelectedKey() {
 	setOverlay('Inserted ship key: ' + selected.key);
 }
 
+async function copySelectedKey() {
+	if (activeIndex < 0 || activeIndex >= entries.length) {
+		setOverlay('Select a ship first to copy its key.', true);
+		return;
+	}
+	const selected = entries[activeIndex];
+	if (!selected || !selected.key) {
+		setOverlay('Selected ship has no key to copy.', true);
+		return;
+	}
+
+	const key = selected.key;
+	try {
+		if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+			await navigator.clipboard.writeText(key);
+		} else {
+			const textarea = document.createElement('textarea');
+			textarea.value = key;
+			textarea.setAttribute('readonly', '');
+			textarea.style.position = 'fixed';
+			textarea.style.opacity = '0';
+			document.body.appendChild(textarea);
+			textarea.select();
+			document.execCommand('copy');
+			document.body.removeChild(textarea);
+		}
+		setOverlay('Copied ship key: ' + key);
+	} catch (err) {
+		setOverlay('Failed to copy ship key.', true);
+		console.error('Copy ship key failed:', err);
+	}
+}
+
 function renderShipList(filterText) {
 	shipListEl.innerHTML = '';
 	const q = (filterText || '').trim().toLowerCase();
@@ -250,6 +818,16 @@ function renderShipList(filterText) {
 
 searchEl.addEventListener('input', () => renderShipList(searchEl.value));
 insertKeyBtn.addEventListener('click', () => insertSelectedKey());
+copyKeyBtn.addEventListener('click', () => copySelectedKey());
+mapDebugBtn.addEventListener('click', () => setMapDebugVisible(!mapDebugVisible));
+diffuseToggleBtn.addEventListener('click', () => setDiffuseVisible(!diffuseVisible));
+specularToggleBtn.addEventListener('click', () => setSpecularVisible(!specularVisible));
+emissiveToggleBtn.addEventListener('click', () => setEmissiveVisible(!emissiveVisible));
+normalToggleBtn.addEventListener('click', () => setNormalVisible(!normalVisible));
+diffuseRotateBtn.addEventListener('click', () => rotateChannel('diffuse'));
+specularRotateBtn.addEventListener('click', () => rotateChannel('specular'));
+emissiveRotateBtn.addEventListener('click', () => rotateChannel('emissive'));
+normalRotateBtn.addEventListener('click', () => rotateChannel('normal'));
 
 function animate() {
 	requestAnimationFrame(animate);
@@ -268,5 +846,15 @@ if (entries.length > 0) {
 } else {
 	setOverlay('No ships were provided by ShipData.', true);
 }
+
+setMapDebugVisible(false);
+setDiffuseVisible(true);
+setSpecularVisible(true);
+setEmissiveVisible(true);
+setNormalVisible(true);
+updateChannelRotationButtonText('diffuse');
+updateChannelRotationButtonText('specular');
+updateChannelRotationButtonText('emissive');
+updateChannelRotationButtonText('normal');
 
 animate();
