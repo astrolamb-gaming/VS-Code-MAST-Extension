@@ -51,7 +51,7 @@ import { getCurrentDiagnostics, validateTextDocument } from './requests/validate
 import { onDefinition } from './requests/goToDefinition';
 import { getCache } from './cache';
 import { onReferences } from './requests/references';
-import { onRenameRequest } from './requests/renameSymbol';
+import { onPrepareRename, onRenameRequest } from './requests/renameSymbol';
 import { getWordRangeAtPosition } from './tokens/words';
 import { getSemanticTokens, TOKEN_TYPES, TOKEN_MODIFIERS, getEmptySemanticTokens, tokenizeDocument, buildSemanticTokens } from './requests/semanticTokens';
 import { getSemanticTokensCache } from './requests/semanticTokensCache';
@@ -760,14 +760,9 @@ connection.onRenameRequest((params: RenameParams): HandlerResult<WorkspaceEdit |
 })
 
 connection.onPrepareRename((params: PrepareRenameParams): Range | undefined =>{
-	let doc = documents.get(params.textDocument.uri);
+	const doc = documents.get(params.textDocument.uri);
 	if (!doc) return;
-	let symbol = getWordRangeAtPosition(doc, params.position);
-	let ret: Range = {
-		start: params.position,
-		end: doc.positionAt(doc.offsetAt(params.position) + symbol.length)
-	}
-	return ret;
+	return onPrepareRename(doc, params.position);
 })
 
 

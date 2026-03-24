@@ -1,48 +1,134 @@
-import { HandlerResult, RenameParams, TextDocumentEdit, TextEdit, WorkspaceEdit } from 'vscode-languageserver';
-import { getCurrentLineFromTextDocument, getHoveredSymbol } from './hover';
+import { Position, Range, RenameParams, TextDocumentEdit, TextEdit, WorkspaceEdit } from 'vscode-languageserver';
+import { TextDocument } from 'vscode-languageserver-textdocument';
 import { documents } from './../server';
-import { getLabelLocation, getMainLabelAtPos } from './../tokens/labels';
+import { getMainLabelAtPos } from './../tokens/labels';
 import { getCache } from './../cache';
-import { debug } from 'console';
+import { getTokenContextAtPosition } from './../tokens/comments';
+
+const RENAMEABLE_TOKEN_TYPES = new Set([
+	'variable',
+	'label',
+	'route-label',
+	'media-label',
+	'function',
+	'method',
+	'property'
+]);
+
+function isRenameableToken(token: { type: string; text?: string } | undefined): token is { type: string; text: string; line: number; character: number; length: number } {
+	return !!token && RENAMEABLE_TOKEN_TYPES.has(token.type) && !!token.text?.trim();
+}
+
+function getTokenContextNearPosition(doc: TextDocument, position: Position) {
+	const cache = getCache(doc.uri);
+	const tokens = cache.getMastFile(doc.uri)?.tokens || [];
+	let ctx = getTokenContextAtPosition(doc, tokens, position);
+	const token = ctx.token;
+	const isBoundaryOperator = token?.type === 'operator' && (
+		token.text === ')' ||
+		token.text === '(' ||
+		token.text === ',' ||
+		token.text === ':'
+	);
+
+	if (ctx.token && !isBoundaryOperator) {
+		return ctx;
+	}
+
+	if (position.character > 0) {
+		const prev = getTokenContextAtPosition(doc, tokens, {
+			line: position.line,
+			character: position.character - 1
+		});
+		if (prev.token && !(prev.token.type === 'operator')) {
+			return prev;
+		}
+		if (!ctx.token) {
+			ctx = prev;
+		}
+	}
+
+	return ctx;
+}
+
+function getRenameTarget(doc: TextDocument, position: Position) {
+	const cache = getCache(doc.uri);
+	const tokens = cache.getMastFile(doc.uri)?.tokens || [];
+	const ctx = getTokenContextNearPosition(doc, position);
+	if (ctx.inComment || ctx.inString || ctx.inYaml || !isRenameableToken(ctx.token)) {
+		return undefined;
+	}
+
+	const labels = cache.getLabels(doc, true);
+	if (labels.length === 0) {
+		return undefined;
+	}
+
+	const offset = doc.offsetAt(position);
+	const label = getMainLabelAtPos(offset, labels);
+	if (!label) {
+		return undefined;
+	}
+
+	const token = ctx.token;
+	const range: Range = {
+		start: { line: token.line, character: token.character },
+		end: { line: token.line, character: token.character + token.length }
+	};
+
+	return {
+		label,
+		token,
+		range,
+		tokens
+	};
+}
+
+export function onPrepareRename(doc: TextDocument, position: Position): Range | undefined {
+	return getRenameTarget(doc, position)?.range;
+}
 
 export async function onRenameRequest(params: RenameParams): Promise<WorkspaceEdit|undefined> {
-	let uri = params.textDocument.uri
-	let symbol_pos = params.position;
-	let doc = documents.get(uri);
+	const uri = params.textDocument.uri;
+	const doc = documents.get(uri);
 	if (!doc) return;
-	let line = getCurrentLineFromTextDocument(symbol_pos, doc);
-	let replace = getHoveredSymbol(line, symbol_pos.character);
 
-	// Get the current label
-	let mains = getCache(uri).getLabels(doc, true);
-	let label = getMainLabelAtPos(doc.offsetAt(symbol_pos), mains);
-	// if (!label) return;
-	let labelContents = doc.getText().substring(label.start, label.end);
-	
-	let find = new RegExp(replace, "g");
+	const target = getRenameTarget(doc, params.position);
+	if (!target) {
+		return;
+	}
 
-	let edits: TextEdit[] = [];
+	const edits: TextEdit[] = [];
+	for (const token of target.tokens) {
+		if (token.type !== target.token.type || token.text !== target.token.text) {
+			continue;
+		}
 
-	let m: RegExpExecArray|null;
-	let count = 0;
-	while (m = find.exec(labelContents)) {
-		const te: TextEdit = {
+		const startOffset = doc.offsetAt({ line: token.line, character: token.character });
+		const endOffset = startOffset + token.length;
+		if (startOffset < target.label.start || endOffset > target.label.end + 1) {
+			continue;
+		}
+
+		edits.push({
 			range: {
-				start: doc.positionAt(m.index + label.start),
-				end: doc.positionAt(m[0].length+m.index+label.start)
+				start: { line: token.line, character: token.character },
+				end: { line: token.line, character: token.character + token.length }
 			},
 			newText: params.newName
-		}
-		edits.push(te);
+		});
 	}
 
-	
-	let docEdit: TextDocumentEdit = {
-		textDocument: {uri: uri, version: null}, // We're just gonna mock the version...
-		edits: edits
+	if (edits.length === 0) {
+		return;
 	}
-	let ret: WorkspaceEdit = {
+
+	const docEdit: TextDocumentEdit = {
+		textDocument: { uri, version: null },
+		edits
+	};
+
+	return {
 		documentChanges: [docEdit]
-	}
-	return ret;
+	};
 }
