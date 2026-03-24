@@ -50,10 +50,9 @@
                             <div id="layersList" class="layers-list"></div>
                         </div>
                         <div class="sidebar-preview panel-card">
-                            <div class="preview-frame">
+                            <div class="preview-frame" title="Click to toggle preview size">
                                 <canvas id="previewCanvas" width="256" height="256"></canvas>
                             </div>
-                            <div id="selectionInfo" class="selection-info">No tile selected.</div>
                         </div>
                     </div>
                 </div>
@@ -71,8 +70,9 @@
 
             <section class="output-panel panel-card">
                 <div class="panel-title">Generated Face String</div>
-                <textarea id="output" spellcheck="false" readonly></textarea>
+                <textarea id="output" spellcheck="false"></textarea>
                 <div class="button-row output-actions">
+                    <button id="rebuildBtn" type="button" class="secondary">Rebuild From String</button>
                     <button id="copyBtn" type="button">Copy</button>
                     <button id="insertBtn" type="button">Insert Into Editor</button>
                 </div>

@@ -15,15 +15,16 @@ const layersList = document.getElementById('layersList');
 const layersEmpty = document.getElementById('layersEmpty');
 const sheetCanvas = document.getElementById('sheetCanvas');
 const previewCanvas = document.getElementById('previewCanvas');
+const previewFrameEl = previewCanvas ? previewCanvas.closest('.preview-frame') : null;
 const titleEl = document.getElementById('title');
 const subtitleEl = document.getElementById('subtitle');
-const selectionInfoEl = document.getElementById('selectionInfo');
 const statusEl = document.getElementById('status');
 const outputEl = document.getElementById('output');
+const rebuildBtn = document.getElementById('rebuildBtn');
 const copyBtn = document.getElementById('copyBtn');
 const insertBtn = document.getElementById('insertBtn');
 
-if (!raceStage || !builderStage || !raceList || !raceStatus || !selectedRaceSummary || !selectedRaceName || !changeRaceBtn || !addLayerBtn || !clearLayersBtn || !layersList || !layersEmpty || !sheetCanvas || !previewCanvas || !titleEl || !subtitleEl || !selectionInfoEl || !statusEl || !outputEl || !copyBtn || !insertBtn) {
+if (!raceStage || !builderStage || !raceList || !raceStatus || !selectedRaceSummary || !selectedRaceName || !changeRaceBtn || !addLayerBtn || !clearLayersBtn || !layersList || !layersEmpty || !sheetCanvas || !previewCanvas || !previewFrameEl || !titleEl || !subtitleEl || !statusEl || !outputEl || !rebuildBtn || !copyBtn || !insertBtn) {
 	throw new Error('Face builder DOM initialization failed.');
 }
 
@@ -40,6 +41,7 @@ let currentEntry = null;
 let currentImage = null;
 let selectedTile = null;
 let layers = [];
+let previewMode = 'zoom';
 
 function getTileSize() {
 	return FIXED_TILE_SIZE;
@@ -60,6 +62,71 @@ function formatFaceString() {
 	return '"' + layers.map((layer) => `${layer.raceId} ${layer.color} ${layer.x} ${layer.y}`).join(';') + ';"';
 }
 
+function normalizeHexColor(input) {
+	const raw = String(input || '').trim().toLowerCase();
+	const hex = raw.startsWith('#') ? raw.slice(1) : raw;
+	if (/^[0-9a-f]{3}$/.test(hex)) {
+		return `#${hex[0]}${hex[0]}${hex[1]}${hex[1]}${hex[2]}${hex[2]}`;
+	}
+	if (/^[0-9a-f]{6}$/.test(hex)) {
+		return `#${hex}`;
+	}
+	return null;
+}
+
+function parseFaceString(raw) {
+	const trimmed = String(raw || '').trim();
+	if (!trimmed || trimmed === '""') {
+		return [];
+	}
+
+	let body = trimmed;
+	if ((body.startsWith('"') && body.endsWith('"')) || (body.startsWith("'") && body.endsWith("'"))) {
+		body = body.slice(1, -1).trim();
+	}
+
+	if (!body) {
+		return [];
+	}
+
+	const tokens = body.split(';').map((part) => part.trim()).filter(Boolean);
+	const parsed = [];
+
+	for (const token of tokens) {
+		const parts = token.split(/\s+/);
+		if (parts.length !== 4) {
+			throw new Error(`Invalid layer token: ${token}`);
+		}
+
+		const [raceId, colorRaw, xRaw, yRaw] = parts;
+		const color = normalizeHexColor(colorRaw);
+		if (!color) {
+			throw new Error(`Invalid color value: ${colorRaw}`);
+		}
+
+		const x = Number.parseInt(xRaw, 10);
+		const y = Number.parseInt(yRaw, 10);
+		if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0) {
+			throw new Error(`Invalid tile coordinates: ${xRaw} ${yRaw}`);
+		}
+
+		const entry = entries.find((item) => item.raceId === raceId);
+		if (!entry) {
+			throw new Error(`Unknown race id in face string: ${raceId}`);
+		}
+
+		parsed.push({
+			raceId,
+			fileName: entry.fileName,
+			color,
+			x,
+			y
+		});
+	}
+
+	return parsed;
+}
+
 function updateOutput() {
 	outputEl.value = formatFaceString();
 }
@@ -73,6 +140,38 @@ function showRaceStage() {
 function showBuilderStage() {
 	raceStage.hidden = true;
 	builderStage.hidden = false;
+	requestAnimationFrame(() => {
+		applyPreviewMode();
+	});
+}
+
+function applyPreviewMode() {
+	if (previewMode === 'zoom') {
+		previewCanvas.style.width = '256px';
+		previewCanvas.style.height = '256px';
+		return;
+	}
+
+	const previewPanel = previewCanvas.closest('.sidebar-preview');
+	const previewFrame = previewCanvas.closest('.preview-frame');
+	if (!previewPanel || !previewFrame) {
+		previewCanvas.style.width = '128px';
+		previewCanvas.style.height = '128px';
+		return;
+	}
+
+	const panelHeight = previewPanel.clientHeight;
+	if (panelHeight <= 0) {
+		return;
+	}
+
+	const frameStyle = window.getComputedStyle(previewFrame);
+	const framePaddingY = parseFloat(frameStyle.paddingTop || '0') + parseFloat(frameStyle.paddingBottom || '0');
+	const available = panelHeight - framePaddingY - 24;
+	const fitSize = Math.max(72, Math.min(256, Math.floor(available)));
+
+	previewCanvas.style.width = `${fitSize}px`;
+	previewCanvas.style.height = `${fitSize}px`;
 }
 
 function clearCanvas(ctx, canvas) {
@@ -249,24 +348,60 @@ function openColorPicker(currentColor, callback) {
 		callback(finalColor);
 	}
 	
-	// Parse current color
 	let hue = 0, sat = 100, val = 100;
-	if (currentColor.startsWith('#')) {
-		const hex = currentColor.slice(1);
-		const r = parseInt(hex.slice(0, 2), 16) / 255;
-		const g = parseInt(hex.slice(2, 4), 16) / 255;
-		const b = parseInt(hex.slice(4, 6), 16) / 255;
-		const max = Math.max(r, g, b);
-		const min = Math.min(r, g, b);
-		val = max * 100;
-		sat = max === 0 ? 0 : ((max - min) / max) * 100;
-		if (max !== min) {
-			if (max === r) hue = ((g - b) / (max - min)) * 60;
-			else if (max === g) hue = ((b - r) / (max - min)) * 60 + 120;
-			else hue = ((r - g) / (max - min)) * 60 + 240;
-			hue = (hue + 360) % 360;
+
+	function normalizeHex(input) {
+		const trimmed = String(input || '').trim().toLowerCase();
+		const raw = trimmed.startsWith('#') ? trimmed.slice(1) : trimmed;
+		if (/^[0-9a-f]{3}$/i.test(raw)) {
+			return `#${raw[0]}${raw[0]}${raw[1]}${raw[1]}${raw[2]}${raw[2]}`;
 		}
+		if (/^[0-9a-f]{6}$/i.test(raw)) {
+			return `#${raw}`;
+		}
+		return null;
 	}
+
+	function rgbToHsv(r, g, b) {
+		const rf = r / 255;
+		const gf = g / 255;
+		const bf = b / 255;
+		const max = Math.max(rf, gf, bf);
+		const min = Math.min(rf, gf, bf);
+		const delta = max - min;
+		let h = 0;
+		if (delta !== 0) {
+			if (max === rf) h = ((gf - bf) / delta) * 60;
+			else if (max === gf) h = ((bf - rf) / delta) * 60 + 120;
+			else h = ((rf - gf) / delta) * 60 + 240;
+		}
+		if (h < 0) {
+			h += 360;
+		}
+		return {
+			h,
+			s: max === 0 ? 0 : (delta / max) * 100,
+			v: max * 100
+		};
+	}
+
+	function applyHexToHsv(hexColor) {
+		const normalized = normalizeHex(hexColor);
+		if (!normalized) {
+			return false;
+		}
+		const hex = normalized.slice(1);
+		const r = parseInt(hex.slice(0, 2), 16);
+		const g = parseInt(hex.slice(2, 4), 16);
+		const b = parseInt(hex.slice(4, 6), 16);
+		const hsv = rgbToHsv(r, g, b);
+		hue = hsv.h;
+		sat = hsv.s;
+		val = hsv.v;
+		return true;
+	}
+
+	applyHexToHsv(currentColor);
 	
 	// Hue slider
 	const hueCanvas = document.createElement('canvas');
@@ -314,21 +449,33 @@ function openColorPicker(currentColor, callback) {
 	// Color display
 	const display = document.createElement('div');
 	display.className = 'color-display';
-	display.style.background = currentColor;
-	
-	function updateColor() {
+
+	const hexInput = document.createElement('input');
+	hexInput.type = 'text';
+	hexInput.className = 'color-hex-input';
+	hexInput.maxLength = 7;
+	hexInput.placeholder = '#ffffff';
+	hexInput.spellcheck = false;
+	hexInput.autocomplete = 'off';
+
+	function updateColor(syncInput = true) {
 		const rgb = hsv2rgb(hue, sat, val);
 		const hex = `#${((rgb.r << 16) | (rgb.g << 8) | rgb.b).toString(16).padStart(6, '0')}`;
 		display.style.background = hex;
+		if (syncInput) {
+			hexInput.value = hex;
+		}
 		return hex;
 	}
+
+	hexInput.value = normalizeHex(currentColor) || updateColor();
 	
 	hueCanvas.addEventListener('click', (e) => {
 		e.stopPropagation();
 		const rect = hueCanvas.getBoundingClientRect();
 		hue = ((e.clientX - rect.left) / rect.width) * 360;
 		redrawSV();
-		display.style.background = updateColor();
+		updateColor();
 	});
 	
 	svCanvas.addEventListener('mousemove', (e) => {
@@ -336,7 +483,7 @@ function openColorPicker(currentColor, callback) {
 		const rect = svCanvas.getBoundingClientRect();
 		sat = ((e.clientX - rect.left) / rect.width) * 100;
 		val = 100 - ((e.clientY - rect.top) / rect.height) * 100;
-		display.style.background = updateColor();
+		updateColor();
 	});
 	
 	svCanvas.addEventListener('mousedown', (e) => {
@@ -344,7 +491,44 @@ function openColorPicker(currentColor, callback) {
 		const rect = svCanvas.getBoundingClientRect();
 		sat = ((e.clientX - rect.left) / rect.width) * 100;
 		val = 100 - ((e.clientY - rect.top) / rect.height) * 100;
-		display.style.background = updateColor();
+		updateColor();
+	});
+
+	hexInput.addEventListener('input', () => {
+		const normalized = normalizeHex(hexInput.value);
+		if (!normalized) {
+			return;
+		}
+		if (applyHexToHsv(normalized)) {
+			redrawSV();
+			updateColor(false);
+		}
+	});
+
+	hexInput.addEventListener('blur', () => {
+		const normalized = normalizeHex(hexInput.value);
+		if (!normalized) {
+			hexInput.value = updateColor();
+			return;
+		}
+		applyHexToHsv(normalized);
+		redrawSV();
+		updateColor();
+	});
+
+	hexInput.addEventListener('keydown', (event) => {
+		if (event.key !== 'Enter') {
+			return;
+		}
+		event.preventDefault();
+		const normalized = normalizeHex(hexInput.value);
+		if (!normalized) {
+			hexInput.value = updateColor();
+			return;
+		}
+		applyHexToHsv(normalized);
+		redrawSV();
+		updateColor();
 	});
 	
 	// Close button
@@ -376,6 +560,7 @@ function openColorPicker(currentColor, callback) {
 	popup.appendChild(hueCanvas);
 	popup.appendChild(svCanvas);
 	popup.appendChild(display);
+	popup.appendChild(hexInput);
 	
 	// Stop propagation on popup to prevent closing when clicking inside
 	popup.addEventListener('click', (e) => {
@@ -425,6 +610,14 @@ function renderLayers() {
 		const top = document.createElement('div');
 		top.className = 'layer-top';
 
+		// Actions
+		const actions = document.createElement('div');
+		actions.className = 'layer-actions layer-actions-inline';
+		const moveActions = document.createElement('div');
+		moveActions.className = 'layer-actions-move';
+		const removeActions = document.createElement('div');
+		removeActions.className = 'layer-actions-remove';
+
 		// Tile preview
 		const previewCanvas = document.createElement('canvas');
 		previewCanvas.className = 'layer-preview';
@@ -461,11 +654,8 @@ function renderLayers() {
 
 		top.appendChild(previewCanvas);
 		top.appendChild(info);
+		top.appendChild(actions);
 		top.appendChild(colorBtn);
-
-		// Actions
-		const actions = document.createElement('div');
-		actions.className = 'layer-actions';
 
 		const upBtn = document.createElement('button');
 		upBtn.type = 'button';
@@ -505,29 +695,22 @@ function renderLayers() {
 			updateOutput();
 		});
 
-		actions.appendChild(upBtn);
-		actions.appendChild(downBtn);
-		actions.appendChild(removeBtn);
+		moveActions.appendChild(upBtn);
+		moveActions.appendChild(downBtn);
+		removeActions.appendChild(removeBtn);
+		actions.appendChild(moveActions);
+		actions.appendChild(removeActions);
 
 		item.appendChild(top);
-		item.appendChild(actions);
 		layersList.appendChild(item);
 	});
 }
 
-function updateSelectionInfo() {
-	if (!selectedTile || !currentEntry) {
-		selectionInfoEl.textContent = 'No tile selected.';
-		return;
-	}
-	selectionInfoEl.textContent = `Selected ${currentEntry.raceId} tile (${selectedTile.x}, ${selectedTile.y}).`;
-}
-
-async function selectRace(raceId) {
+async function selectRace(raceId, options = {}) {
+	const { addDefaultLayer = true } = options;
 	const entry = entries.find((item) => item.raceId === raceId) || null;
 	currentEntry = entry;
 	selectedTile = null;
-	updateSelectionInfo();
 	if (!entry) {
 		currentImage = null;
 		clearCanvas(sheetCtx, sheetCanvas);
@@ -547,13 +730,48 @@ async function selectRace(raceId) {
 		currentImage = await loadImage(entry);
 		setStatus('Face sheet ready.');
 		drawSheet();
+		if (addDefaultLayer && layers.length === 0) {
+			layers = [{
+				raceId: entry.raceId,
+				fileName: entry.fileName,
+				color: '#ffffff',
+				x: 0,
+				y: 0
+			}];
+			renderLayers();
+			renderPreview();
+			updateOutput();
+			setStatus('Face sheet ready. Added default layer at tile (0, 0).');
+		}
 	} catch (error) {
 		currentImage = null;
 		clearCanvas(sheetCtx, sheetCanvas);
 		setStatus('Failed to load face sheet.');
 		subtitleEl.textContent = String(error && error.message ? error.message : error);
 	}
-	updateSelectionInfo();
+}
+
+async function rebuildLayersFromOutput() {
+	try {
+		const parsedLayers = parseFaceString(outputEl.value);
+		if (parsedLayers.length === 0) {
+			layers = [];
+			renderLayers();
+			renderPreview();
+			updateOutput();
+			setStatus('Cleared layers from face string.');
+			return;
+		}
+
+		await selectRace(parsedLayers[0].raceId, { addDefaultLayer: false });
+		layers = parsedLayers;
+		renderLayers();
+		renderPreview();
+		updateOutput();
+		setStatus(`Loaded ${parsedLayers.length} layers from face string.`);
+	} catch (error) {
+		setStatus(String(error && error.message ? error.message : error));
+	}
 }
 
 function renderRaceOptions() {
@@ -613,7 +831,6 @@ sheetCanvas.addEventListener('click', (event) => {
 		y: Math.floor(y / tileSize)
 	};
 	drawSheet();
-	updateSelectionInfo();
 	});
 
 addLayerBtn.addEventListener('click', addSelectedTile);
@@ -630,8 +847,22 @@ changeRaceBtn.addEventListener('click', () => {
 	currentEntry = null;
 	currentImage = null;
 	clearCanvas(sheetCtx, sheetCanvas);
-	updateSelectionInfo();
 	showRaceStage();
+});
+
+previewFrameEl.addEventListener('click', () => {
+	previewMode = previewMode === 'zoom' ? 'fit' : 'zoom';
+	applyPreviewMode();
+});
+
+rebuildBtn.addEventListener('click', () => {
+	rebuildLayersFromOutput();
+});
+
+window.addEventListener('resize', () => {
+	if (previewMode === 'fit') {
+		applyPreviewMode();
+	}
 });
 
 copyBtn.addEventListener('click', () => {
@@ -658,6 +889,7 @@ insertBtn.addEventListener('click', () => {
 updateOutput();
 renderLayers();
 renderPreview();
+applyPreviewMode();
 
 if (entries.length === 0) {
 	showRaceStage();

@@ -422,6 +422,13 @@ button.secondary:hover {
 	border: 1px solid var(--border);
 }
 
+.color-hex-input {
+	width: 100%;
+	font-family: Consolas, 'Courier New', monospace;
+	letter-spacing: 0.3px;
+	padding: 6px 8px;
+}
+
 .color-chip {
 	width: 18px;
 	height: 18px;
@@ -436,9 +443,32 @@ button.secondary:hover {
 	flex-wrap: wrap;
 }
 
+.layer-actions-inline {
+	flex-direction: row;
+	flex-wrap: nowrap;
+	align-items: center;
+}
+
+.layer-actions-move,
+.layer-actions-remove {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.layer-actions-remove {
+	justify-content: center;
+}
+
 .layer-actions button {
 	padding: 4px 8px;
 	font-size: 11px;
+}
+
+.layer-actions-inline button {
+	padding: 2px 6px;
+	font-size: 10px;
+	line-height: 1.2;
 }
 
 .layer-color-input {
@@ -547,6 +577,7 @@ button.secondary:hover {
 	padding: 8px;
 	background: #101923;
 	justify-self: center;
+	cursor: pointer;
 }
 
 
