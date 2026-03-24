@@ -255,7 +255,7 @@ export class ArtemisGlobals {
 		let ret: FaceFile[] = [];
 		const allFaceFiles = path.join(this.artemisDir, "data", "graphics", "allFaceFiles.txt");
 		let faceInfo = readFileSync(allFaceFiles);
-		let line = /(\w+)[ \t]+([\w-]+)/gm;
+		let line = /(\w+)[ \t]+([^\s#;]+)/gm;
 		let m: RegExpExecArray | null;
 		while (m = line.exec(faceInfo)) {
 			const ff: FaceFile = {

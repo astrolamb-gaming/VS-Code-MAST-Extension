@@ -16,7 +16,7 @@ import {
 	ServerOptions,
 	TransportKind
 } from 'vscode-languageclient/node';
-import { generateShipWebview } from './webview';
+import { generateFaceWebview, generateShipWebview } from './webview';
 
 let mainProgress: Progress<{
     message?: string;
@@ -173,6 +173,11 @@ export function activate(context: ExtensionContext) {
 		generateShipWebview(context, payload);
 	});
 
+	const faces = client.onNotification('custom/faces', (payload)=>{
+		debug('Received faces notification payload; artemisDir: ' + payload?.artemisDir + ', faces: ' + (payload?.faces?.length || 0));
+		generateFaceWebview(context, payload);
+	});
+
 	const openShipPicker = client.onNotification('custom/openShipPicker', async (payload)=>{
 		debug('Received ship picker request for arg: ' + payload?.argumentName);
 		const choice = await window.showInformationMessage(
@@ -199,12 +204,25 @@ export function activate(context: ExtensionContext) {
 		client.sendNotification('custom/openShipViewer', {});
 	}));
 
+	context.subscriptions.push(vscode.commands.registerCommand('mast.openFaceBuilder', () => {
+		debug('mast.openFaceBuilder command triggered');
+		if (!client) {
+			window.showWarningMessage('MAST client is not ready yet.');
+			return;
+		}
+		debug('Sending custom/openFaceBuilder notification to server');
+		client.sendNotification('custom/openFaceBuilder', {
+			sourceUri: vscode.window.activeTextEditor?.document.uri.toString() || ''
+		});
+	}));
+
 	// context.subscriptions.push(
 	// 	vscode.commands.registerCommand('faces.start', () => {
 	// 		generateShipWebview(context, )
 	// 	})
 	// );
 	context.subscriptions.push(ships);
+	context.subscriptions.push(faces);
 	context.subscriptions.push(openShipPicker);
 
 // #endregion

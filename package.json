@@ -261,6 +261,10 @@
 			{
 				"command": "mast.openShipViewer",
 				"title": "MAST: Open Ship 3D Viewer"
+			},
+			{
+				"command": "mast.openFaceBuilder",
+				"title": "MAST: Open Face String Builder"
 			}
 		]
 	},

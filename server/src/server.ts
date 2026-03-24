@@ -672,6 +672,30 @@ connection.onNotification('custom/openShipViewer', async (request: { mode?: stri
 	}
 });
 
+connection.onNotification('custom/openFaceBuilder', async (request: { sourceUri?: string } | undefined) => {
+	try {
+		const globals = getArtemisGlobals() || await initializeArtemisGlobals();
+		if (!globals || !globals.artemisDir) {
+			sendWarning('Artemis directory not found. Cannot open Face String Builder.');
+			return;
+		}
+
+		const faces = (globals.faceArtFiles || []).map(face => ({
+			raceId: face.shortName,
+			fileName: face.fileName
+		}));
+
+		sendToClient('faces', {
+			artemisDir: globals.artemisDir,
+			faces,
+			sourceUri: request?.sourceUri || ''
+		});
+	} catch (e) {
+		debug('Failed to open face builder: ' + e);
+		sendWarning('Failed to open Face String Builder. Check MAST output logs for details.');
+	}
+});
+
 // Useful for debugging the client
 connection.onNotification("custom/debug", (response) => {
 	debug(response);

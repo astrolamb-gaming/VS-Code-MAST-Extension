@@ -3,24 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Face Generator</title>
-    <script type="javascript" src="faces.js"></script>
-    <script type="javascript">
-    </script>
-    <style>
-        /* Example for possible way to overlay images
-        .double-image {
-            background-image: url(images/img1.png), url(images/img2.png);
-        }
-        */
-        .button {
-            width: 150;
-            height: 50;
-        }
-    </style>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src __CSP_SOURCE__ data: blob:; style-src __CSP_SOURCE__; script-src 'nonce-__NONCE__' __CSP_SOURCE__;">
+    <title>Face String Builder</title>
+    <link rel="stylesheet" href="__FACES_CSS_URI__">
 </head>
 <body>
-    <div class="double-image"></div>
-    <input id="button" type="button" class="button" value="BUTTON">
+    <div id="raceStage" class="race-stage">
+        <div class="race-stage-card">
+            <div class="race-stage-header">
+                <h1>Face Builder</h1>
+                <p>Select a race first. The builder will then show only the options for that race.</p>
+            </div>
+            <div id="raceStatus" class="status status-block">Loading face sheets...</div>
+            <div id="raceList" class="race-list"></div>
+        </div>
+    </div>
+
+    <div id="builderStage" class="layout" hidden>
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title-row">
+                    <h1>Face Builder</h1>
+                    <div id="selectedRaceName" class="selected-race-name">No race selected</div>
+                </div>
+                <p id="selectedRaceSummary">Create layered Artemis face strings from race face sheets.</p>
+            </div>
+            <div class="sidebar-controls">
+                <div class="button-row">
+                    <button id="changeRaceBtn" type="button" class="secondary">Change Race</button>
+                    <button id="addLayerBtn" type="button">Add Selected Tile</button>
+                    <button id="clearLayersBtn" type="button" class="secondary">Clear Layers</button>
+                </div>
+            </div>
+            <div class="sidebar-scroll">
+                <div class="sheet-panel sidebar-sheet panel-card">
+                    <div class="panel-title">Face Sheet</div>
+                    <div class="sheet-scroll">
+                        <canvas id="sheetCanvas"></canvas>
+                    </div>
+                </div>
+                <div class="layers-panel">
+                    <div class="section-title">Layers and Preview</div>
+                    <div class="layers-body">
+                        <div class="layers-column">
+                            <div id="layersEmpty" class="empty-state">Select a tile from the sheet, then add it as a layer.</div>
+                            <div id="layersList" class="layers-list"></div>
+                        </div>
+                        <div class="sidebar-preview panel-card">
+                            <div class="preview-frame">
+                                <canvas id="previewCanvas" width="256" height="256"></canvas>
+                            </div>
+                            <div id="selectionInfo" class="selection-info">No tile selected.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="content">
+            <header class="content-header">
+                <div>
+                    <div id="title" class="title">No race selected</div>
+                    <div id="subtitle" class="subtitle">Choose a race sheet and click a tile to inspect it.</div>
+                </div>
+                <div id="status" class="status">Loading face sheets...</div>
+            </header>
+
+            <section class="output-panel panel-card">
+                <div class="panel-title">Generated Face String</div>
+                <textarea id="output" spellcheck="false" readonly></textarea>
+                <div class="button-row output-actions">
+                    <button id="copyBtn" type="button">Copy</button>
+                    <button id="insertBtn" type="button">Insert Into Editor</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script nonce="__NONCE__">window.__FACE_ENTRIES__ = __FACE_ENTRIES_JSON__;</script>
+    <script nonce="__NONCE__">window.__FACE_VIEWER_CONFIG__ = __FACE_VIEWER_CONFIG_JSON__;</script>
+    <script nonce="__NONCE__" src="__FACES_JS_URI__"></script>
 </body>
 </html>

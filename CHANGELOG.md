@@ -21,6 +21,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * Any variable in a label that is not defined in the label is included in label metadata suggestions.
 * Better hover and autocompletion logic.
 * Better caching (more performant).
+* Want a better way to figure out which ship key to use when spawning a ship? Try out the new Ship Viewer! A popup will appear when you would have autocompletion suggestions for ship keys, allowing you to view 3D models and to-down images more usefully, or press `Ctrl+Shift+P` and type "Ship Viewer".
+* Want to use a specific face? Try out the new Face Builder! You'll get a popup, or you can press `Ctrl+Shift+P` and type "Face Builder".
 
 
 ### 0.17.2

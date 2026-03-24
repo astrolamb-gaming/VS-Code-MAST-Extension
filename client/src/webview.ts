@@ -4,7 +4,8 @@ import { debug } from './extension';
 import { WebviewPanel } from 'vscode';
 import * as fs from 'fs';
 
-let panel: WebviewPanel | undefined = undefined;
+let shipPanel: WebviewPanel | undefined = undefined;
+let facePanel: WebviewPanel | undefined = undefined;
 
 interface ShipViewerShip {
 	key: string;
@@ -34,6 +35,23 @@ interface ShipViewerEntry {
 	previewUri?: string;
 }
 
+interface FaceViewerFace {
+	raceId: string;
+	fileName: string;
+}
+
+interface FaceViewerPayload {
+	artemisDir: string;
+	faces: FaceViewerFace[];
+	sourceUri?: string;
+}
+
+interface FaceViewerEntry {
+	raceId: string;
+	fileName: string;
+	imageUri: string;
+}
+
 const MODEL_EXTENSIONS = ['.obj'];
 const PREVIEW_SUFFIXES = ['.png', '256.png', '1024.png'];
 
@@ -51,6 +69,15 @@ function findFirstExisting(basePathNoExt: string, suffixes: string[]): { path: s
 		const p = basePathNoExt + suffix;
 		if (fs.existsSync(p)) {
 			return { path: p, suffix };
+		}
+	}
+	return undefined;
+}
+
+function findExistingPath(candidates: string[]): string | undefined {
+	for (const candidate of candidates) {
+		if (fs.existsSync(candidate)) {
+			return candidate;
 		}
 	}
 	return undefined;
@@ -99,6 +126,44 @@ function buildShipEntries(payload: ShipViewerPayload, panel: WebviewPanel): Ship
 	return entries;
 }
 
+function buildFaceEntries(payload: FaceViewerPayload, panel: WebviewPanel): FaceViewerEntry[] {
+	const graphicsDir = path.join(payload.artemisDir, 'data', 'graphics');
+	const facesDir = path.join(graphicsDir, 'faces');
+	const entries: FaceViewerEntry[] = [];
+
+	for (const face of payload.faces || []) {
+		const raceId = (face.raceId || '').trim();
+		const fileName = (face.fileName || '').trim();
+		if (!raceId || !fileName) {
+			continue;
+		}
+
+		const normalizedName = fileName.replace(/\\/g, '/');
+		const hasExtension = /\.[a-z0-9]+$/i.test(normalizedName);
+		const candidates = [
+			path.join(facesDir, hasExtension ? normalizedName : normalizedName + '.png'),
+			path.join(graphicsDir, hasExtension ? normalizedName : normalizedName + '.png'),
+			path.join(payload.artemisDir, hasExtension ? normalizedName : normalizedName + '.png'),
+			path.join(facesDir, normalizedName),
+			path.join(graphicsDir, normalizedName),
+			path.join(payload.artemisDir, normalizedName)
+		];
+		const imagePath = findExistingPath(candidates);
+		if (!imagePath) {
+			continue;
+		}
+
+		entries.push({
+			raceId,
+			fileName,
+			imageUri: panel.webview.asWebviewUri(vscode.Uri.file(imagePath)).toString()
+		});
+	}
+
+	entries.sort((a, b) => a.raceId.localeCompare(b.raceId));
+	return entries;
+}
+
 function buildShipViewerHtml(context: vscode.ExtensionContext, webview: vscode.Webview, entries: ShipViewerEntry[], payload: ShipViewerPayload): string {
 	const nonce = getNonce();
 	const mediaPath = path.join(context.extensionPath, 'client', 'src', 'media', 'ships.html');
@@ -132,6 +197,83 @@ function buildShipViewerHtml(context: vscode.ExtensionContext, webview: vscode.W
 	return template;
 }
 
+function buildFaceViewerHtml(context: vscode.ExtensionContext, webview: vscode.Webview, entries: FaceViewerEntry[], payload: FaceViewerPayload): string {
+	const nonce = getNonce();
+	const mediaPath = path.join(context.extensionPath, 'client', 'src', 'media', 'faces.html');
+	let template = fs.readFileSync(mediaPath, 'utf8');
+	const mediaRoot = vscode.Uri.joinPath(context.extensionUri, 'client', 'src', 'media');
+	const facesCssUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaRoot, 'faces.css')).toString();
+	const facesJsUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaRoot, 'faces.js')).toString();
+	const entriesJson = JSON.stringify(entries).replace(/</g, '\\u003c');
+	const viewerConfigJson = JSON.stringify({
+		sourceUri: payload.sourceUri || ''
+	}).replace(/</g, '\\u003c');
+
+	template = template.split('__CSP_SOURCE__').join(webview.cspSource);
+	template = template.split('__NONCE__').join(nonce);
+	template = template.split('__FACES_CSS_URI__').join(facesCssUri);
+	template = template.split('__FACES_JS_URI__').join(facesJsUri);
+	template = template.split('__FACE_ENTRIES_JSON__').join(entriesJson);
+	template = template.split('__FACE_VIEWER_CONFIG_JSON__').join(viewerConfigJson);
+
+	return template;
+}
+
+async function resolveTargetEditor(targetUri: string): Promise<vscode.TextEditor | undefined> {
+	let editor = vscode.window.activeTextEditor;
+	if (!targetUri) {
+		return editor;
+	}
+
+	try {
+		const parsedUri = vscode.Uri.parse(targetUri);
+		const existingEditor = vscode.window.visibleTextEditors.find(
+			e => e.document.uri.toString() === parsedUri.toString()
+		);
+		if (existingEditor) {
+			return vscode.window.showTextDocument(existingEditor.document, {
+				viewColumn: existingEditor.viewColumn,
+				preview: false,
+				preserveFocus: false
+			});
+		}
+
+		const doc = await vscode.workspace.openTextDocument(parsedUri);
+		editor = await vscode.window.showTextDocument(doc, {
+			viewColumn: vscode.ViewColumn.One,
+			preview: false,
+			preserveFocus: false
+		});
+	} catch (e) {
+		debug('Failed to focus target document: ' + e);
+	}
+
+	return editor;
+}
+
+async function insertTextIntoEditor(targetUri: string, text: string): Promise<boolean> {
+	if (!text) {
+		return false;
+	}
+
+	const editor = await resolveTargetEditor(targetUri);
+	if (!editor) {
+		return false;
+	}
+
+	await editor.edit((editBuilder) => {
+		for (const selection of editor.selections) {
+			if (selection.isEmpty) {
+				editBuilder.insert(selection.active, text);
+			} else {
+				editBuilder.replace(selection, text);
+			}
+		}
+	});
+
+	return true;
+}
+
 export function generateShipWebview(context: vscode.ExtensionContext, payload: ShipViewerPayload) {
 	debug('generateShipWebview called with payload: ' + JSON.stringify(payload ? { artemisDir: payload.artemisDir, shipCount: payload.ships?.length } : 'null'));
 	debug('artemisDir: ' + payload?.artemisDir);
@@ -139,9 +281,7 @@ export function generateShipWebview(context: vscode.ExtensionContext, payload: S
 	const shipsDir = path.join(payload.artemisDir, 'data', 'graphics', 'ships');
 	const mediaRoot = vscode.Uri.joinPath(context.extensionUri, 'client', 'src', 'media');
 	debug('Ships directory: ' + shipsDir);
-	const localRoots: vscode.Uri[] = [
-		mediaRoot
-	];
+	const localRoots: vscode.Uri[] = [mediaRoot];
 	if (payload?.artemisDir) {
 		localRoots.push(vscode.Uri.file(payload.artemisDir));
 	}
@@ -152,12 +292,12 @@ export function generateShipWebview(context: vscode.ExtensionContext, payload: S
 		debug('Ships directory does NOT exist: ' + shipsDir);
 	}
 
-	if (panel) {
+	if (shipPanel) {
 		debug('Panel already exists, revealing');
-		panel.reveal();
+		shipPanel.reveal();
 	} else {
 		debug('Creating new webview panel');
-		panel = vscode.window.createWebviewPanel(
+		shipPanel = vscode.window.createWebviewPanel(
 			'shipViewer',
 			'Ship 3D Viewer',
 			vscode.ViewColumn.Two,
@@ -168,16 +308,16 @@ export function generateShipWebview(context: vscode.ExtensionContext, payload: S
 			}
 		);
 
-		panel.onDidDispose(
+		shipPanel.onDidDispose(
 			() => {
 				debug('Panel disposed');
-				panel = undefined;
+				shipPanel = undefined;
 			},
 			null,
 			context.subscriptions
 		);
 
-		panel.webview.onDidReceiveMessage(async (message) => {
+		shipPanel.webview.onDidReceiveMessage(async (message) => {
 			if (!message || message.command !== 'insertShipKey') {
 				return;
 			}
@@ -188,68 +328,117 @@ export function generateShipWebview(context: vscode.ExtensionContext, payload: S
 				return;
 			}
 
-			let editor = vscode.window.activeTextEditor;
 			const targetUri = typeof message.targetUri === 'string' ? message.targetUri : '';
-			if (targetUri) {
-				try {
-					const parsedUri = vscode.Uri.parse(targetUri);
-					const existingEditor = vscode.window.visibleTextEditors.find(
-						e => e.document.uri.toString() === parsedUri.toString()
-					);
-					if (existingEditor) {
-						editor = await vscode.window.showTextDocument(existingEditor.document, {
-							viewColumn: existingEditor.viewColumn,
-							preview: false,
-							preserveFocus: false
-						});
-					} else {
-						const doc = await vscode.workspace.openTextDocument(parsedUri);
-						editor = await vscode.window.showTextDocument(doc, {
-							viewColumn: vscode.ViewColumn.One,
-							preview: false,
-							preserveFocus: false
-						});
-					}
-				} catch (e) {
-					debug('Failed to focus target document for ship insertion: ' + e);
-				}
-			}
-
-			if (!editor) {
+			const inserted = await insertTextIntoEditor(targetUri, key);
+			if (!inserted) {
 				vscode.window.showWarningMessage('No active editor to insert ship key into.');
 				return;
 			}
 
-			await editor.edit((editBuilder) => {
-				for (const selection of editor.selections) {
-					if (selection.isEmpty) {
-						editBuilder.insert(selection.active, key);
-					} else {
-						editBuilder.replace(selection, key);
-					}
-				}
-			});
 			vscode.window.showInformationMessage('Inserted ship key: ' + key);
-			panel?.dispose();
+			shipPanel?.dispose();
 		});
 
-		context.subscriptions.push(panel);
+		context.subscriptions.push(shipPanel);
 	}
 
-	if (!panel) {
+	if (!shipPanel) {
 		return;
 	}
 
-	panel.title = 'Ship 3D Viewer';
+	shipPanel.title = 'Ship 3D Viewer';
 	debug('Building ship entries...');
-	const entries = buildShipEntries(payload, panel);
+	const entries = buildShipEntries(payload, shipPanel);
 	debug('Built ' + entries.length + ' ship entries');
 	debug('Building webview HTML...');
-	panel.webview.html = buildShipViewerHtml(context, panel.webview, entries, payload);
+	shipPanel.webview.html = buildShipViewerHtml(context, shipPanel.webview, entries, payload);
 	debug('Webview HTML set, webview should now display');
-
 }
 
-export function getWebviewContent(content:string): string {
+export function generateFaceWebview(context: vscode.ExtensionContext, payload: FaceViewerPayload) {
+	const graphicsDir = path.join(payload.artemisDir, 'data', 'graphics');
+	const facesDir = path.join(graphicsDir, 'faces');
+	const targetColumn = vscode.window.activeTextEditor?.viewColumn ?? vscode.ViewColumn.One;
+	const mediaRoot = vscode.Uri.joinPath(context.extensionUri, 'client', 'src', 'media');
+	const localRoots: vscode.Uri[] = [mediaRoot];
+	if (payload?.artemisDir) {
+		localRoots.push(vscode.Uri.file(payload.artemisDir));
+	}
+	if (fs.existsSync(graphicsDir)) {
+		localRoots.push(vscode.Uri.file(graphicsDir));
+	}
+	if (fs.existsSync(facesDir)) {
+		localRoots.push(vscode.Uri.file(facesDir));
+	}
+
+	if (facePanel) {
+		facePanel.reveal(targetColumn);
+	} else {
+		facePanel = vscode.window.createWebviewPanel(
+			'faceBuilder',
+			'Face String Builder',
+			targetColumn,
+			{
+				enableScripts: true,
+				retainContextWhenHidden: true,
+				localResourceRoots: localRoots
+			}
+		);
+
+		facePanel.onDidDispose(
+			() => {
+				facePanel = undefined;
+			},
+			null,
+			context.subscriptions
+		);
+
+		facePanel.webview.onDidReceiveMessage(async (message) => {
+			if (!message) {
+				return;
+			}
+
+			if (message.command === 'insertFaceString') {
+				const value = typeof message.value === 'string' ? message.value : '';
+				if (!value) {
+					vscode.window.showWarningMessage('No face string provided by face builder.');
+					return;
+				}
+
+				const targetUri = typeof message.targetUri === 'string' ? message.targetUri : '';
+				const inserted = await insertTextIntoEditor(targetUri, value);
+				if (!inserted) {
+					vscode.window.showWarningMessage('No active editor to insert face string into.');
+					return;
+				}
+
+				vscode.window.showInformationMessage('Inserted generated face string.');
+				facePanel?.dispose();
+				return;
+			}
+
+			if (message.command === 'copyFaceString') {
+				const value = typeof message.value === 'string' ? message.value : '';
+				if (!value) {
+					return;
+				}
+				await vscode.env.clipboard.writeText(value);
+				vscode.window.showInformationMessage('Copied generated face string to clipboard.');
+			}
+		});
+
+		context.subscriptions.push(facePanel);
+	}
+
+	if (!facePanel) {
+		return;
+	}
+
+	const entries = buildFaceEntries(payload, facePanel);
+	facePanel.title = 'Face String Builder';
+	facePanel.webview.html = buildFaceViewerHtml(context, facePanel.webview, entries, payload);
+}
+
+export function getWebviewContent(content: string): string {
 	return content;
 }
