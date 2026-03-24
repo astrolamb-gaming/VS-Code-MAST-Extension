@@ -17,11 +17,35 @@ import { Function } from './../data/function';
 import { getCurrentLineFromTextDocument, getHoveredSymbol } from './hover';
 import { countMatches } from './../rx';
 import { buildSignalInfoListAsCompletionItems } from './../tokens/signals';
+import { sendToClient } from '../server';
 
 // https://stackoverflow.com/questions/78755236/how-can-i-prioritize-vs-code-extension-code-completion
 
 let currentLine = 0;
 let routeCompletions: CompletionItem[] = [];
+const shipPickerArgs = new Set(['art', 'art_id', 'ship_key', 'ship_data_key']);
+let lastShipPickerTriggerKey = '';
+let lastShipPickerTriggerAt = 0;
+
+function maybeTriggerShipPicker(argName: string, text: TextDocument, line: number): void {
+	if (!shipPickerArgs.has(argName)) {
+		return;
+	}
+
+	const now = Date.now();
+	const key = `${text.uri}:${line}:${argName}`;
+	if (key === lastShipPickerTriggerKey && now - lastShipPickerTriggerAt < 10000) {
+		return;
+	}
+
+	lastShipPickerTriggerKey = key;
+	lastShipPickerTriggerAt = now;
+	sendToClient('openShipPicker', {
+		argumentName: argName,
+		sourceUri: text.uri,
+		line
+	});
+}
 
 export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, text: TextDocument): CompletionItem[] {
 	// return buildFaction("kra","Kralien_Set");
@@ -381,6 +405,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 					}
 				}
 				if (a === "art_id" || a === "art" || a === "ship_key" || a === "ship_data_key") {
+					maybeTriggerShipPicker(a, text, _textDocumentPosition.position.line);
 					// ci = getGlobals().shipData.getCompletionItemsForShips();
 					debug("Ship data key")
 					ci = [];

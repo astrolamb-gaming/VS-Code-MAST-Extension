@@ -173,6 +173,22 @@ export function activate(context: ExtensionContext) {
 		generateShipWebview(context, payload);
 	});
 
+	const openShipPicker = client.onNotification('custom/openShipPicker', async (payload)=>{
+		debug('Received ship picker request for arg: ' + payload?.argumentName);
+		const choice = await window.showInformationMessage(
+			`Open Ship Viewer to select a value for "${payload?.argumentName || 'ship'}"?`,
+			'Open Ship Viewer',
+			'Dismiss'
+		);
+		if (choice === 'Open Ship Viewer') {
+			client.sendNotification('custom/openShipViewer', {
+				mode: 'insert',
+				argumentName: payload?.argumentName || '',
+				sourceUri: payload?.sourceUri || ''
+			});
+		}
+	});
+
 	context.subscriptions.push(vscode.commands.registerCommand('mast.openShipViewer', () => {
 		debug('mast.openShipViewer command triggered');
 		if (!client) {
@@ -189,6 +205,7 @@ export function activate(context: ExtensionContext) {
 	// 	})
 	// );
 	context.subscriptions.push(ships);
+	context.subscriptions.push(openShipPicker);
 
 // #endregion
 

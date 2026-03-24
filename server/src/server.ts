@@ -639,7 +639,7 @@ connection.onNotification("custom/storyJsonResponse",(response)=>{
 	}
 });
 
-connection.onNotification('custom/openShipViewer', async () => {
+connection.onNotification('custom/openShipViewer', async (request: { mode?: string; argumentName?: string; sourceUri?: string } | undefined) => {
 	try {
 		const globals = getArtemisGlobals() || await initializeArtemisGlobals();
 		if (!globals || !globals.artemisDir) {
@@ -661,7 +661,10 @@ connection.onNotification('custom/openShipViewer', async () => {
 
 		sendToClient('ships', {
 			artemisDir: globals.artemisDir,
-			ships
+			ships,
+			mode: request?.mode || 'browse',
+			argumentName: request?.argumentName || '',
+			sourceUri: request?.sourceUri || ''
 		});
 	} catch (e) {
 		debug('Failed to open ship viewer: ' + e);

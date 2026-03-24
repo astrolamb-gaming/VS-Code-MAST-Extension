@@ -22,6 +22,7 @@
                     <div id="title" class="title">No ship selected</div>
                     <div id="subtitle" class="sub">Choose a ship on the left.</div>
                 </div>
+                <button id="insertKeyBtn" class="insert-key-btn" hidden>Insert Selected Ship Key</button>
             </div>
             <div class="viewer-stage">
                 <canvas id="viewport"></canvas>
@@ -33,6 +34,7 @@
 
     <script nonce="__NONCE__" type="importmap">__IMPORT_MAP__</script>
     <script nonce="__NONCE__">window.__SHIP_ENTRIES__ = __SHIP_ENTRIES_JSON__;</script>
+    <script nonce="__NONCE__">window.__SHIP_VIEWER_CONFIG__ = __SHIP_VIEWER_CONFIG_JSON__;</script>
     <script nonce="__NONCE__" type="module" src="__SHIPS_JS_URI__"></script>
 </body>
 </html>

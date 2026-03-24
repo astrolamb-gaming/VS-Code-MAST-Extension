@@ -4,6 +4,9 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
 
 const entries = Array.isArray(window.__SHIP_ENTRIES__) ? window.__SHIP_ENTRIES__ : [];
+const viewerConfig = window.__SHIP_VIEWER_CONFIG__ || { mode: 'browse', argumentName: '' };
+const isInsertMode = viewerConfig.mode === 'insert';
+const vscodeApi = typeof acquireVsCodeApi === 'function' ? acquireVsCodeApi() : undefined;
 
 console.log('Ship viewer module loaded. Entries:', entries.length);
 
@@ -11,14 +14,21 @@ const shipListEl = document.getElementById('shipList');
 const searchEl = document.getElementById('search');
 const titleEl = document.getElementById('title');
 const subtitleEl = document.getElementById('subtitle');
+const insertKeyBtn = document.getElementById('insertKeyBtn');
 const overlayEl = document.getElementById('overlay');
 const previewEl = document.getElementById('preview');
 const previewImgEl = document.getElementById('previewImg');
 const canvas = document.getElementById('viewport');
 
-if (!shipListEl || !searchEl || !titleEl || !subtitleEl || !overlayEl || !previewEl || !previewImgEl || !canvas) {
+if (!shipListEl || !searchEl || !titleEl || !subtitleEl || !overlayEl || !previewEl || !previewImgEl || !canvas || !insertKeyBtn) {
 	console.error('Missing required DOM elements in ships webview.');
 	throw new Error('Ship viewer DOM initialization failed.');
+}
+
+if (isInsertMode) {
+	insertKeyBtn.hidden = false;
+	insertKeyBtn.textContent = 'Insert Selected Ship Key';
+	subtitleEl.textContent = 'Pick a ship, then insert its key into the active MAST file.';
 }
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
@@ -185,6 +195,28 @@ async function loadEntry(entry) {
 	}
 }
 
+function insertSelectedKey() {
+	if (activeIndex < 0 || activeIndex >= entries.length) {
+		setOverlay('Select a ship first to insert its key.', true);
+		return;
+	}
+	const selected = entries[activeIndex];
+	if (!selected || !selected.key) {
+		setOverlay('Selected ship has no key to insert.', true);
+		return;
+	}
+	if (!vscodeApi) {
+		setOverlay('VS Code API unavailable for insertion.', true);
+		return;
+	}
+	vscodeApi.postMessage({
+		command: 'insertShipKey',
+		key: selected.key,
+		targetUri: viewerConfig.sourceUri || ''
+	});
+	setOverlay('Inserted ship key: ' + selected.key);
+}
+
 function renderShipList(filterText) {
 	shipListEl.innerHTML = '';
 	const q = (filterText || '').trim().toLowerCase();
@@ -207,11 +239,17 @@ function renderShipList(filterText) {
 			renderShipList(searchEl.value);
 			await loadEntry(entries[activeIndex]);
 		});
+		btn.addEventListener('dblclick', () => {
+			if (isInsertMode) {
+				insertSelectedKey();
+			}
+		});
 		shipListEl.appendChild(btn);
 	}
 }
 
 searchEl.addEventListener('input', () => renderShipList(searchEl.value));
+insertKeyBtn.addEventListener('click', () => insertSelectedKey());
 
 function animate() {
 	requestAnimationFrame(animate);

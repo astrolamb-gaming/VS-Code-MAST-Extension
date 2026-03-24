@@ -17,6 +17,9 @@ interface ShipViewerShip {
 interface ShipViewerPayload {
 	artemisDir: string;
 	ships: ShipViewerShip[];
+	mode?: string;
+	argumentName?: string;
+	sourceUri?: string;
 }
 
 interface ShipViewerEntry {
@@ -96,7 +99,7 @@ function buildShipEntries(payload: ShipViewerPayload, panel: WebviewPanel): Ship
 	return entries;
 }
 
-function buildShipViewerHtml(context: vscode.ExtensionContext, webview: vscode.Webview, entries: ShipViewerEntry[]): string {
+function buildShipViewerHtml(context: vscode.ExtensionContext, webview: vscode.Webview, entries: ShipViewerEntry[], payload: ShipViewerPayload): string {
 	const nonce = getNonce();
 	const mediaPath = path.join(context.extensionPath, 'client', 'src', 'media', 'ships.html');
 	let template = fs.readFileSync(mediaPath, 'utf8');
@@ -106,6 +109,11 @@ function buildShipViewerHtml(context: vscode.ExtensionContext, webview: vscode.W
 	const shipsJsUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaRoot, 'ships.js')).toString();
 
 	const entriesJson = JSON.stringify(entries).replace(/</g, '\\u003c');
+	const viewerConfigJson = JSON.stringify({
+		mode: payload.mode || 'browse',
+		argumentName: payload.argumentName || '',
+		sourceUri: payload.sourceUri || ''
+	}).replace(/</g, '\\u003c');
 	const importMapJson = JSON.stringify({
 		imports: {
 			three: 'https://unpkg.com/three@0.161.0/build/three.module.js',
@@ -118,6 +126,7 @@ function buildShipViewerHtml(context: vscode.ExtensionContext, webview: vscode.W
 	template = template.split('__SHIPS_CSS_URI__').join(shipsCssUri);
 	template = template.split('__SHIPS_JS_URI__').join(shipsJsUri);
 	template = template.split('__SHIP_ENTRIES_JSON__').join(entriesJson);
+	template = template.split('__SHIP_VIEWER_CONFIG_JSON__').join(viewerConfigJson);
 	template = template.split('__IMPORT_MAP__').join(importMapJson);
 
 	return template;
@@ -167,6 +176,63 @@ export function generateShipWebview(context: vscode.ExtensionContext, payload: S
 			null,
 			context.subscriptions
 		);
+
+		panel.webview.onDidReceiveMessage(async (message) => {
+			if (!message || message.command !== 'insertShipKey') {
+				return;
+			}
+
+			const key = typeof message.key === 'string' ? message.key : '';
+			if (!key) {
+				vscode.window.showWarningMessage('No ship key provided by ship picker.');
+				return;
+			}
+
+			let editor = vscode.window.activeTextEditor;
+			const targetUri = typeof message.targetUri === 'string' ? message.targetUri : '';
+			if (targetUri) {
+				try {
+					const parsedUri = vscode.Uri.parse(targetUri);
+					const existingEditor = vscode.window.visibleTextEditors.find(
+						e => e.document.uri.toString() === parsedUri.toString()
+					);
+					if (existingEditor) {
+						editor = await vscode.window.showTextDocument(existingEditor.document, {
+							viewColumn: existingEditor.viewColumn,
+							preview: false,
+							preserveFocus: false
+						});
+					} else {
+						const doc = await vscode.workspace.openTextDocument(parsedUri);
+						editor = await vscode.window.showTextDocument(doc, {
+							viewColumn: vscode.ViewColumn.One,
+							preview: false,
+							preserveFocus: false
+						});
+					}
+				} catch (e) {
+					debug('Failed to focus target document for ship insertion: ' + e);
+				}
+			}
+
+			if (!editor) {
+				vscode.window.showWarningMessage('No active editor to insert ship key into.');
+				return;
+			}
+
+			await editor.edit((editBuilder) => {
+				for (const selection of editor.selections) {
+					if (selection.isEmpty) {
+						editBuilder.insert(selection.active, key);
+					} else {
+						editBuilder.replace(selection, key);
+					}
+				}
+			});
+			vscode.window.showInformationMessage('Inserted ship key: ' + key);
+			panel?.dispose();
+		});
+
 		context.subscriptions.push(panel);
 	}
 
@@ -179,7 +245,7 @@ export function generateShipWebview(context: vscode.ExtensionContext, payload: S
 	const entries = buildShipEntries(payload, panel);
 	debug('Built ' + entries.length + ' ship entries');
 	debug('Building webview HTML...');
-	panel.webview.html = buildShipViewerHtml(context, panel.webview, entries);
+	panel.webview.html = buildShipViewerHtml(context, panel.webview, entries, payload);
 	debug('Webview HTML set, webview should now display');
 
 }
