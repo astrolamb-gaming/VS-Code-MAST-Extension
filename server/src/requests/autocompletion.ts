@@ -10,7 +10,7 @@ import path = require('path');
 import { fixFileName, getFilesInDir } from './../fileFunctions';
 import { getArtemisGlobals } from '../artemisGlobals';
 import { onSignatureHelp, getCallContextFromTokens } from './signatureHelp';
-import { getWordsAsCompletionItems, getRolesForFile } from './../tokens/roles';
+import { getWordsAsCompletionItems } from './../tokens/roles';
 import { variableModifiers } from './../tokens/variables';
 import { isClassMethod } from './../tokens/tokens';
 import { Function } from './../data/function';
