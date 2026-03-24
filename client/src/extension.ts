@@ -16,7 +16,7 @@ import {
 	ServerOptions,
 	TransportKind
 } from 'vscode-languageclient/node';
-import { generateShipWebview, getWebviewContent } from './webview';
+import { generateShipWebview } from './webview';
 
 let mainProgress: Progress<{
     message?: string;
@@ -168,9 +168,20 @@ export function activate(context: ExtensionContext) {
 	);
 
 // #region <--------------------- Ship and Face Webview Region ------------------------>
-	const ships = client.onNotification('custom/ships', (folder)=>{
-		generateShipWebview(context, folder);
+	const ships = client.onNotification('custom/ships', (payload)=>{
+		debug('Received ships notification payload; artemisDir: ' + payload?.artemisDir + ', ships: ' + (payload?.ships?.length || 0));
+		generateShipWebview(context, payload);
 	});
+
+	context.subscriptions.push(vscode.commands.registerCommand('mast.openShipViewer', () => {
+		debug('mast.openShipViewer command triggered');
+		if (!client) {
+			window.showWarningMessage('MAST client is not ready yet.');
+			return;
+		}
+		debug('Sending custom/openShipViewer notification to server');
+		client.sendNotification('custom/openShipViewer', {});
+	}));
 
 	// context.subscriptions.push(
 	// 	vscode.commands.registerCommand('faces.start', () => {

@@ -256,7 +256,13 @@
 					"description": "If not zero, the cache will expire to clear memory after the specified number (in minutes)."
 				}
 			}
-		}
+		},
+		"commands": [
+			{
+				"command": "mast.openShipViewer",
+				"title": "MAST: Open Ship 3D Viewer"
+			}
+		]
 	},
 	"__metadata": {
 		"size": 150725

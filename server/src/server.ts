@@ -639,6 +639,36 @@ connection.onNotification("custom/storyJsonResponse",(response)=>{
 	}
 });
 
+connection.onNotification('custom/openShipViewer', async () => {
+	try {
+		const globals = getArtemisGlobals() || await initializeArtemisGlobals();
+		if (!globals || !globals.artemisDir) {
+			sendWarning('Artemis directory not found. Cannot open Ship 3D Viewer.');
+			return;
+		}
+
+		if (!globals.shipData || !globals.shipData.ships || globals.shipData.ships.length === 0) {
+			await globals.shipData?.load();
+		}
+
+		const ships = (globals.shipData?.ships || []).map(s => ({
+			key: s.key,
+			name: s.name,
+			side: s.side,
+			artFileRoot: s.artFileRoot,
+			roles: s.roles
+		}));
+
+		sendToClient('ships', {
+			artemisDir: globals.artemisDir,
+			ships
+		});
+	} catch (e) {
+		debug('Failed to open ship viewer: ' + e);
+		sendWarning('Failed to open Ship 3D Viewer. Check MAST output logs for details.');
+	}
+});
+
 // Useful for debugging the client
 connection.onNotification("custom/debug", (response) => {
 	debug(response);

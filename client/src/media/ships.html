@@ -3,10 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ship Viewer</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src __CSP_SOURCE__ https: data: blob:; style-src __CSP_SOURCE__; script-src 'nonce-__NONCE__' __CSP_SOURCE__ https:; connect-src __CSP_SOURCE__ https: data: blob:; worker-src blob:;">
+    <title>Ship 3D Viewer</title>
+    <link rel="stylesheet" href="__SHIPS_CSS_URI__">
 </head>
 <body>
-    <h1>Testing Ships</h1>
-	<div id="ships"></div>
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>Ship 3D Viewer</h1>
+                <input id="search" class="search" placeholder="Filter by key/name/art root" />
+            </div>
+            <div id="shipList" class="ship-list"></div>
+        </aside>
+        <section class="viewer">
+            <div class="viewer-header">
+                <div>
+                    <div id="title" class="title">No ship selected</div>
+                    <div id="subtitle" class="sub">Choose a ship on the left.</div>
+                </div>
+            </div>
+            <div class="viewer-stage">
+                <canvas id="viewport"></canvas>
+                <div id="overlay" class="overlay">Waiting for selection...</div>
+                <div id="preview" class="preview"><img id="previewImg" alt="preview" /></div>
+            </div>
+        </section>
+    </div>
+
+    <script nonce="__NONCE__" type="importmap">__IMPORT_MAP__</script>
+    <script nonce="__NONCE__">window.__SHIP_ENTRIES__ = __SHIP_ENTRIES_JSON__;</script>
+    <script nonce="__NONCE__" type="module" src="__SHIPS_JS_URI__"></script>
 </body>
 </html>

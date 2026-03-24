@@ -36,41 +36,44 @@ export class ShipData {
 		
 	}
 
-	load() {
-		let file = path.join(this.artemisDir,"data","shipData.yaml");
-		if (!fs.existsSync(file)) {
-			file = path.join(this.artemisDir,"data","shipData.json");
-		}
-		this.filePath = file;
-		if (file !== null) {
-			readFile(file).then((contents)=>{
-				this.textDoc = TextDocument.create(this.filePath,path.extname(this.filePath),0,contents)
-				
-				// contents = contents.replace(/\/\/.*?(\n|$)/gm,"");
-				try {
-					this.data = Hjson.parse(contents)["#ship-list"];
+	load(): Promise<void> {
+		return new Promise((resolve) => {
+			let file = path.join(this.artemisDir,"data","shipData.yaml");
+			if (!fs.existsSync(file)) {
+				file = path.join(this.artemisDir,"data","shipData.json");
+			}
+			this.filePath = file;
+			if (file !== null) {
+				readFile(file).then((contents)=>{
+					this.textDoc = TextDocument.create(this.filePath,path.extname(this.filePath),0,contents)
 					
-					this.validJSON = true;
-					this.ships = this.parseShips();
-					// this.roles = this.parseRolesJSON();
-				} catch (e) {
-					const err = e as Error;
-					this.validJSON = false;
-					debug("shipData.json NOT parsed properly");
-					debug(err);
-					this.shipDataJsonError(err);
-					
-				}
-				this.roles = this.parseRolesText(this.textDoc);
-				// debug(this.data);
-				// debug(typeof this.data[0]);
-				this.fileExists = true;
-				
-			});
-		} else {
+					// contents = contents.replace(/\/\/.*?(\n|$)/gm,"");
+					try {
+						this.data = Hjson.parse(contents)["#ship-list"];
+						
+						this.validJSON = true;
+						this.ships = this.parseShips();
+						// this.roles = this.parseRolesJSON();
+					} catch (e) {
+						const err = e as Error;
+						this.validJSON = false;
+						debug("shipData.json NOT parsed properly");
+						debug(err);
+						this.shipDataJsonError(err);
+						
+					}
+					this.roles = this.parseRolesText(this.textDoc);
+					// debug(this.data);
+					// debug(typeof this.data[0]);
+					this.fileExists = true;
+					resolve();
+				});
+			} else {
 			//throw new Error("shipData.json not found!");
 			this.fileExists = false;
+			resolve();
 		}
+		});
 	}
 
 	async shipDataJsonError(err: Error) {
