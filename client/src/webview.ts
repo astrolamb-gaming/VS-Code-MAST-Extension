@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as os from 'os';
 import { debug } from './extension';
 import { WebviewPanel } from 'vscode';
 import * as fs from 'fs';
@@ -63,6 +64,10 @@ const DIFFUSE_SUFFIXES = ['_d', '_diffuse', '_albedo', '_basecolor'];
 const SPECULAR_SUFFIXES = ['_s', '_spec', '_specular'];
 const EMISSIVE_SUFFIXES = ['_e', '_emit', '_emissive', '_illum', '_illumination'];
 const NORMAL_SUFFIXES = ['_n', '_normal', '_norm'];
+
+function getUserCosmosImagesDir(): string {
+	return path.join(os.homedir(), 'Documents', 'Cosmos', 'cosmosImages');
+}
 
 function getNonce(): string {
 	const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -155,6 +160,7 @@ function buildShipEntries(payload: ShipViewerPayload, panel: WebviewPanel): Ship
 	debug('buildShipEntries called, artemisDir: ' + payload.artemisDir);
 	debug('Number of ships in payload: ' + (payload.ships?.length || 0));
 	const shipsDir = path.join(payload.artemisDir, 'data', 'graphics', 'ships');
+	const cosmosImagesDir = getUserCosmosImagesDir();
 	const entries: ShipViewerEntry[] = [];
 
 	for (const ship of payload.ships || []) {
@@ -206,7 +212,8 @@ function buildShipEntries(payload: ShipViewerPayload, panel: WebviewPanel): Ship
 				}
 			}
 
-			const previewHit = findFirstExisting(path.join(shipsDir, art), PREVIEW_SUFFIXES);
+			const previewHit = findFirstExisting(path.join(shipsDir, art), PREVIEW_SUFFIXES)
+				?? findFirstExisting(path.join(cosmosImagesDir, art), PREVIEW_SUFFIXES);
 			if (previewHit) {
 				entry.previewUri = panel.webview.asWebviewUri(vscode.Uri.file(previewHit.path)).toString();
 			}
@@ -423,10 +430,12 @@ export function generateShipWebview(context: vscode.ExtensionContext, payload: S
 	debug('artemisDir: ' + payload?.artemisDir);
 	debug('Number of ships: ' + (payload?.ships?.length || 0));
 	const shipsDir = path.join(payload.artemisDir, 'data', 'graphics', 'ships');
+	const cosmosImagesDir = getUserCosmosImagesDir();
 	const targetColumn = vscode.window.activeTextEditor?.viewColumn ?? vscode.ViewColumn.One;
 	const mediaRoot = vscode.Uri.joinPath(context.extensionUri, 'client', 'src', 'media');
 	debug('Ships directory: ' + shipsDir);
 	const localRoots: vscode.Uri[] = [mediaRoot];
+	localRoots.push(vscode.Uri.file(cosmosImagesDir));
 	if (payload?.artemisDir) {
 		localRoots.push(vscode.Uri.file(payload.artemisDir));
 	}
@@ -463,7 +472,37 @@ export function generateShipWebview(context: vscode.ExtensionContext, payload: S
 		);
 
 		shipPanel.webview.onDidReceiveMessage(async (message) => {
-			if (!message || message.command !== 'insertShipKey') {
+			if (!message) {
+				return;
+			}
+
+			if (message.command === 'saveShipPreview') {
+				const artFileRoot = typeof message.artFileRoot === 'string' ? message.artFileRoot.trim() : '';
+				const dataUrl = typeof message.dataUrl === 'string' ? message.dataUrl : '';
+				if (!artFileRoot || !dataUrl.startsWith('data:image/png;base64,')) {
+					return;
+				}
+
+				try {
+					fs.mkdirSync(cosmosImagesDir, { recursive: true });
+					const outputPath = path.join(cosmosImagesDir, artFileRoot + '.png');
+					const base64 = dataUrl.slice('data:image/png;base64,'.length);
+					fs.writeFileSync(outputPath, Buffer.from(base64, 'base64'));
+					const previewUri = shipPanel?.webview.asWebviewUri(vscode.Uri.file(outputPath)).toString();
+					if (previewUri) {
+						shipPanel?.webview.postMessage({
+							command: 'shipPreviewSaved',
+							artFileRoot,
+							previewUri
+						});
+					}
+				} catch (err) {
+					debug('Failed to save ship preview: ' + String(err));
+				}
+				return;
+			}
+
+			if (message.command !== 'insertShipKey') {
 				return;
 			}
 

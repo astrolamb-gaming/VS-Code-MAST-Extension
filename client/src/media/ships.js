@@ -27,12 +27,11 @@ const normalRotateBtn = document.getElementById('normalRotateBtn');
 const mapDebugBtn = document.getElementById('mapDebugBtn');
 const overlayEl = document.getElementById('overlay');
 const mapDebugPanelEl = document.getElementById('mapDebugPanel');
-const previewEl = document.getElementById('preview');
-const previewImgEl = document.getElementById('previewImg');
 const canvas = document.getElementById('viewport');
 const materialSettingButtons = Array.from(document.querySelectorAll('.material-setting-btn'));
+const pendingPreviewGeneration = new Set();
 
-if (!shipListEl || !searchEl || !titleEl || !subtitleEl || !overlayEl || !mapDebugPanelEl || !previewEl || !previewImgEl || !canvas || !insertKeyBtn || !copyKeyBtn || !mapDebugBtn || !diffuseToggleBtn || !diffuseRotateBtn || !specularToggleBtn || !specularRotateBtn || !emissiveToggleBtn || !emissiveRotateBtn || !normalToggleBtn || !normalRotateBtn) {
+if (!shipListEl || !searchEl || !titleEl || !subtitleEl || !overlayEl || !mapDebugPanelEl || !canvas || !insertKeyBtn || !copyKeyBtn || !mapDebugBtn || !diffuseToggleBtn || !diffuseRotateBtn || !specularToggleBtn || !specularRotateBtn || !emissiveToggleBtn || !emissiveRotateBtn || !normalToggleBtn || !normalRotateBtn) {
 	console.error('Missing required DOM elements in ships webview.');
 	throw new Error('Ship viewer DOM initialization failed.');
 }
@@ -154,6 +153,15 @@ function setMapDebugVisible(isVisible) {
 		btn.hidden = !mapDebugVisible;
 		btn.disabled = !mapDebugVisible;
 	}
+}
+
+function escapeHtml(text) {
+	return String(text)
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
 }
 
 function normalizeQuarterTurns(turns) {
@@ -500,14 +508,145 @@ function clearModel() {
 	activeObject = null;
 }
 
-function showPreview(uri) {
-	if (!uri) {
-		previewEl.style.display = 'none';
-		previewImgEl.removeAttribute('src');
+function buildButtonPreviewMarkup(entry) {
+	if (!entry.previewUri) {
+		return '<div class="ship-thumb">3D</div>';
+	}
+	return '<div class="ship-thumb"><img src="' + escapeHtml(entry.previewUri) + '" alt="' + escapeHtml(entry.key || entry.artFileRoot || 'ship') + '" /></div>';
+}
+
+function generatePreviewDataUrl() {
+	const targetSize = 128;
+	const sourceWidth = canvas.width || canvas.clientWidth || targetSize;
+	const sourceHeight = canvas.height || canvas.clientHeight || targetSize;
+	const scale = Math.min(targetSize / sourceWidth, targetSize / sourceHeight);
+	const drawWidth = Math.max(1, Math.round(sourceWidth * scale));
+	const drawHeight = Math.max(1, Math.round(sourceHeight * scale));
+	const offsetX = Math.floor((targetSize - drawWidth) / 2);
+	const offsetY = Math.floor((targetSize - drawHeight) / 2);
+
+	const output = document.createElement('canvas');
+	output.width = targetSize;
+	output.height = targetSize;
+	const ctx = output.getContext('2d');
+	if (!ctx) {
+		return '';
+	}
+
+	ctx.clearRect(0, 0, targetSize, targetSize);
+	ctx.drawImage(canvas, offsetX, offsetY, drawWidth, drawHeight);
+	return output.toDataURL('image/png');
+}
+
+function renderTopDownPreviewDataUrl(obj) {
+	if (!obj) {
+		return generatePreviewDataUrl();
+	}
+
+	const savedPosition = camera.position.clone();
+	const savedQuaternion = camera.quaternion.clone();
+	const savedUp = camera.up.clone();
+	const savedNear = camera.near;
+	const savedFar = camera.far;
+	const savedTarget = controls.target.clone();
+	const materialSwaps = [];
+
+	try {
+		resize();
+
+		const box = new THREE.Box3().setFromObject(obj);
+		const size = new THREE.Vector3();
+		const center = new THREE.Vector3();
+		box.getSize(size);
+		box.getCenter(center);
+
+		const halfWidth = Math.max(0.01, size.x / 2);
+		const halfDepth = Math.max(0.01, size.z / 2);
+		const vFov = THREE.MathUtils.degToRad(camera.fov);
+		const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
+		const fitDepthDist = halfDepth / Math.tan(vFov / 2);
+		const fitWidthDist = halfWidth / Math.tan(hFov / 2);
+		const distance = Math.max(fitDepthDist, fitWidthDist, size.y) * 1.2;
+
+		obj.traverse((node) => {
+			if (!node.isMesh || !node.material) {
+				return;
+			}
+
+			const originalMaterials = Array.isArray(node.material) ? node.material : [node.material];
+			const previewMaterials = originalMaterials.map((material) => {
+				const color = material && material.color && typeof material.color.clone === 'function'
+					? material.color.clone()
+					: new THREE.Color(0xdbe8f5);
+				return new THREE.MeshBasicMaterial({
+					color,
+					transparent: false,
+					opacity: 1,
+					side: THREE.DoubleSide
+				});
+			});
+
+			materialSwaps.push({
+				node,
+				original: node.material,
+				preview: previewMaterials
+			});
+
+			node.material = Array.isArray(node.material) ? previewMaterials : previewMaterials[0];
+		});
+
+		controls.target.copy(center);
+		camera.up.set(0, 0, -1);
+		camera.position.set(center.x, center.y + distance, center.z);
+		camera.near = Math.max(0.01, distance / 500);
+		camera.far = Math.max(5000, distance * 20);
+		camera.lookAt(center);
+		camera.updateProjectionMatrix();
+		controls.update();
+		renderer.render(scene, camera);
+
+		return generatePreviewDataUrl();
+	} finally {
+		for (const swap of materialSwaps) {
+			swap.node.material = swap.original;
+			for (const material of swap.preview) {
+				material.dispose();
+			}
+		}
+
+		camera.position.copy(savedPosition);
+		camera.quaternion.copy(savedQuaternion);
+		camera.up.copy(savedUp);
+		camera.near = savedNear;
+		camera.far = savedFar;
+		controls.target.copy(savedTarget);
+		camera.updateProjectionMatrix();
+		controls.update();
+		renderer.render(scene, camera);
+	}
+}
+
+function maybeGeneratePreview(entry) {
+	if (!entry || entry.previewUri || !entry.artFileRoot || !vscodeApi || pendingPreviewGeneration.has(entry.artFileRoot)) {
 		return;
 	}
-	previewEl.style.display = 'block';
-	previewImgEl.src = uri;
+
+	pendingPreviewGeneration.add(entry.artFileRoot);
+	try {
+		const dataUrl = renderTopDownPreviewDataUrl(activeObject);
+		if (!dataUrl) {
+			pendingPreviewGeneration.delete(entry.artFileRoot);
+			return;
+		}
+		vscodeApi.postMessage({
+			command: 'saveShipPreview',
+			artFileRoot: entry.artFileRoot,
+			dataUrl
+		});
+	} catch (err) {
+		pendingPreviewGeneration.delete(entry.artFileRoot);
+		console.error('Failed to generate ship preview:', err);
+	}
 }
 
 function getResourceBase(uri) {
@@ -649,7 +788,6 @@ async function loadEntry(entry) {
 	clearModel();
 	titleEl.textContent = entry.key || '(no key)';
 	subtitleEl.textContent = (entry.name || 'Unnamed') + ' | art root: ' + (entry.artFileRoot || '(none)');
-	showPreview(entry.previewUri || '');
 	console.log('Loading ship entry:', entry.key, entry.modelFormat, entry.modelUri, entry.mtlUri);
 
 	if (!entry.modelUri) {
@@ -721,6 +859,8 @@ async function loadEntry(entry) {
 
 		scene.add(activeObject);
 		frameObject(activeObject);
+		renderer.render(scene, camera);
+		maybeGeneratePreview(entry);
 		setOverlay('Loaded: ' + entry.artFileRoot + '.' + entry.modelFormat);
 		console.log('Model loaded successfully:', entry.modelUri);
 	} catch (err) {
@@ -801,7 +941,7 @@ function renderShipList(filterText) {
 	for (const entry of filtered) {
 		const btn = document.createElement('button');
 		btn.className = 'ship-btn' + (entry._index === activeIndex ? ' active' : '');
-		btn.innerHTML = '<div class="ship-key">' + (entry.key || '(no key)') + '</div><div class="ship-meta">' + (entry.name || 'Unnamed') + ' | ' + (entry.modelFormat || 'no model') + '</div>';
+		btn.innerHTML = buildButtonPreviewMarkup(entry) + '<div class="ship-btn-body"><div class="ship-key">' + escapeHtml(entry.key || '(no key)') + '</div><div class="ship-meta">' + escapeHtml(entry.name || 'Unnamed') + ' | ' + escapeHtml(entry.modelFormat || 'no model') + '</div></div>';
 		btn.addEventListener('click', async () => {
 			activeIndex = entry._index;
 			renderShipList(searchEl.value);
@@ -828,6 +968,27 @@ diffuseRotateBtn.addEventListener('click', () => rotateChannel('diffuse'));
 specularRotateBtn.addEventListener('click', () => rotateChannel('specular'));
 emissiveRotateBtn.addEventListener('click', () => rotateChannel('emissive'));
 normalRotateBtn.addEventListener('click', () => rotateChannel('normal'));
+
+window.addEventListener('message', (event) => {
+	const message = event.data;
+	if (!message || message.command !== 'shipPreviewSaved') {
+		return;
+	}
+
+	const artFileRoot = typeof message.artFileRoot === 'string' ? message.artFileRoot : '';
+	const previewUri = typeof message.previewUri === 'string' ? message.previewUri : '';
+	if (!artFileRoot || !previewUri) {
+		return;
+	}
+
+	pendingPreviewGeneration.delete(artFileRoot);
+	const entry = entries.find((item) => item.artFileRoot === artFileRoot);
+	if (!entry) {
+		return;
+	}
+	entry.previewUri = previewUri;
+	renderShipList(searchEl.value);
+});
 
 function animate() {
 	requestAnimationFrame(animate);

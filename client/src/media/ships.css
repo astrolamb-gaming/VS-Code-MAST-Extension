@@ -81,6 +81,37 @@ body {
 	padding: 8px;
 	border-radius: 6px;
 	cursor: pointer;
+	display: grid;
+	grid-template-columns: 52px minmax(0, 1fr);
+	gap: 8px;
+	align-items: center;
+}
+
+.ship-thumb {
+	width: 52px;
+	height: 52px;
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	background: #0b141f;
+	overflow: hidden;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--muted);
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.6px;
+}
+
+.ship-thumb img {
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+	background: #08101a;
+}
+
+.ship-btn-body {
+	min-width: 0;
 }
 
 .ship-btn.active {
@@ -267,26 +298,6 @@ canvas {
 	color: var(--text);
 	white-space: pre-wrap;
 	z-index: 5;
-}
-
-.preview {
-	position: absolute;
-	right: 12px;
-	top: 12px;
-	width: 128px;
-	height: 128px;
-	border: 1px solid var(--border);
-	background: rgba(0, 0, 0, 0.25);
-	border-radius: 8px;
-	overflow: hidden;
-	display: none;
-}
-
-.preview img {
-	width: 100%;
-	height: 100%;
-	object-fit: contain;
-	background: #08101a;
 }
 
 .warning {
