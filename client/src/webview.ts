@@ -329,6 +329,7 @@ export function generateShipWebview(context: vscode.ExtensionContext, payload: S
 	debug('artemisDir: ' + payload?.artemisDir);
 	debug('Number of ships: ' + (payload?.ships?.length || 0));
 	const shipsDir = path.join(payload.artemisDir, 'data', 'graphics', 'ships');
+	const targetColumn = vscode.window.activeTextEditor?.viewColumn ?? vscode.ViewColumn.One;
 	const mediaRoot = vscode.Uri.joinPath(context.extensionUri, 'client', 'src', 'media');
 	debug('Ships directory: ' + shipsDir);
 	const localRoots: vscode.Uri[] = [mediaRoot];
@@ -344,13 +345,13 @@ export function generateShipWebview(context: vscode.ExtensionContext, payload: S
 
 	if (shipPanel) {
 		debug('Panel already exists, revealing');
-		shipPanel.reveal();
+		shipPanel.reveal(targetColumn);
 	} else {
 		debug('Creating new webview panel');
 		shipPanel = vscode.window.createWebviewPanel(
 			'shipViewer',
 			'Ship 3D Viewer',
-			vscode.ViewColumn.Two,
+			targetColumn,
 			{
 				enableScripts: true,
 				retainContextWhenHidden: true,
