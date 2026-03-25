@@ -370,8 +370,9 @@ export class Function implements IFunction {
 		// Simple file link (works reliably)
 		// const fileLink = `[Open source](${uri})`;
 
-		// Attempt line/column deep link (client-dependent)
-		const locLink = `[Open Source](${uri}#L${line},${col})`;
+		// Line deep link (VS Code supports #L<line>; columns are not supported)
+		const safeUri = encodeURI(uri);
+		const locLink = `[Open Source](${safeUri}#L${line})`;
 
 
 		const ret: MarkupContent = {
