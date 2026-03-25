@@ -265,6 +265,10 @@
 			{
 				"command": "mast.openFaceBuilder",
 				"title": "MAST: Open Face String Builder"
+			},
+			{
+				"command": "mast.runSbsLib",
+				"title": "MAST: Build sbslib/mastlib"
 			}
 		]
 	},

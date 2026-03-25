@@ -218,6 +218,7 @@ export class MissionCache {
 			this._loadedResolve();
 			this._loadedResolve = null;
 		}
+		showProgressBar(false);
 	}
 
 	/**

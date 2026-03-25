@@ -4,7 +4,7 @@
  * ------------------------------------------------------------------------------------------ */
 
 import * as path from 'path';
-import { workspace, ExtensionContext , window as Window, window, OutputChannel, LogOutputChannel, Progress, ThemeColor } from 'vscode';
+import { workspace, ExtensionContext , window, OutputChannel, LogOutputChannel, Progress, ThemeColor } from 'vscode';
 import * as vscode from 'vscode';
 import fs = require("fs");
 
@@ -35,20 +35,20 @@ debug("Output channel created");
 
 // #region <--------------------- child_process checking... ---------------------->
 // I Don't remember why this is here, and doesn't seem to do anything important anymore?????
-(function() {
-	debug("Startings")
-    var childProcess = require("child_process");
-    var oldSpawn = childProcess.spawn;
-    function mySpawn() {
-		if (!arguments[0].includes("git.exe")) {
-			console.log('spawn called');
-			console.log(arguments);
-		}
-        var result = oldSpawn.apply(this, arguments);
-        return result;
-    }
-    childProcess.spawn = mySpawn;
-})();
+// (function() {
+// 	debug("Startings")
+//     var childProcess = require("child_process");
+//     var oldSpawn = childProcess.spawn;
+//     function mySpawn() {
+// 		if (!arguments[0].includes("git.exe")) {
+// 			console.log('spawn called');
+// 			console.log(arguments);
+// 		}
+//         var result = oldSpawn.apply(this, arguments);
+//         return result;
+//     }
+//     childProcess.spawn = mySpawn;
+// })();
 // #endregion
 
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -80,17 +80,6 @@ export function activate(context: ExtensionContext) {
 		synchronize: {
 			// Notify the server about file changes to '.clientrc files contained in the workspace
 			fileEvents: [workspace.createFileSystemWatcher('**/.mast'),workspace.createFileSystemWatcher('**/.json')]
-		},
-		middleware: {
-			executeCommand: async (command, args, next) => {
-				const selected = await Window.showQuickPick(['Visual Studio', 'Visual Studio Code']);
-				if (selected === undefined) {
-					return next(command, args);
-				}
-				args = args.slice(0);
-				args.push(selected);
-				return next(command, args);
-			}
 		}
 	};
 
@@ -228,6 +217,41 @@ export function activate(context: ExtensionContext) {
 		client.sendNotification('custom/openFaceBuilder', {
 			sourceUri: vscode.window.activeTextEditor?.document.uri.toString() || ''
 		});
+	}));
+
+	context.subscriptions.push(vscode.commands.registerCommand('mast.runSbsLib', async () => {
+		debug('mast.runSbsLib command triggered');
+
+		const activeDocUri = vscode.window.activeTextEditor?.document.uri;
+		let folder = activeDocUri ? vscode.workspace.getWorkspaceFolder(activeDocUri) : undefined;
+		if (!folder) {
+			folder = vscode.workspace.workspaceFolders?.[0];
+		}
+
+		if (!folder) {
+			window.showWarningMessage('No workspace folder is open. Open a mission folder to run sbs lib.');
+			return;
+		}
+
+		const missionFolderPath = folder.uri.fsPath;
+		const missionsFolderPath = path.dirname(missionFolderPath);
+		if (path.basename(missionsFolderPath).toLowerCase() !== 'missions') {
+			window.showWarningMessage(`Expected mission folder parent to be "missions", but found "${path.basename(missionsFolderPath)}".`);
+			return;
+		}
+
+		const missionFolderName = folder.name;
+		const missionFolderArg = JSON.stringify(missionFolderName);
+		const command = `sbs lib `+ missionFolderName;
+
+		const terminal = vscode.window.createTerminal({
+			name: 'MAST: Build sbslib/mastlib',
+			cwd: missionsFolderPath
+		});
+		terminal.show(true);
+		terminal.sendText(command, true);
+
+		window.showInformationMessage(`Running: ${command}`);
 	}));
 
 	// context.subscriptions.push(
