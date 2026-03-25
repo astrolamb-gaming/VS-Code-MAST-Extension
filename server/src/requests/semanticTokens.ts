@@ -766,7 +766,7 @@ export class MastStateMachineLexer {
 
 	// Scan an inline route label reference (//foo/bar) and emit it only if it
 	// is known in the current label set. If unknown, do not consume input.
-	private scanInlineRouteReference(): TokenInfo | null {
+	private scanInlineRouteReference(requireKnown = true): TokenInfo | null {
 		if (this.text[this.pos] !== '/' || this.peek() !== '/') {
 			return null;
 		}
@@ -788,7 +788,7 @@ export class MastStateMachineLexer {
 		}
 
 		const candidate = this.text.substring(startPos, this.pos);
-		if (!this.isKnownLabelReferenceName(candidate)) {
+		if (requireKnown && !this.isKnownLabelReferenceName(candidate)) {
 			// Unknown route; revert so normal tokenization can handle it.
 			this.pos = startPos;
 			this.line = startLine;
@@ -1878,7 +1878,9 @@ export class MastStateMachineLexer {
 		}
 		let lbl = null;
 		if (this.text[this.pos] === "/" && this.peek() === "/") {
-			lbl = this.scanRouteLabel();
+			// We are already in a button context after the label string, so the
+			// inline // is always a route reference — skip the known-label guard.
+			lbl = this.scanInlineRouteReference(false);
 		} else {
 			lbl = this.scanJumpTarget();
 		}
