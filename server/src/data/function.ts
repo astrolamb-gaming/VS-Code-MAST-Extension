@@ -93,10 +93,11 @@ export class Function implements IFunction {
 			this.parameters = preParsed.parameters || [];
 			this.rawParams = preParsed.rawParams || '';
 			this.returnType = preParsed.returnType || '';
-			this.documentation = preParsed.documentation || '';
-			this.documentation = this.parseDocString(this.documentation);
+			const rawDocstring = preParsed.documentation || '';
+			this.documentation = this.parseDocString(rawDocstring);
 			this.functionType = preParsed.functionType || 'function';
 			this.location = preParsed.location || this.location;
+			this.applyDocstringTypes(rawDocstring);
 			
 			// Handle constructor naming
 			if (this.name === "__init__" || this.functionType === "constructor") {
@@ -133,7 +134,8 @@ export class Function implements IFunction {
 		this.rawParams = params;
 
 		let comments = getRegExMatch(raw, comment).replace("\"\"\"","").replace("\"\"\"","").trim();
-		this.documentation = this.parseDocString(comments);
+		const rawDocstring = comments;
+		this.documentation = this.parseDocString(rawDocstring);
 
 		this.returnType = getRegExMatch(raw, returnValue).replace(/(:|->)/g, "").trim();
 		if (this.returnType === "") {
@@ -209,6 +211,7 @@ export class Function implements IFunction {
 		// }
 		// TODO: Only use these when really needed
 		this.parameters = this.buildParams(params);
+		this.applyDocstringTypes(rawDocstring);
 		// this.completionItem = this.buildCompletionItem();
 		// this.signatureInformation = this.buildSignatureInformation();
 		//debug(this);
@@ -270,6 +273,103 @@ export class Function implements IFunction {
 		let ci_details: string = "(" + this.functionType + ") " + classRef + this.name + paramList + retType;
 		ci_details = "```javascript\n" + ci_details + "\n```   \n";
 		return ci_details;
+	}
+
+	private normalizeParamName(name: string): string {
+		return (name || '').replace(/^\*+/, '').trim();
+	}
+
+	private isLikelyType(typeName: string): boolean {
+		const cleaned = (typeName || '').trim();
+		if (!cleaned) return false;
+		const normalized = cleaned.replace(/\s+/g, ' ');
+		if (!/^[A-Za-z_][\w\[\]\.,| ]*$/.test(normalized)) {
+			return false;
+		}
+		if (normalized.length > 32 && !/[\[\]|,]/.test(normalized)) {
+			return false;
+		}
+		return true;
+	}
+
+	private extractDocstringParamInfo(docstring: string): Map<string, { type?: string; doc?: string }> {
+		const info = new Map<string, { type?: string; doc?: string }>();
+		const lines = (docstring || '').split(/\r?\n/);
+		let inParams = false;
+		const startSection = /^(args|arguments|parameters|params)\s*:?$/i;
+		const endSection = /^(returns?|raises?|yield|yields|notes?|examples?|example|see also)\s*:?$/i;
+
+		for (const line of lines) {
+			const trimmed = line.trim();
+			if (!trimmed) {
+				continue;
+			}
+			if (startSection.test(trimmed)) {
+				inParams = true;
+				continue;
+			}
+			if (endSection.test(trimmed)) {
+				inParams = false;
+				continue;
+			}
+
+			const candidate = line.replace(/^[\s*\-•]+/, '');
+			let match = candidate.match(/^([A-Za-z_]\w*)\s*\(([^)]+)\)\s*:\s*(.*)$/);
+			if (!match) {
+				match = candidate.match(/^([A-Za-z_]\w*)\s*:\s*([^\-\n]+?)(?:\s*-\s*(.*))?$/);
+			}
+			if (!match) {
+				continue;
+			}
+			if (!inParams && !/\(/.test(candidate) && !/\w+\s*:\s*\w+/.test(candidate)) {
+				continue;
+			}
+
+			const name = this.normalizeParamName(match[1]);
+			let typeVal: string | undefined;
+			let docVal: string | undefined;
+			if (match[0].includes('(')) {
+				typeVal = match[2].trim();
+				docVal = (match[3] || '').trim();
+			} else {
+				const candidateType = (match[2] || '').trim();
+				if (this.isLikelyType(candidateType)) {
+					typeVal = candidateType;
+					docVal = (match[3] || '').trim();
+				} else {
+					docVal = [candidateType, match[3]].filter(Boolean).join(' - ').trim();
+				}
+			}
+
+			if (name) {
+				info.set(name, { type: typeVal, doc: docVal });
+			}
+		}
+
+		return info;
+	}
+
+	private applyDocstringTypes(docstring: string): void {
+		if (!docstring || this.parameters.length === 0) {
+			return;
+		}
+		const info = this.extractDocstringParamInfo(docstring);
+		if (info.size === 0) {
+			return;
+		}
+		for (const param of this.parameters) {
+			const name = this.normalizeParamName(param.name);
+			const entry = info.get(name);
+			if (!entry) {
+				continue;
+			}
+			if ((!param.type || param.type === 'any?') && entry.type) {
+				param.type = entry.type;
+			}
+			if ((!param.documentation || (typeof param.documentation === 'string' && param.documentation.trim() === '')) && entry.doc) {
+				param.documentation = entry.doc;
+			}
+		}
 	}
 
 
@@ -479,8 +579,15 @@ export class Function implements IFunction {
 		for (const i in this.parameters) {
 			const pi: ParameterInformation = {
 				label: this.parameters[i].name,
-				documentation: this.parameters[i].name + "\nType: " + this.parameters[i].type
+				documentation: ''
 			}
+			const paramType = this.parameters[i].type || 'any?';
+			const paramDoc = this.parameters[i].documentation;
+			let docText = `Type: ${paramType}`;
+			if (paramDoc && typeof paramDoc === 'string') {
+				docText += `\n${paramDoc}`;
+			}
+			pi.documentation = docText;
 			if (pi.label === "style") {
 				pi.documentation = pi.documentation + "\n\nStyle information:";
 				for (const s of getArtemisGlobals().widget_stylestrings) {

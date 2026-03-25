@@ -10,7 +10,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * WIP: Get mast complier errors from the compiler itself, so the game doesn't have to be running to check for compiler errors.
 * TODO: Add certain parts of the MAST file functionality to apply to Python files as well (completions, go to definition, etc.)
 
-### 0.18.0 - WIP
+### 0.18.0
 
 * Massive rewrite of file parsing logic, which allows for:
 	* Significant performance improvements
@@ -19,10 +19,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * Add capability to assign descriptions for label variables.
 * `default` variables are now included in label metadata suggestions.
 * Any variable in a label that is not defined in the label is included in label metadata suggestions.
-* Better hover and autocompletion logic.
+* Better definition, references, rename, hover and autocompletion logic.
 * Better caching (more performant).
 * Want a better way to figure out which ship key to use when spawning a ship? Try out the new Ship Viewer! A popup will appear when you would have autocompletion suggestions for ship keys, allowing you to view 3D models and to-down images more usefully, or press `Ctrl+Shift+P` and type "Ship Viewer".
-* Want to use a specific face? Try out the new Face Builder! You'll get a popup, or you can press `Ctrl+Shift+P` and type "Face Builder".
+* Want to use a specific face? Try out the new Face Builder! You'll get a popup under applicable circumstances, or you can press `Ctrl+Shift+P` and type "Face Builder".
 
 
 ### 0.17.2
