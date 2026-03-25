@@ -54,7 +54,7 @@ set_data_set_value(id, "example_data_set", val)
 #@role example_role: The role's descrption
 role("example_role")
 ```
-* Documentation syntax for label-scoped variables (especially useful for label data!)
+* Documentation syntax for label-scoped variables (especially useful for label data!). Both of these are acceptable.
 ```python
 #@arg: The message to present 
 default message = "Whoo good workout."
