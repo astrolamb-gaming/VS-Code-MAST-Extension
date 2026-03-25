@@ -11,7 +11,7 @@ MAST references:
 
 ## Features (Non-exhaustive!)
 
-Includes:
+### Includes:
 * Basic formatting and coloring, based on Python
 * Error checking
 	* Checks if labels are defined, and defined properly
@@ -36,6 +36,31 @@ Includes:
 * In mission folders, checks for `__init__.mast` in the folder you're working in. If it doesn't exist, will promt with an option to auto-generate the file, with all .mast and .py files included automatically.
 * Autocompletion of filenames for `__init__.mast`
 * Checks for root artemis directory existence - most functionality requires the opened folder to be in the artemis mission directory
+
+### Fun special features:
+* Two custom GUIs. Both of these offer a prompt under applicable circumstances to open them.
+	* Face Builder: Build a specific face string with a handy GUI. Press `Ctrl+Shift+P` and type "Face Builder".
+	* Ship Viewer: Find and view ships specified in `shipData.yaml`. Press `Ctrl+Shift+P` and type "Ship Viewer".
+* Documentation syntax for inventory, blob, link, and role keys. The documentation string will be displayed in autocompletion (hover is TODO).
+```python
+#@link LinkName: The link to describe
+link(x, "LinkName", y)
+#@inventory side_name: The name of the side
+set_inventory_value(id, "side_name", name)
+#@blob example_blob: The blob key description
+blob.set("example_blob", val)
+#@data_set example_data_set: The data set key description (Same as blob key!)
+set_data_set_value(id, "example_data_set", val)
+#@role example_role: The role's descrption
+role("example_role")
+```
+* Documentation syntax for label-scoped variables (especially useful for label data!)
+```python
+#@arg: The message to present 
+default message = "Whoo good workout."
+#@arg time: The duration  the boost lasts
+default time = random.randint(10,16)
+```
 
 ## Requirements
 

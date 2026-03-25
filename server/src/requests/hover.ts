@@ -6,7 +6,7 @@ import { CRange, getTokenContextAtPosition, getTokenTypeAtOffset, getTokenTypeAt
 import { getCache } from '../cache';
 import { getArtemisGlobals } from '../artemisGlobals';
 import { getClassOfMethod } from '../tokens/tokens';
-import { variableModifiers } from '../tokens/variables';
+import { getArgDocForLabel, variableModifiers } from '../tokens/variables';
 import { buildLabelDocs, getMainLabelAtPos } from '../tokens/labels';
 import { Function } from '../data/function';
 
@@ -125,6 +125,13 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 			}
 
 			return { contents: varHover };
+		}
+
+		if (mainLabel) {
+			const argDoc = getArgDocForLabel(text, tokens || [], mainLabel.range.start.line, symbol);
+			if (argDoc && argDoc.trim() !== '') {
+				return { contents: `Description:\n${argDoc.trim()}` };
+			}
 		}
 		// Don't want to do this because python (and mast) can take function names as arguments.
 		// return undefined;

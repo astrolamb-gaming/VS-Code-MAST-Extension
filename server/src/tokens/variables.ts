@@ -69,12 +69,15 @@ function isDefaultDefinitionPrefix(prefix: string): boolean {
 }
 
 function parseArgDirectiveFromComment(commentText: string): { name?: string; description: string } | null {
-	const trimmed = commentText.trimStart();
-	if (!trimmed.startsWith('#@arg')) {
+	let trimmed = commentText.trimStart();
+	if (trimmed.startsWith('#')) {
+		trimmed = trimmed.substring(1).trimStart();
+	}
+	if (!trimmed.startsWith('@arg')) {
 		return null;
 	}
 
-	let i = '#@arg'.length;
+	let i = '@arg'.length;
 	while (i < trimmed.length && (trimmed[i] === ' ' || trimmed[i] === '\t')) {
 		i++;
 	}
@@ -107,6 +110,16 @@ function parseArgDirectiveFromComment(commentText: string): { name?: string; des
 		name,
 		description: trimmed.substring(i + 1).trim()
 	};
+}
+
+export function getArgDocForLabel(doc: TextDocument, tokens: Token[] | undefined, labelLine: number, name: string): string {
+	const lookup = buildVariableDocLookup(doc, tokens);
+	const scopeKey = getLabelScopeKeyForLine(labelLine, lookup.labelDefinitionLines);
+	return (
+		lookup.namedDocsByScopedName.get(`${scopeKey}::${name}`) ||
+		lookup.namedDocsByScopedName.get(`global::${name}`) ||
+		''
+	);
 }
 
 function buildVariableDocLookupFromTokens(tokens: Token[]): VariableDocLookup {

@@ -11,7 +11,7 @@ import { fixFileName, getFilesInDir } from './../fileFunctions';
 import { getArtemisGlobals } from '../artemisGlobals';
 import { onSignatureHelp, getCallContextFromTokens } from './signatureHelp';
 import { getWordsAsCompletionItems } from './../tokens/roles';
-import { variableModifiers } from './../tokens/variables';
+import { getArgDocForLabel, variableModifiers } from './../tokens/variables';
 import { isClassMethod } from './../tokens/tokens';
 import { Function } from './../data/function';
 import { getCurrentLineFromTextDocument, getHoveredSymbol } from './hover';
@@ -1046,8 +1046,16 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				insertText: k[0],
 				sortText: "__" + k[0]
 			}
+			const argDoc = getArgDocForLabel(text, tokens, lbl.range.start.line, k[0]);
+			const docParts: string[] = [];
+			if (argDoc && argDoc.trim() !== '') {
+				docParts.push(`Description: ${argDoc.trim()}`);
+			}
 			if (k[1] !== "") {
-				c.documentation = "Default value: " + k[1];
+				docParts.push("Default value: " + k[1]);
+			}
+			if (docParts.length > 0) {
+				c.documentation = docParts.join("\n\n");
 			}
 			ci.push(c);
 		}
