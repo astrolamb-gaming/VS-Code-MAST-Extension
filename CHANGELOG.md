@@ -10,6 +10,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * WIP: Get mast complier errors from the compiler itself, so the game doesn't have to be running to check for compiler errors.
 * TODO: Add certain parts of the MAST file functionality to apply to Python files as well (completions, go to definition, etc.)
 
+
 ### 0.18.0
 
 * Massive rewrite of file parsing logic, which allows for:
