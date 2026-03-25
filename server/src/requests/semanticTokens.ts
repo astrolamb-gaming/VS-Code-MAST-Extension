@@ -522,6 +522,7 @@ export class MastStateMachineLexer {
 	private expectPlusDirective: boolean = false;
 	private expectPlusLabelReference: boolean = false;
 	private knownLabelNames: Set<string> = new Set();
+	private knownSubLabelNamesByRange: Array<{ start: number; end: number; names: Set<string> }> = [];
 
 	private addKnownLabelName(name: string): void {
 		const n = (name || '').trim();
@@ -539,15 +540,33 @@ export class MastStateMachineLexer {
 		try {
 			const cache = getCache(this.doc.uri);
 			const labels = cache.getLabels(this.doc, false);
-			const stack: any[] = [...labels];
-			while (stack.length > 0) {
-				const current = stack.pop();
+			for (const current of labels) {
 				if (!current) continue;
-				this.addKnownLabelName(current.name || '');
-				if (Array.isArray(current.subLabels)) {
-					for (const sub of current.subLabels) {
-						stack.push(sub);
+				// Inline (+/-) labels are scope-local sublabels. Keep them out of the global
+				// known-label set so they don't leak into other scopes.
+				if (current.type !== 'inline') {
+					this.addKnownLabelName(current.name || '');
+				}
+			}
+
+			const thisFileLabels = cache.getLabels(this.doc, true);
+			for (const main of thisFileLabels) {
+				if (!main || !Array.isArray(main.subLabels) || main.subLabels.length === 0) {
+					continue;
+				}
+				const names = new Set<string>();
+				for (const sub of main.subLabels) {
+					const n = (sub?.name || '').trim().toLowerCase();
+					if (n) {
+						names.add(n);
 					}
+				}
+				if (names.size > 0) {
+					this.knownSubLabelNamesByRange.push({
+						start: Math.max(0, main.start || 0),
+						end: Math.max(0, main.end || 0),
+						names
+					});
 				}
 			}
 		} catch (e) {
@@ -563,11 +582,8 @@ export class MastStateMachineLexer {
 			this.addKnownLabelName(m[3]);
 		}
 
-		// Inline labels: --name-- / ++name++
-		const inlineLabelRegex = /^([ \t]*)((-|\+){2,}[ \t]*)(\w+)([ \t]*((-|\+){2,})?)/gm;
-		while ((m = inlineLabelRegex.exec(this.text)) !== null) {
-			this.addKnownLabelName(m[4]);
-		}
+		// NOTE: Inline labels (--name-- / ++name++) are scope-local and are
+		// intentionally not added to global known labels.
 
 		// Route labels: //name or //name/subroute
 		const routeLabelRegex = /^([ \t]*)(\/{2,}\w+(?:\/\w+)*)/gm;
@@ -956,6 +972,19 @@ export class MastStateMachineLexer {
 
 		if (normalized.startsWith('//') && this.knownLabelNames.has(normalized.substring(2))) {
 			return true;
+		}
+
+		// Scope-local sublabels (defined with + / - markers) should only resolve
+		// inside the active main-label range.
+		const currentOffset = this.pos;
+		const scopedName = normalized.startsWith('//') ? normalized.substring(2) : normalized;
+		for (const scope of this.knownSubLabelNamesByRange) {
+			if (currentOffset < scope.start || currentOffset > scope.end) {
+				continue;
+			}
+			if (scope.names.has(scopedName)) {
+				return true;
+			}
 		}
 
 		return false;
@@ -2461,10 +2490,11 @@ function collectKnownLabelNames(document: TextDocument): Set<string> {
 	try {
 		const cache = getCache(document.uri);
 		const all = cache.getLabels(document, false);
-		const stack = [...all];
-		while (stack.length > 0) {
-			const current: any = stack.pop();
+		for (const current of all) {
 			if (!current) continue;
+			if (current.type === 'inline') {
+				continue;
+			}
 			const name = (current.name || '').trim();
 			if (name) {
 				names.add(name);
@@ -2475,11 +2505,6 @@ function collectKnownLabelNames(document: TextDocument): Set<string> {
 				} else {
 					names.add(`//${name}`);
 					names.add(`//${name}`.toLowerCase());
-				}
-			}
-			if (Array.isArray(current.subLabels)) {
-				for (const sub of current.subLabels) {
-					stack.push(sub);
 				}
 			}
 		}
