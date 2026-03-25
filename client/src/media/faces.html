@@ -20,7 +20,7 @@
     </div>
 
     <div id="builderStage" class="layout" hidden>
-        <aside class="sidebar">
+        <main class="sidebar">
             <div class="sidebar-header">
                 <div class="sidebar-title-row">
                     <h1>Face Builder</h1>
@@ -42,24 +42,24 @@
                         <canvas id="sheetCanvas"></canvas>
                     </div>
                 </div>
+            </div>
+
                 <div class="layers-panel">
                     <div class="section-title">Layers and Preview</div>
                     <div class="layers-body">
-                        <div class="layers-column">
-                            <div id="layersEmpty" class="empty-state">Select a tile from the sheet, then add it as a layer.</div>
-                            <div id="layersList" class="layers-list"></div>
-                        </div>
                         <div class="sidebar-preview panel-card">
                             <div class="preview-frame" title="Click to toggle preview size">
                                 <canvas id="previewCanvas" width="256" height="256"></canvas>
                             </div>
                         </div>
+                        <div class="layers-column">
+                            <div id="layersEmpty" class="empty-state">Select a tile from the sheet, then add it as a layer.</div>
+                            <div id="layersList" class="layers-list"></div>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </aside>
 
-        <main class="content">
+            <div class="content">
             <header class="content-header">
                 <div>
                     <div id="title" class="title">No race selected</div>
@@ -77,7 +77,10 @@
                     <button id="insertBtn" type="button">Insert Into Editor</button>
                 </div>
             </section>
-        </main>
+        </div>
+    </main>
+
+        
     </div>
 
     <script nonce="__NONCE__">window.__FACE_ENTRIES__ = __FACE_ENTRIES_JSON__;</script>

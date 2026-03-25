@@ -12,6 +12,12 @@
 
 * {
 	box-sizing: border-box;
+	max-width: 100%;
+}
+
+*::before,
+*::after {
+	max-width: 100%;
 }
 
 [hidden] {
@@ -23,8 +29,8 @@ body {
 	font-family: Consolas, 'Courier New', monospace;
 	background: radial-gradient(circle at 85% -10%, #213752, var(--bg) 42%);
 	color: var(--text);
-	height: 100vh;
-	overflow: hidden;
+	min-height: 100vh;
+	overflow: auto;
 }
 
 button,
@@ -36,9 +42,10 @@ textarea {
 
 .layout {
 	display: grid;
-	grid-template-columns: minmax(360px, 430px) minmax(320px, 1fr);
-	height: 100vh;
-	overflow: hidden;
+	/* grid-template-columns: minmax(360px, 430px) minmax(320px, 1fr); */
+	min-height: 100vh;
+	height: auto;
+	overflow: visible;
 }
 
 .race-stage {
@@ -124,12 +131,12 @@ textarea {
 
 .sidebar {
 	display: grid;
-	grid-template-rows: auto auto minmax(0, 1fr);
+	/* grid-template-rows: auto auto minmax(0, 1fr); */
 	border-right: 1px solid var(--border);
 	background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 35%), var(--panel);
 	min-width: 0;
 	min-height: 0;
-	overflow: hidden;
+	overflow: visible;
 }
 
 .sidebar-header,
@@ -188,7 +195,7 @@ textarea {
 	grid-template-rows: auto auto;
 	gap: 12px;
 	padding: 12px;
-	overflow: auto;
+	overflow: visible;
 	min-height: 0;
 }
 
@@ -268,6 +275,7 @@ button.secondary:hover {
 	gap: 10px;
 	min-height: 0;
 	overflow: visible;
+	min-height: 240px;
 }
 
 .sidebar-sheet {
@@ -286,6 +294,7 @@ button.secondary:hover {
 	gap: 10px;
 	min-height: 0;
 	overflow: hidden;
+	min-height: 220px;
 }
 
 .layers-column {
@@ -522,6 +531,10 @@ button.secondary:hover {
 .sheet-panel {
 	grid-template-rows: auto 1fr;
 	min-width: 0;
+	min-height: 220px;
+	resize: both;
+	overflow: auto;
+	max-width: 100%;
 }
 
 .sheet-scroll {
@@ -600,7 +613,7 @@ button.secondary:hover {
 	margin: auto 8px 8px;
 	grid-template-rows: auto 1fr auto;
 	max-height: 140px;
-	min-height: 0;
+	min-height: 110px;
 	overflow: auto;
 	padding: 8px;
 	position: sticky;
@@ -630,6 +643,7 @@ textarea {
 	.layout {
 		grid-template-columns: 1fr;
 		grid-template-rows: auto 1fr;
+		min-height: 100vh;
 	}
 
 	.race-stage {
@@ -640,6 +654,7 @@ textarea {
 		border-right: 0;
 		border-bottom: 1px solid var(--border);
 		grid-template-rows: auto auto minmax(0, 1fr);
+		min-height: 420px;
 	}
 
 	.preview-panel {
