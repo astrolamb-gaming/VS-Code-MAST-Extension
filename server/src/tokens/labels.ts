@@ -377,32 +377,37 @@ export function checkForDuplicateLabelsInList(textDocument:TextDocument, labels:
 		labels = getCache(textDocument.uri).getLabels(textDocument);
 	}
 	for (const i in labels) {
+		const current = labels[i];
 		// First we iterate over all labels prior to this one
 		// If the label isn't from this file, we don't need to include it in the errors for this file.
-		if (fixFileName(labels[i].srcFile) !== fixFileName(textDocument.uri)) {
+		if (fixFileName(current.srcFile) !== fixFileName(textDocument.uri)) {
 			continue;
 		}
-		// Exclude main and END
-		if (labels[i].name === "main" || labels[i].name === "END" || labels[i].type === "route") {
-			// debug("Is route: " + labels[i].name)
+		// For top-level duplicate checks, only compare real main/inline labels.
+		// Exclude synthetic main/END labels and route/media labels.
+		if (!subLabels && (current.name === "main" || current.name === "END" || current.type === "route" || current.type === "media")) {
 			continue;
 		}
-		if (labels[i].name.startsWith("@media")) continue;
+		if (!subLabels && current.name.startsWith("@media")) continue;
 		for (const j in labels) {
 			if (j === i) {
 				//break;
 				continue;
 			}
-			if (labels[i].name === labels[j].name) {
-				if (labels[i].start === labels[j].start) continue;
+			const other = labels[j];
+			if (!subLabels && (other.name === "main" || other.name === "END" || other.type === "route" || other.type === "media")) {
+				continue;
+			}
+			if (!subLabels && other.name.startsWith("@media")) {
+				continue;
+			}
+			if (current.name === other.name) {
+				if (current.start === other.start) continue;
 				// debug(labels[i].name + " is used more than once");
 				// debug(labels[i])
 				// debug(labels[j])
 				const d: Diagnostic = {
-					range: {
-						start: textDocument.positionAt(labels[i].start),
-						end: textDocument.positionAt(labels[i].start + labels[i].length)
-					},
+					range: current.range,
 					severity: DiagnosticSeverity.Error,
 					message: "Label names can only be used once.",
 					source: "mast",
@@ -411,29 +416,29 @@ export function checkForDuplicateLabelsInList(textDocument:TextDocument, labels:
 				// let file = fileFromUri(labels[j].srcFile);
 				// debug(file);
 				
-				let message = (subLabels) ? "The inline label \""+ labels[i].name + "\" is already used inside this parent label" : "The label \"" + labels[i].name + "\" is already used in this file";
+				let message = (subLabels) ? "The inline label \""+ current.name + "\" is already used inside this parent label" : "The label \"" + current.name + "\" is already used in this file";
 				
 				if (!subLabels) {
 					let f:string;
-					if (labels[j].srcFile !== textDocument.uri) {
-						f = path.basename(URI.parse(labels[j].srcFile).fsPath);
+					if (other.srcFile !== textDocument.uri) {
+						f = path.basename(URI.parse(other.srcFile).fsPath);
 					} else {
 						f = "this file.";
 					}
-					message = "The label \"" + labels[j].name + "\" is already defined in " + f;
+					message = "The label \"" + other.name + "\" is already defined in " + f;
 				}
 				d.relatedInformation = [];
 				d.relatedInformation = relatedMessage(textDocument,d.range, message);
 
-				const s = labels[j].range.start;
+				const s = other.range.start;
 				// s.character = 1;
 				message += " at Line " + s.line + ", Character " + s.character;
 				
 				if (d.relatedInformation === undefined) d.relatedInformation = [];
 				d.relatedInformation.push({
 					location: {
-						uri: fileFromUri(labels[j].srcFile),
-						range: labels[j].range
+						uri: fileFromUri(other.srcFile),
+						range: other.range
 					},
 					message: '<-- Label also defined here.'
 				});
@@ -443,7 +448,7 @@ export function checkForDuplicateLabelsInList(textDocument:TextDocument, labels:
 		}
 		// Now we need to do the same thing for sub labels
 		if (!subLabels) {
-			const subs = labels[i].subLabels;
+			const subs = current.subLabels;
 			diagnostics = diagnostics.concat(checkForDuplicateLabelsInList(textDocument,subs,true));
 		}
 	}
@@ -480,7 +485,9 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 	//const calledLabel : RegExp = /(^[ \t]*?(->|jump)[ \t]*?\w+)/gm;
 	const calledLabel : RegExp = /(?<=^[ \t]*(jump |->)[ \t]*)(\w+)/gm;
 	let m: RegExpExecArray | null;
-	let mainLabels : LabelInfo[] = getCache(textDocument.uri).getLabels(textDocument, true);//getLabelsInFile(text,textDocument.uri);
+	const cache = getCache(textDocument.uri);
+	const fileLabels : LabelInfo[] = cache.getLabels(textDocument, true);
+	const allLabels : LabelInfo[] = cache.getLabels(textDocument, false);
 	///parseLabels(textDocument.getText(),textDocument.uri, true);
 	// const subLabels : LabelInfo[] = parseLabels(textDocument.getText(), textDocument.uri, false);
 	// // Add child labels to their parent
@@ -503,10 +510,10 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 		//debug(str);
 		let found: boolean = false;
 
-		const ml: LabelInfo = getMainLabelAtPos(m.index,mainLabels);
+		const ml: LabelInfo = getMainLabelAtPos(m.index,fileLabels);
 		if (ml === undefined) {
-			debug("ERROR in checkLabels() at getMainLabelAtPos(" + m.index + ", " + mainLabels.length + ")");
-			debug(mainLabels);
+			debug("ERROR in checkLabels() at getMainLabelAtPos(" + m.index + ", " + fileLabels.length + ")");
+			debug(fileLabels);
 			debug(textDocument.uri)
 		}
 		// debug(ml);
@@ -529,7 +536,7 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 		// If the label is not a main label, nor a sub-label of the main label,
 		// then we need to see if it exists at all.
 		// It must either not exist, or be a sublabel of a different main label, which is not allowed.
-		for (const main of mainLabels) {
+		for (const main of allLabels) {
 			if (str === main.name) {
 				found = true;
 				break;
@@ -609,7 +616,7 @@ export function checkLabels(textDocument: TextDocument) : Diagnostic[] {
 			diagnostics.push(d);
 		}
 	}
-	const dups = checkForDuplicateLabelsInList(textDocument,mainLabels);
+	const dups = checkForDuplicateLabelsInList(textDocument,fileLabels);
 	// const susb = checkForDuplicateLabelsInList(textDocument,ml)
 	diagnostics = diagnostics.concat(dups);
 	//debug(diagnostics);

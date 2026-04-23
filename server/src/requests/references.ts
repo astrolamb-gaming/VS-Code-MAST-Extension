@@ -156,6 +156,52 @@ function collectWordLocationsAcrossCategories(doc: TextDocument, word: string): 
 	return dedupeLocations(locs);
 }
 
+function getClassSymbolLocations(doc: TextDocument, className: string): Location[] {
+	const cache = getCache(doc.uri);
+	const locs: Location[] = [];
+
+	for (const c of cache.getClasses()) {
+		if (c.name === className) {
+			if (c.constructorFunction?.location) {
+				locs.push({ uri: fileFromUri(c.constructorFunction.location.uri), range: c.constructorFunction.location.range });
+			}
+			locs.push({ uri: fileFromUri(c.location.uri), range: c.location.range });
+		}
+	}
+
+	const mastFiles = cache.mastFileCache.concat(cache.missionMastModules);
+	for (const mastFile of mastFiles) {
+		for (const token of mastFile.tokens) {
+			if (token.text !== className) continue;
+			if (token.type !== 'function' && token.type !== 'class' && token.type !== 'variable' && token.type !== 'method') continue;
+			locs.push({
+				uri: fileFromUri(mastFile.uri),
+				range: {
+					start: { line: token.line, character: token.character },
+					end: { line: token.line, character: token.character + token.length }
+				}
+			});
+		}
+	}
+
+	const pyFiles = cache.pyFileCache.concat(cache.missionPyModules);
+	for (const pyFile of pyFiles) {
+		for (const token of pyFile.pyTokens || []) {
+			if (token.text !== className) continue;
+			if (token.type !== 'function' && token.type !== 'class' && token.type !== 'variable' && token.type !== 'method') continue;
+			locs.push({
+				uri: fileFromUri(pyFile.uri),
+				range: {
+					start: { line: token.line, character: token.character },
+					end: { line: token.line, character: token.character + token.length }
+				}
+			});
+		}
+	}
+
+	return dedupeLocations(locs);
+}
+
 function getTokenContextNearPosition(doc: TextDocument, tokens: any[], position: Position) {
 	let ctx = getTokenContextAtPosition(doc, tokens, position);
 	const isBoundaryOperator = (c: any) => {
@@ -394,6 +440,12 @@ export async function onReferences(doc: TextDocument, params:ReferenceParams): P
 		return getLabelLocations(doc, word);
 	}
 
+	// Constructor/class symbol references, e.g. Vec3()
+	const classLocs = getClassSymbolLocations(doc, word);
+	if (classLocs.length > 0) {
+		return classLocs;
+	}
+
 	// A variable token whose name matches a known label should also resolve
 	// to label references (label names can be used as first-class values,
 	// e.g. task_schedule(some_label)).
@@ -473,6 +525,11 @@ export async function onReferences(doc: TextDocument, params:ReferenceParams): P
 		const loc: Location = method.location;
 		loc.uri = fileFromUri(loc.uri);
 		locs.push(loc);
+	}
+
+	const fallbackClassLocs = getClassSymbolLocations(doc, word);
+	if (fallbackClassLocs.length > 0) {
+		locs.push(...fallbackClassLocs);
 	}
 
 	for (const loc of cache.getWordLocations(word)) {

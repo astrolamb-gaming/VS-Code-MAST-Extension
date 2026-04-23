@@ -218,6 +218,15 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 				}
 			}
 		}
+		// Class constructor call, e.g. Vec3()
+		for (const c of cache.getClasses()) {
+			if (c.name === symbol) {
+				if (c.constructorFunction) {
+					return { contents: c.constructorFunction.buildMarkUpContent() };
+				}
+				return { contents: c.documentation };
+			}
+		}
 	} else {
 		debug("not class method or function");
 
@@ -272,6 +281,16 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 	if (func) {
 		// _prof('exit: found method');
 		return {contents: func.buildMarkUpContent()}
+	}
+
+	// Constructor/class fallback, including cases where token classification is ambiguous.
+	for (const c of cache.getClasses()) {
+		if (c.name === symbol) {
+			if (c.constructorFunction) {
+				return { contents: c.constructorFunction.buildMarkUpContent() };
+			}
+			return { contents: c.documentation };
+		}
 	}
 
 	// debug("something else")

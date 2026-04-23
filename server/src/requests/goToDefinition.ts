@@ -155,6 +155,16 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 		return undefined;
 	}
 	if (isFunc) {
+		// Constructor/class call, e.g. Vec3()
+		for (const c of getCache(doc.uri).getClasses()) {
+			if (c.name === symbol) {
+				if (c.constructorFunction?.location) {
+					return toFileLocation(c.constructorFunction.location);
+				}
+				return toFileLocation(c.location);
+			}
+		}
+
 		// Check if this is a function in a .py file within the current mission.
 		for (const p of getCache(doc.uri).pyFileCache) {
 			let uri = URI.parse(p.uri).toString()
@@ -183,6 +193,16 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 	let func = getCache(doc.uri).getMethod(symbol);
 	if (func) {
 		return toFileLocation(func.location);
+	}
+
+	// Constructor/class fallback when token classification does not identify callable type.
+	for (const c of getCache(doc.uri).getClasses()) {
+		if (c.name === symbol) {
+			if (c.constructorFunction?.location) {
+				return toFileLocation(c.constructorFunction.location);
+			}
+			return toFileLocation(c.location);
+		}
 	}
 
 	return undefined;

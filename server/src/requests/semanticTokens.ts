@@ -2487,48 +2487,18 @@ export function buildSemanticTokens(tokens: TokenInfo[]): SemanticTokens {
 }
 
 
-function collectKnownLabelNames(document: TextDocument): Set<string> {
-	const names = new Set<string>();
-	try {
-		const cache = getCache(document.uri);
-		const all = cache.getLabels(document, false);
-		for (const current of all) {
-			if (!current) continue;
-			if (current.type === 'inline') {
-				continue;
-			}
-			const name = (current.name || '').trim();
-			if (name) {
-				names.add(name);
-				names.add(name.toLowerCase());
-				if (name.startsWith('//')) {
-					names.add(name.substring(2));
-					names.add(name.substring(2).toLowerCase());
-				} else {
-					names.add(`//${name}`);
-					names.add(`//${name}`.toLowerCase());
-				}
-			}
-		}
-	} catch (e) {
-		debug(`collectKnownLabelNames failed: ${e}`);
-	}
-	return names;
-}
-
 export function tokenizeDocument(document: TextDocument): TokenInfo[] {
 	// Always use the state-machine lexer.
 	// The regex lexer does not currently build exclusion ranges for strings/comments,
 	// which can incorrectly emit keyword/operator/number tokens inside string text.
 	const USE_REGEX_LEXER = false;
-	const knownLabelNames = collectKnownLabelNames(document);
 	
 	let tokens: TokenInfo[];
 	if (USE_REGEX_LEXER) {
 		const lexer = new MastLexer(document);
 		tokens = lexer.tokenize();
 	} else {
-		const lexer = new MastStateMachineLexer(document, knownLabelNames);
+		const lexer = new MastStateMachineLexer(document);
 		tokens = lexer.tokenize();
 	}
 	return tokens

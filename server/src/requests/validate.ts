@@ -357,7 +357,7 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		const inCom = getTokenTypeAtOffset(textDocument, tokens, start) === 'comment'// || getTokenTypeAtOffset(textDocument, end) === 'comment';
 		const isInMeta = getTokenTypeAtOffset(textDocument, tokens, start) === 'yaml'// || getTokenTypeAtOffset(textDocument, end) === 'metadata';
 		// const isInMeta = !isInYaml(textDocument, start) || !isInYaml(textDocument,end);
-		return inStr || inCom || isInMeta;
+		return !inStr && !inCom && !isInMeta;
 	})
 
 	let d = checkLastLine(textDocument);
@@ -403,6 +403,9 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 			//else empty list
 			offset = 1;
 		}
+		// Class constructor call, e.g. Vec3()
+		const isConstructorCall = cache.getClasses().some((c) => c.name === m![2]);
+		if (isConstructorCall) continue;
 		// else
 		let func = cache.getMethod(m[2]);
 		if (func !== undefined) continue;

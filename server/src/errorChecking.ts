@@ -42,6 +42,26 @@ export function findDiagnostic(e:ErrorInstance, textDocument: TextDocument, prob
 	let text = textDocument.getText();
 	const cache = getCache(textDocument.uri);
 	const tokens = cache.getMastFile(textDocument.uri)?.tokens || [];
+
+	const mapTokenType = (tokenType: string): 'string' | 'yaml' | 'comment' | 'other' => {
+		if (tokenType === 'comment' || tokenType === 'codetag') return 'comment';
+		if (tokenType === 'string' || tokenType === 'stringOption') return 'string';
+		if (tokenType.includes('yaml')) return 'yaml';
+		return 'other';
+	};
+
+	const matchTouchesTokenType = (start: integer, end: integer, type: 'string' | 'yaml' | 'comment'): boolean => {
+		for (const token of tokens) {
+			const mappedType = mapTokenType(token.type);
+			if (mappedType !== type) continue;
+			const tokenStart = textDocument.offsetAt({ line: token.line, character: token.character });
+			const tokenEnd = tokenStart + token.length;
+			if (tokenEnd > start && tokenStart < end) {
+				return true;
+			}
+		}
+		return false;
+	};
 	// const commentsStrings = getComments(textDocument).concat(getStrings(textDocument));
 	// // TODO: This doesn't work right for weighted text in particular.
 	// for (const c of commentsStrings) {
@@ -53,21 +73,23 @@ export function findDiagnostic(e:ErrorInstance, textDocument: TextDocument, prob
 	const diagnostics: Diagnostic[] = [];
 	while ((m = e.pattern.exec(text)) && problems < maxProblems) {
 		//debug(JSON.stringify(m));
+		const start = m.index;
+		const end = m.index + m[0].length;
 		
 		if (e.excludeFrom.includes("string")) {
-			let isInString = getTokenTypeAtOffset(textDocument, tokens, m.index) === "string";
+			let isInString = matchTouchesTokenType(start, end, 'string');
 			if (isInString) {
 				continue;
 			}
 		}
 		if (e.excludeFrom.includes("metadata")) {
-			let isInYaml = getTokenTypeAtOffset(textDocument, tokens, m.index) === "yaml";
+			let isInYaml = matchTouchesTokenType(start, end, 'yaml');
 			if (isInYaml) {
 				continue;
 			}
 		}
 		if (e.excludeFrom.includes("comment")) {
-			let isInComment = getTokenTypeAtOffset(textDocument, tokens, m.index) === "comment";
+			let isInComment = matchTouchesTokenType(start, end, 'comment');
 			if (isInComment) {
 				continue;
 			}
