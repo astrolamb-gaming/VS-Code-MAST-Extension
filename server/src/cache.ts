@@ -20,7 +20,7 @@ import { StoryJson } from './data/storyJson';
 import { getSpecificGlobals } from './python/python';
 import { loadStyleDefs } from './data/styles';
 import { Word } from './tokens/words';
-import { mergeSignalInfo, SignalInfo } from './tokens/signals';
+import { SignalInfo } from './tokens/signals';
 
 export const testingPython = false;
 
@@ -79,11 +79,16 @@ export class MissionCache {
 	private methodIndex: Map<string, Function[]> | null = null;
 	private classMethodIndex: Map<string, Function[]> | null = null;
 	private classesCache: ClassObject[] | null = null;
-	private signalsCache: SignalInfo[] | null = null;
-	private blobKeysCache: Word[] | null = null;
-	private linksCache: Word[] | null = null;
-	private rolesCache: Word[] | null = null;
-	private inventoryKeysCache: Word[] | null = null;
+	private signalsCache: SignalInfo[] = [];
+	private blobKeysCache: Word[] = [];
+	private linksCache: Word[] = [];
+	private rolesCache: Word[] = [];
+	private inventoryKeysCache: Word[] = [];
+	private signalsByFile: Map<string, SignalInfo[]> = new Map();
+	private blobKeysByFile: Map<string, Word[]> = new Map();
+	private linksByFile: Map<string, Word[]> = new Map();
+	private rolesByFile: Map<string, Word[]> = new Map();
+	private inventoryKeysByFile: Map<string, Word[]> = new Map();
 
 	constructor(workspaceUri: string) {
 		//debug(workspaceUri);
@@ -136,7 +141,8 @@ export class MissionCache {
 		this.resourceLabels = [];
 		this.mediaLabels = [];
 		this.mastFileCache = [];
-		this.invalidateMethodCaches();
+		this.invalidateStructureCaches();
+		this.resetExtractedItemCaches();
 		this.storyJson = new StoryJson(path.join(this.missionURI,"story.json"));
 		
 		await this.storyJson.readFile()
@@ -659,7 +665,7 @@ export class MissionCache {
 			const m = new MastFile(file, data);
 			m.inZip = true;
 			this.missionMastModules.push(m);
-			this.invalidateMethodCaches();
+			this.syncMastExtractedItems(m);
 		}
 		// debug("Finished loading: " + path.basename(file))
 	}
@@ -671,143 +677,185 @@ export class MissionCache {
 	updateFileInfo(doc: TextDocument) {
 		if (doc.languageId === "mast") {
 			// debug("Updating " + doc.uri);
-			this.getMastFile(doc.uri).updateFromDocument(doc);
-			this.invalidateMethodCaches();
+			const mastFile = this.getMastFile(doc.uri);
+			mastFile.updateFromDocument(doc);
+			this.syncMastExtractedItems(mastFile);
 		} else if (doc.languageId === "py") {
 			// debug("Updating " + doc.uri);
-			this.getPyFile(doc.uri).parseWholeFile(doc.getText());
-			this.invalidateMethodCaches();
+			const pyFile = this.getPyFile(doc.uri);
+			pyFile.parseWholeFile(doc.getText());
+			this.invalidateStructureCaches();
+			this.syncPyExtractedItems(pyFile, this.shouldIncludeBlobKeysFromPyFile(pyFile));
 		}
 	}
 
-	private invalidateMethodCaches() {
+	private invalidateStructureCaches() {
 		this.methodsCache = null;
 		this.methodIndex = null;
 		this.classMethodIndex = null;
 		this.classesCache = null;
-		this.signalsCache = null;
-		this.blobKeysCache = null;
-		this.linksCache = null;
-		this.rolesCache = null;
-		this.inventoryKeysCache = null;
 	}
 
-	private computeSignals(): SignalInfo[] {
-		let ret: SignalInfo[] = [];
-		for (const m of this.mastFileCache) {
-			ret = ret.concat(m.signals);
-		}
-		for (const m of this.missionMastModules) {
-			ret = ret.concat(m.signals);
-		}
-		for (const p of this.pyFileCache) {
-			ret = ret.concat(p.signals);
-		}
-		for (const p of this.missionPyModules) {
-			ret = ret.concat(p.signals);
-		}
-		return mergeSignalInfo(ret);
+	private resetExtractedItemCaches() {
+		this.signalsCache = [];
+		this.blobKeysCache = [];
+		this.linksCache = [];
+		this.rolesCache = [];
+		this.inventoryKeysCache = [];
+		this.signalsByFile.clear();
+		this.blobKeysByFile.clear();
+		this.linksByFile.clear();
+		this.rolesByFile.clear();
+		this.inventoryKeysByFile.clear();
 	}
 
-	private computeBlobKeys(): Word[] {
-		let words: Word[] = [];
-		for (const m of this.mastFileCache) {
-			words = words.concat(m.blob_keys);
-		}
-		for (const m of this.missionMastModules) {
-			words = words.concat(m.blob_keys);
-		}
-		for (const p of this.pyFileCache) {
-			words = words.concat(p.blob_keys);
-		}
-		return words;
+	private syncMastExtractedItems(file: MastFile) {
+		this.syncExtractedItemsForUri(file.uri, file.signals, file.blob_keys, file.links, file.roles, file.inventory_keys);
 	}
 
-	private computeLinks(): Word[] {
-		let links: Word[] = [];
-		for (const m of this.mastFileCache) {
-			links = links.concat(m.links);
-		}
-		for (const m of this.missionMastModules) {
-			links = links.concat(m.links);
-		}
-		for (const p of this.pyFileCache) {
-			links = links.concat(p.links);
-		}
-		for (const p of this.missionPyModules) {
-			links = links.concat(p.links);
-		}
-		return links;
+	private syncPyExtractedItems(file: PyFile, includeBlobKeys: boolean) {
+		this.syncExtractedItemsForUri(file.uri, file.signals, includeBlobKeys ? file.blob_keys : [], file.links, file.roles, file.inventory_keys);
 	}
 
-	private computeRoles(): Word[] {
-		let roles: Word[] = [];
-		for (const m of this.mastFileCache) {
-			roles = roles.concat(m.roles);
-		}
-		for (const m of this.missionMastModules) {
-			roles = roles.concat(m.roles);
-		}
-		for (const p of this.pyFileCache) {
-			roles = roles.concat(p.roles);
-		}
-		for (const p of this.missionPyModules) {
-			roles = roles.concat(p.roles);
-		}
-		roles = roles.concat(getArtemisGlobals().shipData.roles);
-		return roles;
+	private syncExtractedItemsForUri(
+		uri: string,
+		signals: SignalInfo[],
+		blobKeys: Word[],
+		links: Word[],
+		roles: Word[],
+		inventoryKeys: Word[]
+	) {
+		const normalizedUri = fixFileName(uri);
+		this.replaceSignalContribution(normalizedUri, signals);
+		this.replaceWordContribution(this.blobKeysByFile, 'blobKeysCache', normalizedUri, blobKeys);
+		this.replaceWordContribution(this.linksByFile, 'linksCache', normalizedUri, links);
+		this.replaceWordContribution(this.rolesByFile, 'rolesCache', normalizedUri, roles);
+		this.replaceWordContribution(this.inventoryKeysByFile, 'inventoryKeysCache', normalizedUri, inventoryKeys);
 	}
 
-	private computeInventoryKeys(): Word[] {
-		let keys: Word[] = [];
-		for (const m of this.mastFileCache) {
-			keys = keys.concat(m.inventory_keys);
-		}
-		for (const m of this.missionMastModules) {
-			keys = keys.concat(m.inventory_keys);
-		}
-		for (const p of this.pyFileCache) {
-			keys = keys.concat(p.inventory_keys);
-		}
-		for (const p of this.missionPyModules) {
-			keys = keys.concat(p.inventory_keys);
-		}
-		return keys;
+	private removeExtractedItemsForUri(uri: string) {
+		const normalizedUri = fixFileName(uri);
+		this.replaceSignalContribution(normalizedUri, []);
+		this.replaceWordContribution(this.blobKeysByFile, 'blobKeysCache', normalizedUri, []);
+		this.replaceWordContribution(this.linksByFile, 'linksCache', normalizedUri, []);
+		this.replaceWordContribution(this.rolesByFile, 'rolesCache', normalizedUri, []);
+		this.replaceWordContribution(this.inventoryKeysByFile, 'inventoryKeysCache', normalizedUri, []);
 	}
 
-	private ensureBlobKeysCache() {
-		if (this.blobKeysCache !== null) {
+	private replaceWordContribution(
+		contributions: Map<string, Word[]>,
+		cacheKey: 'blobKeysCache' | 'linksCache' | 'rolesCache' | 'inventoryKeysCache',
+		uri: string,
+		nextWords: Word[]
+	) {
+		const previous = contributions.get(uri) || [];
+		if (previous.length > 0) {
+			const previousSet = new Set(previous);
+			this[cacheKey] = this[cacheKey].filter(word => !previousSet.has(word));
+		}
+
+		if (nextWords.length > 0) {
+			contributions.set(uri, nextWords);
+			this[cacheKey] = this[cacheKey].concat(nextWords);
+		} else {
+			contributions.delete(uri);
+		}
+	}
+
+	private replaceSignalContribution(uri: string, nextSignals: SignalInfo[]) {
+		const previous = this.signalsByFile.get(uri) || [];
+		for (const signal of previous) {
+			this.removeSignalFromAggregate(signal);
+		}
+
+		if (nextSignals.length > 0) {
+			this.signalsByFile.set(uri, nextSignals);
+			for (const signal of nextSignals) {
+				this.addSignalToAggregate(signal);
+			}
+		} else {
+			this.signalsByFile.delete(uri);
+		}
+	}
+
+	private addSignalToAggregate(signal: SignalInfo) {
+		let aggregate = this.signalsCache.find(current => current.name === signal.name);
+		if (!aggregate) {
+			aggregate = {
+				name: signal.name,
+				description: signal.description,
+				emit: [...signal.emit],
+				triggered: [...signal.triggered]
+			};
+			this.signalsCache.push(aggregate);
 			return;
 		}
-		this.blobKeysCache = this.computeBlobKeys();
+
+		if (!aggregate.description && signal.description) {
+			aggregate.description = signal.description;
+		}
+		this.appendUniqueLocations(aggregate.emit, signal.emit);
+		this.appendUniqueLocations(aggregate.triggered, signal.triggered);
 	}
 
-	private ensureSignalsCache() {
-		if (this.signalsCache !== null) {
+	private removeSignalFromAggregate(signal: SignalInfo) {
+		const aggregate = this.signalsCache.find(current => current.name === signal.name);
+		if (!aggregate) {
 			return;
 		}
-		this.signalsCache = this.computeSignals();
+
+		this.removeLocations(aggregate.emit, signal.emit);
+		this.removeLocations(aggregate.triggered, signal.triggered);
+		if (aggregate.description === signal.description) {
+			aggregate.description = this.getReplacementSignalDescription(signal.name);
+		}
+
+		if (aggregate.emit.length === 0 && aggregate.triggered.length === 0) {
+			this.signalsCache = this.signalsCache.filter(current => current !== aggregate);
+		}
 	}
 
-	private ensureLinksCache() {
-		if (this.linksCache !== null) {
-			return;
+	private appendUniqueLocations(target: Location[], incoming: Location[]) {
+		const existing = new Set(target.map(loc => this.getLocationKey(loc)));
+		for (const loc of incoming) {
+			const key = this.getLocationKey(loc);
+			if (existing.has(key)) {
+				continue;
+			}
+			existing.add(key);
+			target.push(loc);
 		}
-		this.linksCache = this.computeLinks();
 	}
 
-	private ensureRolesCache() {
-		if (this.rolesCache !== null) {
+	private removeLocations(target: Location[], toRemove: Location[]) {
+		if (toRemove.length === 0 || target.length === 0) {
 			return;
 		}
-		this.rolesCache = this.computeRoles();
+		const removalKeys = new Set(toRemove.map(loc => this.getLocationKey(loc)));
+		for (let i = target.length - 1; i >= 0; i--) {
+			if (removalKeys.has(this.getLocationKey(target[i]))) {
+				target.splice(i, 1);
+			}
+		}
 	}
 
-	private ensureInventoryKeysCache() {
-		if (this.inventoryKeysCache !== null) {
-			return;
+	private getReplacementSignalDescription(name: string): string | undefined {
+		for (const signals of this.signalsByFile.values()) {
+			for (const signal of signals) {
+				if (signal.name === name && signal.description) {
+					return signal.description;
+				}
+			}
 		}
-		this.inventoryKeysCache = this.computeInventoryKeys();
+		return undefined;
+	}
+
+	private getLocationKey(loc: Location): string {
+		return `${loc.uri}:${loc.range.start.line}:${loc.range.start.character}:${loc.range.end.line}:${loc.range.end.character}`;
+	}
+
+	private shouldIncludeBlobKeysFromPyFile(file: PyFile): boolean {
+		return this.pyFileCache.some(current => fixFileName(current.uri) === fixFileName(file.uri));
 	}
 
 	private ensureClassCache() {
@@ -905,7 +953,8 @@ export class MissionCache {
 		}
 		// Only do this if the file doesn't exist yet
 		this.missionPyModules.push(p);
-		this.invalidateMethodCaches();
+		this.invalidateStructureCaches();
+		this.syncPyExtractedItems(p, false);
 		// this.missionClasses = this.missionClasses.concat(p.classes);
 	}
 
@@ -939,7 +988,8 @@ export class MissionCache {
 
 		// Now add it to the cache
 		this.pyFileCache.push(p);
-		this.invalidateMethodCaches();
+		this.invalidateStructureCaches();
+		this.syncPyExtractedItems(p, true);
 	}
 
 	tryApplyFileAsGlobal(f:PyFile, g:string[]) {
@@ -1176,13 +1226,11 @@ export class MissionCache {
 	 * @returns an array of {@link string string}s representing the signals used elsewhere in the mission
 	 */
 	getSignals(): SignalInfo[] {
-		this.ensureSignalsCache();
-		return this.signalsCache ? [...this.signalsCache] : [];
+		return [...this.signalsCache];
 	}
 
 	getBlobKeys(): Word[] {
-		this.ensureBlobKeysCache();
-		return this.blobKeysCache ? [...this.blobKeysCache] : [];
+		return [...this.blobKeysCache];
 	}
 
 	/**
@@ -1207,8 +1255,7 @@ export class MissionCache {
 	}
 
 	getLinks(): Word[] {
-		this.ensureLinksCache();
-		return this.linksCache ? [...this.linksCache] : [];
+		return [...this.linksCache];
 	}
 	
 	/**
@@ -1373,8 +1420,7 @@ export class MissionCache {
 	 * @returns an array of strings
 	 */
 	getRoles(folder: string): Word[] {
-		this.ensureRolesCache();
-		return this.rolesCache ? [...this.rolesCache] : [];
+		return this.rolesCache.concat(getArtemisGlobals().shipData.roles);
 	}
 
 	/**
@@ -1384,8 +1430,7 @@ export class MissionCache {
 	 */
 	getInventoryKeys(folder: string): Word[] {
 		// folder = fixFileName(folder);
-		this.ensureInventoryKeysCache();
-		return this.inventoryKeysCache ? [...this.inventoryKeysCache] : [];
+		return [...this.inventoryKeysCache];
 	}
 
 	/**
@@ -1415,7 +1460,7 @@ export class MissionCache {
 			m = new MastFile(uri);
 		}
 		this.mastFileCache.push(m);
-		this.invalidateMethodCaches();
+		this.syncMastExtractedItems(m);
 		return m;
 	}
 
@@ -1432,7 +1477,7 @@ export class MissionCache {
 			}
 		}
 		this.mastFileCache = newCache;
-		this.invalidateMethodCaches();
+		this.removeExtractedItemsForUri(uri);
 	}
 
 	/**
@@ -1449,7 +1494,8 @@ export class MissionCache {
 			}
 		}
 		this.missionPyModules = newCache;
-		this.invalidateMethodCaches();
+		this.invalidateStructureCaches();
+		this.removeExtractedItemsForUri(uri);
 	}
 
 	/**
