@@ -45,7 +45,6 @@ import { debug} from 'console';
 import { getCurrentLineFromTextDocument, getHoveredSymbol, onHover } from './requests/hover';
 import { onSignatureHelp } from './requests/signatureHelp';
 import fs = require("fs");
-import { getVariableNamesInDoc } from './tokens/variables';
 import { getArtemisGlobals, initializeArtemisGlobals } from './artemisGlobals';
 import { getCurrentDiagnostics, validateTextDocument } from './requests/validate';
 import { onDefinition } from './requests/goToDefinition';
@@ -393,7 +392,6 @@ connection.languages.diagnostics.on(async (params) => {
 		try {
 			let cache = getCache(params.textDocument.uri);
 			await cache.awaitLoaded();
-			getVariableNamesInDoc(document);
 			// debug("Validating....");
 			// let [val, comp]: Diagnostic[][] = await Promise.all([validateTextDocument(document), compileMastFile(document)]);
 			// const ret = val.concat(comp);
@@ -571,7 +569,6 @@ connection.onHover(async (_textDocumentPosition: TextDocumentPositionParams): Pr
 	}
 	const cache = getCache(_textDocumentPosition.textDocument.uri);
 	await cache.awaitLoaded();
-	cache.updateFileInfo(text);
 	let h = onHover(_textDocumentPosition,text);
 	// if (h) {
 	// 	debug(h);
@@ -728,7 +725,6 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | u
 	if (document !== undefined) {
 		let cache = getCache(params.textDocument.uri);
 		await cache.awaitLoaded();
-		cache.updateFileInfo(document);
 		if (!cache.isLoaded()) debug("NOT LOADED YET")
 		def = await onDefinition(document,params.position);
 		// debug(def);
@@ -747,7 +743,6 @@ connection.onReferences(async (params:ReferenceParams): Promise<Location[] | und
 	const document = documents.get(params.textDocument.uri);
 	let def = undefined;
 	if (document !== undefined) {
-		cache.updateFileInfo(document);
 		def = await onReferences(document, params);
 		// debug(def);
 	}

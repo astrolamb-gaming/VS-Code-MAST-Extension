@@ -129,7 +129,6 @@ export async function compileMastFile(textDocument: TextDocument): Promise<Diagn
 export async function validateTextDocument(textDocument: TextDocument): Promise<Diagnostic[]> {
 	// debug("Starting validation")
 	if (textDocument.languageId === "py") {
-		getCache(textDocument.uri).updateFileInfo(textDocument);
 		return [];
 	}
 
@@ -163,14 +162,13 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 			}
 		});
 	}
-	cache.updateFileInfo(textDocument);
 	// In this simple example we get the settings for every validate run.
 	let maxNumberOfProblems = 100;
 	const settings = await getDocumentSettings(textDocument.uri);
 	if (settings !== null) {
 		maxNumberOfProblems = settings.maxNumberOfProblems;
 	}
-	// These all don't happen in cache.updateFileInfo() above, since this data is stored separately
+	// These are not part of the cached token/file update path and are handled separately.
 	// TODO: This probably SHOULD be on a per-doc basis
 	// let squareBrackets = parseSquareBrackets(textDocument);
 	// let strs = parseStrings(textDocument);

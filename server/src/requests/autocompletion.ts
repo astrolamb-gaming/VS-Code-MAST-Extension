@@ -88,8 +88,6 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		return ci;
 	}
 
-	// Keep token-derived context in sync with the latest document content.
-	cache.updateFileInfo(text);
 	const tokens = cache.getMastFile(text.uri)?.tokens || [];
 
 	// Calculate the position in the text's string value using the Position value.
