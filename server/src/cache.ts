@@ -292,13 +292,18 @@ export class MissionCache {
 					let file = path.join(this.missionURI, filename);
 					// debug(file);
 					let pyFile = this.getPyFile(file);
-					let text = readFileSync(file);
-					const textDoc = TextDocument.create(file, "py", 1, text);
-					if (textDoc) {
-						this.updateFileInfo(textDoc);
-					} else {
-						debug("File not found in watcher")
-					}
+					// Use async readFile to avoid blocking the language server
+					readFile(file).then((text) => {
+						const textDoc = TextDocument.create(file, "py", 1, text);
+						if (textDoc) {
+							this.updateFileInfo(textDoc);
+						} else {
+							debug("File not found in watcher")
+						}
+					}).catch((err) => {
+						debug("Error reading file in watcher: " + file);
+						debug(err);
+					});
 					
 				}
 			}
@@ -533,6 +538,31 @@ export class MissionCache {
 	}
 
 	/**
+	 * Process an array of work items with controlled concurrency.
+	 * Limits concurrent operations to prevent resource exhaustion.
+	 * @param items Array of items to process
+	 * @param processor Async function that processes each item
+	 * @param maxConcurrent Maximum number of concurrent operations (default 3)
+	 */
+	private async processConcurrent<T>(
+		items: T[],
+		processor: (item: T) => Promise<void>,
+		maxConcurrent: number = 3
+	): Promise<void> {
+		const executing: Promise<void>[] = [];
+		for (const item of items) {
+			const promise = processor(item).then(() => {
+				executing.splice(executing.indexOf(promise), 1);
+			});
+			executing.push(promise);
+			if (executing.length >= maxConcurrent) {
+				await Promise.race(executing);
+			}
+		}
+		await Promise.all(executing);
+	}
+
+	/**
 	 * Loads the zip/mastlib/sbslib file modules
 	 * @returns Promise<void>
 	 */
@@ -556,54 +586,60 @@ export class MissionCache {
 			debug("Beginning to load modules");
 			const total = lib.length;
 			showProgressBar(true);
-			for (const zip of lib) {
-				debug("Unzipping: " + zip);
-				
-				let found = false;
-				let missions = globals.getAllMissions()
-				for (const m of missions) {
-					if (this.storyJson.getModuleBaseName(zip).toLowerCase().includes(m.toLowerCase())) {
-						found = true;
-						// Here we refer to the mission instead of the zip
-						const missionFolder = path.join(globals.artemisDir,"data","missions",m);
-						const files = getFilesInDir(missionFolder,true);
-						for (const f of files) {
-							if (f.endsWith(".py")|| f.endsWith(".mast")) {
-								// showProgressBar(true);
-								const data = await readFile(f)//.then((data)=>{
-									// showProgressBar(true);
-									// debug("Loading: " + path.basename(f));
+			// Process zip archives with controlled concurrency (max 3 concurrent reads)
+			// This prevents resource exhaustion from opening too many file handles at once
+			await this.processConcurrent(
+				lib,
+				async (zip) => {
+					debug("Unzipping: " + zip);
+					
+					let found = false;
+					let missions = globals!.getAllMissions()
+					for (const m of missions) {
+						if (this.storyJson.getModuleBaseName(zip).toLowerCase().includes(m.toLowerCase())) {
+							found = true;
+							// Here we refer to the mission instead of the zip
+							const missionFolder = path.join(globals!.artemisDir,"data","missions",m);
+							const files = getFilesInDir(missionFolder,true);
+							for (const f of files) {
+								if (f.endsWith(".py")|| f.endsWith(".mast")) {
+									showProgressBar(true);
+									const data = await readFile(f);
+									debug("Loading: " + path.basename(f));
 									this.handleZipData(data, f);
-								// });
+								}
+							}
+							break;
+						}
+					}
+					if (!found) {
+						// Here we load the module from the zip
+						const zipPath = path.join(this.missionLibFolder,zip);
+						try {
+							const data = await readZipArchive(zipPath);
+							debug("Loading " + zip);
+							for (const [file, fileData] of data.entries()) {
+								showProgressBar(true);
+								debug(file)
+								let processFile = file;
+								if (zip !== "") {
+									processFile = path.join(zip,file);
+								}
+								if (file.endsWith(".py") || file.endsWith(".mast")) {
+									processFile = saveZipTempFile(file,fileData);
+									this.handleZipData(fileData,processFile);
+								}
+							}
+						} catch (err) {
+							debug("Error unzipping. \n  " + err);
+							if (("" + err).includes("Invalid filename")) {
+								libErrs.push("File does not exist:\n" + zipPath);
 							}
 						}
 					}
-				}
-				if (!found) {
-					// Here we load the module from the zip
-					const zipPath = path.join(this.missionLibFolder,zip);
-					readZipArchive(zipPath).then((data)=>{
-						debug("Loading " + zip);
-						data.forEach((data,file)=>{
-							showProgressBar(true);
-							debug(file)
-							if (zip !== "") {
-								file = path.join(zip,file);
-							}
-							if (file.endsWith(".py") || file.endsWith(".mast")) {
-								file = saveZipTempFile(file,data);
-								this.handleZipData(data,file);
-							}
-							
-						});
-					}).catch(err =>{
-						debug("Error unzipping. \n  " + err);
-						if (("" + err).includes("Invalid filename")) {
-							libErrs.push("File does not exist:\n" + zipPath);
-						}
-					});
-				}
-			}
+				},
+				3  // max 3 concurrent zip file reads
+			);
 		} catch(e) {
 			debug("Error in modulesLoaded()");
 			debug(e);
