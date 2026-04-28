@@ -1215,7 +1215,7 @@ export class MastStateMachineLexer {
 
 		const assignmentModifier = this.getAssignmentModifierAfterIdentifier(this.pos);
 
-		const builtInConstants = ['True', 'False', 'None', 'sim', 'sbs'];
+		const builtInConstants = ['True', 'False', 'None', 'sim', 'sbs', 'client_id'];
 		
 // If expecting a plus-line label reference, handle it first so that
 		// even keywords can be treated as references in this context.
