@@ -813,6 +813,63 @@ const LABEL_SCOPE_KEYWORDS = new Set<string>([
 	'True', 'False', 'None'
 ]);
 
+export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Token[]): Diagnostic[] {
+	const diagnostics: Diagnostic[] = [];
+	if (!tokens || tokens.length === 0) {
+		return diagnostics;
+	}
+	const cache = getCache(doc.uri);
+
+	let mainNames: string[] = [];
+	let definedNames: string[] = [];
+	let isInLabel = false;
+
+	for (const token of tokens) {
+		// If we're starting a new label scope, reset the defined names. Variables are scoped to their label, so definitions in one label don't affect references in another.
+		if (token.type === 'label' || token.type === 'route-label' || token.type === 'media-label') {
+			definedNames = [];
+			isInLabel = true;
+			continue;
+		}
+
+		// If it's not a variable token, we don't care about it for this check.
+		if (token.type !== 'variable') {
+			continue;
+		}
+
+		// Is it a definition or a reference? If it's a definition, add it to the list of defined names. If it's a reference, check if it's in the list of defined names. If not, add a diagnostic.
+		if (token.modifier === 'definition') {
+			if (!isInLabel) {
+				mainNames.push(token.text);
+				continue;
+			}
+			definedNames.push(token.text);
+			continue;
+		}
+		if (token.modifier === 'reference') {
+			// Check if the token text is in the list of defined names. If it is, continue. If not, add a diagnostic.
+			if (definedNames.includes(token.text) || mainNames.includes(token.text)) {
+				continue; // Variable is definitely defined
+			}
+			if (cache.getMethod(token.text)) {
+				continue; // It's a reference to a built-in method, so we can ignore it.
+			}
+			const d: Diagnostic = {
+				range: {
+					start: { line: token.line, character: token.character },
+					end: { line: token.line, character: token.character + token.length }
+				},
+				severity: DiagnosticSeverity.Warning,
+				message: `The variable ${token.text} may not be defined.`,
+				source: "mast"
+			};
+			diagnostics.push(d);
+		}
+	}
+	return diagnostics;
+}
+
+
 function getUndefinedVariableReferenceNamesInLabel(doc: TextDocument, label: LabelInfo, tokens: Token[]): string[] {
 	if (!tokens || tokens.length === 0) {
 		return [];

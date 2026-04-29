@@ -4,7 +4,7 @@ import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
 import { getCache } from './../cache';
 import { getTokenTypeAtOffset } from './../tokens/comments';
 import { checkForDeprecatedFunctions, checkFunctionSignatures, checkLastLine, findDiagnostic } from './../errorChecking';
-import { checkLabels } from './../tokens/labels';
+import { checkForUndefinedVariablesInScope, checkLabels } from './../tokens/labels';
 import { ErrorInstance, getDocumentSettings, hasDiagnosticRelatedInformationCapability } from './../server';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { checkEnableRoutes } from './../tokens/routeLabels';
@@ -261,18 +261,6 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	}
 	errorSources.push(with_colon);
 
-	let gui_colon: ErrorInstance = {
-		pattern: /gui\w*?\(\".*?:.*?\"\)/,
-		severity: DiagnosticSeverity.Warning,
-		source: 'mast',
-		message: 'For gui text, colons are not allowed. Use <colon> instead.',
-		relatedMessage: '',
-		excludeFrom: []
-	}
-	errorSources.push(gui_colon);
-
-	errorSources.push(e1);
-
 
 
 	for (let i = 0; i < errorSources.length; i++) {
@@ -460,11 +448,12 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	// 	}
 	// }
 	const assigns = checkForAssignmentsToScopeName(variables);
+	const undefinedVariables = checkForUndefinedVariablesInScope(textDocument, tokens);
 	debug(assigns)
 	const r = checkEnableRoutes(textDocument);
 	// debug(cache.getSignals())
 	const sigs = checkForUnusedSignals(textDocument);
-	diagnostics = diagnostics.concat(r, sigs, assigns);
+	diagnostics = diagnostics.concat(r, sigs, assigns, undefinedVariables);
 	// return debugLabelValidation(textDocument);
 	currentDiagnostics = diagnostics;
 	return diagnostics;
