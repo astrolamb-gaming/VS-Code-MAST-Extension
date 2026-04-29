@@ -813,12 +813,237 @@ const LABEL_SCOPE_KEYWORDS = new Set<string>([
 	'True', 'False', 'None'
 ]);
 
+interface LambdaScopeInfo {
+	paramStarts: Set<number>,
+	params: Set<string>,
+	bodyStart: number,
+	bodyEnd: number
+}
+
+function splitTopLevelCommaSegments(text: string): Array<{ start: number, end: number }> {
+	const segments: Array<{ start: number, end: number }> = [];
+	let segStart = 0;
+	let dParen = 0;
+	let dBracket = 0;
+	let dBrace = 0;
+	let inSingle = false;
+	let inDouble = false;
+	let escaped = false;
+
+	for (let i = 0; i < text.length; i++) {
+		const ch = text[i];
+		if (inDouble) {
+			if (escaped) {
+				escaped = false;
+				continue;
+			}
+			if (ch === '\\') {
+				escaped = true;
+				continue;
+			}
+			if (ch === '"') inDouble = false;
+			continue;
+		}
+		if (inSingle) {
+			if (ch === "'") inSingle = false;
+			continue;
+		}
+		if (ch === '"') {
+			inDouble = true;
+			continue;
+		}
+		if (ch === "'") {
+			inSingle = true;
+			continue;
+		}
+		if (ch === '(') dParen++;
+		else if (ch === ')' && dParen > 0) dParen--;
+		else if (ch === '[') dBracket++;
+		else if (ch === ']' && dBracket > 0) dBracket--;
+		else if (ch === '{') dBrace++;
+		else if (ch === '}' && dBrace > 0) dBrace--;
+
+		if (ch === ',' && dParen === 0 && dBracket === 0 && dBrace === 0) {
+			segments.push({ start: segStart, end: i });
+			segStart = i + 1;
+		}
+	}
+
+	segments.push({ start: segStart, end: text.length });
+	return segments;
+}
+
+function getLambdaScopesByLine(doc: TextDocument): Map<number, LambdaScopeInfo[]> {
+	const scopesByLine = new Map<number, LambdaScopeInfo[]>();
+	const fullText = doc.getText();
+
+	for (let line = 0; line < doc.lineCount; line++) {
+		const lineStart = doc.offsetAt({ line, character: 0 });
+		const lineEnd = line + 1 < doc.lineCount
+			? doc.offsetAt({ line: line + 1, character: 0 }) - 1
+			: fullText.length;
+		if (lineEnd <= lineStart) continue;
+
+		const lineText = fullText.substring(lineStart, lineEnd);
+		let i = 0;
+		let inSingle = false;
+		let inDouble = false;
+		let escaped = false;
+
+		while (i < lineText.length) {
+			const ch = lineText[i];
+			if (inDouble) {
+				if (escaped) {
+					escaped = false;
+					i++;
+					continue;
+				}
+				if (ch === '\\') {
+					escaped = true;
+					i++;
+					continue;
+				}
+				if (ch === '"') inDouble = false;
+				i++;
+				continue;
+			}
+			if (inSingle) {
+				if (ch === "'") inSingle = false;
+				i++;
+				continue;
+			}
+			if (ch === '#') break;
+			if (ch === '"') {
+				inDouble = true;
+				i++;
+				continue;
+			}
+			if (ch === "'") {
+				inSingle = true;
+				i++;
+				continue;
+			}
+
+			if (!lineText.startsWith('lambda', i)) {
+				i++;
+				continue;
+			}
+
+			const prev = i > 0 ? lineText[i - 1] : ' ';
+			const next = i + 6 < lineText.length ? lineText[i + 6] : ' ';
+			if (/[A-Za-z0-9_]/.test(prev) || /[A-Za-z0-9_]/.test(next)) {
+				i++;
+				continue;
+			}
+
+			const paramsStart = i + 6;
+			let j = paramsStart;
+			let dParen = 0;
+			let dBracket = 0;
+			let dBrace = 0;
+			let qSingle = false;
+			let qDouble = false;
+			let qEsc = false;
+
+			while (j < lineText.length) {
+				const cj = lineText[j];
+				if (qDouble) {
+					if (qEsc) {
+						qEsc = false;
+						j++;
+						continue;
+					}
+					if (cj === '\\') {
+						qEsc = true;
+						j++;
+						continue;
+					}
+					if (cj === '"') qDouble = false;
+					j++;
+					continue;
+				}
+				if (qSingle) {
+					if (cj === "'") qSingle = false;
+					j++;
+					continue;
+				}
+				if (cj === '"') {
+					qDouble = true;
+					j++;
+					continue;
+				}
+				if (cj === "'") {
+					qSingle = true;
+					j++;
+					continue;
+				}
+
+				if (cj === '(') dParen++;
+				else if (cj === ')' && dParen > 0) dParen--;
+				else if (cj === '[') dBracket++;
+				else if (cj === ']' && dBracket > 0) dBracket--;
+				else if (cj === '{') dBrace++;
+				else if (cj === '}' && dBrace > 0) dBrace--;
+
+				if (cj === ':' && dParen === 0 && dBracket === 0 && dBrace === 0) {
+					break;
+				}
+				j++;
+			}
+
+			if (j >= lineText.length || lineText[j] !== ':') {
+				i++;
+				continue;
+			}
+
+			const paramsText = lineText.substring(paramsStart, j);
+			const paramStarts = new Set<number>();
+			const params = new Set<string>();
+			for (const seg of splitTopLevelCommaSegments(paramsText)) {
+				let k = seg.start;
+				while (k < seg.end && /[\t ]/.test(paramsText[k])) k++;
+				if (k + 1 < seg.end && paramsText[k] === '*' && paramsText[k + 1] === '*') {
+					k += 2;
+				} else if (k < seg.end && paramsText[k] === '*') {
+					k += 1;
+				}
+				while (k < seg.end && /[\t ]/.test(paramsText[k])) k++;
+				if (k >= seg.end || !/[A-Za-z_]/.test(paramsText[k])) {
+					continue;
+				}
+				let z = k + 1;
+				while (z < seg.end && /[A-Za-z0-9_]/.test(paramsText[z])) z++;
+				const name = paramsText.substring(k, z);
+				params.add(name);
+				paramStarts.add(lineStart + paramsStart + k);
+			}
+
+			if (params.size > 0) {
+				if (!scopesByLine.has(line)) {
+					scopesByLine.set(line, []);
+				}
+				scopesByLine.get(line)?.push({
+					paramStarts,
+					params,
+					bodyStart: lineStart + j + 1,
+					bodyEnd: lineEnd
+				});
+			}
+
+			i = j + 1;
+		}
+	}
+
+	return scopesByLine;
+}
+
 export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Token[]): Diagnostic[] {
 	const diagnostics: Diagnostic[] = [];
 	if (!tokens || tokens.length === 0) {
 		return diagnostics;
 	}
 	const cache = getCache(doc.uri);
+	const lambdaScopesByLine = getLambdaScopesByLine(doc);
 
 	let mainNames: string[] = [];
 	let definedNames: string[] = [];
@@ -837,8 +1062,18 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 			continue;
 		}
 
+		const tokenStart = doc.offsetAt({ line: token.line, character: token.character });
+		const lineLambdaScopes = lambdaScopesByLine.get(token.line) || [];
+		const isLambdaParamDefinition = lineLambdaScopes.some((scope) => scope.paramStarts.has(tokenStart) && scope.params.has(token.text));
+		const isInLambdaBodyForParam = lineLambdaScopes.some((scope) => tokenStart >= scope.bodyStart && tokenStart < scope.bodyEnd && scope.params.has(token.text));
+
 		// Is it a definition or a reference? If it's a definition, add it to the list of defined names. If it's a reference, check if it's in the list of defined names. If not, add a diagnostic.
 		if (token.modifier === 'definition') {
+			if (isLambdaParamDefinition) {
+				// Lambda parameter names are line-local definitions and should not
+				// leak into label-level scope for later lines.
+				continue;
+			}
 			if (!isInLabel) {
 				mainNames.push(token.text);
 				continue;
@@ -847,6 +1082,9 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 			continue;
 		}
 		if (token.modifier === 'reference') {
+			if (isLambdaParamDefinition || isInLambdaBodyForParam) {
+				continue;
+			}
 			// Check if the token text is in the list of defined names. If it is, continue. If not, add a diagnostic.
 			if (definedNames.includes(token.text) || mainNames.includes(token.text)) {
 				continue; // Variable is definitely defined

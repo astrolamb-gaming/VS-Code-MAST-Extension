@@ -16,6 +16,7 @@ import { variableModifiers } from '../tokens/variables';
  */
 export const TOKEN_TYPES = [
 	'keyword',           // 0
+	'lambda',
 	'label',             // 1
 	'variable',          // 2
 	'string',            // 3
@@ -1920,6 +1921,287 @@ export class MastStateMachineLexer {
 		return tokenList;
 	}
 
+	private splitTopLevelCommaSegments(text: string): Array<{ start: number; end: number }> {
+		const segments: Array<{ start: number; end: number }> = [];
+		let segStart = 0;
+		let depthParen = 0;
+		let depthBracket = 0;
+		let depthBrace = 0;
+		let inSingle = false;
+		let inDouble = false;
+		let escaped = false;
+
+		for (let i = 0; i < text.length; i++) {
+			const ch = text[i];
+
+			if (inDouble) {
+				if (escaped) {
+					escaped = false;
+					continue;
+				}
+				if (ch === '\\') {
+					escaped = true;
+					continue;
+				}
+				if (ch === '"') {
+					inDouble = false;
+				}
+				continue;
+			}
+
+			if (inSingle) {
+				if (ch === "'") {
+					inSingle = false;
+				}
+				continue;
+			}
+
+			if (ch === '"') {
+				inDouble = true;
+				continue;
+			}
+			if (ch === "'") {
+				inSingle = true;
+				continue;
+			}
+
+			if (ch === '(') depthParen++;
+			else if (ch === ')' && depthParen > 0) depthParen--;
+			else if (ch === '[') depthBracket++;
+			else if (ch === ']' && depthBracket > 0) depthBracket--;
+			else if (ch === '{') depthBrace++;
+			else if (ch === '}' && depthBrace > 0) depthBrace--;
+
+			if (ch === ',' && depthParen === 0 && depthBracket === 0 && depthBrace === 0) {
+				segments.push({ start: segStart, end: i });
+				segStart = i + 1;
+			}
+		}
+
+		segments.push({ start: segStart, end: text.length });
+		return segments;
+	}
+
+	private findLambdaScopesInLine(line: number): Array<{
+		lambdaStart: number,
+		lambdaEnd: number,
+		params: Array<{ name: string, start: number, end: number }>,
+		bodyStart: number,
+		bodyEnd: number
+	}> {
+		const scopes: Array<{
+			lambdaStart: number,
+			lambdaEnd: number,
+			params: Array<{ name: string, start: number, end: number }>,
+			bodyStart: number,
+			bodyEnd: number
+		}> = [];
+
+		const lineStart = this.doc.offsetAt({ line, character: 0 });
+		const lineEnd = line + 1 < this.doc.lineCount
+			? this.doc.offsetAt({ line: line + 1, character: 0 }) - 1
+			: this.text.length;
+		if (lineEnd <= lineStart) {
+			return scopes;
+		}
+
+		const lineText = this.text.substring(lineStart, lineEnd);
+		let i = 0;
+		let inSingle = false;
+		let inDouble = false;
+		let escaped = false;
+
+		while (i < lineText.length) {
+			const ch = lineText[i];
+
+			if (inDouble) {
+				if (escaped) {
+					escaped = false;
+					i++;
+					continue;
+				}
+				if (ch === '\\') {
+					escaped = true;
+					i++;
+					continue;
+				}
+				if (ch === '"') {
+					inDouble = false;
+				}
+				i++;
+				continue;
+			}
+
+			if (inSingle) {
+				if (ch === "'") {
+					inSingle = false;
+				}
+				i++;
+				continue;
+			}
+
+			if (ch === '#') {
+				break;
+			}
+			if (ch === '"') {
+				inDouble = true;
+				i++;
+				continue;
+			}
+			if (ch === "'") {
+				inSingle = true;
+				i++;
+				continue;
+			}
+
+			if (lineText.startsWith('lambda', i)) {
+				const prev = i > 0 ? lineText[i - 1] : ' ';
+				const next = i + 6 < lineText.length ? lineText[i + 6] : ' ';
+				if (/[A-Za-z0-9_]/.test(prev) || /[A-Za-z0-9_]/.test(next)) {
+					i++;
+					continue;
+				}
+
+				const paramsStart = i + 6;
+				let j = paramsStart;
+				let dParen = 0;
+				let dBracket = 0;
+				let dBrace = 0;
+				let qSingle = false;
+				let qDouble = false;
+				let qEsc = false;
+
+				while (j < lineText.length) {
+					const cj = lineText[j];
+					if (qDouble) {
+						if (qEsc) {
+							qEsc = false;
+							j++;
+							continue;
+						}
+						if (cj === '\\') {
+							qEsc = true;
+							j++;
+							continue;
+						}
+						if (cj === '"') qDouble = false;
+						j++;
+						continue;
+					}
+					if (qSingle) {
+						if (cj === "'") qSingle = false;
+						j++;
+						continue;
+					}
+
+					if (cj === '"') {
+						qDouble = true;
+						j++;
+						continue;
+					}
+					if (cj === "'") {
+						qSingle = true;
+						j++;
+						continue;
+					}
+
+					if (cj === '(') dParen++;
+					else if (cj === ')' && dParen > 0) dParen--;
+					else if (cj === '[') dBracket++;
+					else if (cj === ']' && dBracket > 0) dBracket--;
+					else if (cj === '{') dBrace++;
+					else if (cj === '}' && dBrace > 0) dBrace--;
+
+					if (cj === ':' && dParen === 0 && dBracket === 0 && dBrace === 0) {
+						break;
+					}
+					j++;
+				}
+
+				if (j >= lineText.length || lineText[j] !== ':') {
+					i++;
+					continue;
+				}
+
+				const paramsText = lineText.substring(paramsStart, j);
+				const params: Array<{ name: string, start: number, end: number }> = [];
+				for (const seg of this.splitTopLevelCommaSegments(paramsText)) {
+					let k = seg.start;
+					while (k < seg.end && /[\t ]/.test(paramsText[k])) k++;
+					if (k + 1 < seg.end && paramsText[k] === '*' && paramsText[k + 1] === '*') {
+						k += 2;
+					} else if (k < seg.end && paramsText[k] === '*') {
+						k += 1;
+					}
+					while (k < seg.end && /[\t ]/.test(paramsText[k])) k++;
+					if (k >= seg.end || !/[A-Za-z_]/.test(paramsText[k])) {
+						continue;
+					}
+					const nameStartRel = paramsStart + k;
+					let z = k + 1;
+					while (z < seg.end && /[A-Za-z0-9_]/.test(paramsText[z])) z++;
+					const name = paramsText.substring(k, z);
+					const absStart = lineStart + nameStartRel;
+					params.push({
+						name,
+						start: absStart,
+						end: absStart + name.length
+					});
+				}
+
+				scopes.push({
+					lambdaStart: lineStart + i,
+					lambdaEnd: lineStart + j + 1,
+					params,
+					bodyStart: lineStart + j + 1,
+					bodyEnd: lineEnd
+				});
+
+				i = j + 1;
+				continue;
+			}
+
+			i++;
+		}
+
+		return scopes;
+	}
+
+	private applyLambdaPostProcessing(): void {
+		const lambdaTokens: TokenInfo[] = [];
+
+		for (let line = 0; line < this.doc.lineCount; line++) {
+			const scopes = this.findLambdaScopesInLine(line);
+			for (const scope of scopes) {
+				const lambdaPos = this.doc.positionAt(scope.lambdaStart);
+				lambdaTokens.push({
+					type: 'lambda',
+					line: lambdaPos.line,
+					character: lambdaPos.character,
+					length: scope.lambdaEnd - scope.lambdaStart,
+					text: this.text.substring(scope.lambdaStart, scope.lambdaEnd)
+				});
+
+				for (const token of this.tokens) {
+					if (token.type !== 'variable' || token.line !== line) {
+						continue;
+					}
+					const tokenStart = this.doc.offsetAt({ line: token.line, character: token.character });
+					for (const param of scope.params) {
+						if (tokenStart === param.start && token.text === param.name) {
+							token.modifier = 'definition';
+							break;
+						}
+					}
+				}
+			}
+		}
+
+		if (lambdaTokens.length > 0) {
+			this.tokens.push(...lambdaTokens);
+		}
+	}
+
 	public tokenize(): TokenInfo[] {
 		this.tokens = [];
 		this.pos = 0;
@@ -2474,6 +2756,13 @@ export class MastStateMachineLexer {
 			return aOffset - bOffset;
 		});
 
+		this.applyLambdaPostProcessing();
+		this.tokens.sort((a, b) => {
+			const aOffset = this.doc.offsetAt({ line: a.line, character: a.character });
+			const bOffset = this.doc.offsetAt({ line: b.line, character: b.character });
+			return aOffset - bOffset;
+		});
+
 		const cache = getCache(this.doc.uri);
 		for (const token of this.tokens) {
 			if (token.type === 'variable' && token.modifier === 'reference') {
@@ -2487,7 +2776,6 @@ export class MastStateMachineLexer {
 				// if (cache.getMethod(normalized) || (cache.getPossibleMethods(normalized) || []).length > 0) {
 				if (cache.getMethod(normalized)) {
 					token.type = 'function';
-					console.log(`Variable ${normalized} is Method?`);
 					continue;
 				}
 			}
