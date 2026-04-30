@@ -831,10 +831,12 @@ function hasPriorTextualDefinitionInScope(doc: TextDocument, scopeStart: number,
 	const scopeText = doc.getText().substring(scopeStart, tokenStart);
 	const nameRe = escapeRegex(name);
 	const defRx = new RegExp(
-		`^[\\t ]*(default[ \\t]+)?((shared|assigned|client|temp)[ \\t]+)?${nameRe}[\\t ]*(?==[^=])`,
+		`^[\\t ]*(default[ \\\t]+)?((shared|assigned|client|temp)[ \\\t]+)?${nameRe}[\\t ]*(?==[^=])`,
 		'gm'
 	);
-	return defRx.test(scopeText);
+	// Also accept YAML-style metadata keys like `name:` (common in label metadata blocks)
+	const yamlKeyRx = new RegExp(`^[\\t ]*${nameRe}[\\t]*:`, 'gm');
+	return defRx.test(scopeText) || yamlKeyRx.test(scopeText);
 }
 
 function splitTopLevelCommaSegments(text: string): Array<{ start: number, end: number }> {
@@ -1118,6 +1120,23 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 				tokenStart,
 				token.text
 			);
+
+			if (!hasPriorTextDefinition) {
+				const hasGuard = hasGuardingIfThatTerminates(
+					doc,
+					isInLabel ? currentScopeStart : 0,
+					tokenStart,
+					token.text
+				);
+				if (hasGuard) {
+					if (!isInLabel) {
+						mainNames.push(token.text);
+					} else {
+						definedNames.push(token.text);
+					}
+					continue;
+				}
+			}
 			if (hasPriorTextDefinition) {
 				if (!isInLabel) {
 					mainNames.push(token.text);
@@ -1366,4 +1385,48 @@ export function getLabelsAsCompletionItems(text: TextDocument, labelNames: Label
 	}
 
 	return ci;
+}
+
+/**
+ * Heuristic: detect a guarding `if <name> is None:` (or similar) before
+ * `tokenStart` that contains an early-terminator in its block (e.g. `yield fail`,
+ * `return`, `raise`, `->END`, `jump`). If found, treat subsequent uses of
+ * `name` as safe because the guard prevents the path where `name` is None.
+ */
+function hasGuardingIfThatTerminates(doc: TextDocument, scopeStart: number, tokenStart: number, name: string): boolean {
+	if (!name || tokenStart <= scopeStart) return false;
+	const text = doc.getText().substring(scopeStart, tokenStart);
+	const lines = text.split(/\r?\n/);
+
+	// Search backwards for a matching if-line so we find the nearest guard.
+	for (let i = lines.length - 1; i >= 0; i--) {
+		const line = lines[i];
+		// Match `if <name> is None:` or `if <name> is not None:` variants
+		const ifRegex = new RegExp(`^[ \t]*if[ \t]+${escapeRegex(name)}[ \t]+is(?:[ \t]+not)?[ \t]+None[ \t]*:(?:[ \t]*(.*))?$`);
+		const m = ifRegex.exec(line);
+		if (!m) continue;
+
+		// If there's trailing code on the same line after the colon, check it for terminator
+		const sameLineAfter = (m[1] || '').trim();
+		const termRx = /^(yield\s+fail|return\b|raise\b|->END\b|jump\b|signal_emit\(|->\s*END)/;
+		if (sameLineAfter && termRx.test(sameLineAfter)) return true;
+
+		// Determine indentation of the if-line
+		const indentMatch = line.match(/^[ \t]*/);
+		const ifIndent = indentMatch ? indentMatch[0].length : 0;
+
+		// Scan following lines (i+1..) that are strictly more-indented than the if-line
+		for (let j = i + 1; j < lines.length; j++) {
+			const l = lines[j];
+			if (l.trim().length === 0) continue; // skip blank
+			const leading = l.match(/^[ \t]*/);
+			const leadLen = leading ? leading[0].length : 0;
+			if (leadLen <= ifIndent) break; // end of this if-block
+			// Check for terminating statements inside the block
+			const trimmed = l.trim();
+			if (termRx.test(trimmed)) return true;
+		}
+		// If this if didn't show terminator, keep searching earlier ifs
+	}
+	return false;
 }
