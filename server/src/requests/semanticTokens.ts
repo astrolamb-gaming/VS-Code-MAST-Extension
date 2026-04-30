@@ -1983,6 +1983,120 @@ export class MastStateMachineLexer {
 		return segments;
 	}
 
+	private findTopLevelInKeyword(text: string): number {
+		let depthParen = 0;
+		let depthBracket = 0;
+		let depthBrace = 0;
+		let inSingle = false;
+		let inDouble = false;
+		let escaped = false;
+
+		for (let i = 0; i < text.length; i++) {
+			const ch = text[i];
+
+			if (inDouble) {
+				if (escaped) {
+					escaped = false;
+					continue;
+				}
+				if (ch === '\\') {
+					escaped = true;
+					continue;
+				}
+				if (ch === '"') {
+					inDouble = false;
+				}
+				continue;
+			}
+
+			if (inSingle) {
+				if (ch === "'") {
+					inSingle = false;
+				}
+				continue;
+			}
+
+			if (ch === '"') {
+				inDouble = true;
+				continue;
+			}
+			if (ch === "'") {
+				inSingle = true;
+				continue;
+			}
+
+			if (ch === '(') depthParen++;
+			else if (ch === ')' && depthParen > 0) depthParen--;
+			else if (ch === '[') depthBracket++;
+			else if (ch === ']' && depthBracket > 0) depthBracket--;
+			else if (ch === '{') depthBrace++;
+			else if (ch === '}' && depthBrace > 0) depthBrace--;
+
+			if (depthParen === 0 && depthBracket === 0 && depthBrace === 0 && text.startsWith(' in ', i)) {
+				return i;
+			}
+		}
+
+		return -1;
+	}
+
+	private getForLoopTargetOffsetsByLine(): Map<number, Set<number>> {
+		const byLine = new Map<number, Set<number>>();
+
+		for (let line = 0; line < this.doc.lineCount; line++) {
+			const lineStart = this.doc.offsetAt({ line, character: 0 });
+			const lineEnd = line + 1 < this.doc.lineCount
+				? this.doc.offsetAt({ line: line + 1, character: 0 }) - 1
+				: this.text.length;
+			if (lineEnd <= lineStart) {
+				continue;
+			}
+
+			const lineText = this.text.substring(lineStart, lineEnd);
+			const commentIndex = lineText.indexOf('#');
+			const statement = (commentIndex >= 0 ? lineText.substring(0, commentIndex) : lineText).trim();
+			if (statement.length === 0) {
+				continue;
+			}
+
+			let targetStartInStatement = -1;
+			if (statement.startsWith('for ')) {
+				targetStartInStatement = 4;
+			} else if (statement.startsWith('async for ')) {
+				targetStartInStatement = 10;
+			} else {
+				continue;
+			}
+
+			const afterFor = statement.substring(targetStartInStatement);
+			const inIndex = this.findTopLevelInKeyword(afterFor);
+			if (inIndex < 0) {
+				continue;
+			}
+
+			const targetExpr = afterFor.substring(0, inIndex);
+			if (!targetExpr.trim()) {
+				continue;
+			}
+
+			const leadingWs = lineText.length - lineText.trimStart().length;
+			const targetAbsStart = lineStart + leadingWs + targetStartInStatement;
+			const targetOffsets = new Set<number>();
+
+			const idRe = /[A-Za-z_][A-Za-z0-9_]*/g;
+			let m: RegExpExecArray | null;
+			while ((m = idRe.exec(targetExpr)) !== null) {
+				targetOffsets.add(targetAbsStart + m.index);
+			}
+
+			if (targetOffsets.size > 0) {
+				byLine.set(line, targetOffsets);
+			}
+		}
+
+		return byLine;
+	}
+
 	private findLambdaScopesInLine(line: number): Array<{
 		lambdaStart: number,
 		lambdaEnd: number,
@@ -2200,6 +2314,27 @@ export class MastStateMachineLexer {
 
 		if (lambdaTokens.length > 0) {
 			this.tokens.push(...lambdaTokens);
+		}
+	}
+
+	private applyForLoopPostProcessing(): void {
+		const forLoopTargetsByLine = this.getForLoopTargetOffsetsByLine();
+		if (forLoopTargetsByLine.size === 0) {
+			return;
+		}
+
+		for (const token of this.tokens) {
+			if (token.type !== 'variable' || token.line < 0) {
+				continue;
+			}
+			const targetOffsets = forLoopTargetsByLine.get(token.line);
+			if (!targetOffsets || targetOffsets.size === 0) {
+				continue;
+			}
+			const tokenStart = this.doc.offsetAt({ line: token.line, character: token.character });
+			if (targetOffsets.has(tokenStart)) {
+				token.modifier = 'definition';
+			}
 		}
 	}
 
@@ -2758,6 +2893,7 @@ export class MastStateMachineLexer {
 		});
 
 		this.applyLambdaPostProcessing();
+		this.applyForLoopPostProcessing();
 		this.tokens.sort((a, b) => {
 			const aOffset = this.doc.offsetAt({ line: a.line, character: a.character });
 			const bOffset = this.doc.offsetAt({ line: b.line, character: b.character });

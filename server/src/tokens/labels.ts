@@ -820,109 +820,21 @@ interface LambdaScopeInfo {
 	bodyEnd: number
 }
 
-function findTopLevelInKeyword(text: string): number {
-	let dParen = 0;
-	let dBracket = 0;
-	let dBrace = 0;
-	let inSingle = false;
-	let inDouble = false;
-	let escaped = false;
-
-	for (let i = 0; i < text.length; i++) {
-		const ch = text[i];
-
-		if (inDouble) {
-			if (escaped) {
-				escaped = false;
-				continue;
-			}
-			if (ch === '\\') {
-				escaped = true;
-				continue;
-			}
-			if (ch === '"') inDouble = false;
-			continue;
-		}
-
-		if (inSingle) {
-			if (ch === "'") inSingle = false;
-			continue;
-		}
-
-		if (ch === '"') {
-			inDouble = true;
-			continue;
-		}
-		if (ch === "'") {
-			inSingle = true;
-			continue;
-		}
-
-		if (ch === '(') dParen++;
-		else if (ch === ')' && dParen > 0) dParen--;
-		else if (ch === '[') dBracket++;
-		else if (ch === ']' && dBracket > 0) dBracket--;
-		else if (ch === '{') dBrace++;
-		else if (ch === '}' && dBrace > 0) dBrace--;
-
-		if (dParen === 0 && dBracket === 0 && dBrace === 0) {
-			if (text.startsWith(' in ', i)) {
-				return i;
-			}
-		}
-	}
-
-	return -1;
+function escapeRegex(text: string): string {
+	return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function getForLoopTargetOffsetsByLine(doc: TextDocument): Map<number, Set<number>> {
-	const byLine = new Map<number, Set<number>>();
-	const fullText = doc.getText();
-
-	for (let line = 0; line < doc.lineCount; line++) {
-		const lineStart = doc.offsetAt({ line, character: 0 });
-		const lineEnd = line + 1 < doc.lineCount
-			? doc.offsetAt({ line: line + 1, character: 0 }) - 1
-			: fullText.length;
-		if (lineEnd <= lineStart) continue;
-
-		const lineText = fullText.substring(lineStart, lineEnd);
-		const commentIndex = lineText.indexOf('#');
-		const statement = (commentIndex >= 0 ? lineText.substring(0, commentIndex) : lineText).trim();
-		if (statement.length === 0) continue;
-
-		let targetStartInStatement = -1;
-		if (statement.startsWith('for ')) {
-			targetStartInStatement = 4;
-		} else {
-			continue;
-		}
-
-		const afterFor = statement.substring(targetStartInStatement);
-		const inIndex = findTopLevelInKeyword(afterFor);
-		if (inIndex < 0) continue;
-
-		const targetExpr = afterFor.substring(0, inIndex);
-		if (!targetExpr.trim()) continue;
-
-		const leadingWs = lineText.length - lineText.trimStart().length;
-		const targetAbsStart = lineStart + leadingWs + targetStartInStatement;
-		const targetOffsets = new Set<number>();
-
-		const idRe = /[A-Za-z_][A-Za-z0-9_]*/g;
-		let m: RegExpExecArray | null;
-		while ((m = idRe.exec(targetExpr)) !== null) {
-			const name = m[0];
-			if (LABEL_SCOPE_KEYWORDS.has(name)) continue;
-			targetOffsets.add(targetAbsStart + m.index);
-		}
-
-		if (targetOffsets.size > 0) {
-			byLine.set(line, targetOffsets);
-		}
+function hasPriorTextualDefinitionInScope(doc: TextDocument, scopeStart: number, tokenStart: number, name: string): boolean {
+	if (!name || tokenStart <= scopeStart) {
+		return false;
 	}
-
-	return byLine;
+	const scopeText = doc.getText().substring(scopeStart, tokenStart);
+	const nameRe = escapeRegex(name);
+	const defRx = new RegExp(
+		`^[\\t ]*(default[ \\t]+)?((shared|assigned|client|temp)[ \\t]+)?${nameRe}[\\t ]*(?==[^=])`,
+		'gm'
+	);
+	return defRx.test(scopeText);
 }
 
 function splitTopLevelCommaSegments(text: string): Array<{ start: number, end: number }> {
@@ -1149,17 +1061,23 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 	}
 	const cache = getCache(doc.uri);
 	const lambdaScopesByLine = getLambdaScopesByLine(doc);
-	const forLoopTargetOffsetsByLine = getForLoopTargetOffsetsByLine(doc);
 
 	let mainNames: string[] = [];
 	let definedNames: string[] = [];
 	let isInLabel = false;
+	let currentScopeStart = 0;
 
 	for (const token of tokens) {
 		// If we're starting a new label scope, reset the defined names. Variables are scoped to their label, so definitions in one label don't affect references in another.
 		if (token.type === 'label' || token.type === 'route-label' || token.type === 'media-label') {
-			definedNames = [];
-			isInLabel = true;
+			// Only a label *definition* starts a new variable scope. Label *references*
+			// (e.g. `jump foo`, `->foo`, or a prefab name passed as an argument) must
+			// not reset the scope, or variables defined earlier in the block are lost.
+			if (token.modifier === 'definition') {
+				definedNames = [];
+				isInLabel = true;
+				currentScopeStart = doc.offsetAt({ line: token.line, character: token.character });
+			}
 			continue;
 		}
 
@@ -1170,12 +1088,9 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 
 		const tokenStart = doc.offsetAt({ line: token.line, character: token.character });
 		const lineLambdaScopes = lambdaScopesByLine.get(token.line) || [];
-		const lineForTargets = forLoopTargetOffsetsByLine.get(token.line);
-		const isForLoopTargetDefinition = !!lineForTargets?.has(tokenStart);
 		const isLambdaParamDefinition = lineLambdaScopes.some((scope) => scope.paramStarts.has(tokenStart) && scope.params.has(token.text));
 		const isInLambdaBodyForParam = lineLambdaScopes.some((scope) => tokenStart >= scope.bodyStart && tokenStart < scope.bodyEnd && scope.params.has(token.text));
 
-		// Is it a definition or a reference? If it's a definition, add it to the list of defined names. If it's a reference, check if it's in the list of defined names. If not, add a diagnostic.
 		if (token.modifier === 'definition') {
 			if (isLambdaParamDefinition) {
 				// Lambda parameter names are line-local definitions and should not
@@ -1190,20 +1105,26 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 			continue;
 		}
 		if (token.modifier === 'reference') {
-			if (isForLoopTargetDefinition) {
-				if (!isInLabel) {
-					mainNames.push(token.text);
-				} else {
-					definedNames.push(token.text);
-				}
-				continue;
-			}
 			if (isLambdaParamDefinition || isInLambdaBodyForParam) {
 				continue;
 			}
 			// Check if the token text is in the list of defined names. If it is, continue. If not, add a diagnostic.
 			if (definedNames.includes(token.text) || mainNames.includes(token.text)) {
 				continue; // Variable is definitely defined
+			}
+			const hasPriorTextDefinition = hasPriorTextualDefinitionInScope(
+				doc,
+				isInLabel ? currentScopeStart : 0,
+				tokenStart,
+				token.text
+			);
+			if (hasPriorTextDefinition) {
+				if (!isInLabel) {
+					mainNames.push(token.text);
+				} else {
+					definedNames.push(token.text);
+				}
+				continue;
 			}
 			if (cache.getMethod(token.text)) {
 				continue; // It's a reference to a built-in method, so we can ignore it.
