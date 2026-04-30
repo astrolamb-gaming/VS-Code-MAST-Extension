@@ -805,20 +805,47 @@ connection.languages.semanticTokens.on((params: SemanticTokensParams) => {
 	}
 	try {
 		// Check cache first
-		const cache = getSemanticTokensCache();
-		const cached = cache.get(params.textDocument.uri, document.version);
+		const stcache = getSemanticTokensCache();
+		const cached = stcache.get(params.textDocument.uri, document.version);
 		if (cached) {
 			return cached;
 		}
 
 		// Compute tokens and cache result
 		const allTokens = tokenizeDocument(document);
+		const cache = getCache(params.textDocument.uri);
+		const testlabel = "prefab_side_generic";
+		for (const token of allTokens) {
+			if (token.type === 'variable' && token.modifier === 'reference') {
+				if (token.text === testlabel) {
+					console.log("test token found");
+					console.log(cache.getLabel(token.text));
+				}
+				const mainLabels = getCache(params.textDocument.uri).getLabelsAtPos(document, document.offsetAt({ line: token.line, character: token.character }), false);
+				if (mainLabels.find(l => l.name === token.text)) {
+					token.type = token.text.startsWith('//') ? 'route-label' : 'label';
+					continue;
+				}
+				
+				// if (cache.getLabel(token.text, false)) {
+				// 	token.type = token.text.startsWith('//') ? 'route-label' : 'label';
+				// 	continue;
+				// }
+				const normalized = token.text;
+				// This line was causing variables to show up as class methods (and properties) improperly
+				// if (cache.getMethod(normalized) || (cache.getPossibleMethods(normalized) || []).length > 0) {
+				if (cache.getMethod(normalized)) {
+					token.type = 'function';
+					continue;
+				}
+			}
+		}
 		// filter out strings because they're weird in mast sometimes and I don't want to take too much time
 		// figuring out how to handle them properly in the semantic tokens. This is a temporary solution.
 		const filteredTokens = allTokens.filter(t => t.type !== "comment");
-		const tokens = buildSemanticTokens(filteredTokens);
+		const tokens = buildSemanticTokens(filteredTokens,document);
 
-		cache.set(params.textDocument.uri, document.version, tokens);
+		stcache.set(params.textDocument.uri, document.version, tokens);
 		return tokens;
 	} catch (e) {
 		debug(`Error computing semantic tokens: ${e}`);

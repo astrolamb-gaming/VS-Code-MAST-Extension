@@ -9,6 +9,7 @@ import { CRange } from '../tokens/comments';
 import { Token } from '../tokens/tokens';
 import { getCache } from '../cache';
 import { variableModifiers } from '../tokens/variables';
+import { convertVariableTokensToLabelOrFunction } from './semanticTokensCache';
 
 /**
  * Semantic token types supported by the MAST language server.
@@ -2763,24 +2764,6 @@ export class MastStateMachineLexer {
 			return aOffset - bOffset;
 		});
 
-		const cache = getCache(this.doc.uri);
-		for (const token of this.tokens) {
-			if (token.type === 'variable' && token.modifier === 'reference') {
-				// Reclassify as label reference if it matches a known label name
-				if (this.isKnownLabelReferenceName(token.text)) {
-					token.type = token.text.startsWith('//') ? 'route-label' : 'label';
-					continue;
-				}
-				const normalized = token.text;
-				// This line was causing variables to show up as class methods (and properties) improperly
-				// if (cache.getMethod(normalized) || (cache.getPossibleMethods(normalized) || []).length > 0) {
-				if (cache.getMethod(normalized)) {
-					token.type = 'function';
-					continue;
-				}
-			}
-		}
-
 		return this.tokens;
 	}
 
@@ -2792,9 +2775,9 @@ export class MastStateMachineLexer {
 /**
  * Converts TokenInfo array to SemanticTokens format for LSP
  */
-export function buildSemanticTokens(tokens: TokenInfo[]): SemanticTokens {
+export function buildSemanticTokens(tokens: TokenInfo[], doc: TextDocument): SemanticTokens {
 	const builder = new SemanticTokensBuilder();
-
+	convertVariableTokensToLabelOrFunction(tokens, doc);
 	for (const token of tokens) {
 		// Keep string tokens available to server-side analyzers, but do not
 		// emit them in the semantic token stream returned to the client.
@@ -2848,7 +2831,7 @@ export function tokenizeDocument(document: TextDocument): TokenInfo[] {
  */
 export function getSemanticTokens(document: TextDocument): SemanticTokens {
 	let tokens: TokenInfo[] = tokenizeDocument(document);
-	return buildSemanticTokens(tokens);
+	return buildSemanticTokens(tokens,document);
 }
 
 /**

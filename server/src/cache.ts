@@ -1323,6 +1323,60 @@ export class MissionCache {
 	}
 
 	/**
+	 * Get the first label in mission scope matching the given name.
+	 * Includes main labels and inline sublabels.
+	 * @param name Label name to find
+	 * @returns Matching {@link LabelInfo LabelInfo}, or undefined if not found
+	 */
+	getLabel(name:string, mainOnly:boolean=true): LabelInfo | undefined {
+		const target = (name || '').trim();
+		if (target === '') {
+			return undefined;
+		}
+
+		
+		const findIn = (labels: LabelInfo[]): LabelInfo | undefined => {
+			// console.log(labels);
+			for (const label of labels) {
+				if (label.name === target) {
+					return label;
+				}
+				if (mainOnly) {
+					continue;
+				}
+				if (label.subLabels && label.subLabels.length > 0) {
+					for (const sub of label.subLabels) {
+						if (sub.name === target) {
+							return sub;
+						}
+					}
+				}
+			}
+			return undefined;
+		};
+
+		for (const file of this.mastFileCache) {
+			const found = findIn(file.labelNames);
+			if (file.uri.includes("side_prefabs")) {
+				console.log(file.labelNames)
+				console.log(found);
+			}
+			if (found) {
+				return found;
+			}
+		}
+
+		for (const file of this.missionMastModules) {
+			const found = findIn(file.labelNames);
+			if (found) {
+				return found;
+			}
+		}
+
+		return undefined;
+	}
+
+	/**
 	 * Get all labels, including sublabels, that are within the current scope at the specified position within the document.
 	 * @param doc 
 	 * @param pos 
@@ -1330,9 +1384,9 @@ export class MissionCache {
 	getLabelsAtPos(doc:TextDocument, pos:integer, thisFileOnly:boolean=false): LabelInfo[] {
 		// const labels: LabelInfo[] = this.getLabels(doc);
 		if (doc.languageId !== "mast") return [];
-		const labels = this.getMastFile(doc.uri).labelNames;
+		const labels = this.getMastFile(doc.uri)?.labelNames || [];
 		const main = getMainLabelAtPos(pos,labels);
-		const subs = main.subLabels;
+		const subs = main?.subLabels || [];
 		let ret;
 		if (thisFileOnly) {
 			ret = labels.concat(subs);

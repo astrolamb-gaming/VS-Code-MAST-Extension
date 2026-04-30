@@ -1,6 +1,8 @@
 import { integer, SemanticTokens } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
+import { TokenInfo } from './semanticTokens';
+import { getCache, MissionCache } from '../cache';
 
 /**
  * Caching layer for semantic tokens to avoid re-tokenizing unchanged documents
@@ -108,4 +110,36 @@ export function getSemanticTokensCache(): SemanticTokensCache {
  */
 export function resetSemanticTokensCache(): void {
 	globalCache = null;
+}
+
+export function convertVariableTokensToLabelOrFunction(tokens: TokenInfo[], text:TextDocument): void {
+	const testtoken = "prefab_side_generic";
+	const cache = getCache(text.uri);
+	for (const token of tokens) {
+		if (token.type === 'variable' && token.modifier === 'reference') {
+			if (token.text === testtoken) {
+				console.log("test token found");
+				console.log(cache.getLabel(token.text));
+			}
+			const labelNames = cache.getLabelsAtPos(text, text.offsetAt({ line: token.line, character: token.character }), false);
+			if (labelNames.find(l => l.name === token.text)) {
+				console.log(`Converting ${token.text} to label reference`);
+				token.type = token.text.startsWith('//') ? 'route-label' : 'label';
+				continue;
+			}
+			
+			// if (cache.getLabel(token.text, false)) {
+			// 	token.type = token.text.startsWith('//') ? 'route-label' : 'label';
+			// 	continue;
+			// }
+			const normalized = token.text;
+			// This line was causing variables to show up as class methods (and properties) improperly
+			// if (cache.getMethod(normalized) || (cache.getPossibleMethods(normalized) || []).length > 0) {
+			if (cache.getMethod(normalized)) {
+				console.log(`Converting ${token.text} to function reference`);
+				token.type = 'function';
+				continue;
+			}
+		}
+	}
 }

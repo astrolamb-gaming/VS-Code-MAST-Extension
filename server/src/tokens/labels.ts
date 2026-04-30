@@ -1092,6 +1092,12 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 			if (cache.getMethod(token.text)) {
 				continue; // It's a reference to a built-in method, so we can ignore it.
 			}
+			const labelNames = cache.getLabelsAtPos(doc, doc.offsetAt({ line: token.line, character: token.character }), false);
+			if (labelNames.find(l => l.name === token.text)) {
+				console.log(`Converting ${token.text} to label reference`);
+				token.type = token.text.startsWith('//') ? 'route-label' : 'label';
+				continue;
+			}
 			const d: Diagnostic = {
 				range: {
 					start: { line: token.line, character: token.character },
