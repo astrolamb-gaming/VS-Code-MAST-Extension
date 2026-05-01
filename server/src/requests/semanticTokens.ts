@@ -19,6 +19,7 @@ export const TOKEN_TYPES = [
 	'keyword',           // 0
 	'lambda',
 	'label',             // 1
+	'module',
 	'variable',          // 2
 	'string',            // 3
 	'comment',           // 4
@@ -518,6 +519,10 @@ export class MastStateMachineLexer {
     private line: number = 0;
     private char: number = 0;
 	private expectSignalReference: boolean = false;
+	private expectImportModuleReference: boolean = false;
+	private expectFromModuleReference: boolean = false;
+	private expectFromImportedReference: boolean = false;
+	private inFromImportStatement: boolean = false;
 	private activeLineStringDelimiter: string | null = null;
 	// When a line begins with a single '+' we expect a string to follow;
 	// after that string the next identifier should be treated as a label reference.
@@ -625,6 +630,10 @@ export class MastStateMachineLexer {
 	private advance(): void {
 		if (this.pos < this.text.length) {
 			if (this.text[this.pos] === '\n') {
+				this.expectImportModuleReference = false;
+				this.expectFromModuleReference = false;
+				this.expectFromImportedReference = false;
+				this.inFromImportStatement = false;
 				this.line++;
 				this.char = 0;
 			} else {
@@ -1180,14 +1189,42 @@ export class MastStateMachineLexer {
 		}
 
 		const text = this.text.substring(startPos, this.pos);
-		const keywords = ['def', 'async', 'await', 'import', 'if', 'elif', 'else', 'match', 'case', 'yield', 'return', 'break', 'continue', 'pass', 'raise', 'try', 'except', 'finally', 'with', 'class', 'while', 'for', 'in', 'is', 'and', 'or', 'not', 'lambda', 'on', 'change', 'signal'];
+		const keywords = ['def', 'async', 'await', 'import', 'from', 'as', 'if', 'elif', 'else', 'match', 'case', 'yield', 'return', 'break', 'continue', 'pass', 'raise', 'try', 'except', 'finally', 'with', 'class', 'while', 'for', 'in', 'is', 'and', 'or', 'not', 'lambda', 'on', 'change', 'signal'];
 		for (const kw of variableModifiers) {
 			keywords.push(kw[0]);
 		}
+		if (text === 'from') {
+			this.inFromImportStatement = true;
+			this.expectFromModuleReference = true;
+			this.expectFromImportedReference = false;
+			this.expectImportModuleReference = false;
+			return null;
+		}
+
 		// Special-case `jump` keyword: emit following identifier as label
 		if (text === 'jump') {
 			const jt = this.scanJumpTarget();
 			return jt; // may be null if no valid target
+		}
+
+		// Special-case `import` keyword: next identifier is a module reference.
+		if (text === 'import') {
+			if (this.inFromImportStatement) {
+				this.expectFromImportedReference = true;
+				this.expectFromModuleReference = false;
+			} else {
+				this.expectImportModuleReference = true;
+			}
+			return null;
+		}
+
+		if (text === 'as') {
+			// Alias token is a keyword; the alias identifier that follows should not
+			// be treated as a module reference in from-import mode.
+			if (this.inFromImportStatement) {
+				this.expectFromImportedReference = false;
+			}
+			return null;
 		}
 
 		if (text === 'yield') {
@@ -1257,6 +1294,46 @@ export class MastStateMachineLexer {
 		
 		if (keywords.includes(text)) {
 			return null; // Keywords are parsed but not emitted
+		}
+
+		if (this.expectImportModuleReference || this.expectFromModuleReference || this.expectFromImportedReference) {
+			const isFromModule = this.expectFromModuleReference;
+			const isFromImported = this.expectFromImportedReference;
+			this.expectImportModuleReference = false;
+			this.expectFromModuleReference = false;
+			this.expectFromImportedReference = false;
+			// Extend the module token to include dotted suffixes, such as
+			// `common_console_selection.py` or `pkg.submodule`.
+			let moduleEnd = this.pos;
+			while (moduleEnd < this.text.length && this.text[moduleEnd] === '.') {
+				const segStart = moduleEnd + 1;
+				if (segStart >= this.text.length || !this.isIdentifierStart(this.text[segStart])) {
+					break;
+				}
+				moduleEnd = segStart + 1;
+				while (moduleEnd < this.text.length && this.isIdentifierPart(this.text[moduleEnd])) {
+					moduleEnd++;
+				}
+			}
+			if (moduleEnd > this.pos) {
+				this.advanceTo(moduleEnd);
+			}
+			const moduleText = this.text.substring(startPos, moduleEnd);
+			if (isFromImported) {
+				// End from-import context after consuming first imported symbol.
+				this.inFromImportStatement = false;
+			} else if (isFromModule) {
+				// Keep from-import context alive until we encounter `import`.
+				this.inFromImportStatement = true;
+			}
+			return {
+				type: 'module',
+				modifier: 'reference',
+				line: startLine,
+				character: startChar,
+				length: moduleText.length,
+				text: moduleText
+			};
 		}
 
 		// If expecting a signal reference, emit as label with 'reference' modifier
@@ -1583,7 +1660,7 @@ export class MastStateMachineLexer {
 		const tokens: TokenInfo[] = [];
 		let pos = exprStart;
 		const keywords = new Set([
-			'def', 'async', 'await', 'shared', 'import', 'if', 'elif', 'else', 'match', 'case', 'yield',
+			'def', 'async', 'await', 'shared', 'import', 'from', 'as', 'if', 'elif', 'else', 'match', 'case', 'yield',
 			'return', 'break', 'continue', 'pass', 'raise', 'try', 'except', 'finally', 'with', 'class',
 			'while', 'for', 'in', 'is', 'and', 'or', 'not', 'lambda', 'on', 'change', 'signal', 'jump'
 		]);
