@@ -269,6 +269,10 @@
 			{
 				"command": "mast.runSbsLib",
 				"title": "MAST: Build sbslib/mastlib"
+			},
+			{
+				"command": "mast.NewMissionScaffold",
+				"title": "MAST: New Mission Scaffold"
 			}
 		]
 	},

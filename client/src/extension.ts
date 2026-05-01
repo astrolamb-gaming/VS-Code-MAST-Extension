@@ -4,9 +4,13 @@
  * ------------------------------------------------------------------------------------------ */
 
 import * as path from 'path';
+import { execFile } from 'child_process';
+import * as os from 'os';
+import * as https from 'https';
 import { workspace, ExtensionContext , window, OutputChannel, LogOutputChannel, Progress, ThemeColor } from 'vscode';
 import * as vscode from 'vscode';
 import fs = require("fs");
+import AdmZip = require('adm-zip');
 
 import {
 	integer,
@@ -52,6 +56,9 @@ debug("Output channel created");
 // #endregion
 
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+const MAST_STARTER_REPO = 'https://github.com/artemis-sbs/mast_starter';
+const MAST_STARTER_ZIP = 'https://codeload.github.com/artemis-sbs/mast_starter/zip/refs/heads/main';
 
 
 export function activate(context: ExtensionContext) {
@@ -254,6 +261,105 @@ export function activate(context: ExtensionContext) {
 		window.showInformationMessage(`Running: ${command}`);
 	}));
 
+	context.subscriptions.push(vscode.commands.registerCommand('mast.NewMissionScaffold', async () => {
+		debug('mast.NewMissionScaffold command triggered');
+
+		const missionName = await window.showInputBox({
+			title: 'Create New Mission',
+			prompt: 'Enter a name for the new mission folder',
+			placeHolder: 'my_new_mission',
+			ignoreFocusOut: true,
+			validateInput: (value: string) => {
+				const trimmed = value.trim();
+				if (!trimmed) {
+					return 'Mission name is required.';
+				}
+				if (/[/\\:*?"<>|]/.test(trimmed)) {
+					return 'Mission name contains invalid path characters.';
+				}
+				if (trimmed === '.' || trimmed === '..') {
+					return 'Mission name cannot be "." or "..".';
+				}
+				return null;
+			}
+		});
+
+		if (!missionName) {
+			debug('Mission scaffold creation cancelled: no mission name supplied.');
+			return;
+		}
+
+		const missionNameTrimmed = missionName.trim();
+		const openBehaviorSelection = await window.showQuickPick(
+			[
+				{ label: 'Add to Current Workspace', description: 'Adds the mission folder to the current workspace', behavior: 'add-current' },
+				{ label: 'Open in New Workspace', description: 'Replaces the current workspace with the new mission folder', behavior: 'open-current-window' },
+				{ label: 'Open in New Window', description: 'Opens the new mission folder in a new VS Code window', behavior: 'open-new-window' },
+				{ label: 'Create but Don\'t Open', description: 'Creates the mission folder only', behavior: 'create-only' }
+			],
+			{
+				title: 'Mission Open Behavior',
+				placeHolder: 'Choose what to do after creating the mission',
+				ignoreFocusOut: true
+			}
+		);
+
+		if (!openBehaviorSelection) {
+			debug('Mission scaffold creation cancelled: no mission open behavior selected.');
+			return;
+		}
+
+		const openBehavior = openBehaviorSelection.behavior;
+		const missionsDir = resolveMissionsDirectoryFromOpenMast();
+		if (!missionsDir) {
+			window.showWarningMessage('Could not find a parent "missions" folder from any open .mast file. Open a .mast file within a mission under "missions" and try again.');
+			debug('Mission scaffold creation cancelled: no missions directory resolved from open .mast files.');
+			return;
+		}
+
+		const missionDir = path.join(missionsDir, missionNameTrimmed);
+
+		if (fs.existsSync(missionDir)) {
+			window.showErrorMessage(`Mission folder already exists: ${missionDir}`);
+			return;
+		}
+
+		try {
+			await window.withProgress({
+				location: vscode.ProgressLocation.Notification,
+				title: `Creating mission scaffold "${missionNameTrimmed}"...`,
+				cancellable: false
+			}, async () => {
+				await cloneMissionTemplate(missionDir);
+			});
+
+			if (openBehavior === 'add-current') {
+				const alreadyInWorkspace = vscode.workspace.workspaceFolders?.some(
+					(folder) => folder.uri.fsPath === missionDir
+				) ?? false;
+				if (!alreadyInWorkspace) {
+					vscode.workspace.updateWorkspaceFolders(
+						vscode.workspace.workspaceFolders?.length ?? 0,
+						0,
+						{ uri: vscode.Uri.file(missionDir), name: missionNameTrimmed }
+					);
+				}
+			}
+			if (openBehavior === 'open-current-window') {
+				await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(missionDir), false);
+			}
+			if (openBehavior === 'open-new-window') {
+				await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(missionDir), true);
+			}
+
+			window.showInformationMessage(`Created mission scaffold: ${missionNameTrimmed}`);
+		} catch (error: any) {
+			const message = error?.message ?? String(error);
+			debug(`Failed to create mission scaffold: ${message}`);
+			window.showErrorMessage(`Failed to create mission scaffold: ${message}`);
+		}
+	}));
+
 	// context.subscriptions.push(
 	// 	vscode.commands.registerCommand('faces.start', () => {
 	// 		generateShipWebview(context, )
@@ -373,4 +479,153 @@ export function debug(str:any) {
 	} else {
 		outputChannel.appendLine("client not initialized")
 	}
+}
+
+function resolveMissionsDirectoryFromOpenMast(): string | undefined {
+	const mastPaths = new Set<string>();
+	const activeDocument = vscode.window.activeTextEditor?.document;
+	if (activeDocument && activeDocument.languageId === 'mast' && !activeDocument.isUntitled) {
+		mastPaths.add(activeDocument.uri.fsPath);
+	}
+
+	for (const document of vscode.workspace.textDocuments) {
+		if (document.languageId === 'mast' && !document.isUntitled) {
+			mastPaths.add(document.uri.fsPath);
+		}
+	}
+
+	for (const mastPath of mastPaths) {
+		const missionsDir = findParentMissionsDirectory(path.dirname(mastPath));
+		if (missionsDir) {
+			return missionsDir;
+		}
+	}
+
+	return undefined;
+}
+
+function findParentMissionsDirectory(startDir: string): string | undefined {
+	let currentDir = startDir;
+	while (true) {
+		if (path.basename(currentDir).toLowerCase() === 'missions') {
+			return currentDir;
+		}
+
+		const parentDir = path.dirname(currentDir);
+		if (parentDir === currentDir) {
+			return undefined;
+		}
+		currentDir = parentDir;
+	}
+}
+
+async function cloneMissionTemplate(missionDir: string): Promise<void> {
+	const missionParent = path.dirname(missionDir);
+	await fs.promises.mkdir(missionParent, { recursive: true });
+
+	try {
+		await cloneMissionTemplateWithGit(missionDir, missionParent);
+	} catch (error: any) {
+		if (error?.code === 'ENOENT') {
+			debug('git executable not found, falling back to ZIP download for mission scaffold.');
+			await cloneMissionTemplateFromZip(missionDir);
+			return;
+		}
+		throw new Error(error?.message ?? String(error));
+	}
+
+	const gitDir = path.join(missionDir, '.git');
+	if (fs.existsSync(gitDir)) {
+		await fs.promises.rm(gitDir, { recursive: true, force: true });
+	}
+}
+
+async function cloneMissionTemplateWithGit(missionDir: string, missionParent: string): Promise<void> {
+	const gitExecutable = getGitExecutablePath();
+
+	await new Promise<void>((resolve, reject) => {
+		execFile(
+			gitExecutable,
+			['clone', '--depth', '1', MAST_STARTER_REPO, missionDir],
+			{ cwd: missionParent },
+			(error, _stdout, stderr) => {
+				if (error) {
+					if (stderr && stderr.trim().length > 0) {
+						error.message = stderr.trim();
+					}
+					reject(error);
+					return;
+				}
+				resolve();
+			}
+		);
+	});
+
+}
+
+function getGitExecutablePath(): string {
+	const configured = vscode.workspace.getConfiguration('git').get<string>('path');
+	if (configured && configured.trim().length > 0) {
+		return configured.trim();
+	}
+	return 'git';
+}
+
+async function cloneMissionTemplateFromZip(missionDir: string): Promise<void> {
+	const missionParent = path.dirname(missionDir);
+	await fs.promises.mkdir(missionParent, { recursive: true });
+
+	const tempRoot = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'mast-starter-'));
+	const zipPath = path.join(tempRoot, 'mast_starter.zip');
+	const extractPath = path.join(tempRoot, 'extract');
+
+	try {
+		await downloadFile(MAST_STARTER_ZIP, zipPath);
+		await fs.promises.mkdir(extractPath, { recursive: true });
+		const zip = new AdmZip(zipPath);
+		zip.extractAllTo(extractPath, true);
+
+		const rootEntries = await fs.promises.readdir(extractPath, { withFileTypes: true });
+		const templateRoot = rootEntries.find((entry) => entry.isDirectory());
+		if (!templateRoot) {
+			throw new Error('Downloaded mission template archive was empty.');
+		}
+
+		const extractedTemplateDir = path.join(extractPath, templateRoot.name);
+		await fs.promises.cp(extractedTemplateDir, missionDir, { recursive: true, errorOnExist: true });
+	} finally {
+		await fs.promises.rm(tempRoot, { recursive: true, force: true });
+	}
+}
+
+async function downloadFile(url: string, destinationPath: string): Promise<void> {
+	await new Promise<void>((resolve, reject) => {
+		const request = https.get(url, (response) => {
+			if (response.statusCode && response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+				response.resume();
+				downloadFile(response.headers.location, destinationPath).then(resolve).catch(reject);
+				return;
+			}
+
+			if (response.statusCode !== 200) {
+				response.resume();
+				reject(new Error(`Failed to download mission template archive (HTTP ${response.statusCode ?? 'unknown'}).`));
+				return;
+			}
+
+			const fileStream = fs.createWriteStream(destinationPath);
+			response.pipe(fileStream);
+			fileStream.on('finish', () => {
+				fileStream.close();
+				resolve();
+			});
+			fileStream.on('error', (error) => {
+				reject(error);
+			});
+		});
+
+		request.on('error', (error) => {
+			reject(error);
+		});
+	});
 }
