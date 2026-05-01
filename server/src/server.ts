@@ -55,9 +55,72 @@ import { getWordRangeAtPosition } from './tokens/words';
 import { getSemanticTokens, TOKEN_TYPES, TOKEN_MODIFIERS, getEmptySemanticTokens, tokenizeDocument, buildSemanticTokens } from './requests/semanticTokens';
 import { getSemanticTokensCache } from './requests/semanticTokensCache';
 
+function createNoopConnection(): any {
+	const noop = () => undefined;
+	const asyncNoop = async () => undefined;
+
+	return new Proxy({}, {
+		get: (_target, prop: string | symbol) => {
+			if (prop === 'window') {
+				return {
+					showErrorMessage: asyncNoop,
+					showWarningMessage: asyncNoop,
+					showInformationMessage: asyncNoop,
+				};
+			}
+
+			if (prop === 'workspace') {
+				return {
+					getConfiguration: asyncNoop,
+					onDidChangeWorkspaceFolders: noop,
+				};
+			}
+
+			if (prop === 'languages') {
+				return {
+					diagnostics: {
+						refresh: noop,
+						on: noop,
+					},
+					semanticTokens: {
+						on: noop,
+					},
+				};
+			}
+
+			if (prop === 'client') {
+				return {
+					register: noop,
+				};
+			}
+
+			if (prop === 'console') {
+				return {
+					log: debug,
+					error: debug,
+				};
+			}
+
+			return noop;
+		}
+	});
+}
+
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
-export const connection = createConnection(ProposedFeatures.all);
+type LspConnection = ReturnType<typeof createConnection>;
+let connectionImpl: LspConnection;
+try {
+	connectionImpl = createConnection(ProposedFeatures.all);
+} catch (err) {
+	const isMochaProcess = process.argv.some((arg) => arg.toLowerCase().includes('mocha')) || !!process.env.MOCHA_WORKER_ID;
+	if (!isMochaProcess) {
+		debug('No LSP transport detected; using noop server connection (test/import mode).');
+		debug(String(err));
+	}
+	connectionImpl = createNoopConnection() as LspConnection;
+}
+export const connection: LspConnection = connectionImpl;
 
 // Create a simple text document manager.
 export const documents = new TextDocuments(TextDocument);

@@ -281,6 +281,7 @@
 		"watch": "tsc -b -w",
 		"lint": "eslint",
 		"postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
+		"test:unit": "npm run compile && mocha \"server/out/test/**/*.test.js\"",
 		"test": "sh ./scripts/e2e.sh"
 	},
 	"devDependencies": {

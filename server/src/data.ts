@@ -1,10 +1,7 @@
 import { debug } from 'console';
-import { CompletionItemLabelDetails, integer, MarkupContent, ParameterInformation, SignatureInformation } from 'vscode-languageserver';
+import { integer } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { fixFileName, getParentFolder } from './fileFunctions';
-import exp = require('constants');
-import { getCache } from './cache';
-import { getArtemisGlobals } from './artemisGlobals';
 
 /**
  * This accounts for classes that use a different name as a global than the class name. 

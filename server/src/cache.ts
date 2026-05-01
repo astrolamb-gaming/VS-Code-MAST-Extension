@@ -1063,7 +1063,10 @@ export class MissionCache {
 		if (file.includes(g[0]) && file.endsWith(".py")) {
 			f.isGlobal = true;
 			f.globalAlias = g[1] || "";
-			f.applyImportedGlobalAlias();
+			const moduleBase = (g[0] || '').split('.').pop() || '';
+			const alias = f.globalAlias || moduleBase;
+			const createPrefixedFunctions = alias !== 'names';
+			f.applyImportedGlobalAlias(createPrefixedFunctions);
 		}
 	}
 

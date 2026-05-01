@@ -1,9 +1,18 @@
 import { CompletionItem, CompletionItemKind, CompletionItemLabelDetails, integer, Location, MarkupContent, MarkupKind, ParameterInformation, SignatureInformation } from 'vscode-languageserver';
 import { getRegExMatch } from './class';
-import { getArtemisGlobals } from '../artemisGlobals';
 import { debug } from 'console';
 import { NewlineTransformer } from 'python-shell';
 import { getPreferredClassName } from '../data';
+
+function getWidgetStylesForFunction(functionName: string): Array<{ function: string; name: string; docs: string }> {
+	try {
+		// Lazy import prevents test runs from bootstrapping the language server connection.
+		const artemis = require('../artemisGlobals') as { getArtemisGlobals: () => { widget_stylestrings: Array<{ function: string; name: string; docs: string }> } };
+		return (artemis.getArtemisGlobals()?.widget_stylestrings || []).filter((entry) => entry.function === functionName);
+	} catch {
+		return [];
+	}
+}
 
 
 /**
@@ -591,12 +600,10 @@ export class Function implements IFunction {
 			pi.documentation = docText;
 			if (pi.label === "style") {
 				pi.documentation = pi.documentation + "\n\nStyle information:";
-				for (const s of getArtemisGlobals().widget_stylestrings) {
-					if (s.function === this.name) {
-						let doc = s.name + ":\n"
-						doc = doc + "    " + s.docs;
-						pi.documentation = pi.documentation + "\n" + doc;
-					}
+				for (const s of getWidgetStylesForFunction(this.name)) {
+					let doc = s.name + ":\n"
+					doc = doc + "    " + s.docs;
+					pi.documentation = pi.documentation + "\n" + doc;
 				}
 			}
 			params.push(pi);
