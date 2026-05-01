@@ -1,5 +1,5 @@
 import { MarkupContent, CompletionItem, integer, Location, CompletionItemLabelDetails, CompletionItemKind, Range } from 'vscode-languageserver';
-import { replaceNames } from '../data';
+import { getPreferredClassName, replaceNames } from '../data';
 import { Function } from './function';
 import { Variable } from '../tokens/variables';
 import { debug } from 'console';
@@ -29,7 +29,7 @@ export class ClassObject {
 		
 		// If pre-parsed data is provided, use it directly (avoids expensive regex parsing)
 		if (preParsed) {
-			this.name = preParsed.name || '';
+			this.name = getPreferredClassName(preParsed.name || '');
 			this.parent = preParsed.parent;
 			this.methods = preParsed.methods || [];
 			this.properties = preParsed.properties || [];
@@ -57,12 +57,7 @@ export class ClassObject {
 		this.name = getRegExMatch(raw,className).replace("class ","").replace(/(\(.*?\))?:/,"");
 		// debug(this.name);
 		
-		for (const n of replaceNames) {
-			if (this.name === n[0]) {
-				this.name = n[1];
-				debug("Replaced: " + this.name);
-			}
-		}
+		this.name = getPreferredClassName(this.name);
 
 		this.parent = getRegExMatch(raw,parentClass).replace(/.*\(/,"").replace(/\):?/,"");
 		

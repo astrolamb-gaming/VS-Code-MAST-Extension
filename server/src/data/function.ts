@@ -3,6 +3,7 @@ import { getRegExMatch } from './class';
 import { getArtemisGlobals } from '../artemisGlobals';
 import { debug } from 'console';
 import { NewlineTransformer } from 'python-shell';
+import { getPreferredClassName } from '../data';
 
 
 /**
@@ -83,7 +84,7 @@ export class Function implements IFunction {
 		location?: Location;
 		isAsync?: boolean;
 	}) {
-		this.className = className;
+		this.className = getPreferredClassName(className);
 		this.sourceFile = sourceFile;
 		this.location = {uri:sourceFile,range: {start: {line:0,character:0},end: {line:0,character:1}}};
 		

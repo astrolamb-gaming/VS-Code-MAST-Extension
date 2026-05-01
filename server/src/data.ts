@@ -13,11 +13,34 @@ import { getArtemisGlobals } from './artemisGlobals';
 export const replaceNames = [
 	['simulation','sim']
 ]
+
+export function getPreferredClassName(name: string): string {
+	for (const [canonicalName, aliasName] of replaceNames) {
+		if (name === canonicalName) {
+			return aliasName;
+		}
+	}
+	return name;
+}
+
+export function matchesClassName(left: string, right: string): boolean {
+	if (left === right) {
+		return true;
+	}
+
+	for (const [canonicalName, aliasName] of replaceNames) {
+		if ((left === canonicalName && right === aliasName) || (left === aliasName && right === canonicalName)) {
+			return true;
+		}
+	}
+
+	return false;
+}
 /**
  * This accounts for modules that are treated as classes instead of just adding the functions as default functions.
  * So instead of simply using the arc() function from scatter.py, you'd need to use scatter.arc()
  */
-export const asClasses =[];// ["sbs","math","random"];
+export const asClasses: string[] = [];// ["sbs","math","random"];
 // export const asClasses = ["sbs","scatter","faces"];
 /**
  * This accounts for modules that prepend the class name to the function name.

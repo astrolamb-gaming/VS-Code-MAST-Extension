@@ -15,6 +15,7 @@ import { checkForUnusedSignals } from './../tokens/signals';
 import { fstat } from 'fs';
 import { getCurrentLineFromTextDocument } from './hover';
 import { checkForAssignmentsToScopeName } from '../tokens/variables';
+import { matchesClassName } from '../data';
 
 let debugStrs : string = "";//Debug: ${workspaceFolder}\n";
 
@@ -392,7 +393,7 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 			offset = 1;
 		}
 		// Class constructor call, e.g. Vec3()
-		const isConstructorCall = cache.getClasses().some((c) => c.name === m![2]);
+		const isConstructorCall = cache.getClasses().some((c) => matchesClassName(c.name, m![2]));
 		if (isConstructorCall) continue;
 		// else
 		let func = cache.getMethod(m[2]);

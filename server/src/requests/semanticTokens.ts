@@ -1254,7 +1254,7 @@ export class MastStateMachineLexer {
 
 		const assignmentModifier = this.getAssignmentModifierAfterIdentifier(this.pos);
 
-		const builtInConstants = ['True', 'False', 'None', 'sim', 'client_id'];
+		const builtInConstants = ['True', 'False', 'None', 'client_id'];
 		
 // If expecting a plus-line label reference, handle it first so that
 		// even keywords can be treated as references in this context.
@@ -1765,7 +1765,7 @@ export class MastStateMachineLexer {
 			'return', 'break', 'continue', 'pass', 'raise', 'try', 'except', 'finally', 'with', 'class',
 			'while', 'for', 'in', 'is', 'and', 'or', 'not', 'lambda', 'on', 'change', 'signal', 'jump'
 		]);
-		const builtInConstants = new Set(['True', 'False', 'None', 'sim', 'sbs']);
+		const builtInConstants = new Set(['True', 'False', 'None', 'client_id']);
 
 		while (pos < exprEnd) {
 			const ch = this.text[pos];

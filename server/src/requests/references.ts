@@ -8,6 +8,7 @@ import { convertWordsToLocations } from '../tokens/words';
 import { getCallContextFromTokens } from './signatureHelp';
 import { LabelInfo } from '../tokens/labels';
 import { getCurrentLineFromTextDocument, getHoveredSymbol } from './hover';
+import { matchesClassName } from '../data';
 
 function dedupeLocations(locs: Location[]): Location[] {
 	const map = new Map<string, Location>();
@@ -161,7 +162,7 @@ function getClassSymbolLocations(doc: TextDocument, className: string): Location
 	const locs: Location[] = [];
 
 	for (const c of cache.getClasses()) {
-		if (c.name === className) {
+		if (matchesClassName(c.name, className)) {
 			if (c.constructorFunction?.location) {
 				locs.push({ uri: fileFromUri(c.constructorFunction.location.uri), range: c.constructorFunction.location.range });
 			}
@@ -187,7 +188,7 @@ function getClassSymbolLocations(doc: TextDocument, className: string): Location
 	const pyFiles = cache.pyFileCache.concat(cache.missionPyModules);
 	for (const pyFile of pyFiles) {
 		for (const token of pyFile.pyTokens || []) {
-			if (token.text !== className) continue;
+			if (!matchesClassName(token.text, className)) continue;
 			if (token.type !== 'function' && token.type !== 'class' && token.type !== 'variable' && token.type !== 'method') continue;
 			locs.push({
 				uri: fileFromUri(pyFile.uri),

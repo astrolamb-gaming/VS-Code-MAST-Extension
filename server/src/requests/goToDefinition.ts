@@ -7,7 +7,7 @@ import { getCurrentLineFromTextDocument, getHoveredSymbol, getHoveredWordRange }
 import { getCache } from '../cache';
 import { URI } from 'vscode-uri';
 import { getLabelLocation } from '../tokens/labels';
-import { asClasses } from '../data';
+import { asClasses, matchesClassName } from '../data';
 
 function toFileLocation(loc: Location): Location {
 	return {
@@ -125,7 +125,7 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 
 		if (className) {
 			for (const c of cache.getClasses()) {
-				if (c.name !== className) continue;
+				if (!matchesClassName(c.name, className)) continue;
 				for (const f of c.methods) {
 					if (f.name === symbol) {
 						return toFileLocation(f.location);
@@ -134,7 +134,7 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 			}
 			for (const p of cache.missionPyModules) {
 				for (const c of p.classes) {
-					if (c.name !== className) continue;
+					if (!matchesClassName(c.name, className)) continue;
 					for (const f of c.methods) {
 						if (f.name === symbol) {
 							return toFileLocation(f.location);
@@ -157,7 +157,7 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 	if (isFunc) {
 		// Constructor/class call, e.g. Vec3()
 		for (const c of getCache(doc.uri).getClasses()) {
-			if (c.name === symbol) {
+			if (matchesClassName(c.name, symbol)) {
 				if (c.constructorFunction?.location) {
 					return toFileLocation(c.constructorFunction.location);
 				}
@@ -197,7 +197,7 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 
 	// Constructor/class fallback when token classification does not identify callable type.
 	for (const c of getCache(doc.uri).getClasses()) {
-		if (c.name === symbol) {
+		if (matchesClassName(c.name, symbol)) {
 			if (c.constructorFunction?.location) {
 				return toFileLocation(c.constructorFunction.location);
 			}

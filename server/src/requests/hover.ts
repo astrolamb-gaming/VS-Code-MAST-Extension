@@ -9,6 +9,7 @@ import { getClassOfMethod } from '../tokens/tokens';
 import { getArgDocForLabel, variableModifiers } from '../tokens/variables';
 import { buildLabelDocs, getMainLabelAtPos } from '../tokens/labels';
 import { Function } from '../data/function';
+import { matchesClassName } from '../data';
 
 export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : Hover | undefined {
 	const _t0 = performance.now();
@@ -163,7 +164,7 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 							hoverText = ""
 						}
 						
-						if (co.name === c) {
+						if (c && matchesClassName(co.name, c)) {
 							found = true;
 							break;
 						}
@@ -220,7 +221,7 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 		}
 		// Class constructor call, e.g. Vec3()
 		for (const c of cache.getClasses()) {
-			if (c.name === symbol) {
+			if (matchesClassName(c.name, symbol)) {
 				if (c.constructorFunction) {
 					return { contents: c.constructorFunction.buildMarkUpContent() };
 				}
@@ -266,7 +267,7 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 			}
 		}
 		for (const c of cache.getClasses()) {
-			if (c.name === symbol) {
+			if (matchesClassName(c.name, symbol)) {
 				return {contents: c.documentation}
 			}
 		}
@@ -285,7 +286,7 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 
 	// Constructor/class fallback, including cases where token classification is ambiguous.
 	for (const c of cache.getClasses()) {
-		if (c.name === symbol) {
+		if (matchesClassName(c.name, symbol)) {
 			if (c.constructorFunction) {
 				return { contents: c.constructorFunction.buildMarkUpContent() };
 			}
