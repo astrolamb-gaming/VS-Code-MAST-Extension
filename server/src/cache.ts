@@ -1203,6 +1203,31 @@ export class MissionCache {
 	}
 
 	/**
+	 * Get MastGlobals entry by exported global reference name.
+	 * Values are sourced from parsed `class MastGlobals: globals = {...}`
+	 * definitions in mission python files and mission python modules.
+	 */
+	getMastGlobal(name: string): string[] | undefined {
+		const target = (name || '').trim();
+		if (target === '') {
+			return undefined;
+		}
+
+		const findIn = (files: PyFile[]): string[] | undefined => {
+			for (const p of files) {
+				for (const g of (p.globals || [])) {
+					if (g && g.length > 0 && g[0] === target) {
+						return g;
+					}
+				}
+			}
+			return undefined;
+		};
+
+		return findIn(this.pyFileCache) || findIn(this.missionPyModules);
+	}
+
+	/**
 	 * 
 	 * @returns All the classes in scope for this mission cache
 	 */

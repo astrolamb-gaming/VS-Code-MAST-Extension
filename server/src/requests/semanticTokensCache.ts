@@ -3,6 +3,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
 import { TokenInfo } from './semanticTokens';
 import { getCache, MissionCache } from '../cache';
+import { isClassMethod } from '../tokens/tokens';
 
 /**
  * Caching layer for semantic tokens to avoid re-tokenizing unchanged documents
@@ -133,6 +134,11 @@ export function convertVariableTokensToLabelOrFunction(tokens: TokenInfo[], text
 			// 	continue;
 			// }
 			const normalized = token.text;
+			if (cache.getMastGlobal(normalized)) {
+				token.type = 'module';
+				token.modifier = 'reference';
+				continue;
+			}
 			// This line was causing variables to show up as class methods (and properties) improperly
 			// if (cache.getMethod(normalized) || (cache.getPossibleMethods(normalized) || []).length > 0) {
 			if (cache.getMethod(normalized)) {

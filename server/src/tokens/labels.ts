@@ -1194,6 +1194,9 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 				}
 				continue;
 			}
+			if (cache.getMastGlobal(token.text)) {
+				continue; // It's a known MastGlobals symbol, so treat as defined.
+			}
 			if (cache.getMethod(token.text)) {
 				continue; // It's a reference to a built-in method, so we can ignore it.
 			}
