@@ -992,6 +992,38 @@ export class MissionCache {
 				return;
 			}
 		}
+
+		if (p.globalFiles.length > 0) {
+			this.sbsGlobals = this.sbsGlobals.concat(p.globalFiles);
+			for (const g of p.globalFiles) {
+				for (const f of this.pyFileCache) {
+					this.tryApplyFileAsGlobal(f, g);
+				}
+				for (const f of this.missionPyModules) {
+					this.tryApplyFileAsGlobal(f, g);
+				}
+			}
+		}
+
+		if (p.globals.length > 0) {
+			this.mastClassGlobals = this.mastClassGlobals.concat(p.globals);
+			for (const g of p.globals) {
+				for (const f of this.pyFileCache) {
+					this.tryApplyMastClassGlobal(f, g);
+				}
+				for (const f of this.missionPyModules) {
+					this.tryApplyMastClassGlobal(f, g);
+				}
+			}
+		}
+
+		for (const g of this.sbsGlobals) {
+			this.tryApplyFileAsGlobal(p, g);
+		}
+		for (const g of this.mastClassGlobals) {
+			this.tryApplyMastClassGlobal(p, g);
+		}
+
 		// Only do this if the file doesn't exist yet
 		this.missionPyModules.push(p);
 		this.invalidateStructureCaches();

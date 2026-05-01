@@ -121,29 +121,19 @@ export class PyFile extends FileCache {
 		// debug("GLOBALS")
 		// debug(this.globals);
 
-		let findMastGlobals = /class MastGlobals:.*?globals = {(.*?)}/ms;
+		let findMastGlobals = /class\s+MastGlobals:.*?globals\s*=\s*{(.*?)}/ms;
 		let n = text.match(findMastGlobals);
 		// debug(n);
 		if (n !== null) {
-			const globals = n[1].split("\n");
+			const globalsBlock = n[1].replace(/#.*/g, "");
 			const newGlobals: string[][] = [];
-			// debug("NOT NULL")
-			for (let g of globals) {
-				if (g.trim().startsWith("#")) continue;
-				g = g.replace(/#.*/, "");
-				// debug(g)
-				let arr = g.match(/[\"']([\w]+)[\"'][\t ]*:[\t ]*(.*?)[,#\n]/);
-				// debug(arr);
-				if (arr !== null) {
-					const globalRef = arr[1];
-					const globalVar = arr[2];
-					// debug("GlobalRef: " + globalRef)
-					// debug("GlobalVar: " + globalVar)
-					// if (globalVar.includes("scatter") || globalVar.includes("faces") || globalVar.includes("__build_class__")) continue; // This leaves scatter and faces out of it. These are already parsed anyway. Also __build_class__ probably doesn't need exposed to the user.
-					// TODO: Figure out if scatter and faces need to be excluded?
-					if (globalVar.includes("__build_class__")) continue; // This is a special Python thing that we don't need to worry about.
-					newGlobals.push([globalRef,globalVar]);
-				}
+			const globalEntryRegEx = /["']([\w]+)["'][\t ]*:[\t ]*([^,\n}]+)/g;
+			let g: RegExpExecArray | null;
+			while (g = globalEntryRegEx.exec(globalsBlock)) {
+				const globalRef = g[1];
+				const globalVar = g[2].trim();
+				if (globalVar.includes("__build_class__")) continue; // This is a special Python thing that we don't need to worry about.
+				newGlobals.push([globalRef, globalVar]);
 			}
 			// debug(newGlobals);
 			this.globals = newGlobals;
@@ -216,8 +206,6 @@ export class PyFile extends FileCache {
 				prefixedDefaults.push(copy);
 			}
 			this.defaultFunctions = prefixedDefaults;
-		} else {
-			this.defaultFunctions = [];
 		}
 		this.globalAliasApplied = true;
 	}

@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { after, describe, it } from 'mocha';
+import { MissionCache } from '../cache';
 import { matchesClassName } from '../data';
 import { PyFile } from '../files/PyFile';
 
@@ -17,6 +18,21 @@ function createPyFile(filePath: string, contents: string): PyFile {
 	fs.writeFileSync(fullPath, contents.trimStart(), 'utf8');
 
 	return new PyFile(fullPath, contents.trimStart());
+}
+
+function createMissionCache(testName: string): { cache: MissionCache; missionDir: string } {
+	const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mast-cache-test-'));
+	tempRoots.push(root);
+
+	const missionDir = path.join(root, 'data', 'missions', testName);
+	fs.mkdirSync(missionDir, { recursive: true });
+	fs.writeFileSync(path.join(missionDir, 'story.json'), '{}', 'utf8');
+
+	const workspaceFile = path.join(missionDir, 'main.mast');
+	return {
+		cache: new MissionCache(workspaceFile),
+		missionDir,
+	};
 }
 
 after(() => {
@@ -88,5 +104,29 @@ def random_kralien_name():
 		assert.ok(namesClass);
 		assert.ok(namesClass?.methods.some((method) => method.name === 'random_kralien_name'));
 		assert.equal(namesPy.defaultFunctions.some((func) => func.name === 'names_random_kralien_name'), false);
+	});
+
+	it('applies MastGlobals faces entries as class wrappers on matching modules', () => {
+		const { cache, missionDir } = createMissionCache('faces-global');
+
+		const facesPy = new PyFile(path.join(missionDir, 'sbs_utils', 'faces.py'), `
+def make_face_list():
+    pass
+`);
+
+		const globalsPy = new PyFile(path.join(missionDir, 'globals.py'), `
+class MastGlobals:
+    globals = {
+        "faces": faces,
+    }
+`);
+
+		cache.addSbsPyFile(facesPy);
+		cache.addMissionPyFile(globalsPy);
+
+		const facesClass = cache.getClasses().find((classObject) => classObject.name === 'faces');
+		assert.ok(facesClass);
+		assert.ok(facesClass?.methods.some((method) => method.name === 'make_face_list'));
+		assert.ok(cache.getMethod('make_face_list'));
 	});
 });
