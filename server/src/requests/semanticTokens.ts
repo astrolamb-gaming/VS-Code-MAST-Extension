@@ -1559,6 +1559,121 @@ export class MastStateMachineLexer {
 		};
 	}
 
+	private findEmbeddedCallRanges(rangeStart: number, rangeEnd: number): Array<{ start: number; end: number }> {
+		const ranges: Array<{ start: number; end: number }> = [];
+		let i = rangeStart;
+
+		while (i < rangeEnd) {
+			const ch = this.text[i];
+			if (!this.isIdentifierStart(ch)) {
+				i++;
+				continue;
+			}
+
+			const identStart = i;
+			i++;
+			while (i < rangeEnd && this.isIdentifierPart(this.text[i])) {
+				i++;
+			}
+
+			let j = i;
+			while (j < rangeEnd && /[\t ]/.test(this.text[j])) {
+				j++;
+			}
+			if (j >= rangeEnd || this.text[j] !== '(') {
+				continue;
+			}
+
+			let k = j + 1;
+			let depth = 1;
+			let quote: string | null = null;
+			let escaped = false;
+
+			while (k < rangeEnd && depth > 0) {
+				const c = this.text[k];
+				if (quote !== null) {
+					if (escaped) {
+						escaped = false;
+					} else if (c === '\\') {
+						escaped = true;
+					} else if (c === quote) {
+						quote = null;
+					}
+					k++;
+					continue;
+				}
+
+				if (c === '"' || c === "'") {
+					quote = c;
+					k++;
+					continue;
+				}
+				if (c === '(') depth++;
+				else if (c === ')') depth--;
+				k++;
+			}
+
+			if (depth === 0) {
+				ranges.push({ start: identStart, end: k });
+				i = k;
+				continue;
+			}
+
+			// Unclosed call - stop scanning this range.
+			break;
+		}
+
+		return ranges;
+	}
+
+	private tokenizePlainSegmentWithEmbeddedCode(rangeStart: number, rangeEnd: number, plainType: 'string' | 'yaml.value'): TokenInfo[] {
+		if (rangeEnd <= rangeStart) {
+			return [];
+		}
+
+		const callRanges = this.findEmbeddedCallRanges(rangeStart, rangeEnd);
+		if (callRanges.length === 0) {
+			const p = this.doc.positionAt(rangeStart);
+			return [{
+				type: plainType,
+				line: p.line,
+				character: p.character,
+				length: rangeEnd - rangeStart,
+				text: this.text.substring(rangeStart, rangeEnd)
+			}];
+		}
+
+		const out: TokenInfo[] = [];
+		let cursor = rangeStart;
+		for (const r of callRanges) {
+			if (r.start > cursor) {
+				const p = this.doc.positionAt(cursor);
+				out.push({
+					type: plainType,
+					line: p.line,
+					character: p.character,
+					length: r.start - cursor,
+					text: this.text.substring(cursor, r.start)
+				});
+			}
+			out.push(...this.tokenizeInterpolationExpression(r.start, r.end));
+			cursor = r.end;
+		}
+
+		if (cursor < rangeEnd) {
+			const p = this.doc.positionAt(cursor);
+			out.push({
+				type: plainType,
+				line: p.line,
+				character: p.character,
+				length: rangeEnd - cursor,
+				text: this.text.substring(cursor, rangeEnd)
+			});
+		}
+
+		return out;
+	}
+
 	/**
 	 * Treat all MAST strings as f-strings.
 	 * Splits string ranges around { ... } expressions:
@@ -1580,14 +1695,7 @@ export class MastStateMachineLexer {
 
 				// Emit string segment before interpolation
 				if (i > segmentStart) {
-					const strPos = this.doc.positionAt(segmentStart);
-					tokens.push({
-						type: 'string',
-						line: strPos.line,
-						character: strPos.character,
-						length: i - segmentStart,
-						text: this.text.substring(segmentStart, i)
-					});
+					tokens.push(...this.tokenizePlainSegmentWithEmbeddedCode(segmentStart, i, 'string'));
 				}
 
 				// Otherwise it's an interpolation expression
@@ -1638,14 +1746,7 @@ export class MastStateMachineLexer {
 
 		// Emit trailing string segment
 		if (stringEndPos > segmentStart) {
-			const strPos = this.doc.positionAt(segmentStart);
-			tokens.push({
-				type: 'string',
-				line: strPos.line,
-				character: strPos.character,
-				length: stringEndPos - segmentStart,
-				text: this.text.substring(segmentStart, stringEndPos)
-			});
+			tokens.push(...this.tokenizePlainSegmentWithEmbeddedCode(segmentStart, stringEndPos, 'string'));
 		}
 
 		return tokens;
@@ -2501,27 +2602,13 @@ export class MastStateMachineLexer {
 								for (const r of refRanges) {
 									const start = Math.max(cursor, r.start);
 									if (start > cursor) {
-										const valuePos = this.doc.positionAt(cursor);
-										this.tokens.push({
-											type: 'yaml.value',
-											line: valuePos.line,
-											character: valuePos.character,
-											length: start - cursor,
-											text: this.text.substring(cursor, start)
-										});
+										this.tokens.push(...this.tokenizePlainSegmentWithEmbeddedCode(cursor, start, 'yaml.value'));
 									}
 									cursor = Math.max(cursor, r.end);
 								}
 
 								if (cursor < valueEnd) {
-									const valuePos = this.doc.positionAt(cursor);
-									this.tokens.push({
-										type: 'yaml.value',
-										line: valuePos.line,
-										character: valuePos.character,
-										length: valueEnd - cursor,
-										text: this.text.substring(cursor, valueEnd)
-									});
+									this.tokens.push(...this.tokenizePlainSegmentWithEmbeddedCode(cursor, valueEnd, 'yaml.value'));
 								}
 							}
 						} else {
@@ -2542,27 +2629,13 @@ export class MastStateMachineLexer {
 							for (const r of refRanges) {
 								const start = Math.max(cursor, r.start);
 								if (start > cursor) {
-									const valuePos = this.doc.positionAt(cursor);
-									this.tokens.push({
-										type: 'yaml.value',
-										line: valuePos.line,
-										character: valuePos.character,
-										length: start - cursor,
-										text: this.text.substring(cursor, start)
-									});
+									this.tokens.push(...this.tokenizePlainSegmentWithEmbeddedCode(cursor, start, 'yaml.value'));
 								}
 								cursor = Math.max(cursor, r.end);
 							}
 
 							if (cursor < valueEnd) {
-								const valuePos = this.doc.positionAt(cursor);
-								this.tokens.push({
-									type: 'yaml.value',
-									line: valuePos.line,
-									character: valuePos.character,
-									length: valueEnd - cursor,
-									text: this.text.substring(cursor, valueEnd)
-								});
+								this.tokens.push(...this.tokenizePlainSegmentWithEmbeddedCode(cursor, valueEnd, 'yaml.value'));
 							}
 						}
 
