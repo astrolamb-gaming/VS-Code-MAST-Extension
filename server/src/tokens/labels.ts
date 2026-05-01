@@ -824,9 +824,9 @@ function escapeRegex(text: string): string {
 	return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function hasPriorTextualDefinitionInScope(doc: TextDocument, scopeStart: number, tokenStart: number, name: string): boolean {
+function hasPriorTextualDefinitionInScope(doc: TextDocument, scopeStart: number, tokenStart: number, name: string): number | null {
 	if (!name || tokenStart <= scopeStart) {
-		return false;
+		return null;
 	}
 	const scopeText = doc.getText().substring(scopeStart, tokenStart);
 	const nameRe = escapeRegex(name);
@@ -836,7 +836,22 @@ function hasPriorTextualDefinitionInScope(doc: TextDocument, scopeStart: number,
 	);
 	// Also accept YAML-style metadata keys like `name:` (common in label metadata blocks)
 	const yamlKeyRx = new RegExp(`^[\\t ]*${nameRe}[\\t]*:`, 'gm');
-	return defRx.test(scopeText) || yamlKeyRx.test(scopeText);
+
+	let m: RegExpExecArray | null;
+	while ((m = defRx.exec(scopeText)) !== null) {
+		const abs = scopeStart + m.index;
+		const matchLine = doc.positionAt(abs).line;
+		const tokenLine = doc.positionAt(tokenStart).line;
+		if (matchLine < tokenLine) return abs;
+		// else continue searching for earlier matches
+	}
+	while ((m = yamlKeyRx.exec(scopeText)) !== null) {
+		const abs = scopeStart + m.index;
+		const matchLine = doc.positionAt(abs).line;
+		const tokenLine = doc.positionAt(tokenStart).line;
+		if (matchLine < tokenLine) return abs;
+	}
+	return null;
 }
 
 function splitTopLevelCommaSegments(text: string): Array<{ start: number, end: number }> {
@@ -1066,6 +1081,10 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 
 	let mainNames: string[] = [];
 	let definedNames: string[] = [];
+	// Track absolute offsets of definitions for each name so we can enforce
+	// that a definition must appear on an earlier line than the reference
+	// (to avoid treating `hi = hi + 1` as valid when `hi` is undefined).
+	const definedOffsets: Map<string, number[]> = new Map();
 	let isInLabel = false;
 	let currentScopeStart = 0;
 
@@ -1099,11 +1118,19 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 				// leak into label-level scope for later lines.
 				continue;
 			}
+			const name = token.text;
+			const offset = tokenStart;
 			if (!isInLabel) {
-				mainNames.push(token.text);
+				mainNames.push(name);
+				const arr = definedOffsets.get(name) || [];
+				arr.push(offset);
+				definedOffsets.set(name, arr);
 				continue;
 			}
-			definedNames.push(token.text);
+			definedNames.push(name);
+			const arr2 = definedOffsets.get(name) || [];
+			arr2.push(offset);
+			definedOffsets.set(name, arr2);
 			continue;
 		}
 		if (token.modifier === 'reference') {
@@ -1111,9 +1138,18 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 				continue;
 			}
 			// Check if the token text is in the list of defined names. If it is, continue. If not, add a diagnostic.
-			if (definedNames.includes(token.text) || mainNames.includes(token.text)) {
-				continue; // Variable is definitely defined
-			}
+			// A variable is considered defined only if there exists a prior
+			// definition that appears on an earlier line than this reference.
+			const hasPriorDef = (() => {
+				const arr = definedOffsets.get(token.text);
+				if (!arr || arr.length === 0) return false;
+				for (const off of arr) {
+					const lf = doc.positionAt(off).line;
+					if (lf < token.line) return true;
+				}
+				return false;
+			})();
+			if (hasPriorDef) continue;
 			const hasPriorTextDefinition = hasPriorTextualDefinitionInScope(
 				doc,
 				isInLabel ? currentScopeStart : 0,
@@ -1131,17 +1167,30 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 				if (hasGuard) {
 					if (!isInLabel) {
 						mainNames.push(token.text);
+						const arr = definedOffsets.get(token.text) || [];
+						arr.push(isInLabel ? currentScopeStart : 0);
+						definedOffsets.set(token.text, arr);
 					} else {
 						definedNames.push(token.text);
+						const arr = definedOffsets.get(token.text) || [];
+						arr.push(isInLabel ? currentScopeStart : 0);
+						definedOffsets.set(token.text, arr);
 					}
 					continue;
 				}
 			}
 			if (hasPriorTextDefinition) {
+				const defOffset = hasPriorTextDefinition as number;
 				if (!isInLabel) {
 					mainNames.push(token.text);
+					const arr = definedOffsets.get(token.text) || [];
+					arr.push(defOffset);
+					definedOffsets.set(token.text, arr);
 				} else {
 					definedNames.push(token.text);
+					const arr = definedOffsets.get(token.text) || [];
+					arr.push(defOffset);
+					definedOffsets.set(token.text, arr);
 				}
 				continue;
 			}
