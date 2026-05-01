@@ -29,6 +29,8 @@ export class PyFile extends FileCache {
 	pyTokens: Token[] = [];
 	globals: string[][] = [];
 	isGlobal: boolean = false;
+	globalAlias: string = "";
+	private globalAliasApplied: boolean = false;
 	constructor(uri: string, fileContents: string = "") {
 		// if (fileContents === "") debug("pyFile Contents empty for " + uri)
 		uri = fixFileName(uri);
@@ -61,6 +63,7 @@ export class PyFile extends FileCache {
 		this.defaultFunctions = [];
 		this.variableNames = [];
 		this.pyTokens = [];
+		this.globalAliasApplied = false;
 		const originalText = text;
 
 		// Remove comments
@@ -155,15 +158,13 @@ export class PyFile extends FileCache {
 				c.name = o;
 				c.methods = [...this.defaultFunctions];
 				this.classes.push(c);
-				
-				if (c.name !== "scatter") {
-					this.defaultFunctions = [];
-				} else {
-					debug(c);
-					// debug(this.defaultFunctions);
-					// debug(c.methods);
-				}
+
+				this.defaultFunctions = [];
 			}
+		}
+
+		if (this.isGlobal && this.globalAlias !== "") {
+			this.applyImportedGlobalAlias();
 		}
 
 		// // This checks if the module name should be prepended to the function names in this module
@@ -195,5 +196,29 @@ export class PyFile extends FileCache {
 			ci.push(f.buildCompletionItem());
 		}
 		return ci;
+	}
+
+	applyImportedGlobalAlias(createPrefixedFunctions: boolean = true): void {
+		if (this.globalAliasApplied || this.globalAlias === "") {
+			return;
+		}
+
+		const aliasClass = new ClassObject("", path.basename(this.uri));
+		aliasClass.name = this.globalAlias;
+		aliasClass.methods = this.defaultFunctions.map((func) => func.copy());
+		this.classes.push(aliasClass);
+
+		if (createPrefixedFunctions) {
+			const prefixedDefaults: Function[] = [];
+			for (const func of this.defaultFunctions) {
+				const copy = func.copy();
+				copy.name = `${this.globalAlias}_${copy.name}`;
+				prefixedDefaults.push(copy);
+			}
+			this.defaultFunctions = prefixedDefaults;
+		} else {
+			this.defaultFunctions = [];
+		}
+		this.globalAliasApplied = true;
 	}
 }

@@ -54,6 +54,11 @@ export class MissionCache {
 	 * The second index is the prepend name - the name that is prepended to all functions in the file.
 	 */
 	sbsGlobals: string[][] = [];
+	/**
+	 * Globals defined in `class MastGlobals: globals = {...}` dicts.
+	 * Each entry is `[globalRef, globalVar]` where globalRef is the name used in MAST scripts.
+	 */
+	mastClassGlobals: string[][] = [];
 
 	//// Other Labels
 	// Route Labels - From RouteDecoratorLabel class
@@ -1016,10 +1021,22 @@ export class MissionCache {
 				}
 			}
 		}
+		if (p.globals.length > 0) {
+			this.mastClassGlobals = this.mastClassGlobals.concat(p.globals);
+			// Update all existing py files that match a MastGlobals class entry
+			for (const g of p.globals) {
+				for (const f of this.pyFileCache) {
+					this.tryApplyMastClassGlobal(f, g);
+				}
+			}
+		}
 		
 		// ALWAYS go over the existing globals for the new file
 		for (const g of this.sbsGlobals) {
 			this.tryApplyFileAsGlobal(p, g);
+		}
+		for (const g of this.mastClassGlobals) {
+			this.tryApplyMastClassGlobal(p, g);
 		}
 
 		// Now add it to the cache
@@ -1028,8 +1045,16 @@ export class MissionCache {
 		this.syncPyExtractedItems(p, true);
 	}
 
+	tryApplyMastClassGlobal(f: PyFile, g: string[]) {
+		const baseName = path.basename(f.uri, '.py');
+		if (baseName === g[0]) {
+			f.isGlobal = true;
+			f.globalAlias = g[0];
+			f.applyImportedGlobalAlias(false);
+		}
+	}
+
 	tryApplyFileAsGlobal(f:PyFile, g:string[]) {
-		if (f.isGlobal) return;
 		if (g[0] === "sbs") {
 			// Treat sbs differently
 			return;
@@ -1037,20 +1062,8 @@ export class MissionCache {
 		const file = f.uri.replace(/\//g,".").replace(/\\/g,".");
 		if (file.includes(g[0]) && file.endsWith(".py")) {
 			f.isGlobal = true;
-			if (g[1] !== "") {
-				// TODO: Update function names with prepend
-				// TODO: Issue #39 is caused by this?
-				
-				const newDefaults: Function[] = [];
-				// debug(f.defaultFunctions);
-				for (const func of f.defaultFunctions) {
-					const n = func.copy();
-					n.name = g[1] + "_" + func.name;
-					newDefaults.push(n);
-				}
-				f.defaultFunctions = newDefaults;
-				// debug(f.defaultFunctions);
-			}
+			f.globalAlias = g[1] || "";
+			f.applyImportedGlobalAlias();
 		}
 	}
 
@@ -1224,7 +1237,25 @@ export class MissionCache {
 			return undefined;
 		};
 
-		return findIn(this.pyFileCache) || findIn(this.missionPyModules);
+		const findImportedModule = (globals: string[][]): string[] | undefined => {
+			for (const g of globals) {
+				if (!g || g.length === 0) {
+					continue;
+				}
+				const modulePath = (g[0] || '').trim();
+				const alias = (g[1] || '').trim();
+				const moduleBase = modulePath.split('.').pop() || '';
+
+				if (alias === target || modulePath === target || moduleBase === target) {
+					return g;
+				}
+			}
+			return undefined;
+		};
+
+		return findIn(this.pyFileCache)
+			|| findIn(this.missionPyModules)
+			|| findImportedModule(this.sbsGlobals);
 	}
 
 	/**
