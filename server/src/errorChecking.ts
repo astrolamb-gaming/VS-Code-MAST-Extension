@@ -145,58 +145,177 @@ export function relatedMessage(t: TextDocument, range: Range, rm: string): Diagn
 	return undefined;
 }
 
-interface FunctionInstance {
-	name: string,
-	start: integer,
-	end: integer
+// Python keywords that look like function calls but aren't
+const PYTHON_KEYWORDS = new Set([
+	'if', 'elif', 'while', 'for', 'def', 'class', 'lambda', 'return',
+	'and', 'or', 'not', 'in', 'is', 'import', 'from', 'with', 'assert',
+	'raise', 'del', 'yield', 'await', 'async', 'except', 'print'
+]);
+
+/**
+ * Extracts the raw argument string from inside parentheses, starting just after
+ * the opening '(' at position `afterOpenParen` in `text`. Returns null if no
+ * matching ')' is found.
+ */
+function extractArgString(text: string, afterOpenParen: integer): string | null {
+	let depth = 1;
+	let i = afterOpenParen;
+	let inStr: string | null = null;
+	while (i < text.length) {
+		const ch = text[i];
+		if (inStr) {
+			if (ch === '\\') { i += 2; continue; }
+			if (ch === inStr) inStr = null;
+		} else if (ch === '"' || ch === "'") {
+			inStr = ch;
+		} else if (ch === '(' || ch === '[' || ch === '{') {
+			depth++;
+		} else if (ch === ')' || ch === ']' || ch === '}') {
+			depth--;
+			if (depth === 0) return text.substring(afterOpenParen, i);
+		}
+		i++;
+	}
+	return null;
 }
 
 /**
- * TODO: get this check system working
- * @param text String containing contents of document
+ * Parse a raw argument string and return the number of positional arguments
+ * and the set of explicitly named argument names supplied.
  */
-export function checkFunctionSignatures(textDocument: TextDocument) : Diagnostic[] {
+function parseCallArgs(argsStr: string): { positionalCount: integer; namedArgs: Set<string> } {
+	const namedArgs = new Set<string>();
+	if (argsStr.trim() === '') return { positionalCount: 0, namedArgs };
+
+	// Split on top-level commas only
+	const segments: string[] = [];
+	let depth = 0;
+	let inStr: string | null = null;
+	let start = 0;
+	for (let i = 0; i < argsStr.length; i++) {
+		const ch = argsStr[i];
+		if (inStr) {
+			if (ch === '\\') { i++; continue; }
+			if (ch === inStr) inStr = null;
+		} else if (ch === '"' || ch === "'") {
+			inStr = ch;
+		} else if (ch === '(' || ch === '[' || ch === '{') {
+			depth++;
+		} else if (ch === ')' || ch === ']' || ch === '}') {
+			depth--;
+		} else if (ch === ',' && depth === 0) {
+			segments.push(argsStr.substring(start, i).trim());
+			start = i + 1;
+		}
+	}
+	segments.push(argsStr.substring(start).trim());
+
+	let positionalCount = 0;
+	for (const seg of segments) {
+		if (seg === '') continue;
+		const eqIdx = seg.indexOf('=');
+		if (eqIdx > 0) {
+			const namePart = seg.substring(0, eqIdx).trim();
+			if (/^\w+$/.test(namePart)) {
+				namedArgs.add(namePart);
+				continue;
+			}
+		}
+		if (seg.startsWith('**') || seg.startsWith('*')) {
+			// *args / **kwargs unpacking — we can't statically count these, so bail out
+			return { positionalCount: -1, namedArgs };
+		}
+		positionalCount++;
+	}
+	return { positionalCount, namedArgs };
+}
+
+/**
+ * Returns the required parameters of a function: those with no default value
+ * that are not `self`, `*args`, or `**kwargs`.
+ */
+function getRequiredParams(func: import('./data/function').Function): import('./data/function').IParameter[] {
+	return func.parameters.filter(p => {
+		const name = (p.name || '').trim();
+		if (name === 'self') return false;
+		if (name.startsWith('*')) return false; // *args / **kwargs
+		if (name === '/') return false;         // positional-only separator
+		if (name === '') return false;
+		return !p.default || p.default.trim() === '';
+	});
+}
+
+/**
+ * Checks all function calls in a MAST document for missing required arguments.
+ */
+export function checkFunctionSignatures(textDocument: TextDocument): Diagnostic[] {
 	const text = textDocument.getText();
 	const cache = getCache(textDocument.uri);
 	const tokens = cache.getMastFile(textDocument.uri)?.tokens || [];
-	debug("Starting function signature checking")
-	const diagnostics : Diagnostic[] = [];
+	const diagnostics: Diagnostic[] = [];
 
-	const functionRegex: RegExp = /(\w+)\(.*(\n|$)/gm;
-	const singleFunc: RegExp = /(\w+)\(/g;
+	// Match potential function calls: word(
+	const callRegex = /\b(\w+)\s*\(/g;
 	let m: RegExpExecArray | null;
-	// Iterate over all lines that contain at least one function
-	while (m = functionRegex.exec(text)) {
-		const functions: FunctionInstance[] = [];
-		const line = m[0];
-		let isInComment = getTokenTypeAtOffset(textDocument, tokens, m.index) === 'comment';
-		if (isInComment) continue;
-		let isInString = getTokenTypeAtOffset(textDocument, tokens, m.index) === 'string';
-		let isInYaml = getTokenTypeAtOffset(textDocument, tokens, m.index) === 'yaml';
-		if (isInString && !isInYaml) continue;
-		const functionName = line.match(singleFunc);
-		debug(functionName)
-		let end = line.lastIndexOf(")");
-		if (functionName !== null) {
-			// debug(functionName);
-			for (const fname of functionName) {
-				const fi: FunctionInstance = {
-					name: fname,
-					start: m.index + line.indexOf(fname),
-					end: line.lastIndexOf(")")
-				}
-				functions.push(fi);
-				
-				debug("Name: " + fname);
-			}
+	while ((m = callRegex.exec(text)) !== null) {
+		const funcName = m[1];
+		if (PYTHON_KEYWORDS.has(funcName)) continue;
+
+		const callStart = m.index;
+		const parenOpenOffset = m.index + m[0].length - 1; // index of '('
+
+		// Skip member calls (obj.func(...)). Without type flow info, these are
+		// too ambiguous and can create false positives from unrelated symbols.
+		let prev = callStart - 1;
+		while (prev >= 0 && /\s/.test(text[prev])) {
+			prev--;
 		}
-		
-		end = line.lastIndexOf(")");
-		let func = line.substring(0,end+1);
-		debug(func);
-		//debug(m);
-		debug(line);
-		
+		if (prev >= 0 && text[prev] === '.') {
+			continue;
+		}
+
+		// Skip calls inside comments or strings
+		const tokenType = getTokenTypeAtOffset(textDocument, tokens, callStart);
+		if (tokenType === 'comment') continue;
+		if (tokenType === 'string') continue;
+
+		// Look up the best callable for this name.
+		const method = cache.getCallableForName(funcName);
+		if (!method) continue;
+
+		// Extract the raw argument list
+		const argsStr = extractArgString(text, parenOpenOffset + 1);
+		if (argsStr === null) continue;
+
+		// Parse supplied arguments
+		const { positionalCount, namedArgs } = parseCallArgs(argsStr);
+
+		// If unpacking is used we can't validate statically
+		if (positionalCount === -1) continue;
+
+		// Determine which required params are satisfied
+		const required = getRequiredParams(method);
+		const unfulfilled: string[] = [];
+		let positionalUsed = 0;
+		for (const param of required) {
+			const paramName = (param.name || '').replace(/^\*+/, '').trim();
+			if (namedArgs.has(paramName)) continue;
+			if (positionalUsed < positionalCount) { positionalUsed++; continue; }
+			unfulfilled.push(paramName);
+		}
+
+		if (unfulfilled.length > 0) {
+			const callEnd = parenOpenOffset + 1 + argsStr.length + 1; // +1 for closing ')'
+			diagnostics.push({
+				severity: DiagnosticSeverity.Error,
+				range: {
+					start: textDocument.positionAt(callStart),
+					end: textDocument.positionAt(callEnd)
+				},
+				message: `Missing required argument(s): ${unfulfilled.map(n => `'${n}'`).join(', ')}`,
+				source: 'mast extension'
+			});
+		}
 	}
 
 	return diagnostics;

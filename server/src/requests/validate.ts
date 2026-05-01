@@ -147,9 +147,8 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	let errorSources: ErrorInstance[] = [];
 
 	
-	// const functionSigs = checkFunctionSignatures(textDocument);
-	// debug(functionSigs);
-	// diagnostics = diagnostics.concat(functionSigs);
+	const functionSigs = checkFunctionSignatures(textDocument);
+	diagnostics = diagnostics.concat(functionSigs);
 
 
 	const cache = getCache(textDocument.uri);

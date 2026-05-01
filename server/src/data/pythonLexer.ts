@@ -167,9 +167,20 @@ export class PythonLexer {
 				continue;
 			}
 
-			// Operators (including ->)
-			if ('+-*/%=<>!&|'.includes(ch)) {
+			// Numeric literals (int and float)
+			if (ch >= '0' && ch <= '9') {
 				const start = pos;
+				const startCol = column;
+				while (pos < this.text.length && ((this.text[pos] >= '0' && this.text[pos] <= '9') || this.text[pos] === '.' || this.text[pos] === '_')) {
+					pos++;
+					column++;
+				}
+				tokens.push({ type: TokenType.IDENTIFIER, value: this.text.substring(start, pos), line, column: startCol });
+				continue;
+			}
+
+			// Operators (including ->)
+			if ('+-*/%=<>!&|'.includes(ch)) {				const start = pos;
 				const startCol = column;
 				// Handle multi-char operators like ->, ==, <=, etc.
 				pos++;
@@ -565,7 +576,17 @@ export class PythonLexer {
 					return;
 				}
 
-				const argName = nameToken.value;
+				// Detect * or ** prefix tokens immediately before the name token
+				const nameIdx = currentParam.indexOf(nameToken);
+				let starPrefix = '';
+				if (nameIdx >= 1 && currentParam[nameIdx - 1].value === '*') {
+					starPrefix = '*';
+					if (nameIdx >= 2 && currentParam[nameIdx - 2].value === '*') {
+						starPrefix = '**';
+					}
+				}
+
+				const argName = starPrefix + nameToken.value;
 				if (argName === 'self' || argName === 'cls') {
 					currentParam = [];
 					return;

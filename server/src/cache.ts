@@ -354,6 +354,16 @@ export class MissionCache {
 	 * @param globals 
 	 */
 	async loadPythonGlobals(globals: string[][]) {
+
+		// Now we add the mock pyfile:
+		const scriptPath = __dirname.replace("out","src");
+		let contents = await readFile(path.join(scriptPath,"files","globals.py"));
+		// debug(contents)
+		const builtInFunctions = new PyFile("builtin_functions.py",contents);
+		builtInFunctions.isGlobal = true;
+
+
+		// Now we add the globals from the python shell. We have to do this after loading the modules, since some globals are defined in the modules.
 		let go = await initializeArtemisGlobals();
 		showProgressBar(true);
 		let sigParser = /'(.*?)'/g;
@@ -382,11 +392,14 @@ export class MissionCache {
 			let kind = g["kind"];
 			let name = g["mastName"];
 			if (kind === "module") {
-					const _c = new ClassObject("","");
-					_c.name = name;
-					_c.sourceFile = "built-in"
-					_c.documentation = doc
-					classes.push(_c);
+				if (builtInFunctions.classes.find((c) => c.name === name)) {
+					continue;
+				}
+				const _c = new ClassObject("","");
+				_c.name = name;
+				_c.sourceFile = "built-in"
+				_c.documentation = doc
+				classes.push(_c);
 			} else {
 				// try to find the module/class the function is from
 				// Shouldn't be any that aren't from a class/module, since we use the mock file.
@@ -452,12 +465,7 @@ export class MissionCache {
 		builtIns.classes = classes;
 		builtIns.isGlobal = true;
 
-		// Now we add the mock pyfile:
-		const scriptPath = __dirname.replace("out","src");
-		let contents = await readFile(path.join(scriptPath,"files","globals.py"));
-		// debug(contents)
-		const builtInFunctions = new PyFile("builtin_functions.py",contents);
-		builtInFunctions.isGlobal = true;
+		
 		// for (const m of builtInFunctions.defaultFunctions) {
 		// 	m.sourceFile = "builtin";
 		// }
@@ -1248,6 +1256,45 @@ export class MissionCache {
 	getPossibleMethods(name:string): Function[] {
 		this.ensureMethodCaches();
 		return [...(this.classMethodIndex?.get(name) || [])];
+	}
+
+	/**
+	 * Resolve the best callable for a call expression like `name(...)`.
+	 *
+	 * For plain calls (default), prefer globals/constructors first.
+	 * For member calls (`obj.name(...)`), pass `preferClassMethod=true` to
+	 * prefer class methods over constructor/global fallbacks.
+	 */
+	getCallableForName(name: string, preferClassMethod: boolean = false): Function | undefined {
+		const possible = this.getPossibleMethods(name);
+
+		if (preferClassMethod) {
+			if (possible.length > 0) {
+				return possible[0];
+			}
+			return this.getMethod(name);
+		}
+
+		const globalMethod = this.getMethod(name);
+		if (globalMethod) {
+			return globalMethod;
+		}
+
+		if (possible.length === 0) {
+			return undefined;
+		}
+
+		const ctor = possible.find((m) => m.functionType === 'constructor' && m.className === name);
+		if (ctor) {
+			return ctor;
+		}
+
+		const sameClassMethod = possible.find((m) => m.className === name);
+		if (sameClassMethod) {
+			return sameClassMethod;
+		}
+
+		return possible[0];
 	}
 
 	/**

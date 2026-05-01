@@ -43,8 +43,8 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 		const func = callContext.functionName;
 		let pNum = callContext.parameterIndex;
 		
-		// Get the method and build signature
-		const method = cache.getMethod(func) || cache.getPossibleMethods(func)[0];
+		// Get the best callable for this symbol and build signature
+		const method = cache.getCallableForName(func, callContext.isMethodCall);
 		if (method) {
 			if (!callContext.parameterName && method.parameters && method.parameters.length > 0 && pNum >= 0 && pNum < method.parameters.length) {
 				callContext.parameterName = toParameterName(method.parameters[pNum].name);
@@ -128,7 +128,7 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 	
 	
 	/**The {@link Function Function} in question */
-	let method = cache.getMethod(func) || cache.getPossibleMethods(func)[0];
+	let method = cache.getCallableForName(func, isClassMethodRes);
 
 	// TODO:
 	// - Keep copy of arg list from param list
@@ -229,7 +229,7 @@ export function getCallContextFromTokens(
 	tokens: TokenInfo[],
 	position: Position,
 	document: TextDocument
-): { functionName: string; parameterIndex: number; parameterName?: string } | undefined {
+): { functionName: string; parameterIndex: number; parameterName?: string; isMethodCall: boolean } | undefined {
 	const targetOffset = document.offsetAt(position);
 	if (targetOffset <= 0 || tokens.length === 0) {
 		return undefined;
@@ -446,6 +446,7 @@ export function getCallContextFromTokens(
 	return {
 		functionName: tokens[funcIndex].text,
 		parameterIndex,
-		parameterName
+		parameterName,
+		isMethodCall: tokens[funcIndex].type === 'method'
 	};
 }

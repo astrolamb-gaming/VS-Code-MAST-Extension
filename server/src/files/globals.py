@@ -56,27 +56,29 @@ def reversed(sequence)->iterator:
 		An iterable object.
 	"""
 	pass
-def int(value, base=10)->int:
-	"""
-	Convert the value into an integer.
-	Args:
-		value: A number or a string that can be converted into an integer number
-		base: A number representing the number format. Default value: 10
-	Returns:
-		int: The integer
-	"""
-	pass
-def str(object, encoding="UTF-8", errors=None)->str:
-	"""
-	Converts the specified object into a string.
-	Args:
-		object: Any object. Specifies the object to convert into a string
-		encoding: The encoding of the object. Default is UTF-8
-		errors: Specifies what to do if the decoding fails
-	Returns:
-		str: The string representation of the object
-	"""
-	pass
+class int:
+	def __init__(self, value = 0, base = 10):
+		"""
+		Convert the value into an integer.
+		Args:
+			value: A number or a string that can be converted into an integer number
+			base: A number representing the number format. Default value: 10
+		Returns:
+			int: The integer
+		"""
+		pass
+class str:
+	def __init__(self, object = "", encoding = "UTF-8", errors = None):
+		"""
+		Converts the specified object into a string.
+		Args:
+			object: Any object. Specifies the object to convert into a string
+			encoding: The encoding of the object. Default is UTF-8
+			errors: Specifies what to do if the decoding fails
+		Returns:
+			str: The string representation of the object
+		"""
+		pass
 def hex(integer: int):
 	"""
 	Return the hexadecimal representation of an integer.
@@ -134,34 +136,76 @@ def filter(function, iterable)->iterator:
 		iterable: The iterable to be filtered.
 	"""
 	pass
-def list(iterable)->List:
-	"""
-	Creates a list object.
-	Args:
-		iterable: Optional. A sequence, collection, or an iterator object.
-	Returns:
-		A list, which is a collection which is ordered and changeable.
-	"""
-	pass
-def set(iterable)->Set:
-	"""
-	Creates a set object. The items in a set list are unordered, so it will appear in random order.
-	Args:
-		iterable: Optional. A sequence, collection, or an iterator object.
-	Returns:
-		A new Set.
-	"""
-	pass
-def iter(iterable, sentinel)->iterator:
-	"""
-	iter(iterable) -> iterator
-	iter(callable, sentinel) -> iterator
-	
-	Get an iterator from an object.  In the first form, the argument must
-	supply its own iterator, or be a sequence.
-	In the second form, the callable is called until it returns the sentinel.
-	"""
-	pass
+class list:
+	def __init__(self, iterable = None):
+		"""
+		Creates a list object.
+		Args:
+			iterable: Optional. A sequence, collection, or an iterator object.
+		Returns:
+			A list, which is a collection which is ordered and changeable.
+		"""
+		pass
+class set:
+	def __init__(self, iterable = None):
+		"""
+		Creates a set object. The items in a set list are unordered, so it will appear in random order.
+		Args:
+			iterable: Optional. A sequence, collection, or an iterator object.
+		Returns:
+			A new Set.
+		"""
+		pass
+class dict:
+	def __init__(self, **kwargs):
+		"""
+		Creates a dictionary object.
+		Args:
+			kwargs: Optional. Key/value pairs to initialize the dictionary.
+		Returns:
+			A new dictionary, which is a collection which is unordered, changeable and indexed.
+		"""
+		pass
+class bool:
+	def __init__(self, value = False):
+		"""
+		Returns the boolean value of the specified object.
+		Args:
+			value: Any object. If empty, returns False.
+		Returns:
+			bool: True or False
+		"""
+		pass
+class float:
+	def __init__(self, value = 0):
+		"""
+		Returns a floating point number from a number or string.
+		Args:
+			value: A number or a string that can be converted into a floating point number.
+		Returns:
+			float: The floating point number
+		"""
+		pass
+class tuple:
+	def __init__(self, iterable = None):
+		"""
+		Creates a tuple object.
+		Args:
+			iterable: Optional. A sequence, collection, or an iterator object.
+		Returns:
+			A tuple, which is a collection which is ordered and unchangeable.
+		"""
+		pass
+class frozenset:
+	def __init__(self, iterable = None):
+		"""
+		Returns an immutable frozenset object.
+		Args:
+			iterable: Optional. An iterable object (list, set, tuple, etc.).
+		Returns:
+			frozenset: A new frozenset object.
+		"""
+		pass
 def sorted(iterable, key=None, reverse=False)->List:
 	"""
 	Return a new list containing all items from the iterable in ascending order.
@@ -171,18 +215,19 @@ def sorted(iterable, key=None, reverse=False)->List:
 	Note: You cannot sort a list that contains BOTH string values AND numeric values.
 	"""
 	pass
-def range(start=0, stop, step=1)->Range:
-	"""
-	Returns a sequence of numbers, starting from 0 by default, and increments by 1 (by default), and stops before a specified number.
+class range:
+	def __init__(self, start = 0, stop, step = 1):
+		"""
+		Returns a sequence of numbers, starting from 0 by default, and increments by 1 (by default), and stops before a specified number.
 
-	Args:
-		start: Optional. An integer number specifying at which position to start. Default is 0
-		stop: Required. An integer number specifying at which position to stop (not included).
-		step: Optional. An integer number specifying the incrementation. Default is 1
-	Returns:
-		iterator: The sequence of numbers
-	"""
-	pass
+		Args:
+			start: Optional. An integer number specifying at which position to start. Default is 0
+			stop: Required. An integer number specifying at which position to stop (not included).
+			step: Optional. An integer number specifying the incrementation. Default is 1
+		Returns:
+			range: The sequence of numbers
+		"""
+		pass
 def isinstance(object, classinfo)->bool:
 	"""
 	Return True if the object argument is an instance of the classinfo argument, or of a (direct, indirect, or virtual) subclass thereof. 
