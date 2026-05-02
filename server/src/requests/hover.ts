@@ -195,6 +195,10 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 	} else if (tokenContext.token?.type === "function") {
 	// } else if (isFunction(hoveredLine,symbol)) {
 		debug("function")
+		const callable = cache.getCallableForName(symbol || '');
+		if (callable) {
+			return { contents: callable.buildMarkUpContent() };
+		}
 		// hoverText += "\nFunction"
 		for (const p of cache.missionPyModules) {
 			for (const m of p.defaultFunctions) {
@@ -266,8 +270,15 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 				return {contents: key[1]}
 			}
 		}
+		const callable = cache.getCallableForName(symbol || '');
+		if (callable) {
+			return { contents: callable.buildMarkUpContent() };
+		}
 		for (const c of cache.getClasses()) {
 			if (matchesClassName(c.name, symbol)) {
+				if (c.constructorFunction) {
+					return { contents: c.constructorFunction.buildMarkUpContent() };
+				}
 				return {contents: c.documentation}
 			}
 		}
