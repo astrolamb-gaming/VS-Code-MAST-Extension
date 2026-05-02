@@ -129,4 +129,35 @@ class MastGlobals:
 		assert.ok(facesClass?.methods.some((method) => method.name === 'make_face_list'));
 		assert.ok(cache.getMethod('make_face_list'));
 	});
+
+	it('does not treat import_python_module module names as MastGlobals exports', () => {
+		const { cache, missionDir } = createMissionCache('imported-module-global');
+
+		const sidesPy = new PyFile(path.join(missionDir, 'sbs_utils', 'procedural', 'sides.py'), `
+def port_side():
+    pass
+`);
+
+		const globalsPy = new PyFile(path.join(missionDir, 'globals.py'), `
+class MastGlobals:
+    @staticmethod
+    def load():
+        MastGlobals.import_python_module('sbs_utils.procedural.sides')
+`);
+
+		cache.addSbsPyFile(sidesPy);
+		cache.addMissionPyFile(globalsPy);
+
+		assert.ok(cache.getMethod('port_side'));
+		assert.equal(cache.getMastGlobal('sides'), undefined);
+		assert.equal(cache.getClasses().some((classObject) => classObject.name === 'sides'), false);
+	});
+
+	it('keeps sbs as a special-case module global', () => {
+		const { cache } = createMissionCache('sbs-special-global');
+
+		cache.sbsGlobals.push(['sbs', '']);
+
+		assert.ok(cache.getMastGlobal('sbs'));
+	});
 });

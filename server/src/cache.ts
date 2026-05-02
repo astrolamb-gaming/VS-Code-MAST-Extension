@@ -355,12 +355,7 @@ export class MissionCache {
 	 */
 	async loadPythonGlobals(globals: string[][]) {
 
-		// Now we add the mock pyfile:
-		const scriptPath = __dirname.replace("out","src");
-		let contents = await readFile(path.join(scriptPath,"files","globals.py"));
-		// debug(contents)
-		const builtInFunctions = new PyFile("builtin_functions.py",contents);
-		builtInFunctions.isGlobal = true;
+		
 
 
 		// Now we add the globals from the python shell. We have to do this after loading the modules, since some globals are defined in the modules.
@@ -392,9 +387,9 @@ export class MissionCache {
 			let kind = g["kind"];
 			let name = g["mastName"];
 			if (kind === "module") {
-				if (builtInFunctions.classes.find((c) => c.name === name)) {
-					continue;
-				}
+				// if (builtInFunctions.classes.find((c) => c.name === name)) {
+				// 	continue;
+				// }
 				const _c = new ClassObject("","");
 				_c.name = name;
 				_c.sourceFile = "built-in"
@@ -464,6 +459,15 @@ export class MissionCache {
 		const builtIns = new PyFile("builtin.py","");
 		builtIns.classes = classes;
 		builtIns.isGlobal = true;
+
+
+
+		// Now we add the mock pyfile:
+		const scriptPath = __dirname.replace("out","src");
+		let contents = await readFile(path.join(scriptPath,"files","globals.py"));
+		// debug(contents)
+		const builtInFunctions = new PyFile("builtin_functions.py",contents);
+		builtInFunctions.isGlobal = true;
 
 		
 		// for (const m of builtInFunctions.defaultFunctions) {
@@ -1301,6 +1305,13 @@ export class MissionCache {
 	 * Get MastGlobals entry by exported global reference name.
 	 * Values are sourced from parsed `class MastGlobals: globals = {...}`
 	 * definitions in mission python files and mission python modules.
+	 *
+	 * This intentionally does not treat `MastGlobals.import_python_module(...)`
+	 * entries as module globals. Those imports expose the module's functions in
+	 * global scope, but do not make the module/file name itself a global symbol
+	 * unless it is also exported via the MastGlobals dict.
+	 *
+	 * `sbs` remains a special-case module global for historical behavior.
 	 */
 	getMastGlobal(name: string): string[] | undefined {
 		const target = (name || '').trim();
@@ -1319,7 +1330,7 @@ export class MissionCache {
 			return undefined;
 		};
 
-		const findImportedModule = (globals: string[][]): string[] | undefined => {
+		const findSpecialImportedModule = (globals: string[][]): string[] | undefined => {
 			for (const g of globals) {
 				if (!g || g.length === 0) {
 					continue;
@@ -1328,7 +1339,7 @@ export class MissionCache {
 				const alias = (g[1] || '').trim();
 				const moduleBase = modulePath.split('.').pop() || '';
 
-				if (alias === target || modulePath === target || moduleBase === target) {
+				if (target === 'sbs' && (modulePath === 'sbs' || alias === 'sbs' || moduleBase === 'sbs')) {
 					return g;
 				}
 			}
@@ -1337,7 +1348,7 @@ export class MissionCache {
 
 		return findIn(this.pyFileCache)
 			|| findIn(this.missionPyModules)
-			|| findImportedModule(this.sbsGlobals);
+			|| findSpecialImportedModule(this.sbsGlobals);
 	}
 
 	/**
