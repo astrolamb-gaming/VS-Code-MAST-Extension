@@ -274,12 +274,19 @@ export class Function implements IFunction {
 	 * @returns 
 	 */
 	buildFunctionDetails() : string {
-		let classRef = ((this.className === "") ? "" : this.className + ".");
-		if (this.functionType === 'constructor') { classRef = ""; }
+		let classRef = ((this.className === "" || this.className === this.name) ? "" : this.className + ".");
+
 		let paramList = "";
-		if ((this.functionType !== 'property') && (this.functionType !== 'constant')) paramList = "(" + this.rawParams + ")" + paramList;
+		if ((this.functionType !== 'property') && (this.functionType !== 'constant')) {
+			const normalizedParams = (this.rawParams || '').replace(/\s*=\s*/g, '=').trim();
+			paramList = "(" + normalizedParams + ")";
+		}
+
 		let retType = "";
-		if (this.returnType !== "") retType = " -> " + this.returnType;
+		if (this.returnType !== "") {
+			retType = " -> " + this.returnType;
+		}
+
 		let ci_details: string = "(" + this.functionType + ") " + classRef + this.name + paramList + retType;
 		ci_details = "```javascript\n" + ci_details + "\n```   \n";
 		return ci_details;
@@ -571,8 +578,6 @@ export class Function implements IFunction {
 	}
 
 	buildSignatureInformation(): SignatureInformation {
-		let ci_details: string = "(" + this.functionType + ") " + ((this.className === "") ? "" : this.className + ".") + this.name + ((this.functionType === "constant") ? ": " : "(" + this.rawParams + "): ") + (this.functionType === "constructor") ? this.className : this.name;
-		//debug(ci_details)
 		const params:ParameterInformation[] = [];
 		// const markup: MarkupContent = {
 		// 	kind: "markdown",
@@ -581,7 +586,7 @@ export class Function implements IFunction {
 		//debug(markup)
 		let docs = this.buildMarkUpContent(this.documentation as string);
 		const si: SignatureInformation = {
-			label: this.name,
+			label: this.buildFunctionDetails().replace(/^```javascript\n/, '').replace(/\n```\s*$/, ''),
 			documentation: docs,//ci_details + "\n" + this.documentation,
 			// TODO: Make this more Markup style instead of just text
 			parameters: []
@@ -623,21 +628,42 @@ export class Parameter implements IParameter {
 	constructor(raw: string, pos: integer, docs?: string) {
 		this.name = "";
 		this.documentation = (docs === undefined) ? "" : docs;
-		const pDef: string[] = raw.split(":");
-		const test = /(\w+)\=(\w+)/;
-		const match = pDef[0].trim().match(test);
-		if (match) {
-			this.name = match[1];
-			this.default = match[2];
+
+		// Split on first ':' only, to separate name[=default] from type[=default]
+		const colonIdx = raw.search(/:\s*[^:=]/);
+		let namePart: string;
+		let typePart: string | undefined;
+		if (colonIdx >= 0) {
+			namePart = raw.substring(0, colonIdx).trim();
+			typePart = raw.substring(colonIdx + 1).trim();
 		} else {
-			this.name = pDef[0].trim();
-			this.default = "";
+			namePart = raw.trim();
+			typePart = undefined;
 		}
-		if (pDef.length === 1) {
-			this.type = "any?";
-		} else {
-			this.type = pDef[1].trim();
+
+		// Extract default from the type annotation part first (e.g. "int = 5")
+		let defaultVal: string | undefined;
+		if (typePart !== undefined) {
+			const typeEqIdx = typePart.indexOf('=');
+			if (typeEqIdx >= 0) {
+				defaultVal = typePart.substring(typeEqIdx + 1).trim();
+				typePart = typePart.substring(0, typeEqIdx).trim();
+			}
 		}
+
+		// Extract default from the name part (e.g. "x = None" or "x=None")
+		const nameEqIdx = namePart.indexOf('=');
+		if (nameEqIdx >= 0) {
+			if (defaultVal === undefined) {
+				defaultVal = namePart.substring(nameEqIdx + 1).trim();
+			}
+			namePart = namePart.substring(0, nameEqIdx).trim();
+		}
+
+		this.name = namePart;
+		this.default = defaultVal ?? "";
+		this.type = typePart ?? "any?";
+
 		return this;
 	}
 }
