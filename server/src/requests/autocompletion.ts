@@ -30,6 +30,18 @@ const facePickerArgs = new Set(['face']);
 let lastFacePickerTriggerKey = '';
 let lastFacePickerTriggerAt = 0;
 
+function endsWithClosedExpressionPrefix(textBeforeCursor: string): boolean {
+	let idx = textBeforeCursor.length - 1;
+	while (idx >= 0 && /\s/.test(textBeforeCursor[idx])) {
+		idx--;
+	}
+	if (idx < 0) {
+		return false;
+	}
+	const lastChar = textBeforeCursor[idx];
+	return lastChar === ')' || lastChar === ']' || lastChar === '}';
+}
+
 function maybeTriggerShipPicker(argName: string, text: TextDocument, line: number): void {
 	if (!shipPickerArgs.has(argName)) {
 		return;
@@ -95,8 +107,8 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	const startOfLine : integer = pos - _textDocumentPosition.position.character;
 	const iStr : string = t.substring(startOfLine,pos);
 	debug(iStr)
-	if (iStr.trim().endsWith(")")) {
-		debug("Ends with ), should have no completions")
+	if (endsWithClosedExpressionPrefix(iStr)) {
+		debug("Ends with a closed expression, should have no completions")
 		return [];
 	}
 	const line = getCurrentLineFromTextDocument(_textDocumentPosition.position, text)
