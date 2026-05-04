@@ -437,7 +437,21 @@ export async function onReferences(doc: TextDocument, params:ReferenceParams): P
 	debug(word);
 
 	// Label-ish tokens should resolve against labels directly.
-	if (token.type === 'label' || token.type === 'route-label' || token.type === 'media-label') {
+	// Exception: route-label tokens that are signal paths (shared/signal/... or signal/...)
+	// should resolve via the signal cache to include both emit and triggered locations.
+	if (token.type === 'route-label') {
+		const sigMatch = word.match(/^(?:shared\/)?signal\/([\w\/]+)$/);
+		if (sigMatch) {
+			const signalName = sigMatch[1].replace(/\//g, '_');
+			for (const s of cache.getSignals()) {
+				if (s.name === signalName) {
+					return dedupeLocations(s.emit.concat(s.triggered));
+				}
+			}
+		}
+		return getLabelLocations(doc, word);
+	}
+	if (token.type === 'label' || token.type === 'media-label') {
 		return getLabelLocations(doc, word);
 	}
 

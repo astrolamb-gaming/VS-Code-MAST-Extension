@@ -105,10 +105,14 @@ export class TokenBasedExtractor {
 		// Find route labels: //signal/name or //shared/signal/name
 		for (const token of this.tokens) {
 			if (token.type === 'route-label') {
-				const match = token.text.match(/^\/\/(shared\/)?signal\/([\w\/]+)$/);
+				// Route-label tokens can come in two forms:
+				// - Inline references: "//shared/signal/name"
+				// - Line-start labels: "shared/signal/name" (without leading //)
+				const routePath = token.text.startsWith('//') ? token.text.substring(2) : token.text;
+				const match = routePath.match(/^(shared\/)?signal\/([\w\/]+)$/);
 				if (match && match[2]) {
 					const signalName = match[2].replace(/\//g, '_');
-					this.addSignalUsage(signalMap, signalName, token, true);
+					this.addSignalUsage(signalMap, signalName, token, false);
 				}
 			}
 		}
