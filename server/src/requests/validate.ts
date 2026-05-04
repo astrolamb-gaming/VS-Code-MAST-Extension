@@ -142,6 +142,12 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		return [];
 	}
 	if (textDocument.languageId !== "mast") return[];
+	const cache = getCache(textDocument.uri);
+	await cache.awaitLoaded();
+	// Force cache/token refresh from the latest in-memory document so
+	// diagnostics do not depend on event ordering/timing.
+	cache.updateFileInfo(textDocument);
+	const tokens = cache.getMastFile(textDocument.uri)?.tokens || [];
 	let problems = 0;
 	let diagnostics: Diagnostic[] = [];
 	let errorSources: ErrorInstance[] = [];
@@ -150,10 +156,6 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	const functionSigs = checkFunctionSignatures(textDocument);
 	diagnostics = diagnostics.concat(functionSigs);
 
-
-	const cache = getCache(textDocument.uri);
-	const tokens = cache.getMastFile(textDocument.uri)?.tokens;
-	await cache.awaitLoaded();
 	const folder = path.dirname(URI.parse(textDocument.uri).fsPath);
 	if (!exclude.includes(folder)) {
 		cache.checkForInitFolder(folder).then((res)=>{

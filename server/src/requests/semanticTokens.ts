@@ -1358,6 +1358,10 @@ export class MastStateMachineLexer {
 		const isDotAccess = this.isPrecededByDot(startPos);
 		const isMethodCall = isFunctionCall && isDotAccess;
 		const isKnownLabelRef = this.isKnownLabelReferenceName(text);
+		const tokenStartAbs = this.doc.offsetAt({ line: startLine, character: startChar });
+		const isLambdaParam = this.findLambdaScopesInLine(startLine).some((scope) =>
+			scope.params.some((param) => tokenStartAbs === param.start && text === param.name)
+		);
 
 		if (isFunctionCall) {
 			return {
@@ -1381,39 +1385,24 @@ export class MastStateMachineLexer {
 			};
 		}
 
-		// // If this would otherwise be classified as a plain variable reference,
-		// // consult known labels and the mission cache to reclassify it as a
-		// // `label` or `function` when appropriate. This handles cases like
-		// // `prefab_spawn(prefab_side_generic, ...)` where `prefab_side_generic`
-		// // is actually a label reference rather than a variable.
-		// if (!isDotAccess) {
-		// 	const cache = getCache(this.doc.uri);
-		// 	const normalized = text;
-		// 	if (this.isKnownLabelReferenceName(normalized)) {
-		// 		return {
-		// 			type: normalized.startsWith('//') ? 'route-label' : 'label',
-		// 			modifier: 'reference',
-		// 			line: startLine,
-		// 			character: startChar,
-		// 			length: text.length,
-		// 			text
-		// 		};
-		// 	}
-		// 	// Check for functions known to the mission (including class methods).
-		// 	if (cache.getMethod(normalized) || (cache.getPossibleMethods(normalized) || []).length > 0) {
-		// 		return {
-		// 			type: 'function',
-		// 			modifier: 'reference',
-		// 			line: startLine,
-		// 			character: startChar,
-		// 			length: text.length,
-		// 			text
-		// 		};
-		// 	}
-		// }
+		// If this would otherwise be a plain variable reference, consult known
+		// mission symbols to reclassify callbacks as function references.
+		if (!isDotAccess && !isLambdaParam && assignmentModifier !== 'definition') {
+			const cache = getCache(this.doc.uri);
+			if (cache.getCallableForName(text, true)) {
+				return {
+					type: 'function',
+					modifier: 'reference',
+					line: startLine,
+					character: startChar,
+					length: text.length,
+					text
+				};
+			}
+		}
 		return {
 			type: isDotAccess ? 'property' : 'variable',
-			modifier: isDotAccess ? undefined : assignmentModifier,
+			modifier: isDotAccess ? undefined : (isLambdaParam ? 'definition' : assignmentModifier),
 			line: startLine,
 			character: startChar,
 			length: text.length,

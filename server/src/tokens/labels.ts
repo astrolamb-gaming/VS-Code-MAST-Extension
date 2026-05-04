@@ -1206,8 +1206,8 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 			if (cache.getMastGlobal(token.text)) {
 				continue; // It's a known MastGlobals symbol, so treat as defined.
 			}
-			if (cache.getMethod(token.text)) {
-				continue; // It's a reference to a built-in method, so we can ignore it.
+			if (cache.getCallableForName(token.text, true)) {
+				continue; // Known callable reference (function/method/constructor), e.g. callback arg.
 			}
 			const labelNames = cache.getLabelsAtPos(doc, doc.offsetAt({ line: token.line, character: token.character }), false);
 			if (labelNames.find(l => l.name === token.text)) {

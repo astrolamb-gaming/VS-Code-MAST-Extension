@@ -861,12 +861,16 @@ export async function showProgressBar(visible: boolean) {
 documents.listen(connection);
 
 // Semantic tokens provider
-connection.languages.semanticTokens.on((params: SemanticTokensParams) => {
+connection.languages.semanticTokens.on(async (params: SemanticTokensParams) => {
 	const document = documents.get(params.textDocument.uri);
 	if (!document) {
 		return getEmptySemanticTokens();
 	}
 	try {
+		const cache = getCache(params.textDocument.uri);
+		await cache.awaitLoaded();
+		cache.updateFileInfo(document);
+
 		// Check cache first
 		const stcache = getSemanticTokensCache();
 		const cached = stcache.get(params.textDocument.uri, document.version);
@@ -876,7 +880,6 @@ connection.languages.semanticTokens.on((params: SemanticTokensParams) => {
 
 		// Compute tokens and cache result
 		const allTokens = tokenizeDocument(document);
-		const cache = getCache(params.textDocument.uri);
 		const testlabel = "prefab_side_generic";
 		for (const token of allTokens) {
 			if (token.type === 'variable' && token.modifier === 'reference') {

@@ -264,14 +264,27 @@ export function checkFunctionSignatures(textDocument: TextDocument): Diagnostic[
 		const callStart = m.index;
 		const parenOpenOffset = m.index + m[0].length - 1; // index of '('
 
-		// Skip member calls (obj.func(...)). Without type flow info, these are
-		// too ambiguous and can create false positives from unrelated symbols.
+		// Detect member calls (obj.func(...)) and keep them in scope for
+		// argument validation.
 		let prev = callStart - 1;
 		while (prev >= 0 && /\s/.test(text[prev])) {
 			prev--;
 		}
-		if (prev >= 0 && text[prev] === '.') {
-			continue;
+		const isMemberCall = prev >= 0 && text[prev] === '.';
+
+		let receiverName: string | undefined;
+		if (isMemberCall) {
+			let r = prev - 1;
+			while (r >= 0 && /\s/.test(text[r])) {
+				r--;
+			}
+			let end = r;
+			while (r >= 0 && /\w/.test(text[r])) {
+				r--;
+			}
+			if (end >= r + 1) {
+				receiverName = text.substring(r + 1, end + 1);
+			}
 		}
 
 		// Skip calls inside comments or strings
@@ -279,8 +292,16 @@ export function checkFunctionSignatures(textDocument: TextDocument): Diagnostic[
 		if (tokenType === 'comment') continue;
 		if (tokenType === 'string') continue;
 
-		// Look up the best callable for this name.
-		const method = cache.getCallableForName(funcName);
+		// Look up the best callable for this name. For member calls, prefer
+		// class methods and, when possible, a class/module matching the receiver.
+		let method = cache.getCallableForName(funcName, isMemberCall);
+		if (isMemberCall && receiverName) {
+			const possible = cache.getPossibleMethods(funcName);
+			const receiverMatch = possible.find((cand) => (cand.className || '') === receiverName);
+			if (receiverMatch) {
+				method = receiverMatch;
+			}
+		}
 		if (!method) continue;
 
 		// Extract the raw argument list
