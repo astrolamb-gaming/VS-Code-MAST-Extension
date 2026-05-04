@@ -16,6 +16,147 @@ function toParameterName(name: string | undefined): string | undefined {
 	return cleaned.length > 0 ? cleaned : undefined;
 }
 
+function splitTopLevelArgs(argsText: string): string[] {
+	const segments: string[] = [];
+	let start = 0;
+	let dParen = 0;
+	let dBracket = 0;
+	let dBrace = 0;
+	let quote: string | null = null;
+	let escaped = false;
+	let inLineComment = false;
+	let inBlockComment = false;
+
+	for (let i = 0; i < argsText.length; i++) {
+		const ch = argsText[i];
+		const next = i + 1 < argsText.length ? argsText[i + 1] : '';
+
+		if (inLineComment) {
+			if (ch === '\n') inLineComment = false;
+			continue;
+		}
+		if (inBlockComment) {
+			if (ch === '*' && next === '/') {
+				inBlockComment = false;
+				i++;
+			}
+			continue;
+		}
+		if (quote !== null) {
+			if (escaped) {
+				escaped = false;
+				continue;
+			}
+			if (ch === '\\') {
+				escaped = true;
+				continue;
+			}
+			if (ch === quote) {
+				quote = null;
+			}
+			continue;
+		}
+
+		if (ch === '#') {
+			inLineComment = true;
+			continue;
+		}
+		if (ch === '/' && next === '*') {
+			inBlockComment = true;
+			i++;
+			continue;
+		}
+		if (ch === '"' || ch === "'") {
+			quote = ch;
+			continue;
+		}
+		if (ch === '(') dParen++;
+		else if (ch === ')' && dParen > 0) dParen--;
+		else if (ch === '[') dBracket++;
+		else if (ch === ']' && dBracket > 0) dBracket--;
+		else if (ch === '{') dBrace++;
+		else if (ch === '}' && dBrace > 0) dBrace--;
+
+		if (ch === ',' && dParen === 0 && dBracket === 0 && dBrace === 0) {
+			segments.push(argsText.substring(start, i));
+			start = i + 1;
+		}
+	}
+
+	segments.push(argsText.substring(start));
+	return segments;
+}
+
+function getFirstUnusedParameterIndex(
+	parameters: Array<{ name: string }>,
+	argsTextBeforeCursor: string,
+	currentNamedArg?: string
+): number | undefined {
+	if (!parameters || parameters.length === 0) {
+		return undefined;
+	}
+
+	const paramNames = parameters.map((p) => toParameterName(p.name));
+	const satisfied = new Set<number>();
+
+	const segments = splitTopLevelArgs(argsTextBeforeCursor);
+	const completedSegments = segments.length > 0 ? segments.slice(0, -1) : [];
+
+	const namedArgs = new Set<string>();
+	let positionalCount = 0;
+	for (const raw of completedSegments) {
+		const seg = raw.trim();
+		if (seg === '') continue;
+
+		const named = seg.match(/^([A-Za-z_]\w*)\s*=/);
+		if (named) {
+			namedArgs.add(named[1]);
+			continue;
+		}
+		if (seg.startsWith('*')) {
+			continue;
+		}
+		positionalCount++;
+	}
+
+	for (let i = 0; i < paramNames.length; i++) {
+		const pn = paramNames[i];
+		if (!pn) continue;
+		if (namedArgs.has(pn)) {
+			satisfied.add(i);
+		}
+	}
+
+	for (let i = 0; i < paramNames.length && positionalCount > 0; i++) {
+		if (satisfied.has(i)) continue;
+		const pn = paramNames[i];
+		if (!pn || pn === '/' || pn.startsWith('*') || pn === 'self') continue;
+		satisfied.add(i);
+		positionalCount--;
+	}
+
+	if (currentNamedArg) {
+		const namedIndex = paramNames.findIndex((p) => p === currentNamedArg);
+		// Only highlight if this named arg isn't already satisfied (not already provided earlier)
+		if (namedIndex >= 0 && !satisfied.has(namedIndex)) {
+			return namedIndex;
+		}
+	}
+
+	if (namedArgs.size === 0) {
+		return undefined;
+	}
+
+	for (let i = 0; i < paramNames.length; i++) {
+		if (satisfied.has(i)) continue;
+		const pn = paramNames[i];
+		if (!pn || pn === '/' || pn.startsWith('*') || pn === 'self') continue;
+		return i;
+	}
+
+	return undefined;
+}
+
 
 export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocument): SignatureHelp | undefined {
 	let sh : SignatureHelp = {
@@ -42,19 +183,22 @@ export function onSignatureHelp(_textDocPos: SignatureHelpParams, text: TextDocu
 	if (callContext) {
 		const func = callContext.functionName;
 		let pNum = callContext.parameterIndex;
+		// parameterName is only set when the user explicitly typed `name=` in the current segment
+		const explicitNamedArg = callContext.parameterName;
 		
 		// Get the best callable for this symbol and build signature
 		const method = cache.getCallableForName(func, callContext.isMethodCall);
 		if (method) {
-			if (!callContext.parameterName && method.parameters && method.parameters.length > 0 && pNum >= 0 && pNum < method.parameters.length) {
-				callContext.parameterName = toParameterName(method.parameters[pNum].name);
-			}
-			debug(`Token-based: func="${func}", param=${pNum}, named=${callContext.parameterName || ''}`);
+			debug(`Token-based: func="${func}", param=${pNum}, named=${explicitNamedArg || ''}`);
 			const sig = method.buildSignatureInformation();
-			if (callContext.parameterName && method.parameters && method.parameters.length > 0) {
-				const namedIndex = method.parameters.findIndex(p => toParameterName(p.name) === callContext.parameterName);
-				if (namedIndex >= 0) {
-					pNum = namedIndex;
+			if (method.parameters && method.parameters.length > 0) {
+				const computed = getFirstUnusedParameterIndex(
+					method.parameters,
+					callContext.argsTextBeforeCursor || '',
+					explicitNamedArg
+				);
+				if (computed !== undefined) {
+					pNum = computed;
 				}
 			}
 			sh.activeParameter = pNum;
@@ -229,7 +373,7 @@ export function getCallContextFromTokens(
 	tokens: TokenInfo[],
 	position: Position,
 	document: TextDocument
-): { functionName: string; parameterIndex: number; parameterName?: string; isMethodCall: boolean } | undefined {
+): { functionName: string; parameterIndex: number; parameterName?: string; argsTextBeforeCursor?: string; isMethodCall: boolean } | undefined {
 	const targetOffset = document.offsetAt(position);
 	if (targetOffset <= 0 || tokens.length === 0) {
 		return undefined;
@@ -355,6 +499,7 @@ export function getCallContextFromTokens(
 	}
 
 	const text = document.getText();
+	const argsTextBeforeCursor = text.substring(tokenOffsets[openParenIndex] + tokens[openParenIndex].length, targetOffset);
 	const segmentText = text.substring(segmentStart, targetOffset);
 	let parameterName: string | undefined = undefined;
 	let quote: string | null = null;
@@ -434,12 +579,18 @@ export function getCallContextFromTokens(
 			continue;
 		}
 		if (ch === '=' && nestedParenDepth === 0 && nestedBracketDepth === 0 && nestedBraceDepth === 0) {
+			const prev = i > 0 ? segmentText[i - 1] : '';
+			const nextEq = i + 1 < segmentText.length ? segmentText[i + 1] : '';
+			const isComparisonOrCompound = prev === '=' || nextEq === '=' || /[!<>+\-*/%&|^]/.test(prev);
+			if (isComparisonOrCompound) {
+				continue;
+			}
 			const leftSide = segmentText.substring(0, i).trim();
 			const nameMatch = leftSide.match(/^([A-Za-z_]\w*)$/);
 			if (nameMatch) {
 				parameterName = nameMatch[1];
+				break;
 			}
-			break;
 		}
 	}
 
@@ -447,6 +598,7 @@ export function getCallContextFromTokens(
 		functionName: tokens[funcIndex].text,
 		parameterIndex,
 		parameterName,
+		argsTextBeforeCursor,
 		isMethodCall: tokens[funcIndex].type === 'method'
 	};
 }
