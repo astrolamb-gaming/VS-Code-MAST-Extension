@@ -836,6 +836,9 @@ function hasPriorTextualDefinitionInScope(doc: TextDocument, scopeStart: number,
 	);
 	// Also accept YAML-style metadata keys like `name:` (common in label metadata blocks)
 	const yamlKeyRx = new RegExp(`^[\\t ]*${nameRe}[\\t]*:`, 'gm');
+	// Accept dict keys on button/comms lines: +[...]"text" {"name": value, ...}:
+	// Matches `"name"` or `'name'` as a dict key (followed by :) anywhere on a line.
+	const dictKeyRx = new RegExp(`[{,]\\s*['"]${nameRe}['"]\\s*:`, 'gm');
 
 	let m: RegExpExecArray | null;
 	while ((m = defRx.exec(scopeText)) !== null) {
@@ -846,6 +849,12 @@ function hasPriorTextualDefinitionInScope(doc: TextDocument, scopeStart: number,
 		// else continue searching for earlier matches
 	}
 	while ((m = yamlKeyRx.exec(scopeText)) !== null) {
+		const abs = scopeStart + m.index;
+		const matchLine = doc.positionAt(abs).line;
+		const tokenLine = doc.positionAt(tokenStart).line;
+		if (matchLine < tokenLine) return abs;
+	}
+	while ((m = dictKeyRx.exec(scopeText)) !== null) {
 		const abs = scopeStart + m.index;
 		const matchLine = doc.positionAt(abs).line;
 		const tokenLine = doc.positionAt(tokenStart).line;
