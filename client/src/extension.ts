@@ -108,6 +108,52 @@ export function activate(context: ExtensionContext) {
 		}
 	});
 
+	context.subscriptions.push(vscode.commands.registerCommand('mast.smartEnter', async () => {
+		const editor = vscode.window.activeTextEditor;
+		if (!editor || editor.document.languageId !== 'mast') {
+			await vscode.commands.executeCommand('default:type', { text: '\n' });
+			return;
+		}
+
+		if (editor.selections.length !== 1 || !editor.selection.isEmpty) {
+			await vscode.commands.executeCommand('default:type', { text: '\n' });
+			return;
+		}
+
+		const doc = editor.document;
+		const cursor = editor.selection.active;
+		const lineText = doc.lineAt(cursor.line).text;
+		const beforeCursor = lineText.substring(0, cursor.character);
+		const afterCursor = lineText.substring(cursor.character);
+		const regionMatch = beforeCursor.match(/^(\s*)#\s*region\b.*$/);
+		const shouldInsertEndRegion = !!regionMatch && afterCursor.trim() === '';
+		const regionIndent = regionMatch ? regionMatch[1] : '';
+
+		await vscode.commands.executeCommand('default:type', { text: '\n' });
+
+		if (!shouldInsertEndRegion) {
+			return;
+		}
+
+		const updatedEditor = vscode.window.activeTextEditor;
+		if (!updatedEditor || updatedEditor.document.uri.toString() !== doc.uri.toString()) {
+			return;
+		}
+
+		const updatedDoc = updatedEditor.document;
+		const insertLine = updatedEditor.selection.active.line + 1;
+		if (insertLine < updatedDoc.lineCount) {
+			const nextLineText = updatedDoc.lineAt(insertLine).text;
+			if (/^\s*#\s*endregion\b/.test(nextLineText)) {
+				return;
+			}
+		}
+
+		await updatedEditor.edit((editBuilder) => {
+			editBuilder.insert(new vscode.Position(insertLine, 0), `${regionIndent}#endregion\n`);
+		});
+	}));
+
 // #region <--------------- Folding Provider Region - Not Used.... ---------------------->
 	// const disposable = vscode.languages.registerFoldingRangeProvider('mast', {
     //     provideFoldingRanges(document, context, token) {

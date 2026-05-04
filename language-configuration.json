@@ -267,13 +267,6 @@
             }
         },
         {
-            "beforeText": "^[ \\t]*#region.*?$",
-            "action": {
-                "appendText": "#endregion",
-                "indent": "none",
-            },
-        },
-        {
             "beforeText": "^```.*?$",
             "action": {
                 "indent": "indent"

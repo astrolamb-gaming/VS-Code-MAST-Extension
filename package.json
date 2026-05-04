@@ -259,6 +259,10 @@
 		},
 		"commands": [
 			{
+				"command": "mast.smartEnter",
+				"title": "MAST: Smart Enter"
+			},
+			{
 				"command": "mast.openShipViewer",
 				"title": "MAST: Open Ship 3D Viewer"
 			},
@@ -273,6 +277,13 @@
 			{
 				"command": "mast.NewMissionScaffold",
 				"title": "MAST: New Mission Scaffold"
+			}
+		],
+		"keybindings": [
+			{
+				"command": "mast.smartEnter",
+				"key": "enter",
+				"when": "editorTextFocus && editorLangId == mast && !suggestWidgetVisible && !editorReadonly"
 			}
 		]
 	},
