@@ -1453,13 +1453,26 @@ function hasGuardingIfThatTerminates(doc: TextDocument, scopeStart: number, toke
 	// Search backwards for a matching if-line so we find the nearest guard.
 	for (let i = lines.length - 1; i >= 0; i--) {
 		const line = lines[i];
-		// Match `if <name> is None:` or `if <name> is not None:` variants
-		const ifRegex = new RegExp(`^[ \t]*if[ \t]+${escapeRegex(name)}[ \t]+is(?:[ \t]+not)?[ \t]+None[ \t]*:(?:[ \t]*(.*))?$`);
-		const m = ifRegex.exec(line);
-		if (!m) continue;
-
+		// Match guarding `if` lines of the form:
+		//   `if <name> is None:` / `if <name> is not None:`
+		//   `if to_*(name) is None:` (possibly multiple clauses joined by `or`)
+		// We first check that the line is an `if ... is None:` guard at all,
+		// then verify that `name` appears as a guarded argument in ANY clause.
+		const ifLineRx = /^[ \t]*if[ \t]+(.+?)[ \t]*:(?:[ \t]*(.*))?$/;
+		const ifLineMatch = ifLineRx.exec(line);
+		if (!ifLineMatch) continue;
+		const condition = ifLineMatch[1];
+		// Verify the overall condition only contains `is None` / `is not None` guard clauses
+		// (each clause separated by `or`). Any clause not matching would be a different kind of if.
+		const clauseRx = /^\s*(?:to_\w+\s*\(.*?\)|[\w.]+)\s+is(?:\s+not)?\s+None\s*$/;
+		const clauses = condition.split(/\bor\b/);
+		if (!clauses.every(c => clauseRx.test(c))) continue;
+		// Check that `name` appears as a guarded argument in at least one clause.
+		const escapedName = escapeRegex(name);
+		const nameInClause = new RegExp(`(?:to_\\w+\\s*\\([ \t]*${escapedName}[ \t]*(?:,[^)]*)?\\)|\\b${escapedName}\\b)\\s+is(?:\\s+not)?\\s+None`);
+		if (!nameInClause.test(condition)) continue;
 		// If there's trailing code on the same line after the colon, check it for terminator
-		const sameLineAfter = (m[1] || '').trim();
+		const sameLineAfter = (ifLineMatch[2] || '').trim();
 		const termRx = /^(yield\s+fail|return\b|raise\b|->END\b|jump\b|signal_emit\(|->\s*END)/;
 		if (sameLineAfter && termRx.test(sameLineAfter)) return true;
 
