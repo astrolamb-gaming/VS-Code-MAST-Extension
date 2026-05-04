@@ -9,7 +9,7 @@ import { getCache, MissionCache } from './../cache';
 import path = require('path');
 import { fixFileName, getFilesInDir } from './../fileFunctions';
 import { getArtemisGlobals } from '../artemisGlobals';
-import { onSignatureHelp, getCallContextFromTokens } from './signatureHelp';
+import { onSignatureHelp, getCallContextFromTokens, getFirstUnusedParameterIndex, splitTopLevelArgs } from './signatureHelp';
 import { getWordsAsCompletionItems } from './../tokens/roles';
 import { getArgDocForLabel, variableModifiers } from './../tokens/variables';
 import { isClassMethod } from './../tokens/tokens';
@@ -528,6 +528,16 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 					ci = ci.concat(getWordsAsCompletionItems("Link", links, text));
 					return ci;
 				}
+				debug("\n\nChecking torpedo strings")
+				debug(func);
+				debug(a);
+				if (a === "attribute_name" && func.includes("torp")) {
+					return getTorpAttributes(cache);
+				}
+				if (a === "string" && func.includes("torp")) {
+					return getTorpAttributes(cache, true);
+				}
+
 			}
 
 			debug("Is in string");
@@ -807,20 +817,26 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		const argNames = cache.getMethod(activeFunctionName) || cache.getPossibleMethods(activeFunctionName)[0];
 		if (argNames) {
 			debug(argNames.parameters)
+			const argsText = callContext?.argsTextBeforeCursor || wholeFunc.substring(wholeFunc.indexOf('(') + 1);
+			const firstUnusedIdx = getFirstUnusedParameterIndex(argNames.parameters, argsText);
 			let defaultVal = /\=(.*?)$/;
-			for (const a of argNames.parameters) {
+			for (let pi = 0; pi < argNames.parameters.length; pi++) {
+				const a = argNames.parameters[pi];
 				if (wholeFunc.includes(a.name+"=") || wholeFunc.includes(a.name+" =")) {
 					continue;
 				}
 				const test = a.name.match(defaultVal);
 				const name = a.name.replace(defaultVal,"");
+				// Promote the first unused parameter to the top of the list
+				const isFirstUnused = firstUnusedIdx !== undefined && pi === firstUnusedIdx;
 				const c: CompletionItem = {
 					label: a.name,
 					kind: CompletionItemKind.TypeParameter,
 					documentation: a.documentation,
 					labelDetails: {description: "Argument Name"},
-					sortText: "___"+name,
-					insertText: name
+					sortText: isFirstUnused ? "__" + name : "___" + name,
+					preselect: isFirstUnused,
+					insertText: name+"="
 				}
 				if (test) {
 					c.detail = test[1];
@@ -1167,4 +1183,29 @@ function getAllBlobKeys(cache: MissionCache, text: TextDocument): CompletionItem
 		blobs.push(ci);
 	}
 	return blobs;
+}
+
+function getTorpAttributes(cache: MissionCache, includeColon: boolean = false): CompletionItem[] {
+	let ci: CompletionItem[] = [];
+	const torpFunc = cache.getMethod("torpedo_type");
+	if (!torpFunc) {
+		debug("No torpedo_type function found in cache");
+		return [];
+	}
+	debug("TORPO_TYPE FUNCTION:");
+	for (const p of torpFunc.parameters) {
+		const item: CompletionItem = {
+			label: p.name,
+			kind: CompletionItemKind.Text,
+			documentation: p.documentation,
+			insertText: p.name,
+			sortText: "___" + p.name,
+		}
+		if (includeColon) {
+			item.insertText = item.insertText + ": ";
+		}
+		ci = ci.concat(item);
+	}
+	debug(ci);
+	return ci;
 }

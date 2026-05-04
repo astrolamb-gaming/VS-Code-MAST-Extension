@@ -16,7 +16,7 @@ function toParameterName(name: string | undefined): string | undefined {
 	return cleaned.length > 0 ? cleaned : undefined;
 }
 
-function splitTopLevelArgs(argsText: string): string[] {
+export function splitTopLevelArgs(argsText: string): string[] {
 	const segments: string[] = [];
 	let start = 0;
 	let dParen = 0;
@@ -87,7 +87,7 @@ function splitTopLevelArgs(argsText: string): string[] {
 	return segments;
 }
 
-function getFirstUnusedParameterIndex(
+export function getFirstUnusedParameterIndex(
 	parameters: Array<{ name: string }>,
 	argsTextBeforeCursor: string,
 	currentNamedArg?: string
