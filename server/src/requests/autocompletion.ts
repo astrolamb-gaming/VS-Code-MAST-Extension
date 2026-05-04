@@ -30,6 +30,227 @@ const facePickerArgs = new Set(['face']);
 let lastFacePickerTriggerKey = '';
 let lastFacePickerTriggerAt = 0;
 
+type TorpedoValueOption = {
+	value: string;
+	documentation?: string;
+};
+
+
+// TODO: Base this information dynamically off of something in the data folder for Cosmos.
+const torpedoAttributeValueOptions: Record<string, TorpedoValueOption[]> = {
+	warhead: [
+		{ value: 'standard', documentation: 'Default hit behavior: damages a single target.' },
+		{ value: 'blast', documentation: 'Area-of-effect warhead with distance-based falloff.' },
+		{ value: 'reduce_shields', documentation: 'EMP-style warhead that reduces target shields.' }
+	],
+	behavior: [
+		{ value: 'homing', documentation: 'Homes in on target and compensates for movement.' },
+		{ value: 'mine', documentation: 'Stays in place and detonates when a ship is near.' }
+	],
+	flare_color: [
+		{ value: 'fire' },
+		{ value: 'white' },
+		{ value: 'red' },
+		{ value: 'blue' },
+		{ value: 'green' },
+		{ value: 'yellow' },
+		{ value: 'orange' },
+		{ value: 'purple' }
+	],
+	trail_color: [
+		{ value: 'fire' },
+		{ value: 'white' },
+		{ value: 'red' },
+		{ value: 'blue' },
+		{ value: 'green' },
+		{ value: 'yellow' },
+		{ value: 'orange' },
+		{ value: 'purple' }
+	],
+	explosion_color: [
+		{ value: 'fire' },
+		{ value: 'white' },
+		{ value: 'red' },
+		{ value: 'blue' },
+		{ value: 'green' },
+		{ value: 'yellow' },
+		{ value: 'orange' },
+		{ value: 'purple' }
+	]
+};
+
+function getCurrentStringContentBeforeCursor(iStr: string): string | undefined {
+	const dq = iStr.lastIndexOf('"');
+	const sq = iStr.lastIndexOf("'");
+	const quoteIdx = Math.max(dq, sq);
+	if (quoteIdx < 0) {
+		return undefined;
+	}
+	return iStr.substring(quoteIdx + 1);
+}
+
+function getTorpedoValueCompletionsForCurrentString(iStr: string): CompletionItem[] {
+	const currentString = getCurrentStringContentBeforeCursor(iStr);
+	if (!currentString) {
+		return [];
+	}
+
+	// Supports segments like: "warhead: blast" (or in `other`, key:value;key2:value2)
+	const segment = currentString.split(';').pop() || currentString;
+	const match = segment.match(/^\s*([A-Za-z_]\w*)\s*:\s*([^;]*)$/);
+	if (!match) {
+		return [];
+	}
+
+	const attr = match[1];
+	const valuePrefix = match[2].trim();
+	const options = torpedoAttributeValueOptions[attr];
+	if (!options || options.length === 0) {
+		return [];
+	}
+
+	const ret: CompletionItem[] = [];
+	for (const opt of options) {
+		if (valuePrefix && !opt.value.toLowerCase().startsWith(valuePrefix.toLowerCase())) {
+			continue;
+		}
+		ret.push({
+			label: opt.value,
+			kind: CompletionItemKind.Value,
+			documentation: opt.documentation,
+			insertText: opt.value,
+			sortText: '__' + opt.value
+		});
+	}
+
+	return ret;
+}
+
+function getTorpedoValueCompletionsForAttribute(attributeName: string, quoteValues: boolean = false, valuePrefix: string = ''): CompletionItem[] {
+	const options = torpedoAttributeValueOptions[attributeName];
+	if (!options || options.length === 0) {
+		return [];
+	}
+
+	const normalizedPrefix = valuePrefix.trim().toLowerCase();
+	const ret: CompletionItem[] = [];
+	for (const opt of options) {
+		if (normalizedPrefix && !opt.value.toLowerCase().startsWith(normalizedPrefix)) {
+			continue;
+		}
+		ret.push({
+			label: opt.value,
+			kind: CompletionItemKind.Value,
+			documentation: opt.documentation,
+			insertText: quoteValues ? `"${opt.value}"` : opt.value,
+			sortText: '__' + opt.value
+		});
+	}
+
+	return ret;
+}
+
+function getUsedTorpAttributesFromCurrentString(iStr: string): Set<string> {
+	const used = new Set<string>();
+	const currentString = getCurrentStringContentBeforeCursor(iStr);
+	if (!currentString) {
+		return used;
+	}
+
+	const rx = /(?:^|;)\s*([A-Za-z_]\w*)\s*:/g;
+	let m: RegExpExecArray | null;
+	while ((m = rx.exec(currentString)) !== null) {
+		used.add(m[1]);
+	}
+
+	return used;
+}
+
+function hasTopLevelCloseParen(text: string): boolean {
+	let quote: string | null = null;
+	let escaped = false;
+	let inLineComment = false;
+	let inBlockComment = false;
+	let parenDepth = 0;
+	let bracketDepth = 0;
+	let braceDepth = 0;
+
+	for (let i = 0; i < text.length; i++) {
+		const ch = text[i];
+		const next = i + 1 < text.length ? text[i + 1] : '';
+
+		if (inLineComment) {
+			if (ch === '\n') inLineComment = false;
+			continue;
+		}
+		if (inBlockComment) {
+			if (ch === '*' && next === '/') {
+				inBlockComment = false;
+				i++;
+			}
+			continue;
+		}
+		if (quote !== null) {
+			if (escaped) {
+				escaped = false;
+				continue;
+			}
+			if (ch === '\\') {
+				escaped = true;
+				continue;
+			}
+			if (ch === quote) {
+				quote = null;
+			}
+			continue;
+		}
+
+		if (ch === '#') {
+			inLineComment = true;
+			continue;
+		}
+		if (ch === '/' && next === '*') {
+			inBlockComment = true;
+			i++;
+			continue;
+		}
+		if (ch === '"' || ch === "'") {
+			quote = ch;
+			continue;
+		}
+
+		if (ch === '(') {
+			parenDepth++;
+			continue;
+		}
+		if (ch === ')' && parenDepth > 0) {
+			parenDepth--;
+			continue;
+		}
+		if (ch === ')' && parenDepth === 0 && bracketDepth === 0 && braceDepth === 0) {
+			return true;
+		}
+		if (ch === '[') {
+			bracketDepth++;
+			continue;
+		}
+		if (ch === ']' && bracketDepth > 0) {
+			bracketDepth--;
+			continue;
+		}
+		if (ch === '{') {
+			braceDepth++;
+			continue;
+		}
+		if (ch === '}' && braceDepth > 0) {
+			braceDepth--;
+			continue;
+		}
+	}
+
+	return false;
+}
+
 function endsWithClosedExpressionPrefix(textBeforeCursor: string): boolean {
 	let idx = textBeforeCursor.length - 1;
 	while (idx >= 0 && /\s/.test(textBeforeCursor[idx])) {
@@ -226,6 +447,12 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	let currentParamType: string | undefined = undefined;
 
 	if (callContext) {
+		if (callContext.argsTextBeforeCursor && hasTopLevelCloseParen(callContext.argsTextBeforeCursor)) {
+			callContext = undefined;
+		}
+	}
+
+	if (callContext) {
 		func = callContext.functionName;
 		const method = cache.getMethod(func) || cache.getPossibleMethods(func)[0];
 		if (method) {
@@ -355,6 +582,19 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			if (func.includes("link")) {
 				const links = cache.getLinks();
 				return getWordsAsCompletionItems("Link", links, text);
+			}
+
+			if (func.includes("torp")) {
+				const torpValueCompletions = getTorpedoValueCompletionsForCurrentString(iStr);
+				if (torpValueCompletions.length > 0) {
+					return torpValueCompletions;
+				}
+				const torpArgName = (callContext?.parameterName || currentParamName || '').replace(/=.*/, '').trim();
+				const valuePrefix = getCurrentStringContentBeforeCursor(iStr) || '';
+				const torpArgValueCompletions = getTorpedoValueCompletionsForAttribute(torpArgName, false, valuePrefix);
+				if (torpArgValueCompletions.length > 0) {
+					return torpArgValueCompletions;
+				}
 			}
 
 			// Here we check for stylestrings, art_ids, etc.
@@ -535,7 +775,12 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 					return getTorpAttributes(cache);
 				}
 				if (a === "string" && func.includes("torp")) {
-					return getTorpAttributes(cache, true);
+					const torpValueCompletions = getTorpedoValueCompletionsForCurrentString(iStr);
+					if (torpValueCompletions.length > 0) {
+						return torpValueCompletions;
+					}
+					const usedAttrs = getUsedTorpAttributesFromCurrentString(iStr);
+					return getTorpAttributes(cache, true, usedAttrs);
 				}
 
 			}
@@ -862,6 +1107,12 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		// Get specific completions for each parameter
 		for (const a of args) {
 			let arg = a.replace(/=.*/,"").trim();
+			if (activeFunctionName.includes("torp")) {
+				const torpValues = getTorpedoValueCompletionsForAttribute(arg, true);
+				if (torpValues.length > 0) {
+					return torpValues;
+				}
+			}
 			if (arg === "label" || arg === "on_press") {
 				let labelNames = cache.getLabels(text);
 				const currentFileLabels = cache.getLabels(text, true);
@@ -1185,7 +1436,7 @@ function getAllBlobKeys(cache: MissionCache, text: TextDocument): CompletionItem
 	return blobs;
 }
 
-function getTorpAttributes(cache: MissionCache, includeColon: boolean = false): CompletionItem[] {
+function getTorpAttributes(cache: MissionCache, includeColon: boolean = false, exclude: Set<string> = new Set<string>()): CompletionItem[] {
 	let ci: CompletionItem[] = [];
 	const torpFunc = cache.getMethod("torpedo_type");
 	if (!torpFunc) {
@@ -1193,16 +1444,24 @@ function getTorpAttributes(cache: MissionCache, includeColon: boolean = false): 
 		return [];
 	}
 	debug("TORPO_TYPE FUNCTION:");
+	const disallowedInString = new Set(['key', 'other']);
 	for (const p of torpFunc.parameters) {
+		const attrName = p.name.replace(/=.*/, '').replace(/:.*/, '').trim();
+		if (!attrName || exclude.has(attrName)) {
+			continue;
+		}
+		if (includeColon && disallowedInString.has(attrName)) {
+			continue;
+		}
 		const item: CompletionItem = {
-			label: p.name,
+			label: attrName,
 			kind: CompletionItemKind.Text,
 			documentation: p.documentation,
-			insertText: p.name,
-			sortText: "___" + p.name,
+			insertText: attrName,
+			sortText: "___" + attrName,
 		}
 		if (includeColon) {
-			item.insertText = item.insertText + ": ";
+			item.insertText = item.insertText + ":";
 		}
 		ci = ci.concat(item);
 	}

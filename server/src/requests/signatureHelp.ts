@@ -459,6 +459,7 @@ export function getCallContextFromTokens(
 	parenDepth = 0;
 	bracketDepth = 0;
 	braceDepth = 0;
+	let callClosedBeforeCursor = false;
 	for (let i = openParenIndex + 1; i <= tokenAtCursor; i++) {
 		const tok = tokens[i];
 		if (tok.type !== 'operator') {
@@ -469,6 +470,11 @@ export function getCallContextFromTokens(
 				parenDepth++;
 				break;
 			case ')':
+					if (parenDepth === 0 && bracketDepth === 0 && braceDepth === 0) {
+						// We passed the closing paren of the call itself; cursor is no longer in this call context.
+						callClosedBeforeCursor = true;
+						break;
+					}
 				if (parenDepth > 0) {
 					parenDepth--;
 				}
@@ -496,6 +502,13 @@ export function getCallContextFromTokens(
 				}
 				break;
 		}
+		if (callClosedBeforeCursor) {
+			break;
+		}
+	}
+
+	if (callClosedBeforeCursor) {
+		return undefined;
 	}
 
 	const text = document.getText();

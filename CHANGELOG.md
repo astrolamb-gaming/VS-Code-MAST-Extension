@@ -10,6 +10,18 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * WIP: Get mast complier errors from the compiler itself, so the game doesn't have to be running to check for compiler errors.
 * TODO: Add certain parts of the MAST file functionality to apply to Python files as well (completions, go to definition, etc.)
 
+### 0.18.2
+
+* Add checks that variables are defined (and warning if not)
+* Fix handling global functions and modules (e.g. random and scatter)
+* Add 'mast.NewMissionScaffold' command that clones the [mast-starter](https://github.com/artemis-sbs/mast_starter) mission.
+* Check if required function arguments are present. (e.g. `has_role("some_role")` will have an error message because it's missing an argument)
+* Fix to autocompletion triggering when closing a function
+* Fix issue where triggered signals weren't being recognized, causing diagnostic saying the signal is emitted but not used.
+* Fix issue with function signatures not being properly registered with named arguments [#31](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues/31)
+* Add torpedo attribute keys and values to autocompletion.
+
+
 ### 0.18.1
 
 * Fixes to labels
