@@ -92,6 +92,9 @@ export function getFilesInDir(dir: string, includeChildren: boolean = true): str
 		const files =  fs.readdirSync(uri, { withFileTypes: true });
 		for (const f in files) {
 			if (files[f].isDirectory()) {
+				if (files[f].name.startsWith(".")) {
+					continue;
+				}
 				if (includeChildren) {
 					let newDir = path.join(uri, files[f].name);
 					ret = ret.concat(getFilesInDir(newDir, includeChildren));
