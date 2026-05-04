@@ -1434,14 +1434,14 @@ export class MastStateMachineLexer {
 		const threeCharAssignOps = ['**=', '//=', '>>=', '<<='];
 		for (const op of threeCharAssignOps) {
 			if (i + op.length <= endExclusive && this.text.substring(i, i + op.length) === op) {
-				return 'definition';
+				return 'reference';
 			}
 		}
 
-		const twoCharAssignOps = ['+=', '-=', '*=', '/=', '%=', '&=', '|=', '^=', ':='];
+		const twoCharAssignOps = ['+=', '-=', '*=', '/=', '%=', '&=', '|=', '^='];
 		for (const op of twoCharAssignOps) {
 			if (i + op.length <= endExclusive && this.text.substring(i, i + op.length) === op) {
-				return 'definition';
+				return 'reference';
 			}
 		}
 
