@@ -1083,7 +1083,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 					kind: CompletionItemKind.TypeParameter,
 					documentation: a.documentation,
 					labelDetails: {description: "Argument Name"},
-					sortText: isFirstUnused ? "______" + name : "____" + name,
+					sortText: isFirstUnused ? "__" + name : "___" + name,
 					preselect: isFirstUnused,
 					insertText: name+"="
 				}
@@ -1295,7 +1295,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		let i: CompletionItem = {
 			label: key,
 			kind: CompletionItemKind.Keyword,
-			sortText: "___" + key
+			sortText: "____" + key
 		}
 		ci.push(i);
 	}

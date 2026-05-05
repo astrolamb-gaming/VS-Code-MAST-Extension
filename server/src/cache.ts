@@ -142,16 +142,12 @@ export class MissionCache {
 	// Promise that resolves when the cache has finished loading
 	private _loadedPromise: Promise<void> = Promise.resolve();
 	private _loadedResolve: (() => void) | null = null;
-	private _backgroundLoadPromise: Promise<void> = Promise.resolve();
-	private _backgroundLoadToken = 0;
-	private _backgroundLoadComplete = true;
 
 	async load() {
 		if (this.missionURI === "") {
 			debug("Mission folder not valid: " + this.missionURI + "\nNot loading cache.")
 			return;
 		}
-		const loadToken = ++this._backgroundLoadToken;
 		this.endWatchers();
 		this.storyJsonLoaded = false;
 		this.pyInfoLoaded = false;
@@ -161,8 +157,6 @@ export class MissionCache {
 		const loadStart = Date.now();
 		// create a new loaded promise for callers waiting on awaitLoaded()
 		this._loadedPromise = new Promise((resolve) => { this._loadedResolve = resolve; });
-		this._backgroundLoadPromise = Promise.resolve();
-		this._backgroundLoadComplete = false;
 		showProgressBar(true);
 		// (re)set all the arrays before (re)populating them.
 		// this.missionClasses = [];
@@ -176,57 +170,55 @@ export class MissionCache {
 		this.invalidateStructureCaches();
 		this.resetExtractedItemCaches();
 		this.resetMissionPackageLayout();
-		const manifestStart = Date.now();
 		await this.loadMissionPackageLayout();
-		const manifestElapsed = Date.now() - manifestStart;
-		try {
-			connection.console.log(`Mission package layout load for ${this.missionName} took ${manifestElapsed}ms`);
-		} catch (e) {
-			debug(e);
-		}
-
 		this.storyJson = new StoryJson(path.join(this.missionURI,"story.json"));
-
-		const storyStart = Date.now();
+		
 		await this.storyJson.readFile()
+			// .then(()=>{
+		showProgressBar(true);
+		debug("pyFileCache length: " + this.pyFileCache.length)
+		await this.modulesLoaded();
+		// .then(()=>{
+		debug("Modules loaded for " + this.missionName);
+		// showProgressBar(false);
 		this.storyJsonLoaded = true;
-		const storyElapsed = Date.now() - storyStart;
-		try {
-			connection.console.log(`story.json load for ${this.missionName} took ${storyElapsed}ms`);
-		} catch (e) {
-			debug(e);
-		}
 
-		this.startWatchers();
-
-		const fastLoadElapsed = Date.now() - loadStart;
-		try {
-			connection.console.log(`Fast cache load for ${this.missionName} took ${fastLoadElapsed}ms`);
-			debug(`Fast cache load for ${this.missionName} took ${fastLoadElapsed}ms`);
-		} catch (e) {
-			debug(e);
-		}
-
-		if (this._loadedResolve) {
-			this._loadedResolve();
-			this._loadedResolve = null;
-		}
-
-		this._backgroundLoadPromise = this.runBackgroundLoad(loadToken, loadStart);
-	}
-
-	private collectMissionGlobals(): string[][] {
+		// Now we do the python checks for the MastGlobals that don't exist already
 		let globals: string[][] = [];
 		for (const p of this.pyFileCache) {
 			if (p.globals.length > 0) {
-				globals = globals.concat(p.globals);
+				globals = globals.concat(p.globals)
 			}
 		}
-		return globals;
-	}
+		// // debug(globals);
+		// globals.push(["dict","dict"]);
+		// debug(globals);
+		await this.loadPythonGlobals(globals)
+		// .then((info)=>{
+		debug("Loaded globals")
+		this.pyInfoLoaded = true;
+		// });
+		debug("New pyFileCache length: " + this.pyFileCache.length)
+				// })
+//File structure for sbs_utils changed, so we'll just comment this out..
+		// 	// });
+		// let p = await loadSbs()//.then(async (p)=>{
+		// showProgressBar(true);
+		// if (p !== null) {
+		// 	this.addMissionPyFile(p);
+		// 	// this.missionPyModules.push(p);
+		// 	// debug("addding " + p.uri);
+		// 	// this.missionClasses = this.missionClasses.concat(p.classes);
+		// }
+		// debug("Finished loading sbs_utils for " + this.missionName);
+		// showProgressBar(false);
+		this.sbsLoaded = true;
+			// await this.awaitLoaded();
+		// });
 
-	private rebuildDeprecatedFunctions() {
+
 		this.deprecatedFunctions = [];
+		
 		for (const p of this.pyFileCache) {
 			for (const f of p.defaultFunctions) {
 				if (f.documentation.toLowerCase().includes("deprecated")) {
@@ -241,62 +233,26 @@ export class MissionCache {
 				}
 			}
 		}
-	}
 
-	private async runBackgroundLoad(loadToken: number, loadStart: number): Promise<void> {
-		const backgroundStart = Date.now();
+		this.checkForCacheUpdates();
+		debug(this.missionURI);
+		
+		//this.checkForInitFolder(this.missionURI);
+		debug("Number of py files: "+this.pyFileCache.length);
+		debug("Everything is loaded");
+		this.startWatchers();
+		const loadElapsed = Date.now() - loadStart;
 		try {
-			const modulesStart = Date.now();
-			await this.modulesLoaded();
-			const modulesElapsed = Date.now() - modulesStart;
-			try {
-				connection.console.log(`Background modules load for ${this.missionName} took ${modulesElapsed}ms`);
-			} catch (e) {
-				debug(e);
-			}
-
-			const globalsStart = Date.now();
-			await this.loadPythonGlobals(this.collectMissionGlobals());
-			this.pyInfoLoaded = true;
-			this.sbsLoaded = true;
-			const globalsElapsed = Date.now() - globalsStart;
-			try {
-				connection.console.log(`Background python globals load for ${this.missionName} took ${globalsElapsed}ms`);
-			} catch (e) {
-				debug(e);
-			}
-
-			const updateStart = Date.now();
-			this.checkForCacheUpdates();
-			const updateElapsed = Date.now() - updateStart;
-			try {
-				connection.console.log(`Background cache update sweep for ${this.missionName} took ${updateElapsed}ms`);
-			} catch (e) {
-				debug(e);
-			}
-
-			this.rebuildDeprecatedFunctions();
-			debug(this.missionURI);
-			debug("Number of py files: " + this.pyFileCache.length);
-			debug("Background cache enrichment complete");
-
-			const totalElapsed = Date.now() - loadStart;
-			const backgroundElapsed = Date.now() - backgroundStart;
-			try {
-				connection.console.log(`Background cache enrichment for ${this.missionName} took ${backgroundElapsed}ms; total since load start ${totalElapsed}ms`);
-				debug(`Background cache enrichment for ${this.missionName} took ${backgroundElapsed}ms; total since load start ${totalElapsed}ms`);
-			} catch (e) {
-				debug(e);
-			}
+			connection.console.log(`Cache load for ${this.missionName} took ${loadElapsed}ms`);
+			debug(`Cache load for ${this.missionName} took ${loadElapsed}ms`);
 		} catch (e) {
-			debug(`Background cache load failed for ${this.missionName}`);
 			debug(e);
-		} finally {
-			this._backgroundLoadComplete = true;
-			if (loadToken === this._backgroundLoadToken) {
-				showProgressBar(false);
-			}
 		}
+		if (this._loadedResolve) {
+			this._loadedResolve();
+			this._loadedResolve = null;
+		}
+		showProgressBar(false);
 	}
 
 	/**
@@ -307,7 +263,7 @@ export class MissionCache {
 		if (this.awaitingReload) return;
 		this.awaitingReload = true;
 		debug("Awaiting loaded")
-		await this.awaitReady();
+		await this.awaitLoaded();
 		await this.load();
 		debug("Reload complete.");
 		this.awaitingReload = false;
@@ -670,12 +626,8 @@ export class MissionCache {
 			const libErrs: string[] = [];
 			//debug(this.missionLibFolder);
 			const lib = this.storyJson.mastlib.concat(this.storyJson.sbslib);
-			const missionNames = globals!.getAllMissions();
-			const loweredMissions = missionNames.map((name) => ({
-				name,
-				lower: name.toLowerCase()
-			}));
 			debug("Beginning to load modules");
+			const total = lib.length;
 			showProgressBar(true);
 			// Process zip archives with controlled concurrency (max 3 concurrent reads)
 			// This prevents resource exhaustion from opening too many file handles at once
@@ -685,18 +637,21 @@ export class MissionCache {
 					debug("Unzipping: " + zip);
 					
 					let found = false;
-					const moduleBase = this.storyJson.getModuleBaseName(zip).toLowerCase();
-					for (const mission of loweredMissions) {
-						if (moduleBase.includes(mission.lower)) {
+					let missions = globals!.getAllMissions()
+					for (const m of missions) {
+						if (this.storyJson.getModuleBaseName(zip).toLowerCase().includes(m.toLowerCase())) {
 							found = true;
 							// Here we refer to the mission instead of the zip
-							const missionFolder = path.join(globals!.artemisDir,"data","missions",mission.name);
-							const files = getFilesInDir(missionFolder,true)
-								.filter((f) => f.endsWith(".py") || f.endsWith(".mast"));
-							await this.processConcurrent(files, async (filePath) => {
-								const data = await readFile(filePath);
-								this.handleZipData(data, filePath);
-							}, 4);
+							const missionFolder = path.join(globals!.artemisDir,"data","missions",m);
+							const files = getFilesInDir(missionFolder,true);
+							for (const f of files) {
+								if (f.endsWith(".py")|| f.endsWith(".mast")) {
+									showProgressBar(true);
+									const data = await readFile(f);
+									debug("Loading: " + path.basename(f));
+									this.handleZipData(data, f);
+								}
+							}
 							break;
 						}
 					}
@@ -704,15 +659,19 @@ export class MissionCache {
 						// Here we load the module from the zip
 						const zipPath = path.join(this.missionLibFolder,zip);
 						try {
-							const data = await readZipArchive(zipPath, (entryName) => entryName.endsWith('.py') || entryName.endsWith('.mast'));
+							const data = await readZipArchive(zipPath);
 							debug("Loading " + zip);
 							for (const [file, fileData] of data.entries()) {
+								showProgressBar(true);
+								debug(file)
 								let processFile = file;
 								if (zip !== "") {
 									processFile = path.join(zip,file);
 								}
-								processFile = saveZipTempFile(file,fileData);
-								this.handleZipData(fileData,processFile);
+								if (file.endsWith(".py") || file.endsWith(".mast")) {
+									processFile = saveZipTempFile(file,fileData);
+									this.handleZipData(fileData,processFile);
+								}
 							}
 						} catch (err) {
 							debug("Error unzipping. \n  " + err);
@@ -1467,10 +1426,7 @@ export class MissionCache {
 				if (found) break;
 			}
 		}
-		if (found) {
-			this.missionFilesLoaded = true;
-			return;
-		}
+		if (found) return;
 
 		// Check for any files that should be included, but are not.
 		for (const file of files) {
@@ -2118,22 +2074,13 @@ export class MissionCache {
 		return all;
 	}
 
-	async awaitReady() {
-		await this._loadedPromise;
-	}
-
 	async awaitLoaded() {
-		await this._loadedPromise;
-		await this._backgroundLoadPromise;
-		showProgressBar(false);
-	}
-
-	async awaitBackgroundLoaded() {
-		await this._backgroundLoadPromise;
-	}
-
-	isBackgroundLoadComplete(): boolean {
-		return this._backgroundLoadComplete;
+		// Await the promise that is resolved when load() completes.
+		try {
+			await this._loadedPromise;
+		} finally {
+			showProgressBar(false);
+		}
 	}
 
 }
