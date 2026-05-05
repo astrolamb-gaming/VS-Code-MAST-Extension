@@ -2094,10 +2094,29 @@ let caches: Map<string, MissionCache> = new Map();
  * @returns 
  */
 export function getCache(name:string, reloadCache:boolean = false): MissionCache {
+	name = (name || '').trim();
+	if (name === '') {
+		const fallback = caches.values().next().value as MissionCache | undefined;
+		if (fallback) {
+			if (reloadCache) fallback.load();
+			fallback.lastAccessed = Date.now();
+			return fallback;
+		}
+		debug('getCache called with empty name and no caches available.');
+	}
+
 	if (name.startsWith("file")) {
 		name = URI.parse(name).fsPath;
 	}
 	const mf = getMissionFolder(name);
+	if (mf === '') {
+		const fallback = caches.values().next().value as MissionCache | undefined;
+		if (fallback) {
+			if (reloadCache) fallback.load();
+			fallback.lastAccessed = Date.now();
+			return fallback;
+		}
+	}
 
 	// First try direct lookup by mission folder
 	const existing = caches.get(mf);

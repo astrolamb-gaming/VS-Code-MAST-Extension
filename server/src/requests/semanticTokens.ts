@@ -545,6 +545,9 @@ export class MastStateMachineLexer {
 
 	private hydrateKnownLabelsFromCache(): void {
 		try {
+			if (!this.doc?.uri || this.doc.uri.trim() === '') {
+				return;
+			}
 			const cache = getCache(this.doc.uri);
 			const labels = cache.getLabels(this.doc, false);
 			for (const current of labels) {
@@ -1388,16 +1391,18 @@ export class MastStateMachineLexer {
 		// If this would otherwise be a plain variable reference, consult known
 		// mission symbols to reclassify callbacks as function references.
 		if (!isDotAccess && !isLambdaParam && assignmentModifier !== 'definition') {
-			const cache = getCache(this.doc.uri);
-			if (cache.getCallableForName(text, true)) {
-				return {
-					type: 'function',
-					modifier: 'reference',
-					line: startLine,
-					character: startChar,
-					length: text.length,
-					text
-				};
+			if (this.doc?.uri && this.doc.uri.trim() !== '') {
+				const cache = getCache(this.doc.uri);
+				if (cache.getCallableForName(text, true)) {
+					return {
+						type: 'function',
+						modifier: 'reference',
+						line: startLine,
+						character: startChar,
+						length: text.length,
+						text
+					};
+				}
 			}
 		}
 		return {

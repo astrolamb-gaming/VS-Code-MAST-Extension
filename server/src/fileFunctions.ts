@@ -151,6 +151,7 @@ export function getParentFolder(childUri:string) {
 	childUri = fixFileName(childUri || "").trim();
 	if (childUri === "") {
 		debug("getParentFolder called with empty path.");
+		console.trace("getParentFolder empty childUri");
 		return "";
 	}
 
