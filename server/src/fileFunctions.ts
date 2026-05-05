@@ -148,33 +148,34 @@ export async function readZipArchive(filepath: string) {
 }
 
 export function getParentFolder(childUri:string) {
-	childUri = fixFileName(childUri);
-	// if (childUri.startsWith("file")) {
-	// 	childUri = URI.parse(childUri).fsPath;
-	// }
+	childUri = fixFileName(childUri || "").trim();
+	if (childUri === "") {
+		debug("getParentFolder called with empty path.");
+		return "";
+	}
+
 	let p = path.dirname(childUri);
-	//debug(p);
 	if (p === ".") {
 		debug(childUri + " getParentFolder() ends with period.");
 		p = childUri;
 	}
-	fs.lstat(p, (err,stats) => {
-		if (err) {
-			debug(`Error checking parent folder for ${childUri}`);
-			debug(err);
-			debug(err.stack)
-			//throw new URIError(err.message);
-			return p;
-		}
+
+	if (p === "") {
+		return childUri;
+	}
+
+	try {
+		const stats = fs.lstatSync(p);
 		if (stats.isSymbolicLink()) {
-			fs.readlink(p,(err2,dat)=>{
-				if (err2) {
-					debug(err2);
-				}				
-				p = path.dirname(dat);
-			});
+			const target = fs.readlinkSync(p);
+			p = path.dirname(target);
 		}
-	});
+	} catch (err: any) {
+		debug(`Error checking parent folder for ${childUri}`);
+		debug(err);
+		debug(err?.stack);
+	}
+
 	return p;
 }
 
