@@ -191,7 +191,7 @@ connection.onInitialize((params: InitializeParams) => {
 			// Tell the client that this server supports code completion.
 			inlineCompletionProvider: true,
 			completionProvider: {
-				resolveProvider: false, // FOR NOW - MAY USE LATER
+				resolveProvider: true,
 				// TODO: The /, >, and especially the space are hopefully temporary workarounds.
 				triggerCharacters: [".","/",">","<"," ","\"","\'","@","=","(",")","{",","]
 			},
@@ -635,6 +635,140 @@ connection.onCompletion(
 	}
 );
 
+// Handle completion item resolution for Python auto-imports
+connection.onCompletionResolve(async (completionItem: CompletionItem): Promise<CompletionItem> => {
+	if (!completionItem.data || !completionItem.data.sourceFile || !completionItem.data.documentUri) {
+		return completionItem;
+	}
+
+	const activeDoc = documents.get(completionItem.data.documentUri as string);
+	if (!activeDoc || (!activeDoc.uri.endsWith('.py') && activeDoc.languageId !== 'python' && activeDoc.languageId !== 'py')) {
+		return completionItem;
+	}
+
+	const sourceFile = completionItem.data.sourceFile as string;
+	const functionName = completionItem.data.functionName as string;
+	const text = activeDoc.getText();
+
+	// Extract module name from source file path
+	const moduleName = extractModuleName(sourceFile);
+	if (!moduleName) {
+		return completionItem;
+	}
+
+	// Check if already imported
+	if (isAlreadyImported(text, moduleName, functionName)) {
+		return completionItem;
+	}
+
+	// Check if imports from this module already exist
+	const existingImportMatch = findExistingImportFromModule(text, moduleName);
+	
+	if (existingImportMatch) {
+		// Append to existing import
+		const { line, lineContent, imports } = existingImportMatch;
+		
+		// Only add if not already in the list
+		if (!imports.some(imp => imp.split(/\s+as\s+/)[0].trim() === functionName)) {
+			const updatedImports = [...imports, functionName];
+			const updatedLine = `from ${moduleName} import ${updatedImports.join(', ')}`;
+			
+			completionItem.additionalTextEdits = [
+				{
+					range: {
+						start: { line, character: 0 },
+						end: { line, character: lineContent.length }
+					},
+					newText: updatedLine
+				}
+			];
+		}
+	} else {
+		// Add new import line at the top
+		completionItem.additionalTextEdits = [
+			{
+				range: {
+					start: { line: 0, character: 0 },
+					end: { line: 0, character: 0 }
+				},
+				newText: `from ${moduleName} import ${functionName}\n`
+			}
+		];
+	}
+
+	return completionItem;
+});
+
+function extractModuleName(sourceFile: string): string | undefined {
+	// Handle sbs/sbs_utils special cases
+	if (sourceFile.includes('sbs.py') || sourceFile.includes('sbs\\sbs.py')) {
+		return 'sbs';
+	}
+	if (sourceFile.includes('sbs_utils')) {
+		// Extract the relative path from sbs_utils onwards
+		const match = sourceFile.match(/sbs_utils[\\\/](.+?)\.py$/);
+		if (match) {
+			let modulePath = match[1].replace(/[\\\/]/g, '.');
+			// If the captured path already starts with sbs_utils, don't duplicate it
+			if (modulePath.startsWith('sbs_utils.')) {
+				return modulePath;
+			}
+			return 'sbs_utils.' + modulePath;
+		}
+		return 'sbs_utils';
+	}
+	return undefined;
+}
+
+function findExistingImportFromModule(text: string, moduleName: string): { line: number; lineContent: string; imports: string[] } | undefined {
+	const lines = text.split('\n');
+	const importPrefix = `from ${moduleName} import `;
+
+	for (let i = 0; i < lines.length; i++) {
+		const lineContent = lines[i];
+		const trimmed = lineContent.trim();
+
+		if (!trimmed.startsWith(importPrefix)) {
+			continue;
+		}
+
+		let importPart = trimmed.slice(importPrefix.length);
+		const commentIndex = importPart.indexOf('#');
+		if (commentIndex >= 0) {
+			importPart = importPart.slice(0, commentIndex);
+		}
+
+		const imports = importPart
+			.split(',')
+			.map(s => s.trim())
+			.filter(Boolean)
+			.map(s => s.replace(/\s+as\s+.+$/, '').trim());
+
+		return {
+			line: i,
+			lineContent,
+			imports
+		};
+	}
+
+	return undefined;
+}
+
+function isAlreadyImported(text: string, moduleName: string, functionName: string): boolean {
+	// Simple check for "from moduleName import functionName"
+	const importRegex = new RegExp(`from\\s+${moduleName.replace(/\./g, '\\.')}\\s+import\\s+[^\\n]*\\b${functionName}\\b`, 'm');
+	if (importRegex.test(text)) {
+		return true;
+	}
+	
+	// Check for "import moduleName"
+	const fullModuleRegex = new RegExp(`import\\s+${moduleName.replace(/\./g, '\\.')}`, 'm');
+	if (fullModuleRegex.test(text)) {
+		return true;
+	}
+
+	return false;
+}
 
 connection.onHover(async (_textDocumentPosition: TextDocumentPositionParams): Promise<Hover | undefined> => {
 	if (!_textDocumentPosition.textDocument.uri.endsWith(".mast")) return undefined;

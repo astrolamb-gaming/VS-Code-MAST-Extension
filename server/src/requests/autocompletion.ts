@@ -1369,6 +1369,17 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 
 	ci = ci.concat(cache.getCompletions()); // TODO: What does this even do?
 
+	// For Python docs, tag completions with current document URI for auto-import
+	if (isPythonDocument) {
+		ci = ci.map(item => ({
+			...item,
+			data: {
+				...item.data,
+				documentUri: text.uri
+			}
+		}));
+	}
+
 	// debug(iStr);
 	debug(ci.length);
 

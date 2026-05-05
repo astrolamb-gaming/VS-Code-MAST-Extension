@@ -141,12 +141,6 @@
 						}
 					},
 					{
-						"scope": "meta.injection.python",
-						"settings": {
-							"fontStyle": "italic"
-						}
-					},
-					{
 						"scope": "string.weighted.percent.start",
 						"settings": {
 							"foreground": "#007e6e",

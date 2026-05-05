@@ -572,7 +572,12 @@ export class Function implements IFunction {
 			documentation: docs,// this.documentation,
 			detail: this.name,
 			labelDetails: labelDetails,
-			insertText: insert
+			insertText: insert,
+			data: {
+				sourceFile: this.sourceFile,
+				functionName: this.name,
+				className: this.className
+			}
 		}
 		return ci;
 	}
