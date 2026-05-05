@@ -24,12 +24,31 @@ import { SignalInfo } from './tokens/signals';
 
 export const testingPython = false;
 
+interface MissionLibManifest {
+	version?: string;
+	sbslib?: string[];
+	mastlib?: string[];
+	zip?: string[];
+}
+
+interface MissionPackageLayout {
+	sbslib: Set<string>;
+	mastlib: Set<string>;
+	zip: Set<string>;
+}
+
 export class MissionCache {
 
 	missionName: string = "";
 	missionURI: string = "";
 	storyJson: StoryJson;
+	missionLibManifestPath: string = "";
 	missionLibFolder: string = "";
+	missionPackageLayout: MissionPackageLayout = {
+		sbslib: new Set<string>(),
+		mastlib: new Set<string>(),
+		zip: new Set<string>()
+	};
 	ingoreInitFileMissing = false;
 	// The Modules are the default sbslib and mastlib files.
 	// They apply to ALL files in the mission folder.
@@ -104,6 +123,7 @@ export class MissionCache {
 		this.missionURI = getMissionFolder(workspaceUri);
 		debug(this.missionURI);
 		let parent = getParentFolder(this.missionURI);
+		this.missionLibManifestPath = path.join(this.missionURI, "__lib__.json");
 		this.missionLibFolder = path.join(parent, "__lib__");
 		this.missionName = path.basename(this.missionURI);
 		this.storyJson = new StoryJson(path.join(this.missionURI,"story.json"));
@@ -148,6 +168,8 @@ export class MissionCache {
 		this.mastFileCache = [];
 		this.invalidateStructureCaches();
 		this.resetExtractedItemCaches();
+		this.resetMissionPackageLayout();
+		this.loadMissionPackageLayout();
 		this.storyJson = new StoryJson(path.join(this.missionURI,"story.json"));
 		
 		await this.storyJson.readFile()
@@ -313,6 +335,9 @@ export class MissionCache {
 				}
 			}
 			if (filename ==="story.json" && eventType === "change") {
+				this.reload();
+			}
+			if (filename === "__lib__.json" && eventType === "change") {
 				this.reload();
 			}
 		});
@@ -760,6 +785,131 @@ export class MissionCache {
 		this.linksByFile.clear();
 		this.rolesByFile.clear();
 		this.inventoryKeysByFile.clear();
+	}
+
+	private resetMissionPackageLayout() {
+		this.missionPackageLayout.sbslib.clear();
+		this.missionPackageLayout.mastlib.clear();
+		this.missionPackageLayout.zip.clear();
+	}
+
+	private normalizeMissionPackageEntry(entry: string): string {
+		const normalized = fixFileName(entry).trim().replace(/^\.\//, '').replace(/^\/+/, '').replace(/\/+$/, '');
+		if (normalized === '') return '';
+		return normalized.split('/')[0];
+	}
+
+	private parseManifestArray(entries: unknown): string[] {
+		if (!Array.isArray(entries)) return [];
+		return entries
+			.filter((entry) => typeof entry === 'string')
+			.map((entry) => this.normalizeMissionPackageEntry(entry))
+			.filter((entry) => entry.length > 0);
+	}
+
+	private parseMissionLibManifest(text: string): MissionLibManifest | undefined {
+		try {
+			return JSON.parse(text) as MissionLibManifest;
+		} catch {
+			try {
+				const withoutTrailingCommas = text.replace(/,\s*([}\]])/g, '$1');
+				return JSON.parse(withoutTrailingCommas) as MissionLibManifest;
+			} catch (e) {
+				debug('Unable to parse __lib__.json');
+				debug(e);
+				return undefined;
+			}
+		}
+	}
+
+	private loadMissionPackageLayout() {
+		if (!fs.existsSync(this.missionLibManifestPath)) {
+			return;
+		}
+
+		try {
+			const manifestText = fs.readFileSync(this.missionLibManifestPath, 'utf-8');
+			const manifest = this.parseMissionLibManifest(manifestText);
+			if (!manifest) {
+				return;
+			}
+
+			for (const entry of this.parseManifestArray(manifest.sbslib)) {
+				this.missionPackageLayout.sbslib.add(entry);
+			}
+			for (const entry of this.parseManifestArray(manifest.mastlib)) {
+				this.missionPackageLayout.mastlib.add(entry);
+			}
+			for (const entry of this.parseManifestArray(manifest.zip)) {
+				this.missionPackageLayout.zip.add(entry);
+			}
+		} catch (e) {
+			debug('Unable to load __lib__.json');
+			debug(e);
+		}
+	}
+
+	private getMissionRelativePath(filePath: string): string | undefined {
+		const normalizedMission = fixFileName(this.missionURI).replace(/\/+$/, '');
+		const normalizedFile = fixFileName(filePath);
+		if (!normalizedFile.startsWith(normalizedMission + '/')) {
+			return undefined;
+		}
+		return normalizedFile.substring(normalizedMission.length + 1);
+	}
+
+	private getTopLevelMissionFolder(filePath: string): string | undefined {
+		const rel = this.getMissionRelativePath(filePath);
+		if (!rel) return undefined;
+		const top = rel.split('/')[0]?.trim();
+		if (!top) return undefined;
+		return top;
+	}
+
+	isSbslibFile(filePath: string): boolean {
+		const topFolder = this.getTopLevelMissionFolder(filePath);
+		if (!topFolder) return false;
+		return this.missionPackageLayout.sbslib.has(topFolder);
+	}
+
+	private toPythonModulePathWithoutExtension(filePath: string): string {
+		let normalized = fixFileName(filePath);
+		if (normalized.endsWith('.py')) {
+			normalized = normalized.substring(0, normalized.length - 3);
+		}
+		if (normalized.endsWith('/__init__')) {
+			normalized = normalized.substring(0, normalized.length - '/__init__'.length);
+		}
+		return normalized;
+	}
+
+	private buildRelativePythonModulePath(importingFile: string, sourceFile: string): string | undefined {
+		const importerDir = path.posix.dirname(fixFileName(importingFile));
+		const sourceModulePath = this.toPythonModulePathWithoutExtension(sourceFile);
+		let rel = path.posix.relative(importerDir, sourceModulePath).replace(/\\/g, '/');
+		if (!rel || rel === '.') {
+			return undefined;
+		}
+
+		const parts = rel.split('/').filter(Boolean);
+		let parentDepth = 0;
+		while (parts[parentDepth] === '..') {
+			parentDepth++;
+		}
+
+		const moduleParts = parts.slice(parentDepth);
+		const prefix = '.'.repeat(parentDepth + 1);
+		if (moduleParts.length === 0) {
+			return prefix;
+		}
+		return `${prefix}${moduleParts.join('.')}`;
+	}
+
+	getPythonImportModuleNameForSource(sourceFile: string, importingFile: string): string | undefined {
+		if (!this.isSbslibFile(sourceFile)) {
+			return undefined;
+		}
+		return this.buildRelativePythonModulePath(importingFile, sourceFile);
 	}
 
 	private syncMastExtractedItems(file: MastFile) {

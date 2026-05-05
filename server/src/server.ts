@@ -649,20 +649,34 @@ connection.onCompletionResolve(async (completionItem: CompletionItem): Promise<C
 	const sourceFile = completionItem.data.sourceFile as string;
 	const functionName = completionItem.data.functionName as string;
 	const text = activeDoc.getText();
+	const cache = getCache(activeDoc.uri);
 
-	// Extract module name from source file path
-	const moduleName = extractModuleName(sourceFile);
-	if (!moduleName) {
+	// Resolve preferred module name first (sbslib-relative), then fallback to legacy absolute path
+	const preferredModuleName = cache.getPythonImportModuleNameForSource(sourceFile, activeDoc.uri);
+	const fallbackModuleName = extractModuleName(sourceFile);
+	const moduleNames = [...new Set([preferredModuleName, fallbackModuleName].filter((name): name is string => !!name))];
+	if (moduleNames.length === 0) {
 		return completionItem;
 	}
+	let moduleName = moduleNames[0];
 
 	// Check if already imported
-	if (isAlreadyImported(text, moduleName, functionName)) {
-		return completionItem;
+	for (const candidate of moduleNames) {
+		if (isAlreadyImported(text, candidate, functionName)) {
+			return completionItem;
+		}
 	}
 
-	// Check if imports from this module already exist
-	const existingImportMatch = findExistingImportFromModule(text, moduleName);
+	// Check if imports from this module already exist (supports preferred and legacy module styles)
+	let existingImportMatch: { line: number; lineContent: string; imports: string[] } | undefined;
+	for (const candidate of moduleNames) {
+		const match = findExistingImportFromModule(text, candidate);
+		if (match) {
+			existingImportMatch = match;
+			moduleName = candidate;
+			break;
+		}
+	}
 	
 	if (existingImportMatch) {
 		// Append to existing import
@@ -722,17 +736,22 @@ function extractModuleName(sourceFile: string): string | undefined {
 
 function findExistingImportFromModule(text: string, moduleName: string): { line: number; lineContent: string; imports: string[] } | undefined {
 	const lines = text.split('\n');
-	const importPrefix = `from ${moduleName} import `;
+	const importRegex = /^\s*from\s+([^\s]+)\s+import\s+(.+)$/;
 
 	for (let i = 0; i < lines.length; i++) {
 		const lineContent = lines[i];
 		const trimmed = lineContent.trim();
-
-		if (!trimmed.startsWith(importPrefix)) {
+		const match = importRegex.exec(trimmed);
+		if (!match) {
 			continue;
 		}
 
-		let importPart = trimmed.slice(importPrefix.length);
+		const importedModule = match[1].trim();
+		if (importedModule !== moduleName) {
+			continue;
+		}
+
+		let importPart = match[2];
 		const commentIndex = importPart.indexOf('#');
 		if (commentIndex >= 0) {
 			importPart = importPart.slice(0, commentIndex);
