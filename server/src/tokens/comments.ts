@@ -113,14 +113,22 @@ function mapSemanticTokenTypeToDocumentType(token: Token): string {
 	return token.type;
 }
 
+function getDefaultTokensForDocument(doc: TextDocument): Token[] {
+	const cache = getCache(doc.uri);
+	const isPythonDoc = doc.languageId === 'py' || doc.languageId === 'python' || fixFileName(doc.uri).endsWith('.py');
+	if (isPythonDoc) {
+		return cache.getPyFile(doc.uri)?.pyTokens || [];
+	}
+	return cache.getMastFile(doc.uri)?.tokens || [];
+}
+
 /**
  * Get the most specific token at a given character offset from a pre-tokenized list.
  * If multiple tokens overlap, prefer the smallest token range.
  */
 export function getTokenAtOffsetFromTokens(doc: TextDocument, tokens: Token[], offset: integer): Token | undefined {
 	if (tokens.length === 0) {
-		const cache = getCache(doc.uri);
-		tokens = cache.getMastFile(doc.uri)?.tokens || [];
+		tokens = getDefaultTokensForDocument(doc);
 	}
 	let best: Token | undefined = undefined;
 	let bestLen = Number.MAX_SAFE_INTEGER;
@@ -142,8 +150,7 @@ export function getTokenAtOffsetFromTokens(doc: TextDocument, tokens: Token[], o
  */
 export function getTokenTypeAtOffset(doc: TextDocument, tokens: Token[], offset: integer): string {
 	if (tokens.length === 0) {
-		const cache = getCache(doc.uri);
-		tokens = cache.getMastFile(doc.uri)?.tokens || [];
+		tokens = getDefaultTokensForDocument(doc);
 	}
 	const token = getTokenAtOffsetFromTokens(doc, tokens, offset);
 	if (!token) return 'code';
@@ -156,8 +163,7 @@ export function getTokenTypeAtOffset(doc: TextDocument, tokens: Token[], offset:
 export function getTokenTypeAtPosition(doc: TextDocument, tokens: Token[], position: { line: integer, character: integer }): string {
 	
 	if (tokens.length === 0) {
-		const cache = getCache(doc.uri);
-		tokens = cache.getMastFile(doc.uri)?.tokens || [];
+		tokens = getDefaultTokensForDocument(doc);
 	}
 	return getTokenTypeAtOffset(doc, tokens, doc.offsetAt(position));
 }
@@ -210,8 +216,7 @@ function isLabelReferenceToken(token: Token): boolean {
 
 export function getMostRecentLabelReferenceAtOffset(doc: TextDocument, tokens: Token[], offset: integer): Token | undefined {
 	if (tokens.length === 0) {
-		const cache = getCache(doc.uri);
-		tokens = cache.getMastFile(doc.uri)?.tokens || [];
+		tokens = getDefaultTokensForDocument(doc);
 	}
 
 	let mostRecent: Token | undefined = undefined;
@@ -274,8 +279,7 @@ function getObjectContextAtOffset(doc: TextDocument, tokens: Token[], offset: in
 	objectDepth: integer
 } {
 	if (tokens.length === 0) {
-		const cache = getCache(doc.uri);
-		tokens = cache.getMastFile(doc.uri)?.tokens || [];
+		tokens = getDefaultTokensForDocument(doc);
 	}
 
 	const text = doc.getText();
@@ -392,8 +396,7 @@ export function getTokenContextAtPosition(doc: TextDocument, tokens: Token[], po
 	const offset = doc.offsetAt(position);
 	
 	if (tokens.length === 0) {
-		const cache = getCache(doc.uri);
-		tokens = cache.getMastFile(doc.uri)?.tokens || [];
+		tokens = getDefaultTokensForDocument(doc);
 	}
 	const token = getTokenContextAtOffset(doc, tokens, offset);
 	return token;

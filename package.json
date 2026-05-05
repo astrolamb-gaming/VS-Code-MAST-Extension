@@ -16,7 +16,8 @@
 	"main": "./client/out/extension",
 	"activationEvents": [
 		"onLanguage:json",
-		"onLanguage:py"
+		"onLanguage:py",
+		"onLanguage:python"
 	],
 	"capabilities": {
 		"workspaceSymbolProvider": "true"
@@ -223,10 +224,15 @@
 			"type": "object",
 			"title": "Example configuration",
 			"properties": {
+				"mast.enablePython": {
+					"type": "boolean",
+					"default": true,
+					"description": "Enable MAST language-server function-related completions in Python files (blob keys, inventory keys, roles, links, argument hints, and related call completions)."
+				},
 				"mastLanguageServer.enablePythonCompletions": {
 					"type": "boolean",
 					"default": true,
-					"description": "If true, the language server will provide select completions for Python files (inventory and blob keys, roles, imports). This may cause performance issues for large missions."
+					"description": "Legacy setting for Python completions. Prefer mast.enablePython. If mast.enablePython is set, it takes precedence."
 				},
 				"mastLanguageServer.maxNumberOfProblems": {
 					"scope": "resource",

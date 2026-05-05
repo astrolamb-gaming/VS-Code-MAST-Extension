@@ -307,6 +307,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// return buildFaction("kra","Kralien_Set");
 	// debug("Staring onCompletion");
 	const cache = getCache(text.uri);
+	const isPythonDocument = text.uri.endsWith('.py') || text.languageId === 'py' || text.languageId === 'python';
 	// return getGlobals().artFiles;
 	
 	let ci : CompletionItem[] = [];
@@ -321,7 +322,9 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		return ci;
 	}
 
-	const tokens = cache.getMastFile(text.uri)?.tokens || [];
+	const tokens = isPythonDocument
+		? (cache.getPyFile(text.uri)?.pyTokens || [])
+		: (cache.getMastFile(text.uri)?.tokens || []);
 
 	// Calculate the position in the text's string value using the Position value.
 	const pos : integer = text.offsetAt(_textDocumentPosition.position);
@@ -360,7 +363,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 
 
 //#region YIELD Completions
-	if (iStr.trim().startsWith("yield")) {
+	if (!isPythonDocument && iStr.trim().startsWith("yield")) {
 		const yieldRes = [
 			// TODO: Add usage descriptions as second parameter of these arrays
 			["success"],
@@ -793,114 +796,114 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 
 	// If we're defining a label, we don't want autocomplete.
 	// TODO: ++ labels should have specific names
-	if (iStr.trim().startsWith("--") || iStr.trim().startsWith("==") || iStr.trim().startsWith("++")) {
+	if (!isPythonDocument && (iStr.trim().startsWith("--") || iStr.trim().startsWith("==") || iStr.trim().startsWith("++"))) {
 		return [];
 	}
 
-	let trimmed = iStr.trim();
-	
+ 	let trimmed = iStr.trim();
 
-//#region Route and Media Labels 
-	debug("Route and Media Labels");
-	// Media labels only get the skybox names
-	if (iStr.endsWith("@media/skybox/")) {
-		return getArtemisGlobals().skyboxes;
-	// Get Music Options (default vs Artemis2)
-	} else if (iStr.endsWith("@media/music/")) {
-		return getArtemisGlobals().music;
-	}
-	if (trimmed.match(/sbs\.play_audio_file\([ \d\w]+\, */)) {
-		return cache.getMusicFiles();
-	}
-
-	// Get signal routes
-	if (trimmed.startsWith("//signal/") || trimmed.startsWith("//shared/singal/") || trimmed.startsWith("on signal")) {
-		const signals = cache.getSignals();
-		return buildSignalInfoListAsCompletionItems(signals);
-	}
-
-	// Route Label autocompletion
-	if(trimmed.includes("//")) {
-		let route = trimmed.substring(trimmed.indexOf("//"));
-		// If this is a route label, but NOT anything after it, then we only return route labels
-		if (!route.trim().includes(" ")) {
-			debug("Getting regular route labels")
-			let routes = cache.getUsedRoutes(route);
-			for (const r of routes) {
-				let updatedRoute = r.replace(trimmed,"");
-				const c: CompletionItem = {
-					label: updatedRoute,
-					kind: CompletionItemKind.Event,
-					labelDetails: {description: "Route Label"}
-				}
-				ci.push(c);
-			}
-			return ci;
-		} else {
-			const route = iStr.trim().substring(0,iStr.trim().indexOf(" "));
-			const rlvs = getRouteLabelVars(route);
-			debug(rlvs)
-			for (const s of rlvs) {
-				const c: CompletionItem = {
-					label: s,
-					kind: CompletionItemKind.EnumMember,
-					labelDetails: {description: "Route-specific Variable"}
-				}
-				ci.push(c);
-			}
+	if (!isPythonDocument) {
+	//#region Route and Media Labels 
+		debug("Route and Media Labels");
+		// Media labels only get the skybox names
+		if (iStr.endsWith("@media/skybox/")) {
+			return getArtemisGlobals().skyboxes;
+		// Get Music Options (default vs Artemis2)
+		} else if (iStr.endsWith("@media/music/")) {
+			return getArtemisGlobals().music;
 		}
-		// TODO: Add media, map, gui/tab, and console autocompletion items
-	} else if (trimmed.startsWith("@")) {
-		ci = cache.getMediaLabels();
-		return ci;
-	}
-//#endregion
+		if (trimmed.match(/sbs\.play_audio_file\([ \d\w]+\, */)) {
+			return cache.getMusicFiles();
+		}
 
-//#region COMMS Stuff
-	debug("Comms stuff");
-	/**
- 	* 	□ All
-		□ Scan
-		□ Client
-		□ Ship
-		□ Dialog
-		□ Dialog_main
-		□ Dialog_consoles_all
-		□ Dialog_consoles
-			Dialog_ships
-	 */
-	if (iStr.endsWith("<")) {
-		const comms = [
-			"all",
-			"scan",
-			"client",
-			"ship",
-			"dialog",
-			"dialog_main",
-			"dialog_consoles_all",
-			"dialog_consoles",
-			"dialog_ships"
-		]
-		ci = [];
-		for (const i of comms) {
+		// Get signal routes
+		if (trimmed.startsWith("//signal/") || trimmed.startsWith("//shared/singal/") || trimmed.startsWith("on signal")) {
+			const signals = cache.getSignals();
+			return buildSignalInfoListAsCompletionItems(signals);
+		}
+
+		// Route Label autocompletion
+		if(trimmed.includes("//")) {
+			let route = trimmed.substring(trimmed.indexOf("//"));
+			// If this is a route label, but NOT anything after it, then we only return route labels
+			if (!route.trim().includes(" ")) {
+				debug("Getting regular route labels")
+				let routes = cache.getUsedRoutes(route);
+				for (const r of routes) {
+					let updatedRoute = r.replace(trimmed,"");
+					const c: CompletionItem = {
+						label: updatedRoute,
+						kind: CompletionItemKind.Event,
+						labelDetails: {description: "Route Label"}
+					}
+					ci.push(c);
+				}
+				return ci;
+			} else {
+				const route = iStr.trim().substring(0,iStr.trim().indexOf(" "));
+				const rlvs = getRouteLabelVars(route);
+				debug(rlvs)
+				for (const s of rlvs) {
+					const c: CompletionItem = {
+						label: s,
+						kind: CompletionItemKind.EnumMember,
+						labelDetails: {description: "Route-specific Variable"}
+					}
+					ci.push(c);
+				}
+			}
+			// TODO: Add media, map, gui/tab, and console autocompletion items
+		} else if (trimmed.startsWith("@")) {
+			ci = cache.getMediaLabels();
+			return ci;
+		}
+	//#endregion
+
+	//#region COMMS Stuff
+		debug("Comms stuff");
+		/**
+ 		* 	□ All
+			□ Scan
+			□ Client
+			□ Ship
+			□ Dialog
+			□ Dialog_main
+			□ Dialog_consoles_all
+			□ Dialog_consoles
+				Dialog_ships
+		 */
+		if (iStr.endsWith("<")) {
+			const comms = [
+				"all",
+				"scan",
+				"client",
+				"ship",
+				"dialog",
+				"dialog_main",
+				"dialog_consoles_all",
+				"dialog_consoles",
+				"dialog_ships"
+			]
+			ci = [];
+			for (const i of comms) {
+				const c: CompletionItem = {
+					label: i,
+					insertText: i + ">",
+					kind: CompletionItemKind.Field,
+					labelDetails: {description: "Comms Target"}
+				}
+				ci.push(c);
+			}
 			const c: CompletionItem = {
-				label: i,
-				insertText: i + ">",
+				label: "<<",
 				kind: CompletionItemKind.Field,
+				insertText: "<",
 				labelDetails: {description: "Comms Target"}
 			}
 			ci.push(c);
+			return ci;
 		}
-		const c: CompletionItem = {
-			label: "<<",
-			kind: CompletionItemKind.Field,
-			insertText: "<",
-			labelDetails: {description: "Comms Target"}
-		}
-		ci.push(c);
-		return ci;
-	}
-//#endregion
+	//#endregion
 
 //#region Label Metadata Completions
 	// debug("Label metadata")
@@ -934,16 +937,16 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 //#endregion
 
 //#region JUMP Completions
-	debug("JUMPs")
-	// Handle label autocompletion
-	let jump: RegExp = /(->|jump)[ \t]*[^\t ]*$/m;
-	// if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (") || iStr.endsWith("objective_add(") || iStr.endsWith("brain_add(")) {
-	if (jump.test(iStr)) {
+		debug("JUMPs")
+		// Handle label autocompletion
+		let jump: RegExp = /(->|jump)[ \t]*[^\t ]*$/m;
+		// if (jump.test(iStr) || iStr.endsWith("task_schedule( ") || iStr.endsWith("task_schedule (") || iStr.endsWith("objective_add(") || iStr.endsWith("brain_add(")) {
+		if (jump.test(iStr)) {
 
-		const labels = cache.getLabels(text);
-		const currentFileLabels = cache.getLabels(text, true);
-		const main = getMainLabelAtPos(pos, currentFileLabels);
-		return getLabelsAsCompletionItems(text, labels, main);
+			const labels = cache.getLabels(text);
+			const currentFileLabels = cache.getLabels(text, true);
+			const main = getMainLabelAtPos(pos, currentFileLabels);
+			return getLabelsAsCompletionItems(text, labels, main);
 
 		// let labelNames = cache.getLabels(text);
 		// //debug(labelNames);
@@ -971,6 +974,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		// 	}
 		// 	return ci;
 		// }
+		}
 	}
 //#endregion
 
@@ -1296,45 +1300,47 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		ci.push(i);
 	}
 
-	// Add Route-specific variables, e.g. COLLISION_ID or SCIENCE_TARGET
-	const lbl = getMainLabelAtPos(pos,cache.getMastFile(text.uri).labelNames);
-	// debug("Main label at pos: ");
-	// debug(lbl)
-	if (lbl.type === "route") {
-		// if (!iStr.trim().startsWith("//")) {
-			const vars = getRouteLabelVars(lbl.name);
-			for (const s of vars) {
+	if (!isPythonDocument) {
+		// Add Route-specific variables, e.g. COLLISION_ID or SCIENCE_TARGET
+		const lbl = getMainLabelAtPos(pos,cache.getMastFile(text.uri).labelNames);
+		// debug("Main label at pos: ");
+		// debug(lbl)
+		if (lbl.type === "route") {
+			// if (!iStr.trim().startsWith("//")) {
+				const vars = getRouteLabelVars(lbl.name);
+				for (const s of vars) {
+					const c: CompletionItem = {
+						label: s,
+						kind: CompletionItemKind.EnumMember,
+						labelDetails: {description: "Route-specific Variable"},
+						sortText: "__"+ s
+					}
+					ci.push(c);
+				}
+			// }
+		} else {
+			// If it's a main or inline label
+			const keys = getLabelMetadataKeys(lbl, text, tokens);
+			for (const k of keys) {
 				const c: CompletionItem = {
-					label: s,
-					kind: CompletionItemKind.EnumMember,
-					labelDetails: {description: "Route-specific Variable"},
-					sortText: "__"+ s
+					label: k[0],
+					kind: CompletionItemKind.Text,
+					insertText: k[0],
+					sortText: "__" + k[0]
+				}
+				const argDoc = getArgDocForLabel(text, tokens, lbl.range.start.line, k[0]);
+				const docParts: string[] = [];
+				if (argDoc && argDoc.trim() !== '') {
+					docParts.push(`Description: ${argDoc.trim()}`);
+				}
+				if (k[1] !== "") {
+					docParts.push("Default value: " + k[1]);
+				}
+				if (docParts.length > 0) {
+					c.documentation = docParts.join("\n\n");
 				}
 				ci.push(c);
 			}
-		// }
-	} else {
-		// If it's a main or inline label
-		const keys = getLabelMetadataKeys(lbl, text, tokens);
-		for (const k of keys) {
-			const c: CompletionItem = {
-				label: k[0],
-				kind: CompletionItemKind.Text,
-				insertText: k[0],
-				sortText: "__" + k[0]
-			}
-			const argDoc = getArgDocForLabel(text, tokens, lbl.range.start.line, k[0]);
-			const docParts: string[] = [];
-			if (argDoc && argDoc.trim() !== '') {
-				docParts.push(`Description: ${argDoc.trim()}`);
-			}
-			if (k[1] !== "") {
-				docParts.push("Default value: " + k[1]);
-			}
-			if (docParts.length > 0) {
-				c.documentation = docParts.join("\n\n");
-			}
-			ci.push(c);
 		}
 	}
 	

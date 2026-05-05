@@ -20,6 +20,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * Fix issue where triggered signals weren't being recognized, causing diagnostic saying the signal is emitted but not used.
 * Fix issue with function signatures not being properly registered with named arguments [#31](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues/31)
 * Add torpedo attribute keys and values to autocompletion.
+* Add applicable autocompletion functionality to python files, with option to enable/disable this: `mast.enablePython`
 
 
 ### 0.18.1

@@ -130,7 +130,18 @@ let hasWorkspaceFolderCapability = true;
 export let hasDiagnosticRelatedInformationCapability = false;
 let allowMultipleCaches = true;
 let cacheTimeout = 0;
+let enablePythonCompletions = true;
 export let labelNames : LabelInfo[] = [];
+
+async function refreshRuntimeSettings(): Promise<void> {
+	const mastLanguageServerConfig = await connection.workspace.getConfiguration("mastLanguageServer");
+	allowMultipleCaches = mastLanguageServerConfig?.allowMultipleCaches ?? true;
+	cacheTimeout = mastLanguageServerConfig?.cacheTimeout ?? 0;
+
+	const mastConfig = await connection.workspace.getConfiguration("mast");
+	const legacyEnablePython = mastLanguageServerConfig?.enablePythonCompletions;
+	enablePythonCompletions = mastConfig?.enablePython ?? legacyEnablePython ?? true;
+}
 
 // let functionData : SignatureInformation[] = [];
 // export function appendFunctionData(si: SignatureInformation) {functionData.push(si);}
@@ -267,9 +278,7 @@ connection.onInitialized(async () => {
 	}
 	
 	// Get config information
-	let mastConfig = await connection.workspace.getConfiguration("mastLanguageServer")
-	allowMultipleCaches = mastConfig.allowMultipleCaches;
-	cacheTimeout = mastConfig.cacheTimeout;
+	await refreshRuntimeSettings();
 
 	// let p = new PyFile("G:\\Artemis Installs\\Cosmos-1-1-7\\data\\missions\\sbs_utils\\sbs_utils\\agent.py");
 	// debug(p);
@@ -399,7 +408,7 @@ let globalSettings: MAST_Settings = defaultSettings;
 // Cache the settings of all open documents
 const documentSettings = new Map<string, Thenable<MAST_Settings>>();
 
-connection.onDidChangeConfiguration(change => {
+connection.onDidChangeConfiguration(async change => {
 	if (hasConfigurationCapability) {
 		// Reset all cached document settings
 		documentSettings.clear();
@@ -408,6 +417,7 @@ connection.onDidChangeConfiguration(change => {
 			(change.settings.languageServerExample || defaultSettings)
 		);
 	}
+	await refreshRuntimeSettings();
 	// Refresh the diagnostics since the `maxNumberOfProblems` could have changed.
 	// We could optimize things here and re-fetch the setting first can compare it
 	// to the existing setting, but this is out of scope for this example.
@@ -567,7 +577,9 @@ connection.onSignatureHelp(async (_textDocPos: SignatureHelpParams): Promise<Sig
 	// }
 	const document = documents.get(_textDocPos.textDocument.uri);
 	if (document === undefined) return undefined;
-	if (!_textDocPos.textDocument.uri.endsWith(".mast")) return undefined;
+	const isMastDocument = _textDocPos.textDocument.uri.endsWith(".mast");
+	const isPythonDocument = _textDocPos.textDocument.uri.endsWith(".py");
+	if (!isMastDocument && !(isPythonDocument && enablePythonCompletions)) return undefined;
 	await getCache(document.uri).awaitLoaded();
 	const text = documents.get(_textDocPos.textDocument.uri);
 	if (text === undefined) {
@@ -579,6 +591,8 @@ connection.onSignatureHelp(async (_textDocPos: SignatureHelpParams): Promise<Sig
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
 	async (_textDocumentPosition: TextDocumentPositionParams): Promise<CompletionItem[] | undefined> => {
+		const isMastDocument = _textDocumentPosition.textDocument.uri.endsWith(".mast");
+		const isPythonDocument = _textDocumentPosition.textDocument.uri.endsWith(".py");
 		if (_textDocumentPosition.textDocument.uri.endsWith("json")) {
 			// We don't want to deal with json files aside from story.json at this point.
 			// TODO: Implement json autocompletion stuff for shipData.json?
@@ -598,8 +612,7 @@ connection.onCompletion(
 			debug("Can't get completions from __init__.mast file");
 		}
 		
-		// if (_textDocumentPosition.textDocument.uri.endsWith(".py")) return undefined; // Redundant
-		if (!_textDocumentPosition.textDocument.uri.endsWith(".mast")) return undefined;
+		if (!isMastDocument && !(isPythonDocument && enablePythonCompletions)) return undefined;
 		const text = documents.get(_textDocumentPosition.textDocument.uri);
 		if (text === undefined) {
 			return [];

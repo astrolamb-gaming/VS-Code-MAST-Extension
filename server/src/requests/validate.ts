@@ -129,7 +129,7 @@ export async function compileMastFile(textDocument: TextDocument): Promise<Diagn
 
 export async function validateTextDocument(textDocument: TextDocument): Promise<Diagnostic[]> {
 	// debug("Starting validation")
-	if (textDocument.languageId === "py") {
+	if (textDocument.languageId === "py" || textDocument.languageId === "python") {
 		return [];
 	}
 

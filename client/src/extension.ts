@@ -83,7 +83,7 @@ export function activate(context: ExtensionContext) {
 	// Options to control the language client
 	const clientOptions: LanguageClientOptions = {
 		// Register the server for plain text documents
-		documentSelector: [{ scheme: 'file', language: 'mast' },{scheme:'file',language:'json'}],
+		documentSelector: [{ scheme: 'file', language: 'mast' },{scheme:'file',language:'json'},{scheme:'file',language:'py'},{scheme:'file',language:'python'}],
 		synchronize: {
 			// Notify the server about file changes to '.clientrc files contained in the workspace
 			fileEvents: [workspace.createFileSystemWatcher('**/.mast'),workspace.createFileSystemWatcher('**/.json')]

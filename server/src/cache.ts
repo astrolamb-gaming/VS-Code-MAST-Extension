@@ -733,7 +733,7 @@ export class MissionCache {
 			const mastFile = this.getMastFile(doc.uri);
 			mastFile.updateFromDocument(doc);
 			this.syncMastExtractedItems(mastFile);
-		} else if (doc.languageId === "py") {
+		} else if (doc.languageId === "py" || doc.languageId === "python") {
 			// debug("Updating " + doc.uri);
 			const pyFile = this.getPyFile(doc.uri);
 			pyFile.parseWholeFile(doc.getText());
