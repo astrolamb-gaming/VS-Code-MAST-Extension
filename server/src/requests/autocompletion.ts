@@ -306,6 +306,7 @@ function maybeTriggerFacePicker(argName: string, text: TextDocument, line: numbe
 export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, text: TextDocument): CompletionItem[] {
 	// return buildFaction("kra","Kralien_Set");
 	// debug("Staring onCompletion");
+	const completionStart = Date.now();
 	const cache = getCache(text.uri);
 	const isPythonDocument = text.uri.endsWith('.py') || text.languageId === 'py' || text.languageId === 'python';
 	// return getGlobals().artFiles;
@@ -335,7 +336,11 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		debug("Ends with a closed expression, should have no completions")
 		return [];
 	}
-	const line = getCurrentLineFromTextDocument(_textDocumentPosition.position, text)
+	const line = getCurrentLineFromTextDocument(_textDocumentPosition.position, text);
+	const postSetupTime = Date.now() - completionStart;
+	if (postSetupTime > 5) {
+		debug(`[perf] onCompletion setup took ${postSetupTime}ms`);
+	}
 	
 //#region __init__.mast Completions
 	if (fixFileName(text.uri).endsWith("__init__.mast")) {
@@ -387,6 +392,10 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 //#endregion
 	const tokenTypeAtPos = getTokenTypeAtPosition(text, tokens, _textDocumentPosition.position);
 	const tokenContextAtPos = getTokenContextAtPosition(text, tokens, _textDocumentPosition.position);
+	const postTokenAnalysis = Date.now() - completionStart;
+	if (postTokenAnalysis > 20) {
+		debug(`[perf] onCompletion token analysis took ${postTokenAnalysis}ms`);
+	}
 
 	// if (currentLine != _textDocumentPosition.position.line) {
 	// 	currentLine = _textDocumentPosition.position.line;
@@ -1049,6 +1058,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		return ci;
 	}
 	debug("Not a class reference, checking functions...");
+	const classMethodTiming = Date.now();
 	const activeFunctionName = callContext?.functionName || func;
 	debug(callContext?.functionName);
 	debug(func)
@@ -1348,10 +1358,15 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// Add variable names to autocomplete list
 	// TODO: Add variables from other files in scope?
 	let variables: CompletionItem[] = [];
+	const variablesStart = Date.now();
 	try {
 		variables = cache.getVariableCompletionItems(text);
 	} catch(e) {
 		debug(e);
+	}
+	const variablesElapsed = Date.now() - variablesStart;
+	if (variablesElapsed > 5) {
+		debug(`[perf] onCompletion getVariableCompletionItems took ${variablesElapsed}ms`);
 	}
 	// debug("Variables parsed.");
 	// debug(variables)
@@ -1367,7 +1382,12 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	// 	ci.push(m.buildCompletionItem());
 	// }
 
+	const completionsStart = Date.now();
 	ci = ci.concat(cache.getCompletions()); // TODO: What does this even do?
+	const completionsElapsed = Date.now() - completionsStart;
+	if (completionsElapsed > 5) {
+		debug(`[perf] onCompletion cache.getCompletions took ${completionsElapsed}ms`);
+	}
 
 	// For Python docs, tag completions with current document URI for auto-import
 	if (isPythonDocument) {
@@ -1382,6 +1402,11 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 
 	// debug(iStr);
 	debug(ci.length);
+
+	const totalElapsed = Date.now() - completionStart;
+	if (totalElapsed > 20) {
+		debug(`[perf] onCompletion TOTAL ${totalElapsed}ms | items=${ci.length}`);
+	}
 
 	// TODO: Account for text that's already present?? I don't think that's necessary
 	// - Remove the text from the start of the completion item label

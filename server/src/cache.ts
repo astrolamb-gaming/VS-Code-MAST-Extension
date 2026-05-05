@@ -114,6 +114,8 @@ export class MissionCache {
 	private linksByFile: Map<string, Word[]> = new Map();
 	private rolesByFile: Map<string, Word[]> = new Map();
 	private inventoryKeysByFile: Map<string, Word[]> = new Map();
+	/** Debounce timers: uri -> NodeJS.Timeout for deferred full Python re-parse */
+	private _reparseTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
 
 	constructor(workspaceUri: string) {
 		//debug(workspaceUri);
@@ -142,12 +144,28 @@ export class MissionCache {
 	// Promise that resolves when the cache has finished loading
 	private _loadedPromise: Promise<void> = Promise.resolve();
 	private _loadedResolve: (() => void) | null = null;
+	private _isLoading = false;
+
+	private logLoadTiming(stage: string, elapsedMs: number, details: string = '') {
+		const suffix = details ? ` | ${details}` : '';
+		const msg = `[load:${this.missionName}] ${stage} took ${elapsedMs}ms${suffix}`;
+		try {
+			connection.console.log(msg);
+		} catch (e) {
+			debug(e);
+		}
+	}
 
 	async load() {
+		if (this._isLoading) {
+			debug(`load() called while already loading for ${this.missionName}, ignoring.`);
+			return;
+		}
 		if (this.missionURI === "") {
 			debug("Mission folder not valid: " + this.missionURI + "\nNot loading cache.")
 			return;
 		}
+		this._isLoading = true;
 		this.endWatchers();
 		this.storyJsonLoaded = false;
 		this.pyInfoLoaded = false;
@@ -155,6 +173,7 @@ export class MissionCache {
 		this.sbsLoaded = false;
 		debug("Starting MissionCache.load()");
 		const loadStart = Date.now();
+		this.logLoadTiming('load:start', 0, `uri=${this.missionURI}`);
 		// create a new loaded promise for callers waiting on awaitLoaded()
 		this._loadedPromise = new Promise((resolve) => { this._loadedResolve = resolve; });
 		showProgressBar(true);
@@ -170,14 +189,27 @@ export class MissionCache {
 		this.invalidateStructureCaches();
 		this.resetExtractedItemCaches();
 		this.resetMissionPackageLayout();
+		const layoutStart = Date.now();
 		await this.loadMissionPackageLayout();
+		this.logLoadTiming(
+			'loadMissionPackageLayout',
+			Date.now() - layoutStart,
+			`sbslib=${this.missionPackageLayout.sbslib.size}, mastlib=${this.missionPackageLayout.mastlib.size}, zip=${this.missionPackageLayout.zip.size}`
+		);
 		this.storyJson = new StoryJson(path.join(this.missionURI,"story.json"));
 		
+		const storyStart = Date.now();
 		await this.storyJson.readFile()
+		this.logLoadTiming(
+			'storyJson.readFile',
+			Date.now() - storyStart,
+			`sbslib=${this.storyJson.sbslib.length}, mastlib=${this.storyJson.mastlib.length}`
+		);
 			// .then(()=>{
-		showProgressBar(true);
 		debug("pyFileCache length: " + this.pyFileCache.length)
+		const modulesStart = Date.now();
 		await this.modulesLoaded();
+		this.logLoadTiming('modulesLoaded', Date.now() - modulesStart, `pyFiles=${this.pyFileCache.length}, mastModules=${this.missionMastModules.length}`);
 		// .then(()=>{
 		debug("Modules loaded for " + this.missionName);
 		// showProgressBar(false);
@@ -193,7 +225,9 @@ export class MissionCache {
 		// // debug(globals);
 		// globals.push(["dict","dict"]);
 		// debug(globals);
+		const globalsStart = Date.now();
 		await this.loadPythonGlobals(globals)
+		this.logLoadTiming('loadPythonGlobals', Date.now() - globalsStart, `globals=${globals.length}`);
 		// .then((info)=>{
 		debug("Loaded globals")
 		this.pyInfoLoaded = true;
@@ -242,16 +276,12 @@ export class MissionCache {
 		debug("Everything is loaded");
 		this.startWatchers();
 		const loadElapsed = Date.now() - loadStart;
-		try {
-			connection.console.log(`Cache load for ${this.missionName} took ${loadElapsed}ms`);
-			debug(`Cache load for ${this.missionName} took ${loadElapsed}ms`);
-		} catch (e) {
-			debug(e);
-		}
+		this.logLoadTiming('load:complete', loadElapsed, `loaded=${this.isLoaded()}`);
 		if (this._loadedResolve) {
 			this._loadedResolve();
 			this._loadedResolve = null;
 		}
+		this._isLoading = false;
 		showProgressBar(false);
 	}
 
@@ -261,11 +291,14 @@ export class MissionCache {
 	async reload() {
 		// Don't load until it's finished loading the first time
 		if (this.awaitingReload) return;
+		const reloadStart = Date.now();
+		this.logLoadTiming('reload:start', 0);
 		this.awaitingReload = true;
 		debug("Awaiting loaded")
 		await this.awaitLoaded();
 		await this.load();
 		debug("Reload complete.");
+		this.logLoadTiming('reload:complete', Date.now() - reloadStart);
 		this.awaitingReload = false;
 	}
 
@@ -626,14 +659,20 @@ export class MissionCache {
 			const libErrs: string[] = [];
 			//debug(this.missionLibFolder);
 			const lib = this.storyJson.mastlib.concat(this.storyJson.sbslib);
+			let totalPyLoaded = 0;
+			let totalMastLoaded = 0;
 			debug("Beginning to load modules");
 			const total = lib.length;
-			showProgressBar(true);
+			this.logLoadTiming('modules:scan', 0, `modules=${total}`);
 			// Process zip archives with controlled concurrency (max 3 concurrent reads)
 			// This prevents resource exhaustion from opening too many file handles at once
 			await this.processConcurrent(
 				lib,
 				async (zip) => {
+					const moduleStart = Date.now();
+					let modulePyLoaded = 0;
+					let moduleMastLoaded = 0;
+					let moduleSource = 'zip';
 					debug("Unzipping: " + zip);
 					
 					let found = false;
@@ -641,15 +680,17 @@ export class MissionCache {
 					for (const m of missions) {
 						if (this.storyJson.getModuleBaseName(zip).toLowerCase().includes(m.toLowerCase())) {
 							found = true;
+							moduleSource = 'mission-folder';
 							// Here we refer to the mission instead of the zip
 							const missionFolder = path.join(globals!.artemisDir,"data","missions",m);
 							const files = getFilesInDir(missionFolder,true);
 							for (const f of files) {
 								if (f.endsWith(".py")|| f.endsWith(".mast")) {
-									showProgressBar(true);
 									const data = await readFile(f);
 									debug("Loading: " + path.basename(f));
 									this.handleZipData(data, f);
+									if (f.endsWith('.py')) modulePyLoaded++;
+									if (f.endsWith('.mast')) moduleMastLoaded++;
 								}
 							}
 							break;
@@ -662,7 +703,6 @@ export class MissionCache {
 							const data = await readZipArchive(zipPath);
 							debug("Loading " + zip);
 							for (const [file, fileData] of data.entries()) {
-								showProgressBar(true);
 								debug(file)
 								let processFile = file;
 								if (zip !== "") {
@@ -671,6 +711,8 @@ export class MissionCache {
 								if (file.endsWith(".py") || file.endsWith(".mast")) {
 									processFile = saveZipTempFile(file,fileData);
 									this.handleZipData(fileData,processFile);
+									if (file.endsWith('.py')) modulePyLoaded++;
+									if (file.endsWith('.mast')) moduleMastLoaded++;
 								}
 							}
 						} catch (err) {
@@ -680,9 +722,23 @@ export class MissionCache {
 							}
 						}
 					}
+					totalPyLoaded += modulePyLoaded;
+					totalMastLoaded += moduleMastLoaded;
+					this.logLoadTiming(
+						'modules:module',
+						Date.now() - moduleStart,
+						`${zip} | source=${moduleSource}, py=${modulePyLoaded}, mast=${moduleMastLoaded}`
+					);
 				},
 				3  // max 3 concurrent zip file reads
 			);
+			if (libErrs.length > 0) {
+				this.logLoadTiming('modules:missing', 0, `count=${libErrs.length}`);
+				for (const err of libErrs) {
+					debug(err);
+				}
+			}
+			this.logLoadTiming('modules:totals', Date.now() - modulesStart, `py=${totalPyLoaded}, mast=${totalMastLoaded}`);
 		} catch(e) {
 			debug("Error in modulesLoaded()");
 			debug(e);
@@ -704,10 +760,14 @@ export class MissionCache {
 	 * @returns 
 	 */
 	handleZipData(data:string, file:string = "") {
+		const parseStart = Date.now();
+		let handledAs = 'ignored';
 		// debug("Beginning to load zip data for: " + file);
 		if (file.endsWith("__init__.mast") || file.endsWith("__init__.py")) {
 			// Do nothing
+			handledAs = 'init-skip';
 		} else if (file.endsWith(".py")) {
+			handledAs = 'python';
 			// debug(file)
 			this.routeLabels = this.routeLabels.concat(loadRouteLabels(data));
 			this.styleDefinitions = this.styleDefinitions.concat(loadStyleDefs(file,data))
@@ -739,12 +799,17 @@ export class MissionCache {
 			
 			// this.missionDefaultFunctions = this.missionDefaultFunctions.concat(p.defaultFunctions);
 		} else if (file.endsWith(".mast")) {
+			handledAs = 'mast';
 			//debug("Building file: " + file);
 			if (file.includes("sbs_utils")) return;
 			const m = new MastFile(file, data);
 			m.inZip = true;
 			this.missionMastModules.push(m);
 			this.syncMastExtractedItems(m);
+		}
+		const parseElapsed = Date.now() - parseStart;
+		if (parseElapsed > 20) {
+			this.logLoadTiming('handleZipData', parseElapsed, `${handledAs} | ${path.basename(file)}`);
 		}
 		// debug("Finished loading: " + path.basename(file))
 	}
@@ -754,6 +819,7 @@ export class MissionCache {
 	 * @param doc The {@link TextDocument TextDocument}
 	 */
 	updateFileInfo(doc: TextDocument) {
+		const updateStart = Date.now();
 		if (doc.languageId === "mast") {
 			// debug("Updating " + doc.uri);
 			const mastFile = this.getMastFile(doc.uri);
@@ -762,9 +828,42 @@ export class MissionCache {
 		} else if (doc.languageId === "py" || doc.languageId === "python") {
 			// debug("Updating " + doc.uri);
 			const pyFile = this.getPyFile(doc.uri);
-			pyFile.parseWholeFile(doc.getText());
-			this.invalidateStructureCaches();
-			this.syncPyExtractedItems(pyFile, this.shouldIncludeBlobKeysFromPyFile(pyFile));
+			const isSbsUtils = fixFileName(doc.uri).includes("sbs_utils");
+			if (isSbsUtils) {
+				// sbs_utils files are read-only library files; only refresh extracted
+				// string items (roles, signals, etc.) without re-running PythonLexer
+				pyFile.parseTokensOnly(doc.getText());
+				this.syncPyExtractedItems(pyFile, this.shouldIncludeBlobKeysFromPyFile(pyFile));
+			} else {
+				// Immediately do the cheap token-only pass so context (roles, signals etc.)
+				// is always fresh while the user types.
+				const text = doc.getText();
+				pyFile.parseTokensOnly(text);
+				this.syncPyExtractedItems(pyFile, this.shouldIncludeBlobKeysFromPyFile(pyFile));
+
+				// Debounce the expensive PythonLexer structural reparse: fire 300 ms
+				// after the user stops typing so class/function completions update
+				// without blocking the event loop on every keystroke.
+				const uri = fixFileName(doc.uri);
+				const existing = this._reparseTimers.get(uri);
+				if (existing) clearTimeout(existing);
+				const timer = setTimeout(() => {
+					 this._reparseTimers.delete(uri);
+					 const reparseStart = Date.now();
+					 pyFile.parseWholeFile(text);
+					 this.invalidateStructureCaches();
+					 this.syncPyExtractedItems(pyFile, this.shouldIncludeBlobKeysFromPyFile(pyFile));
+					 const reparseElapsed = Date.now() - reparseStart;
+					 if (reparseElapsed > 12) {
+						 this.logLoadTiming('deferredReparse', reparseElapsed, path.basename(uri));
+					 }
+				}, 300);
+				this._reparseTimers.set(uri, timer);
+			}
+		}
+		const elapsed = Date.now() - updateStart;
+		if (elapsed > 12) {
+			this.logLoadTiming('updateFileInfo', elapsed, `${doc.languageId} | ${path.basename(doc.uri)}`);
 		}
 	}
 
@@ -956,10 +1055,12 @@ export class MissionCache {
 	}
 
 	private async loadMissionPackageLayout() {
+		const layoutStart = Date.now();
 		if (!fs.existsSync(this.missionLibManifestPath)) {
 			this.applyDefaultMastlibLayoutForMissingManifest();
 			await this.promptToCreateMissingMissionLibManifest();
 			if (!fs.existsSync(this.missionLibManifestPath)) {
+				this.logLoadTiming('loadMissionPackageLayout:manifest', Date.now() - layoutStart, 'manifest missing; default mastlib layout');
 				return;
 			}
 		}
@@ -983,6 +1084,12 @@ export class MissionCache {
 		} catch (e) {
 			debug('Unable to load __lib__.json');
 			debug(e);
+		} finally {
+			this.logLoadTiming(
+				'loadMissionPackageLayout:manifest',
+				Date.now() - layoutStart,
+				`sbslib=${this.missionPackageLayout.sbslib.size}, mastlib=${this.missionPackageLayout.mastlib.size}, zip=${this.missionPackageLayout.zip.size}`
+			);
 		}
 	}
 
@@ -1407,8 +1514,8 @@ export class MissionCache {
 	 * The only real use for this now is when loading the initial cache info.
 	 */
 	checkForCacheUpdates() {
+		const updateStart = Date.now();
 		this.missionFilesLoaded = false;
-		showProgressBar(true);
 		// First check for any files that have been deleted
 		const files = getFilesInDir(this.missionURI);
 		let found = false;
@@ -1426,11 +1533,13 @@ export class MissionCache {
 				if (found) break;
 			}
 		}
-		if (found) return;
+		if (found) {
+			this.logLoadTiming('checkForCacheUpdates', Date.now() - updateStart, 'found existing files; no sync needed');
+			return;
+		}
 
 		// Check for any files that should be included, but are not.
 		for (const file of files) {
-			showProgressBar(true);
 			//debug(path.extname(file));
 			if (path.extname(file) === ".mast") {
 				//debug(file);
@@ -1453,6 +1562,7 @@ export class MissionCache {
 		}
 		// showProgressBar(false);
 		this.missionFilesLoaded = true;
+		this.logLoadTiming('checkForCacheUpdates', Date.now() - updateStart, `mast=${this.mastFileCache.length}, py=${this.pyFileCache.length}`);
 	}
 
 	/**
@@ -2013,13 +2123,21 @@ export class MissionCache {
 	removePyFile(uri:string) {
 		uri = fixFileName(uri);
 		debug("Removing " + uri);
-		let newCache: PyFile[] = [];
+		let newMissionCache: PyFile[] = [];
 		for (const m of this.missionPyModules) {
-			if (m.uri !== uri) {
-				newCache.push(m);
+			if (fixFileName(m.uri) !== uri) {
+				newMissionCache.push(m);
 			}
 		}
-		this.missionPyModules = newCache;
+		this.missionPyModules = newMissionCache;
+
+		let newSbsCache: PyFile[] = [];
+		for (const p of this.pyFileCache) {
+			if (fixFileName(p.uri) !== uri) {
+				newSbsCache.push(p);
+			}
+		}
+		this.pyFileCache = newSbsCache;
 		this.invalidateStructureCaches();
 		this.removeExtractedItemsForUri(uri);
 	}
@@ -2031,7 +2149,12 @@ export class MissionCache {
 	getPyFile(uri:string) : PyFile {
 		uri = fixFileName(uri);
 		for (const p of this.missionPyModules) {
-			if (fixFileName(p.uri) === fixFileName(uri)) {
+			if (fixFileName(p.uri) === uri) {
+				return p;
+			}
+		}
+		for (const p of this.pyFileCache) {
+			if (fixFileName(p.uri) === uri) {
 				return p;
 			}
 		}
@@ -2070,16 +2193,16 @@ export class MissionCache {
 		// debug(this.sbsLoaded);
 		// debug(this.storyJsonLoaded);
 		// debug(this.pyInfoLoaded);
-		if (all) showProgressBar(false);
 		return all;
 	}
 
 	async awaitLoaded() {
 		// Await the promise that is resolved when load() completes.
-		try {
-			await this._loadedPromise;
-		} finally {
-			showProgressBar(false);
+		const waitStart = Date.now();
+		await this._loadedPromise;
+		const elapsed = Date.now() - waitStart;
+		if (elapsed > 50) {
+			this.logLoadTiming('awaitLoaded', elapsed);
 		}
 	}
 

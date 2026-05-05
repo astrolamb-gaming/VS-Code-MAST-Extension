@@ -135,21 +135,31 @@ export class StoryJson {
 	 * Must be called after instantiating the object.
 	 */
 	async readFile() {
+		const readStart = Date.now();
 		showProgressBar(true);
 		// This prevents loading story.json from sbs_utils I think
 		if (path.dirname(this.uri).endsWith("sbs_utils")) return; // Why is this here? Not actually sure, but there must have been a reason...
 		if (!fs.existsSync(this.uri)) {
+			debug(`[load:storyJson] Missing story.json at ${this.uri}`);
 			let generated = await this.storyJsonNotFoundError();
 			if (!generated) return;
 		}
 		try {
+			const ioStart = Date.now();
 			const data = fs.readFileSync(this.uri, "utf-8");
+			debug(`[load:storyJson] Read file in ${Date.now() - ioStart}ms (${this.uri})`);
+			const parseStart = Date.now();
 			this.parseFile(data);
+			debug(`[load:storyJson] Parsed file in ${Date.now() - parseStart}ms (sbslib=${this.sbslib.length}, mastlib=${this.mastlib.length})`);
+			const checkStart = Date.now();
 			this.checkForErrors();
+			debug(`[load:storyJson] Checked references in ${Date.now() - checkStart}ms`);
 		} catch (e) {
 			debug("Couldn't read file");
 			// storyJsonNotif(0,this.uri,"","");
 			debug(e);
+		} finally {
+			debug(`[load:storyJson] Total readFile took ${Date.now() - readStart}ms (${this.uri})`);
 		}
 	}
 

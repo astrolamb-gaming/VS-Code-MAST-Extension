@@ -180,6 +180,35 @@ export class PyFile extends FileCache {
 		// debug(this.defaultFunctions)
 	}
 
+	/**
+	 * Lightweight re-parse for onDidChangeContent edits.
+	 * Refreshes only the token-based extracted items (roles, signals, blob_keys, etc.)
+	 * without re-running PythonLexer or MastGlobals regex scanning.
+	 * Use this for library files (sbs_utils) where the class/function structure
+	 * does not change during an editing session, so the expensive initial parse
+	 * result from load time can stay intact.
+	 */
+	parseTokensOnly(text: string) {
+		this.variableNames = [];
+		this.pyTokens = [];
+
+		// Comment-mask just for the token extractor so string positions stay valid
+		const comments: CRange[] = getMatchesForRegex(/^[ \t]*#.*$/gm, text);
+		let maskedText = text;
+		for (const c of comments) {
+			maskedText = replaceRegexMatchWithUnderscore(maskedText, c);
+		}
+
+		const doc = TextDocument.create(this.uri, "py", 1, maskedText);
+		const tokens = tokenizePythonFile(doc);
+		this.pyTokens = tokens;
+		this.roles = extractRolesFromPythonFile(doc, tokens);
+		this.blob_keys = extractBlobKeysFromPythonFile(doc, tokens);
+		this.inventory_keys = extractInventoryKeysFromPythonFile(doc, tokens);
+		this.links = extractLinksFromPythonFile(doc, tokens);
+		this.signals = extractSignalsFromPythonFile(doc, tokens);
+	}
+
 	getDefaultMethodCompletionItems(): CompletionItem[] {
 		let ci: CompletionItem[] = [];
 		for (const f of this.defaultFunctions) {

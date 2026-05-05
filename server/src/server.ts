@@ -272,7 +272,7 @@ connection.onInitialized(async () => {
 	}
 	if (hasWorkspaceFolderCapability) {
 		connection.workspace.onDidChangeWorkspaceFolders(_event => {
-			connection.console.log('Workspace folder change event received.');
+			console.log('Workspace folder change event received.');
 		});
 
 	}
@@ -500,6 +500,7 @@ connection.languages.diagnostics.on(async (params) => {
  */
 documents.onDidChangeContent(change => {
 	try {
+		const updateStart = Date.now();
 		const doc = change.document;
 		if (!doc.uri.endsWith('.mast') && !doc.uri.endsWith('.py')) {
 			return;
@@ -507,6 +508,10 @@ documents.onDidChangeContent(change => {
 
 		const cache = getCache(doc.uri);
 		cache.updateFileInfo(doc);
+		const updateElapsed = Date.now() - updateStart;
+		if (updateElapsed > 15) {
+			console.log(`[perf] onDidChangeContent ${updateElapsed}ms | ${doc.languageId} | ${doc.uri}`);
+		}
 
 		// Invalidate semantic token cache so next request recomputes from new text
 		getSemanticTokensCache().invalidate(doc.uri);
@@ -564,7 +569,7 @@ export interface ErrorInstance {
 connection.onDidChangeWatchedFiles(_change => {
 	// Monitored files have change in VSCode
 	debug(_change.changes);
-	connection.console.log('We received a file change event');
+	console.log('We received a file change event');
 });
 
 /**
@@ -580,12 +585,23 @@ connection.onSignatureHelp(async (_textDocPos: SignatureHelpParams): Promise<Sig
 	const isMastDocument = _textDocPos.textDocument.uri.endsWith(".mast");
 	const isPythonDocument = _textDocPos.textDocument.uri.endsWith(".py");
 	if (!isMastDocument && !(isPythonDocument && enablePythonCompletions)) return undefined;
+	const sigWaitStart = Date.now();
 	await getCache(document.uri).awaitLoaded();
+	const sigWaitElapsed = Date.now() - sigWaitStart;
+	if (sigWaitElapsed > 20) {
+		console.log(`[perf] signatureHelp awaitLoaded ${sigWaitElapsed}ms | ${document.uri}`);
+	}
 	const text = documents.get(_textDocPos.textDocument.uri);
 	if (text === undefined) {
 		return undefined;
 	}
-	return onSignatureHelp(_textDocPos,text);
+	const sigStart = Date.now();
+	const ret = onSignatureHelp(_textDocPos,text);
+	const sigElapsed = Date.now() - sigStart;
+	if (sigElapsed > 20) {
+		console.log(`[perf] signatureHelp compute ${sigElapsed}ms | ${_textDocPos.textDocument.uri}`);
+	}
+	return ret;
 });
 
 // This handler provides the initial list of the completion items.
@@ -618,8 +634,15 @@ connection.onCompletion(
 			return [];
 		}
 		try {
+			const completionWaitStart = Date.now();
 			await getCache(_textDocumentPosition.textDocument.uri).awaitLoaded();
+			const completionWaitElapsed = Date.now() - completionWaitStart;
+			if (completionWaitElapsed > 20) {
+				console.log(`[perf] completion awaitLoaded ${completionWaitElapsed}ms | ${_textDocumentPosition.textDocument.uri}`);
+			}
+			const completionStart = Date.now();
 			let ci: CompletionItem[] = onCompletion(_textDocumentPosition,text);
+			const completionElapsed = Date.now() - completionStart;
 			// for (const c of ci) {
 			// 	debug(c.documentation);
 			// }
@@ -627,6 +650,9 @@ connection.onCompletion(
 			// ci = [...new Map(ci.map(v => [v.insertText||v.label, v])).values()];
 			//This allows for items with the same label, but excludes duplicates
 			ci = [...new Map(ci.map((v)=>[v.documentation+v.label+v.kind+v.detail, v])).values()]
+			if (completionElapsed > 20) {
+				console.log(`[perf] completion compute ${completionElapsed}ms | ${_textDocumentPosition.textDocument.uri} | items=${ci.length}`);
+			}
 			return ci;
 		} catch (e) {
 			debug("onCompletion failure\n" + e);
@@ -823,7 +849,7 @@ export function myDebug(str:any) {
 		}
 	});
 	try {
-		connection.console.log(out);
+		console.log(out);
 	} catch {
 		// If connection not ready, fallback to console.debug
 		debug(out);
@@ -1069,7 +1095,9 @@ connection.languages.semanticTokens.on(async (params: SemanticTokensParams) => {
 	try {
 		const cache = getCache(params.textDocument.uri);
 		await cache.awaitLoaded();
-		cache.updateFileInfo(document);
+		// Note: updateFileInfo is intentionally NOT called here.
+		// onDidChangeContent already handles keeping the cache up to date.
+		// Calling it here would cause a redundant reparse on every semantic token request.
 
 		// Check cache first
 		const stcache = getSemanticTokensCache();
@@ -1079,37 +1107,49 @@ connection.languages.semanticTokens.on(async (params: SemanticTokensParams) => {
 		}
 
 		// Compute tokens and cache result
+		const semTokenStart = Date.now();
 		const allTokens = tokenizeDocument(document);
-		const testlabel = "prefab_side_generic";
+		const tokenizeElapsed = Date.now() - semTokenStart;
+
+		const labelTypeByName = new Map<string, 'label' | 'route-label' | false>();
+		const hasMethodByName = new Map<string, boolean>();
+		const classifyStart = Date.now();
 		for (const token of allTokens) {
 			if (token.type === 'variable' && token.modifier === 'reference') {
-				if (token.text === testlabel) {
-					console.log("test token found");
-					console.log(cache.getLabel(token.text));
+				if (!labelTypeByName.has(token.text)) {
+					const found = cache.getLabel(token.text, false);
+					if (found) {
+						labelTypeByName.set(token.text, token.text.startsWith('//') ? 'route-label' : 'label');
+					} else {
+						labelTypeByName.set(token.text, false);
+					}
 				}
-				const mainLabels = getCache(params.textDocument.uri).getLabelsAtPos(document, document.offsetAt({ line: token.line, character: token.character }), false);
-				if (mainLabels.find(l => l.name === token.text)) {
-					token.type = token.text.startsWith('//') ? 'route-label' : 'label';
+				const labelType = labelTypeByName.get(token.text);
+				if (labelType) {
+					token.type = labelType;
 					continue;
 				}
-				
-				// if (cache.getLabel(token.text, false)) {
-				// 	token.type = token.text.startsWith('//') ? 'route-label' : 'label';
-				// 	continue;
-				// }
-				const normalized = token.text;
-				// This line was causing variables to show up as class methods (and properties) improperly
-				// if (cache.getMethod(normalized) || (cache.getPossibleMethods(normalized) || []).length > 0) {
-				if (cache.getMethod(normalized)) {
+
+				if (!hasMethodByName.has(token.text)) {
+					hasMethodByName.set(token.text, !!cache.getMethod(token.text));
+				}
+				if (hasMethodByName.get(token.text)) {
 					token.type = 'function';
 					continue;
 				}
 			}
 		}
+		const classifyElapsed = Date.now() - classifyStart;
 		// filter out strings because they're weird in mast sometimes and I don't want to take too much time
 		// figuring out how to handle them properly in the semantic tokens. This is a temporary solution.
 		const filteredTokens = allTokens.filter(t => t.type !== "comment");
+		const buildStart = Date.now();
 		const tokens = buildSemanticTokens(filteredTokens,document);
+		const buildElapsed = Date.now() - buildStart;
+		const semTokenElapsed = Date.now() - semTokenStart;
+		if (semTokenElapsed > 20) {
+			connection.console.log(`[perf] semanticTokens total=${semTokenElapsed}ms tokenize=${tokenizeElapsed}ms classify=${classifyElapsed}ms build=${buildElapsed}ms | ${params.textDocument.uri}`);
+		}
 
 		stcache.set(params.textDocument.uri, document.version, tokens);
 		return tokens;

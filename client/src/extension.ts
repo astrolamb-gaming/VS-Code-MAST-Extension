@@ -31,6 +31,9 @@ let myStatusBarItem: vscode.StatusBarItem;
 let statusBarItemText = "";
 let statusBarItemCount = 0;
 let timer: NodeJS.Timeout;
+let statusBarShownAt = 0;
+let pendingStatusBarHide: NodeJS.Timeout | undefined;
+const MIN_LOADING_STATUS_MS = 1500;
 
 let client: LanguageClient;
 let outputChannel: LogOutputChannel;
@@ -514,11 +517,32 @@ function updateStatusBarItem(show:boolean): void {
 	// if (!timer.hasRef()) return;
 	// statusBarItemText = text;
 	if (show) {
+		if (pendingStatusBarHide) {
+			clearTimeout(pendingStatusBarHide);
+			pendingStatusBarHide = undefined;
+		}
+		if (!myStatusBarItem.text || statusBarShownAt === 0) {
+			statusBarShownAt = Date.now();
+		}
 		myStatusBarItem.text = "$(loading~spin) Loading MAST Data";
 		myStatusBarItem.backgroundColor = new ThemeColor('statusBarItem.warningBackground')
 		myStatusBarItem.show();
+		debug('Status bar loading indicator shown');
 	} else {
-		myStatusBarItem.hide();
+		const elapsed = statusBarShownAt > 0 ? Date.now() - statusBarShownAt : MIN_LOADING_STATUS_MS;
+		const hide = () => {
+			myStatusBarItem.hide();
+			statusBarShownAt = 0;
+			pendingStatusBarHide = undefined;
+			debug('Status bar loading indicator hidden');
+		};
+		if (elapsed >= MIN_LOADING_STATUS_MS) {
+			hide();
+		} else {
+			const delay = MIN_LOADING_STATUS_MS - elapsed;
+			pendingStatusBarHide = setTimeout(hide, delay);
+			debug(`Delaying loading indicator hide by ${delay}ms`);
+		}
 		// timer.unref();
 	}
 }
