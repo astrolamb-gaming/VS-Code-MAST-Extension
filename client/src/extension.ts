@@ -447,6 +447,27 @@ export function activate(context: ExtensionContext) {
 	})
 	context.subscriptions.push(warning);
 
+	const quickPickListener = client.onNotification('custom/openQuickPick', async (payload: { requestId?: string; title?: string; placeHolder?: string; options?: string[] } | undefined) => {
+		if (!payload?.requestId || !Array.isArray(payload.options) || payload.options.length === 0) {
+			return;
+		}
+
+		const selected = await window.showQuickPick(
+			payload.options.map((option) => ({ label: option })),
+			{
+				title: payload.title || 'Select an option',
+				placeHolder: payload.placeHolder,
+				ignoreFocusOut: true
+			}
+		);
+
+		client.sendNotification('custom/quickPickResponse', {
+			requestId: payload.requestId,
+			selection: selected?.label
+		});
+	});
+	context.subscriptions.push(quickPickListener);
+
 // #endregion
 
 	const storyJsonListener = client.onNotification('custom/storyJson', (message)=>{

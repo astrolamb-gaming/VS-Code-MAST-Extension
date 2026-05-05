@@ -8,7 +8,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
 import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } from './tokens/routeLabels';
 import { fixFileName, getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readFileSync, readZipArchive } from './fileFunctions';
-import { connection, showProgressBar as showProgressBar } from './server';
+import { connection, requestClientQuickPick, showProgressBar as showProgressBar } from './server';
 import { URI } from 'vscode-uri';
 import { getArtemisGlobals, initializeArtemisGlobals } from './artemisGlobals';
 import * as os from 'os';
@@ -44,6 +44,7 @@ export class MissionCache {
 	storyJson: StoryJson;
 	missionLibManifestPath: string = "";
 	missionLibFolder: string = "";
+	ignoreMissingLibManifest = false;
 	missionPackageLayout: MissionPackageLayout = {
 		sbslib: new Set<string>(),
 		mastlib: new Set<string>(),
@@ -169,7 +170,7 @@ export class MissionCache {
 		this.invalidateStructureCaches();
 		this.resetExtractedItemCaches();
 		this.resetMissionPackageLayout();
-		this.loadMissionPackageLayout();
+		await this.loadMissionPackageLayout();
 		this.storyJson = new StoryJson(path.join(this.missionURI,"story.json"));
 		
 		await this.storyJson.readFile()
@@ -822,9 +823,145 @@ export class MissionCache {
 		}
 	}
 
-	private loadMissionPackageLayout() {
-		if (!fs.existsSync(this.missionLibManifestPath)) {
+	private getTopLevelMissionEntries(): string[] {
+		try {
+			const entries = fs.readdirSync(this.missionURI, { withFileTypes: true });
+			return entries
+				.filter((entry) => entry.isDirectory())
+				.map((entry) => entry.name)
+				.filter((name) => name !== '' && !name.startsWith('.') && name !== '__pycache__')
+				.sort((a, b) => a.localeCompare(b));
+		} catch (e) {
+			debug('Unable to enumerate mission folders for __lib__.json bootstrap');
+			debug(e);
+			return [];
+		}
+	}
+
+	private applyDefaultMastlibLayoutForMissingManifest() {
+		for (const entry of this.getTopLevelMissionEntries()) {
+			this.missionPackageLayout.mastlib.add(entry);
+		}
+	}
+
+	private getAvailableMissionLibVersions(): string[] {
+		const versions = new Set<string>();
+		const missionsRoot = getParentFolder(this.missionURI);
+
+		try {
+			const missionEntries = fs.readdirSync(missionsRoot, { withFileTypes: true });
+			for (const entry of missionEntries) {
+				if (!entry.isDirectory()) continue;
+				if (entry.name.startsWith('.')) continue;
+
+				const manifestPath = path.join(missionsRoot, entry.name, '__lib__.json');
+				if (!fs.existsSync(manifestPath)) continue;
+
+				try {
+					const text = fs.readFileSync(manifestPath, 'utf-8');
+					const manifest = this.parseMissionLibManifest(text);
+					if (manifest?.version && manifest.version.trim() !== '') {
+						versions.add(manifest.version.trim());
+					}
+				} catch (e) {
+					debug(`Unable to read mission lib manifest at ${manifestPath}`);
+					debug(e);
+				}
+			}
+		} catch (e) {
+			debug('Unable to enumerate mission folders for __lib__.json version discovery');
+			debug(e);
+		}
+
+		if (versions.size === 0) {
+			versions.add('v1.3.0');
+		}
+
+		return [...versions].sort((a, b) => b.localeCompare(a, undefined, { numeric: true, sensitivity: 'base' }));
+	}
+
+	private async promptForMissionLibVersion(): Promise<string> {
+		const versions = this.getAvailableMissionLibVersions();
+		if (versions.length === 1) {
+			return versions[0];
+		}
+
+		const selected = await requestClientQuickPick(
+			'Select a version for the new __lib__.json file.',
+			versions,
+			'Choose a version'
+		);
+		return selected || versions[0] || 'v1.3.0';
+	}
+
+	private buildDefaultMissionLibManifest(version: string): MissionLibManifest {
+		const sbslib: string[] = [];
+		const mastlib: string[] = [];
+		const zip: string[] = [];
+
+		for (const folder of this.getTopLevelMissionEntries()) {
+			const folderPath = path.join(this.missionURI, folder);
+			const files = getFilesInDir(folderPath, true).map((file) => fixFileName(file));
+			const hasMast = files.some((file) => file.endsWith('.mast'));
+			const hasPy = files.some((file) => file.endsWith('.py'));
+
+			if (hasMast) {
+				mastlib.push(folder);
+			} else if (hasPy) {
+				sbslib.push(folder);
+			} else {
+				zip.push(folder);
+			}
+		}
+
+		const manifest: MissionLibManifest = {
+			version
+		};
+		if (sbslib.length > 0) {
+			manifest.sbslib = sbslib;
+		}
+		if (mastlib.length > 0) {
+			manifest.mastlib = mastlib;
+		}
+		if (zip.length > 0) {
+			manifest.zip = zip;
+		}
+
+		return manifest;
+	}
+
+	private async promptToCreateMissingMissionLibManifest() {
+		if (this.ignoreMissingLibManifest) {
 			return;
+		}
+
+		const createOption = { title: 'Create __lib__.json' };
+		const ignoreOption = { title: 'Ignore' };
+		const choice = await connection.window.showWarningMessage(
+			'No __lib__.json file found in this mission root. The mission will be treated as mastlib by default.',
+			createOption,
+			ignoreOption
+		);
+
+		if (!choice || choice.title === ignoreOption.title) {
+			this.ignoreMissingLibManifest = true;
+			return;
+		}
+
+		if (choice.title === createOption.title) {
+			const version = await this.promptForMissionLibVersion();
+			const manifest = this.buildDefaultMissionLibManifest(version);
+			fs.writeFileSync(this.missionLibManifestPath, JSON.stringify(manifest, null, 4), { encoding: 'utf-8' });
+		}
+	}
+
+	private async loadMissionPackageLayout() {
+		if (!fs.existsSync(this.missionLibManifestPath)) {
+			this.applyDefaultMastlibLayoutForMissingManifest();
+			await this.promptToCreateMissingMissionLibManifest();
+			if (!fs.existsSync(this.missionLibManifestPath)) {
+				return;
+			}
 		}
 
 		try {

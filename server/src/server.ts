@@ -845,6 +845,40 @@ export async function sendToClient(notifName: string, data: any) {
 	connection.sendNotification("custom/" + notifName, data);
 }
 
+const pendingQuickPickRequests = new Map<string, (selection: string | undefined) => void>();
+let quickPickRequestCounter = 0;
+
+export async function requestClientQuickPick(title: string, options: string[], placeHolder?: string): Promise<string | undefined> {
+	if (options.length === 0) {
+		return undefined;
+	}
+
+	const requestId = `quickpick-${Date.now()}-${++quickPickRequestCounter}`;
+	return new Promise((resolve) => {
+		pendingQuickPickRequests.set(requestId, resolve);
+		sendToClient('openQuickPick', {
+			requestId,
+			title,
+			placeHolder,
+			options
+		});
+	});
+}
+
+connection.onNotification('custom/quickPickResponse', (payload: { requestId?: string; selection?: string } | undefined) => {
+	if (!payload?.requestId) {
+		return;
+	}
+
+	const resolver = pendingQuickPickRequests.get(payload.requestId);
+	if (!resolver) {
+		return;
+	}
+
+	pendingQuickPickRequests.delete(payload.requestId);
+	resolver(payload.selection);
+});
+
 
 
 connection.onNotification("custom/storyJsonResponse",(response)=>{
