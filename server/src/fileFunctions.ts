@@ -129,13 +129,16 @@ export function getInitFileInFolder(uri: string): string | undefined {
 }
 
 
-export async function readZipArchive(filepath: string) {
+export async function readZipArchive(filepath: string, includeEntry?: (entryName: string) => boolean) {
 	const map: Map<string, string> = new Map();
 	//debug(filepath);
 	const zip = new AdmZip(filepath);
 	try {
 		
 		for (const zipEntry of zip.getEntries()) {
+			if (includeEntry && !includeEntry(zipEntry.entryName)) {
+				continue;
+			}
 			if (!zipEntry.isDirectory) {
 				let data = zipEntry.getData().toString('utf-8');
 				map.set(zipEntry.entryName,data);

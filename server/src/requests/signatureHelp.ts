@@ -143,10 +143,6 @@ export function getFirstUnusedParameterIndex(
 		}
 	}
 
-	if (namedArgs.size === 0) {
-		return undefined;
-	}
-
 	for (let i = 0; i < paramNames.length; i++) {
 		if (satisfied.has(i)) continue;
 		const pn = paramNames[i];

@@ -132,6 +132,33 @@ let allowMultipleCaches = true;
 let cacheTimeout = 0;
 let enablePythonCompletions = true;
 export let labelNames : LabelInfo[] = [];
+const pendingDocumentUpdateTimers: Map<string, NodeJS.Timeout> = new Map();
+const DOCUMENT_UPDATE_DEBOUNCE_MS = 120;
+const pendingSemanticRefreshAfterBackground = new Set<string>();
+
+function scheduleSemanticRefreshWhenBackgroundReady(uri: string): void {
+	if (!uri || pendingSemanticRefreshAfterBackground.has(uri)) {
+		return;
+	}
+
+	const cache = getCache(uri);
+	if (cache.isBackgroundLoadComplete()) {
+		return;
+	}
+
+	pendingSemanticRefreshAfterBackground.add(uri);
+	cache.awaitBackgroundLoaded()
+		.then(() => {
+			getSemanticTokensCache().invalidate(uri);
+			connection.languages.semanticTokens.refresh();
+		})
+		.catch((e) => {
+			debug(e);
+		})
+		.finally(() => {
+			pendingSemanticRefreshAfterBackground.delete(uri);
+		});
+}
 
 async function refreshRuntimeSettings(): Promise<void> {
 	const mastLanguageServerConfig = await connection.workspace.getConfiguration("mastLanguageServer");
@@ -448,6 +475,11 @@ documents.onDidClose(e => {
 	// 	getCache(e.document.uri).removeMastFile(e.document.uri)
 	// }
 	documentSettings.delete(e.document.uri);
+	const pendingTimer = pendingDocumentUpdateTimers.get(e.document.uri);
+	if (pendingTimer) {
+		clearTimeout(pendingTimer);
+		pendingDocumentUpdateTimers.delete(e.document.uri);
+	}
 	// Invalidate semantic tokens cache for this document
 	getSemanticTokensCache().invalidate(e.document.uri);
 });
@@ -505,11 +537,28 @@ documents.onDidChangeContent(change => {
 			return;
 		}
 
-		const cache = getCache(doc.uri);
-		cache.updateFileInfo(doc);
-
 		// Invalidate semantic token cache so next request recomputes from new text
 		getSemanticTokensCache().invalidate(doc.uri);
+
+		const existingTimer = pendingDocumentUpdateTimers.get(doc.uri);
+		if (existingTimer) {
+			clearTimeout(existingTimer);
+		}
+
+		const timer = setTimeout(() => {
+			pendingDocumentUpdateTimers.delete(doc.uri);
+			try {
+				const latestDoc = documents.get(doc.uri);
+				if (!latestDoc) {
+					return;
+				}
+				const cache = getCache(latestDoc.uri);
+				cache.updateFileInfo(latestDoc);
+			} catch (updateErr) {
+				debug(updateErr);
+			}
+		}, DOCUMENT_UPDATE_DEBOUNCE_MS);
+		pendingDocumentUpdateTimers.set(doc.uri, timer);
 	} catch (e) {
 		debug(e);
 		console.error(e);
@@ -580,7 +629,7 @@ connection.onSignatureHelp(async (_textDocPos: SignatureHelpParams): Promise<Sig
 	const isMastDocument = _textDocPos.textDocument.uri.endsWith(".mast");
 	const isPythonDocument = _textDocPos.textDocument.uri.endsWith(".py");
 	if (!isMastDocument && !(isPythonDocument && enablePythonCompletions)) return undefined;
-	await getCache(document.uri).awaitLoaded();
+	await getCache(document.uri).awaitReady();
 	const text = documents.get(_textDocPos.textDocument.uri);
 	if (text === undefined) {
 		return undefined;
@@ -618,7 +667,7 @@ connection.onCompletion(
 			return [];
 		}
 		try {
-			await getCache(_textDocumentPosition.textDocument.uri).awaitLoaded();
+			await getCache(_textDocumentPosition.textDocument.uri).awaitReady();
 			let ci: CompletionItem[] = onCompletion(_textDocumentPosition,text);
 			// for (const c of ci) {
 			// 	debug(c.documentation);
@@ -797,7 +846,7 @@ connection.onHover(async (_textDocumentPosition: TextDocumentPositionParams): Pr
 		return undefined;
 	}
 	const cache = getCache(_textDocumentPosition.textDocument.uri);
-	await cache.awaitLoaded();
+	await cache.awaitReady();
 	let h = onHover(_textDocumentPosition,text);
 	// if (h) {
 	// 	debug(h);
@@ -1068,7 +1117,8 @@ connection.languages.semanticTokens.on(async (params: SemanticTokensParams) => {
 	}
 	try {
 		const cache = getCache(params.textDocument.uri);
-		await cache.awaitLoaded();
+		await cache.awaitReady();
+		scheduleSemanticRefreshWhenBackgroundReady(params.textDocument.uri);
 		cache.updateFileInfo(document);
 
 		// Check cache first
