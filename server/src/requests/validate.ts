@@ -385,8 +385,9 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		let isInString = getTokenTypeAtOffset(textDocument, tokens, m.index) === 'string';
 		if (isInComment) continue;
 		if (isInString) continue;
+		const isMemberCall = m[1] === ".";
 		let offset = 0;
-		if (m[1] === ".") {
+		if (isMemberCall) {
 			// Is a class method
 			let methods = cache.getPossibleMethods(m[2])
 			if (methods.length > 0) continue;
@@ -396,9 +397,10 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		// Class constructor call, e.g. Vec3()
 		const isConstructorCall = cache.getClasses().some((c) => matchesClassName(c.name, m![2]));
 		if (isConstructorCall) continue;
-		// else
-		let func = cache.getMethod(m[2]);
+		// Callable/global alias resolution (includes MastGlobals aliases and member-call preference)
+		const func = cache.getCallableForName(m[2], isMemberCall);
 		if (func !== undefined) continue;
+		if (cache.getMastGlobal(m[2])) continue;
 		let range:Range = {
 			start: textDocument.positionAt(m.index + offset),
 			end: textDocument.positionAt(m.index + m[0].length-1)

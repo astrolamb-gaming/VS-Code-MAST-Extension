@@ -30,6 +30,63 @@ const facePickerArgs = new Set(['face']);
 let lastFacePickerTriggerKey = '';
 let lastFacePickerTriggerAt = 0;
 
+type Behavior = {
+	name: string;
+	documentation?: string;
+}
+
+// TODO: Someday there will (ideally) be a master list of these and we will need to reference that instead
+const behaviorOptions: Behavior[] = [
+	{ 
+		name: "behav_npcship",
+		documentation: "NPC Ship behavior."
+	},
+	{ 
+		name: "behav_asteroid",
+		documentation: "Asteroid behavior."
+	},
+	{ 
+		name: "behav_station",
+		documentation: "Station behavior."
+	},
+	{ 
+		name: "behav_planet",
+		documentation: "Planet behavior."
+	},
+	{ 
+		name: "behav_nebula",
+		documentation: "Nebula behavior."
+	},
+	{ 
+		name: "behav_missile",
+		documentation: "Missile behavior."
+	},
+	{ 
+		name: "behav_mine",
+		documentation: "Mine behavior."
+	},
+	{ 
+		name: "behav_maelstrom",
+		documentation: "Black hole behavior."
+	},
+	{ 
+		name: "behav_pickup",
+		documentation: "Pickup behavior."
+	},
+	{ 
+		name: "behav_wreck",
+		documentation: "Wreck behavior."
+	},
+	{
+		name: "behav_selection",
+		documentation: "Selectable behavior (used for things like nebula/asteroid field scan points)."
+	},
+	{ 
+		name: "behav_do_nothing",
+		documentation: "Does nothing. Use for things that don't fit any other category."
+	}
+]
+
 type TorpedoValueOption = {
 	value: string;
 	documentation?: string;
@@ -714,25 +771,11 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 					}
 				}
 				if (a === "behave_id") {
-					// TODO: Someday there will be a master list of these and we will need to reference that instead
-					let behaves = [
-						"behav_npcship",
-						"behav_typhon",
-						"behav_asteroid",
-						"behav_station",
-						"behav_planet",
-						"behav_nebula",
-						"behav_missile",
-						"behav_mine",
-						"behav_maelstrom",
-						"behav_pickup",
-						"behav_wreck",
-						"behav_do_nothing"
-					]
-					for (const b of behaves) {
+					for (const b of behaviorOptions) {
 						const c: CompletionItem = {
-							label: b,
-							kind: CompletionItemKind.Text
+							label: b.name,
+							kind: CompletionItemKind.Text,
+							documentation: b.documentation
 						}
 						ci.push(c);
 					}

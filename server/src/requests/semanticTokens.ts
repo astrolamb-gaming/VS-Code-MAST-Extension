@@ -2991,6 +2991,13 @@ export class MastStateMachineLexer {
 				continue;
 			}
 
+			// Number literals (supports separators like 60_000)
+			if (this.isDigit(current)) {
+				const token = this.scanNumber();
+				this.tokens.push(token);
+				continue;
+			}
+
 			// Identifiers / keywords / function calls
 			if (this.isIdentifierStart(current)) {
 				const token = this.scanIdentifierOrKeyword();

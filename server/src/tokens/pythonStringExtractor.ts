@@ -292,9 +292,59 @@ export class SimplePythonTokenizer {
 		const startChar = this.character;
 		const startPos = this.pos;
 
-		while (this.pos < this.text.length && (this.isDigit(this.text[this.pos]) || this.text[this.pos] === '.')) {
-			this.pos++;
-			this.character++;
+		// Support underscore separators in numeric literals (e.g. 60_000)
+		// and prefixed bases like 0xFF_FF, 0b1010_0001, 0o12_34.
+		if (
+			this.text[this.pos] === '0' &&
+			this.pos + 1 < this.text.length &&
+			(this.text[this.pos + 1] === 'x' || this.text[this.pos + 1] === 'X')
+		) {
+			this.pos += 2;
+			this.character += 2;
+			while (this.pos < this.text.length && /[0-9a-fA-F_]/.test(this.text[this.pos])) {
+				this.pos++;
+				this.character++;
+			}
+		} else if (
+			this.text[this.pos] === '0' &&
+			this.pos + 1 < this.text.length &&
+			(this.text[this.pos + 1] === 'b' || this.text[this.pos + 1] === 'B')
+		) {
+			this.pos += 2;
+			this.character += 2;
+			while (this.pos < this.text.length && /[01_]/.test(this.text[this.pos])) {
+				this.pos++;
+				this.character++;
+			}
+		} else if (
+			this.text[this.pos] === '0' &&
+			this.pos + 1 < this.text.length &&
+			(this.text[this.pos + 1] === 'o' || this.text[this.pos + 1] === 'O')
+		) {
+			this.pos += 2;
+			this.character += 2;
+			while (this.pos < this.text.length && /[0-7_]/.test(this.text[this.pos])) {
+				this.pos++;
+				this.character++;
+			}
+		} else {
+			while (this.pos < this.text.length && (this.isDigit(this.text[this.pos]) || this.text[this.pos] === '_')) {
+				this.pos++;
+				this.character++;
+			}
+			if (
+				this.pos < this.text.length &&
+				this.text[this.pos] === '.' &&
+				this.pos + 1 < this.text.length &&
+				this.isDigit(this.text[this.pos + 1])
+			) {
+				this.pos++;
+				this.character++;
+				while (this.pos < this.text.length && (this.isDigit(this.text[this.pos]) || this.text[this.pos] === '_')) {
+					this.pos++;
+					this.character++;
+				}
+			}
 		}
 
 		this.tokens.push({
