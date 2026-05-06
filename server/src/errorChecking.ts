@@ -292,17 +292,31 @@ export function checkFunctionSignatures(textDocument: TextDocument): Diagnostic[
 		if (tokenType === 'comment') continue;
 		if (tokenType === 'string') continue;
 
-		// Look up the best callable for this name. For member calls, prefer
-		// class methods and, when possible, a class/module matching the receiver.
-		let method = cache.getCallableForName(funcName, isMemberCall);
-		if (isMemberCall && receiverName) {
-			const possible = cache.getPossibleMethods(funcName);
-			const receiverMatch = possible.find((cand) => (cand.className || '') === receiverName);
-			if (receiverMatch) {
-				method = receiverMatch;
+		// Build callable candidates. For ambiguous names, prefer lower-arity
+		// callables so unknown receiver types don't over-report missing args.
+		let candidates = isMemberCall ? cache.getPossibleMethods(funcName) : [];
+		if (isMemberCall && receiverName && candidates.length > 0) {
+			const receiverMatches = candidates.filter((cand) => (cand.className || '') === receiverName);
+			if (receiverMatches.length > 0) {
+				candidates = receiverMatches;
 			}
 		}
-		if (!method) continue;
+		if (!isMemberCall) {
+			const globalMethod = cache.getMethod(funcName);
+			if (globalMethod) {
+				candidates.push(globalMethod);
+			}
+			candidates = candidates.concat(cache.getPossibleMethods(funcName));
+		}
+		if (candidates.length === 0) {
+			const fallback = cache.getCallableForName(funcName, isMemberCall);
+			if (fallback) {
+				candidates = [fallback];
+			}
+		}
+		if (candidates.length === 0) continue;
+
+		candidates = candidates.filter((cand, idx) => candidates.indexOf(cand) === idx);
 
 		// Extract the raw argument list
 		const argsStr = extractArgString(text, parenOpenOffset + 1);
@@ -314,16 +328,43 @@ export function checkFunctionSignatures(textDocument: TextDocument): Diagnostic[
 		// If unpacking is used we can't validate statically
 		if (positionalCount === -1) continue;
 
-		// Determine which required params are satisfied
-		const required = getRequiredParams(method);
-		const unfulfilled: string[] = [];
-		let positionalUsed = 0;
-		for (const param of required) {
-			const paramName = (param.name || '').replace(/^\*+/, '').trim();
-			if (namedArgs.has(paramName)) continue;
-			if (positionalUsed < positionalCount) { positionalUsed++; continue; }
-			unfulfilled.push(paramName);
+		const evals = candidates.map((cand) => {
+			const required = getRequiredParams(cand);
+			const unfulfilled: string[] = [];
+			let positionalUsed = 0;
+			for (const param of required) {
+				const paramName = (param.name || '').replace(/^\*+/, '').trim();
+				if (namedArgs.has(paramName)) continue;
+				if (positionalUsed < positionalCount) { positionalUsed++; continue; }
+				unfulfilled.push(paramName);
+			}
+
+			const totalParams = cand.parameters.filter((p) => {
+				const n = (p.name || '').trim();
+				if (n === 'self' || n === '/' || n.startsWith('*')) return false;
+				return true;
+			}).length;
+
+			return {
+				cand,
+				requiredCount: required.length,
+				totalParams,
+				unfulfilled
+			};
+		});
+
+		// If any candidate is satisfied, no missing-argument diagnostic.
+		if (evals.some((e) => e.unfulfilled.length === 0)) {
+			continue;
 		}
+
+		// Ambiguous call: prefer the candidate with the least arguments.
+		evals.sort((a, b) => {
+			if (a.requiredCount !== b.requiredCount) return a.requiredCount - b.requiredCount;
+			if (a.totalParams !== b.totalParams) return a.totalParams - b.totalParams;
+			return a.unfulfilled.length - b.unfulfilled.length;
+		});
+		const unfulfilled = evals[0].unfulfilled;
 
 		if (unfulfilled.length > 0) {
 			const callEnd = parenOpenOffset + 1 + argsStr.length + 1; // +1 for closing ')'

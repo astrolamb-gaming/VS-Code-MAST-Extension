@@ -1094,6 +1094,173 @@ export class MastStateMachineLexer {
 		return refs;
 	}
 
+	private tokenizeYamlLine(lineStart: number, lineEnd: number): TokenInfo[] {
+		const lineTokens: TokenInfo[] = [];
+		const lineText = this.text.substring(lineStart, lineEnd);
+		const commentRel = this.findYamlCommentStart(lineText);
+		const contentEndRel = commentRel === -1 ? lineText.length : commentRel;
+		const contentEnd = lineStart + contentEndRel;
+		const contentText = lineText.substring(0, contentEndRel);
+		const yamlLabelRefs = this.scanYamlLabelReferences(lineStart, contentText);
+
+		if (contentText.trim().length > 0) {
+			const colonRel = contentText.indexOf(':');
+			if (colonRel > -1) {
+				const preColon = contentText.substring(0, colonRel);
+				const keyTrimmed = preColon.trim();
+				if (keyTrimmed.length > 0) {
+					const keyLeadingWs = preColon.length - preColon.trimStart().length;
+					const keyStart = lineStart + keyLeadingWs;
+					const keyPos = this.doc.positionAt(keyStart);
+					lineTokens.push({
+						type: 'yaml.key',
+						line: keyPos.line,
+						character: keyPos.character,
+						length: keyTrimmed.length,
+						text: keyTrimmed
+					});
+				}
+
+				let valueStartRel = colonRel + 1;
+				while (valueStartRel < contentText.length && /[\t ]/.test(contentText[valueStartRel])) {
+					valueStartRel++;
+				}
+				if (valueStartRel < contentText.length) {
+					const valueStart = lineStart + valueStartRel;
+					const valueEnd = contentEnd;
+					const refRanges = yamlLabelRefs
+						.map((ref) => {
+							const start = this.doc.offsetAt({ line: ref.line, character: ref.character });
+							return { start, end: start + ref.length };
+						})
+						.filter((r) => r.end > valueStart && r.start < valueEnd)
+						.sort((a, b) => a.start - b.start);
+
+					let cursor = valueStart;
+					for (const r of refRanges) {
+						const start = Math.max(cursor, r.start);
+						if (start > cursor) {
+							lineTokens.push(...this.tokenizePlainSegmentWithEmbeddedCode(cursor, start, 'yaml.value'));
+						}
+						cursor = Math.max(cursor, r.end);
+					}
+
+					if (cursor < valueEnd) {
+						lineTokens.push(...this.tokenizePlainSegmentWithEmbeddedCode(cursor, valueEnd, 'yaml.value'));
+					}
+				}
+			} else {
+				const valueStart = lineStart;
+				const valueEnd = contentEnd;
+				const refRanges = yamlLabelRefs
+					.map((ref) => {
+						const start = this.doc.offsetAt({ line: ref.line, character: ref.character });
+						return { start, end: start + ref.length };
+					})
+					.filter((r) => r.end > valueStart && r.start < valueEnd)
+					.sort((a, b) => a.start - b.start);
+
+				let cursor = valueStart;
+				for (const r of refRanges) {
+					const start = Math.max(cursor, r.start);
+					if (start > cursor) {
+						lineTokens.push(...this.tokenizePlainSegmentWithEmbeddedCode(cursor, start, 'yaml.value'));
+					}
+					cursor = Math.max(cursor, r.end);
+				}
+
+				if (cursor < valueEnd) {
+					lineTokens.push(...this.tokenizePlainSegmentWithEmbeddedCode(cursor, valueEnd, 'yaml.value'));
+				}
+			}
+
+			lineTokens.push(...yamlLabelRefs);
+		}
+
+		if (commentRel !== -1) {
+			const commentStart = lineStart + commentRel;
+			const commentPos = this.doc.positionAt(commentStart);
+			lineTokens.push({
+				type: 'comment',
+				line: commentPos.line,
+				character: commentPos.character,
+				length: lineEnd - commentStart,
+				text: this.text.substring(commentStart, lineEnd)
+			});
+		}
+
+		return lineTokens;
+	}
+
+	private isYamlLikeTripleQuotedContent(contentStart: number, contentEnd: number): boolean {
+		if (contentEnd <= contentStart) {
+			return false;
+		}
+		const inner = this.text.substring(contentStart, contentEnd);
+		const lines = inner.split('\n').map((line) => line.trim()).filter((line) => line.length > 0);
+		if (lines.length === 0) {
+			return false;
+		}
+		const yamlLineCount = lines.filter((line) => /^(?:-|["']?[A-Za-z_][\w .-]*["']?)\s*:\s*.*$/.test(line)).length;
+		return yamlLineCount > 0 && yamlLineCount >= Math.ceil(lines.length / 2);
+	}
+
+	private tokenizeTripleQuotedYamlString(stringStartPos: number, stringEndPos: number, quote: string): TokenInfo[] {
+		const tokens: TokenInfo[] = [];
+		const delimiterLength = 3;
+		const openingPos = this.doc.positionAt(stringStartPos);
+		tokens.push({
+			type: 'string',
+			line: openingPos.line,
+			character: openingPos.character,
+			length: delimiterLength,
+			text: this.text.substring(stringStartPos, stringStartPos + delimiterLength)
+		});
+
+		const contentStart = stringStartPos + delimiterLength;
+		const hasClosingDelimiter = stringEndPos - stringStartPos >= delimiterLength * 2 && this.text.substring(stringEndPos - delimiterLength, stringEndPos) === quote.repeat(3);
+		const contentEnd = hasClosingDelimiter ? stringEndPos - delimiterLength : stringEndPos;
+		let lineStart = contentStart;
+		while (lineStart <= contentEnd) {
+			const nextNewline = this.text.indexOf('\n', lineStart);
+			const lineEnd = nextNewline === -1 || nextNewline > contentEnd ? contentEnd : nextNewline;
+			tokens.push(...this.tokenizeYamlLine(lineStart, lineEnd));
+			if (nextNewline === -1 || nextNewline >= contentEnd) {
+				break;
+			}
+			lineStart = nextNewline + 1;
+		}
+
+		if (hasClosingDelimiter) {
+			const closingStart = stringEndPos - delimiterLength;
+			const closingPos = this.doc.positionAt(closingStart);
+			tokens.push({
+				type: 'string',
+				line: closingPos.line,
+				character: closingPos.character,
+				length: delimiterLength,
+				text: this.text.substring(closingStart, stringEndPos)
+			});
+		}
+
+		return tokens;
+	}
+
+	private tokenizeScannedStringRange(stringStartPos: number, stringEndPos: number, quote: string): TokenInfo[] {
+		const tripleDelimiter = quote.repeat(3);
+		const isTriple = this.text.substring(stringStartPos, stringStartPos + 3) === tripleDelimiter;
+		if (!isTriple) {
+			return this.scanFStringInterpolations(stringStartPos, stringEndPos);
+		}
+		const contentStart = stringStartPos + 3;
+		const hasClosingDelimiter = stringEndPos - stringStartPos >= 6 && this.text.substring(stringEndPos - 3, stringEndPos) === tripleDelimiter;
+		const contentEnd = hasClosingDelimiter ? stringEndPos - 3 : stringEndPos;
+		if (!this.isYamlLikeTripleQuotedContent(contentStart, contentEnd)) {
+			return this.scanFStringInterpolations(stringStartPos, stringEndPos);
+		}
+		return this.tokenizeTripleQuotedYamlString(stringStartPos, stringEndPos, quote);
+	}
+
 	private scanStringOption(): TokenInfo | null {
 		if (this.text[this.pos] !== '<') {
 			return null;
@@ -1506,20 +1673,44 @@ export class MastStateMachineLexer {
 		const startPos = this.pos;
 		const startLine = this.line;
 		const startChar = this.char;
+		const tripleDelimiter = quote.repeat(3);
+		const isTriple = this.text.substring(this.pos, this.pos + 3) === tripleDelimiter;
 		
-		this.advance(); // Opening quote
-		while (this.pos < this.text.length && this.text[this.pos] !== quote) {
-			if (this.text[this.pos] === '\\') {
-				this.advance(); // Escape char
-				if (this.pos < this.text.length) {
-					this.advance(); // Escaped char
+		if (isTriple) {
+			this.advance();
+			this.advance();
+			this.advance();
+			while (this.pos < this.text.length) {
+				if (this.text.substring(this.pos, this.pos + 3) === tripleDelimiter) {
+					this.advance();
+					this.advance();
+					this.advance();
+					break;
 				}
-			} else {
-				this.advance();
+				if (this.text[this.pos] === '\\') {
+					this.advance();
+					if (this.pos < this.text.length) {
+						this.advance();
+					}
+				} else {
+					this.advance();
+				}
 			}
-		}
-		if (this.pos < this.text.length && this.text[this.pos] === quote) {
-			this.advance(); // Closing quote
+		} else {
+			this.advance(); // Opening quote
+			while (this.pos < this.text.length && this.text[this.pos] !== quote) {
+				if (this.text[this.pos] === '\\') {
+					this.advance(); // Escape char
+					if (this.pos < this.text.length) {
+						this.advance(); // Escaped char
+					}
+				} else {
+					this.advance();
+				}
+			}
+			if (this.pos < this.text.length && this.text[this.pos] === quote) {
+				this.advance(); // Closing quote
+			}
 		}
 
 		const text = this.text.substring(startPos, this.pos);
@@ -2065,9 +2256,10 @@ export class MastStateMachineLexer {
 		}
 		this.skipWhitespace();
 		if (this.text[this.pos] === '"' || this.text[this.pos] === "'") {
+			const quote = this.text[this.pos];
 			const strStart = this.pos;
-			this.scanString(this.text[this.pos]);
-			tokenList.push(...this.scanFStringInterpolations(strStart, this.pos));
+			this.scanString(quote);
+			tokenList.push(...this.tokenizeScannedStringRange(strStart, this.pos, quote));
 		}
 		this.skipWhitespace();
 		if (this.text[this.pos] === ":") {
@@ -2974,7 +3166,7 @@ export class MastStateMachineLexer {
 					this.advance(); // skip the 'f' prefix
 					const strStart = this.pos;
 					this.scanString(next); // Parse but don't emit outer string
-					this.tokens.push(...this.scanFStringInterpolations(strStart, this.pos));
+					this.tokens.push(...this.tokenizeScannedStringRange(strStart, this.pos, next));
 					continue;
 				}
 			}
@@ -2987,7 +3179,7 @@ export class MastStateMachineLexer {
 				}
 				const strStart = this.pos;
 				this.scanString(current); // Parse but don't emit outer string
-				this.tokens.push(...this.scanFStringInterpolations(strStart, this.pos));
+				this.tokens.push(...this.tokenizeScannedStringRange(strStart, this.pos, current));
 				continue;
 			}
 
