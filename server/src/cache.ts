@@ -1058,11 +1058,11 @@ export class MissionCache {
 		const layoutStart = Date.now();
 		if (!fs.existsSync(this.missionLibManifestPath)) {
 			this.applyDefaultMastlibLayoutForMissingManifest();
-			await this.promptToCreateMissingMissionLibManifest();
-			if (!fs.existsSync(this.missionLibManifestPath)) {
-				this.logLoadTiming('loadMissionPackageLayout:manifest', Date.now() - layoutStart, 'manifest missing; default mastlib layout');
-				return;
-			}
+			// Fire-and-forget: don't block load() while waiting for user dialog response.
+			// If the user creates __lib__.json, the file watcher will trigger a reload.
+			this.promptToCreateMissingMissionLibManifest().catch((e) => debug(e));
+			this.logLoadTiming('loadMissionPackageLayout:manifest', Date.now() - layoutStart, 'manifest missing; default mastlib layout');
+			return;
 		}
 
 		try {
