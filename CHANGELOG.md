@@ -8,19 +8,23 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 * TODO: Add more info about shipdata entries to the art arguments for space objects
 * WIP: Get mast complier errors from the compiler itself, so the game doesn't have to be running to check for compiler errors.
-* TODO: Add certain parts of the MAST file functionality to apply to Python files as well (completions, go to definition, etc.)
+* ~~TODO: Add certain parts of the MAST file functionality to apply to Python files as well (completions, go to definition, etc.)~~ DONE!
 
 ### 0.18.2
 
-* Add checks that variables are defined (and warning if not)
+* Add checks that variables are defined (and gives a warning if not). Accounts for `if x is None:` and `if to_object(x) is None:` etc.
 * Fix handling global functions and modules (e.g. random and scatter)
 * Add 'mast.NewMissionScaffold' command that clones the [mast-starter](https://github.com/artemis-sbs/mast_starter) mission.
 * Check if required function arguments are present. (e.g. `has_role("some_role")` will have an error message because it's missing an argument)
 * Fix to autocompletion triggering when closing a function
 * Fix issue where triggered signals weren't being recognized, causing diagnostic saying the signal is emitted but not used.
+* Fix triple quotes when they are being used to pass yaml data.
 * Fix issue with function signatures not being properly registered with named arguments [#31](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues/31)
 * Add torpedo attribute keys and values to autocompletion.
 * Add applicable autocompletion functionality to python files, with option to enable/disable this: `mast.enablePython`
+* If python autocompletion is enabled, all available functions are available through autocompletion, and when one is selected it will auto-populate the import if not already there.
+	* If the mission folder is a mastlib, will use the `from sbs_utils.procedural.gui import x` syntax.
+	* If the mission folder is an sbslib, will use the `from ..procedural.links import x` syntax.
 
 
 ### 0.18.1

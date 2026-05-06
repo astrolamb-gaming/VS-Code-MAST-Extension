@@ -62,6 +62,9 @@ default message = "Whoo good workout."
 default time = random.randint(10,16)
 ```
 
+* Python autocompletion and auto-imports! NOTE: If using the Pylance extension, the mast extension will have delayed initial loading in python files.
+![Auto Import](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/raw/main/python_auto_import.gif)
+
 ## Requirements
 
 Dependencies should be packaged with the extension. If you encounter an issue with a dependency, or it is not included, please let me know ASAP.
