@@ -1560,6 +1560,28 @@ export class MastStateMachineLexer {
 		if (!isDotAccess && !isLambdaParam && assignmentModifier !== 'definition') {
 			if (this.doc?.uri && this.doc.uri.trim() !== '') {
 				const cache = getCache(this.doc.uri);
+				if (cache.getMastGlobal(text)) {
+					return {
+						type: 'module',
+						modifier: 'reference',
+						line: startLine,
+						character: startChar,
+						length: text.length,
+						text
+					};
+				}
+
+				if (cache.getClasses().some((c) => c.name === text)) {
+					return {
+						type: 'class',
+						modifier: 'reference',
+						line: startLine,
+						character: startChar,
+						length: text.length,
+						text
+					};
+				}
+
 				if (cache.getCallableForName(text, true)) {
 					return {
 						type: 'function',

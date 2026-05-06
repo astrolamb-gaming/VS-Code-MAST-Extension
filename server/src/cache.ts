@@ -461,6 +461,31 @@ export class MissionCache {
 					if (_c.name === mod) {
 						let val = g["value"];
 						let sigs = g["argspec"];
+						const paramMetadata = Array.isArray(g["param_metadata"]) ? g["param_metadata"] : [];
+						const defaultParams = Array.isArray(g["default_params"]) ? g["default_params"] : [];
+						const defaultMap = new Map<string, string>();
+						const typeMap = new Map<string, string>();
+						const docMap = new Map<string, string>();
+						for (const pm of paramMetadata) {
+							if (!pm || typeof pm !== 'object') continue;
+							const paramName = (pm["name"] ?? "").toString().trim();
+							if (paramName === "") continue;
+							const defaultVal = (pm["default"] ?? "").toString();
+							const typeVal = (pm["type"] ?? "").toString().trim();
+							const docVal = (pm["documentation"] ?? "").toString();
+							if (defaultVal !== "") defaultMap.set(paramName, defaultVal);
+							if (typeVal !== "") typeMap.set(paramName, typeVal);
+							if (docVal !== "") docMap.set(paramName, docVal);
+						}
+						for (const dp of defaultParams) {
+							if (!dp || typeof dp !== 'object') continue;
+							const paramName = (dp["name"] ?? "").toString().trim();
+							if (paramName === "") continue;
+							if (!defaultMap.has(paramName)) {
+								const defaultVal = (dp["default"] ?? "").toString();
+								if (defaultVal !== "") defaultMap.set(paramName, defaultVal);
+							}
+						}
 
 						// Add the function to the class
 						const f = new Function("","","");
@@ -482,9 +507,19 @@ export class MissionCache {
 						if (sigs !== undefined) {
 							let params = [];
 							while (m = sigParser.exec(sigs)) {
-								params.push(m[1])
-								if (m[1] !== "self") {
-									const p = new Parameter(m[1],f.parameters.length,"");
+								const argName = m[1];
+								const argType = typeMap.get(argName);
+								const defaultVal = defaultMap.get(argName);
+								let rawParam = argName;
+								if (argType !== undefined && argType !== '') {
+									rawParam += `: ${argType}`;
+								}
+								if (defaultVal !== undefined && defaultVal !== '') {
+									rawParam += ` = ${defaultVal}`;
+								}
+								params.push(rawParam)
+								if (argName !== "self") {
+									const p = new Parameter(rawParam,f.parameters.length,docMap.get(argName) || "");
 									f.parameters.push(p);
 								}
 							}
@@ -646,6 +681,7 @@ export class MissionCache {
 		const modulesStart = Date.now();
 		if (testingPython) return;
 		const uri = this.missionURI;
+		const seenModuleFiles = new Set<string>();
 		let globals = getArtemisGlobals();
 		if (globals === undefined) {
 			globals = await initializeArtemisGlobals();
@@ -686,7 +722,12 @@ export class MissionCache {
 							const files = getFilesInDir(missionFolder,true);
 							for (const f of files) {
 								if (f.endsWith(".py")|| f.endsWith(".mast")) {
+									const fileKey = fixFileName(f).toLowerCase();
+									if (seenModuleFiles.has(fileKey)) {
+										continue;
+									}
 									const data = await readFile(f);
+									seenModuleFiles.add(fileKey);
 									debug("Loading: " + path.basename(f));
 									this.handleZipData(data, f);
 									if (f.endsWith('.py')) modulePyLoaded++;
@@ -709,7 +750,12 @@ export class MissionCache {
 									processFile = path.join(zip,file);
 								}
 								if (file.endsWith(".py") || file.endsWith(".mast")) {
+									const archiveKey = fixFileName(processFile).toLowerCase();
+									if (seenModuleFiles.has(archiveKey)) {
+										continue;
+									}
 									processFile = saveZipTempFile(file,fileData);
+									seenModuleFiles.add(archiveKey);
 									this.handleZipData(fileData,processFile);
 									if (file.endsWith('.py')) modulePyLoaded++;
 									if (file.endsWith('.mast')) moduleMastLoaded++;
@@ -802,6 +848,10 @@ export class MissionCache {
 			handledAs = 'mast';
 			//debug("Building file: " + file);
 			if (file.includes("sbs_utils")) return;
+			const normalizedMastUri = fixFileName(file);
+			if (this.missionMastModules.some((existing) => fixFileName(existing.uri) === normalizedMastUri)) {
+				return;
+			}
 			const m = new MastFile(file, data);
 			m.inZip = true;
 			this.missionMastModules.push(m);
@@ -1393,8 +1443,9 @@ export class MissionCache {
 	 * @param p A {@link PyFile PyFile} that should be added to {@link MissionCache.missionPyModules MissionCache.missionPyModules}
 	 */
 	addMissionPyFile(p:PyFile) {
+		const normalizedIncoming = fixFileName(p.uri);
 		for (const f of this.missionPyModules) {
-			if (f.uri === p.uri) {
+			if (fixFileName(f.uri) === normalizedIncoming) {
 				return;
 			}
 		}
@@ -2211,6 +2262,11 @@ export class MissionCache {
 // Map of missionURI -> MissionCache for O(1) lookups
 let caches: Map<string, MissionCache> = new Map();
 
+function normalizeCacheKey(input: string): string {
+	const normalized = fixFileName(input || '').replace(/\/+$|\/+$/g, '');
+	return process.platform === 'win32' ? normalized.toLowerCase() : normalized;
+}
+
 /**
  * 
  * @param name Can be either the name of the mission folder, or a URI to that folder or any folder within the mission folder.
@@ -2232,6 +2288,7 @@ export function getCache(name:string, reloadCache:boolean = false): MissionCache
 		name = URI.parse(name).fsPath;
 	}
 	const mf = getMissionFolder(name);
+	const missionKey = normalizeCacheKey(mf);
 	if (mf === '') {
 		const fallback = caches.values().next().value as MissionCache | undefined;
 		if (fallback) {
@@ -2242,7 +2299,7 @@ export function getCache(name:string, reloadCache:boolean = false): MissionCache
 	}
 
 	// First try direct lookup by mission folder
-	const existing = caches.get(mf);
+	const existing = caches.get(missionKey);
 	if (existing) {
 		if (reloadCache) existing.load();
 		existing.lastAccessed = Date.now();
@@ -2260,7 +2317,7 @@ export function getCache(name:string, reloadCache:boolean = false): MissionCache
 
 	// Create a new cache
 	const ret = new MissionCache(name);
-	caches.set(ret.missionURI, ret);
+	caches.set(normalizeCacheKey(ret.missionURI), ret);
 	ret.load();
 	ret.lastAccessed = Date.now();
 	return ret;

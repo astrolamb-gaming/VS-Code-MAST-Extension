@@ -91,6 +91,7 @@ else:
 import json
 import random
 import itertools
+import re
 # Testing
 # print(inspect.signature(math.cos))
 # print(inspect.signature(math.hypot)) # not found
@@ -104,6 +105,112 @@ def is_number(value):
         return True
     except ValueError:
         return False
+
+def get_default_params(func):
+	"""Returns list of params that have default values using inspect.signature()."""
+	try:
+		sig = inspect.signature(func)
+		defaults = []
+		for param in sig.parameters.values():
+			if param.name == 'self':
+				continue
+			if param.kind in (inspect.Parameter.VAR_POSITIONAL, 
+							 inspect.Parameter.VAR_KEYWORD):
+				continue
+			if param.default != inspect.Parameter.empty:
+				defaults.append({
+					"name": param.name,
+					"default": repr(param.default)
+				})
+		return defaults
+	except (ValueError, TypeError):
+		# Fallback to getfullargspec
+		return get_default_params_fallback(func)
+
+def parse_param_docs(doc):
+	"""Best-effort parse of per-parameter docs from common docstring styles."""
+	if not doc:
+		return {}
+
+	result = {}
+
+	# reST/Sphinx style: :param name: description
+	for m in re.finditer(r"^\s*:param\s+([A-Za-z_][\w]*)\s*:\s*(.+)$", doc, re.MULTILINE):
+		result[m.group(1)] = m.group(2).strip()
+
+	lines = doc.splitlines()
+
+	# Google style section: Args:/Arguments:/Parameters:
+	in_args = False
+	for line in lines:
+		if re.match(r"^\s*(Args|Arguments|Parameters)\s*:\s*$", line):
+			in_args = True
+			continue
+		if in_args and re.match(r"^\s*[A-Z][A-Za-z ]*:\s*$", line):
+			in_args = False
+			continue
+		if not in_args:
+			continue
+		m = re.match(r"^\s*([A-Za-z_][\w]*)\s*(?:\([^)]*\))?\s*:\s*(.+)$", line)
+		if m:
+			result[m.group(1)] = m.group(2).strip()
+
+	return result
+
+def stringify_annotation(annotation):
+	if annotation == inspect.Parameter.empty:
+		return ""
+	try:
+		if isinstance(annotation, str):
+			return annotation
+		if hasattr(annotation, "__name__"):
+			return annotation.__name__
+		return str(annotation).replace("typing.", "")
+	except:
+		return ""
+
+def get_param_metadata(func):
+	"""Return list of parameter metadata (name, type, default, documentation)."""
+	ret = []
+	try:
+		sig = inspect.signature(func)
+		doc = inspect.getdoc(func) or ""
+		doc_map = parse_param_docs(doc)
+		for param in sig.parameters.values():
+			if param.name == 'self':
+				continue
+			if param.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD):
+				continue
+			default_val = ""
+			if param.default != inspect.Parameter.empty:
+				default_val = repr(param.default)
+			ret.append({
+				"name": param.name,
+				"type": stringify_annotation(param.annotation),
+				"default": default_val,
+				"documentation": doc_map.get(param.name, "")
+			})
+	except (ValueError, TypeError):
+		pass
+	return ret
+
+def get_default_params_fallback(func):
+	"""Fallback using getfullargspec."""
+	try:
+		spec = inspect.getfullargspec(func)
+		defaults = spec.defaults or ()
+		if not defaults:
+			return []
+		default_names = spec.args[-len(defaults):]
+		return [
+			{
+				"name": n,
+				"default": repr(v)
+			}
+			for n, v in zip(default_names, defaults)
+		]
+	except (TypeError, ValueError):
+		return []
 
 class Info:
 	"""
@@ -121,6 +228,8 @@ class Info:
 	code = ""
 	sig = ""
 	value = ""
+	default_params = []
+	param_metadata = []
 
 
 	def __init__(self, mastName, pyName):
@@ -177,6 +286,10 @@ def parseFunction(mastName: str, module:str , pyName) -> Info:
 		# stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
 		# print(stack_trace)
 		pass
+
+	# Extract parameters that have default values
+	info.default_params = get_default_params(func)
+	info.param_metadata = get_param_metadata(func)
 
 	return info
 
