@@ -182,12 +182,20 @@ export class PythonLexer {
 			// Operators (including ->)
 			if ('+-*/%=<>!&|'.includes(ch)) {				const start = pos;
 				const startCol = column;
-				// Handle multi-char operators like ->, ==, <=, etc.
+				// Handle multi-char operators (only valid combinations).
 				pos++;
 				column++;
-				if (pos < this.text.length && '=><-'.includes(this.text[pos])) {
-					pos++;
-					column++;
+				if (pos < this.text.length) {
+					const next = this.text[pos];
+					const isArrow = ch === '-' && next === '>';
+					const isComparisonOrAssign = next === '=' && '+-*/%<>&|!^='.includes(ch);
+					const isShift = (ch === '<' || ch === '>') && next === ch;
+					const isPowerOrFloorDiv = (ch === '*' || ch === '/') && next === ch;
+
+					if (isArrow || isComparisonOrAssign || isShift || isPowerOrFloorDiv) {
+						pos++;
+						column++;
+					}
 				}
 				tokens.push({ type: TokenType.OPERATOR, value: this.text.substring(start, pos), line, column: startCol });
 				continue;
