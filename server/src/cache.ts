@@ -1903,10 +1903,10 @@ export class MissionCache {
 
 		for (const file of this.mastFileCache) {
 			const found = findIn(file.labelNames);
-			if (file.uri.includes("side_prefabs")) {
-				console.log(file.labelNames)
-				console.log(found);
-			}
+			// if (file.uri.includes("side_prefabs")) {
+			// 	console.log(file.labelNames)
+			// 	console.log(found);
+			// }
 			if (found) {
 				return found;
 			}

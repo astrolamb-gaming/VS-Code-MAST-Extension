@@ -333,12 +333,12 @@ export class TokenBasedExtractor {
 		const words: Word[] = [];
 		
 		const tags = this.getDocumentedKeyTags();
-		if (tags.length > 0) {
-			debug("KEY TAGS:")
-			debug(tags);
-			debug("KEYWORDS:")
-			debug(keywords);
-		}
+		// if (tags.length > 0) {
+		// 	debug("KEY TAGS:")
+		// 	debug(tags);
+		// 	debug("KEYWORDS:")
+		// 	debug(keywords);
+		// }
 		for (const tag of tags) {
 			debug("Processing tag: " + tag.name + " of type " + tag.keyType);
 			if (!(keywords.includes(tag.keyType))) {
