@@ -106,6 +106,24 @@ def random_kralien_name():
 		assert.equal(namesPy.defaultFunctions.some((func) => func.name === 'names_random_kralien_name'), false);
 	});
 
+	it('binds aliased module methods to the alias class name', () => {
+		const sbsPy = createPyFile('sbs.py', `
+def get_hull_map(spaceObjectID: int, forceCreate: bool = False):
+    pass
+`);
+
+		sbsPy.isGlobal = true;
+		sbsPy.globalAlias = 'sbs';
+		sbsPy.applyImportedGlobalAlias(false);
+
+		const sbsClass = sbsPy.classes.find((classObject) => classObject.name === 'sbs');
+		assert.ok(sbsClass);
+		const method = sbsClass?.methods.find((current) => current.name === 'get_hull_map');
+		assert.ok(method);
+		assert.equal(method?.className, 'sbs');
+		assert.equal(method?.parameters[1]?.default, 'False');
+	});
+
 	it('applies MastGlobals faces entries as class wrappers on matching modules', () => {
 		const { cache, missionDir } = createMissionCache('faces-global');
 
@@ -159,5 +177,27 @@ class MastGlobals:
 		cache.sbsGlobals.push(['sbs', '']);
 
 		assert.ok(cache.getMastGlobal('sbs'));
+	});
+
+	it('only aliases the exact sbs module for the sbs special-case global', () => {
+		const { cache, missionDir } = createMissionCache('sbs-exact-module-only');
+
+		const sbsPy = new PyFile(path.join(missionDir, 'sbs.py'), `
+def get_hull_map(spaceObjectID: int, forceCreate: bool = False):
+    pass
+`);
+		const sidesPy = new PyFile(path.join(missionDir, 'sbs_utils', 'procedural', 'sides.py'), `
+def port_side():
+    pass
+`);
+
+		cache.sbsGlobals.push(['sbs', '']);
+		cache.addSbsPyFile(sidesPy);
+		cache.addSbsPyFile(sbsPy);
+
+		const sbsClass = cache.getClasses().find((classObject) => classObject.name === 'sbs');
+		assert.ok(sbsClass);
+		assert.ok(sbsClass?.methods.some((method) => method.name === 'get_hull_map'));
+		assert.equal(sidesPy.classes.some((classObject) => classObject.name === 'sbs'), false);
 	});
 });

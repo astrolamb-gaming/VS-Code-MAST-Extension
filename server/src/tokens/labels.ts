@@ -653,7 +653,10 @@ function findBadLabels(t: TextDocument) : Diagnostic[] {
 		if (lbl.startsWith("->")) {
 			continue;
 		}
-		let isInYaml = getTokenTypeAtOffset(t, tokens || [], m.index) === "yaml";
+		const startPos = t.positionAt(m.index);
+		const tokenTypeAtOffset = getTokenTypeAtOffset(t, tokens || [], m.index);
+		const isYamlLine = (tokens || []).some((tok) => tok.line === startPos.line && tok.type.includes('yaml'));
+		let isInYaml = tokenTypeAtOffset === "yaml" || isYamlLine;
 		let isInComment = getTokenTypeAtOffset(t, tokens || [], m.index) === "comment";
 		if (isInYaml || isInComment) {
 			continue;

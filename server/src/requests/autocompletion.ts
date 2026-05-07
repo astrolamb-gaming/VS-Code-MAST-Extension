@@ -30,6 +30,80 @@ const facePickerArgs = new Set(['face']);
 let lastFacePickerTriggerKey = '';
 let lastFacePickerTriggerAt = 0;
 
+function endsWithIdentifierAccess(context: string, identifier: string): boolean {
+	const suffix = `${identifier}.`;
+	if (!context.endsWith(suffix)) {
+		return false;
+	}
+
+	const precedingIndex = context.length - suffix.length - 1;
+	if (precedingIndex < 0) {
+		return true;
+	}
+
+	return !/[A-Za-z0-9_]/.test(context[precedingIndex]);
+}
+
+function getTrailingIdentifierBeforeDot(context: string): string | undefined {
+	if (!context.endsWith('.')) {
+		return undefined;
+	}
+
+	let end = context.length - 2;
+	while (end >= 0 && /[\t ]/.test(context[end])) {
+		end--;
+	}
+	if (end < 0) {
+		return undefined;
+	}
+
+	let start = end;
+	while (start >= 0 && /[A-Za-z0-9_]/.test(context[start])) {
+		start--;
+	}
+	const ident = context.substring(start + 1, end + 1).trim();
+	return ident || undefined;
+}
+
+function buildGlobalModuleMemberCompletions(cache: MissionCache, receiver: string): CompletionItem[] {
+	const items: CompletionItem[] = [];
+	const seen = new Set<string>();
+	const addItem = (item: CompletionItem | undefined) => {
+		if (!item) return;
+		const key = `${item.label}|${item.detail || ''}`;
+		if (seen.has(key)) return;
+		seen.add(key);
+		items.push(item);
+	};
+
+	const files = cache.pyFileCache.concat(cache.missionPyModules);
+	for (const file of files) {
+		const baseName = path.basename(file.uri, '.py');
+		const alias = file.globalAlias || '';
+		if (baseName !== receiver && alias !== receiver) {
+			continue;
+		}
+
+		for (const classObject of file.classes) {
+			if (classObject.name !== receiver) {
+				continue;
+			}
+			for (const item of classObject.getMethodCompletionItems()) {
+				addItem(item);
+			}
+		}
+
+		for (const func of file.defaultFunctions) {
+			if ((func.className || '') && func.className !== receiver) {
+				continue;
+			}
+			addItem(func.buildCompletionItem());
+		}
+	}
+
+	return items;
+}
+
 type Behavior = {
 	name: string;
 	documentation?: string;
@@ -1041,6 +1115,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	if (iStr.endsWith(".")) {
 		debug("Getting Classes...");
 		debug(iStr);
+		const receiverName = getTrailingIdentifierBeforeDot(iStr);
 		// First we check if a class is being referenced.
 		const classes = cache.getClasses();
 
@@ -1059,7 +1134,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				debug(c);
 			}
 			// debug(c);
-			if (iStr.endsWith(" " + c.name + ".")) {
+			if (endsWithIdentifierAccess(iStr, c.name)) {
 				debug(iStr + " contains " + c.name);
 				// TODO: Only use labels with isClassMethod = true
 				// c.methods[0].completionItem.kind == CompletionItemKind.Method;
@@ -1067,6 +1142,12 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			}
 			if (iStr.endsWith("EVENT.") && c.name === "event") {
 				return c.getMethodCompletionItems();
+			}
+		}
+		if (receiverName && cache.getMastGlobal(receiverName)) {
+			const moduleItems = buildGlobalModuleMemberCompletions(cache, receiverName);
+			if (moduleItems.length > 0) {
+				return moduleItems;
 			}
 		}
 		// Then we assume it's an object, but we can't determine the type, so we iterate over all the classes.

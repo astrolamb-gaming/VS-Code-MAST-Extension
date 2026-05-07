@@ -209,22 +209,7 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		excludeFrom: []
 	};
 	errorSources.push(e1);
-	e1 = {
-		pattern: /^[\w ][^+][^\"][\w\(\) ]+?\/\//g,
-		severity: DiagnosticSeverity.Error,
-		message: "Route labels can only be at the start of a line, unless used as label that runs when button is pressed.",
-		source: "sbs",
-		relatedMessage: "See https://artemis-sbs.github.io/sbs_utils/mast/routes/ for more details on routes.",
-		excludeFrom: []
-	}
-	e1 = {
-		pattern: /\b[A-Z]{2,}\b/g,
-		severity: DiagnosticSeverity.Information,
-		source: "mast",
-		message: "CAPS " + debugStrs,
-		relatedMessage: "Is all caps intentional?",
-		excludeFrom: []
-	}
+
 	e1 = {
 		pattern: /\w+\.($|\n)/gs,
 		severity: DiagnosticSeverity.Error,
@@ -232,14 +217,6 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		message: "Property for object not specified.",
 		relatedMessage: "",
 		excludeFrom: []
-	}
-	e1 = {
-		pattern: /:[ \t]*(\/\/)?[A-Za-z\/][\w\/]+(\{.*?\})?$/gm,
-		severity: DiagnosticSeverity.Error,
-		source: "mast",
-		message: "Bad colon usage in label definition",
-		relatedMessage: "If you're not defining a label code block, then you shouldn't be using a colon.\nIf you are defining a label code block, the colon should be at the end of the line.",
-		excludeFrom: ["comment","string","metadata"]
 	}
 	errorSources.push(e1);
 
@@ -249,7 +226,7 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 		source: "mast",
 		message: "Colon used in label definition",
 		relatedMessage: "Can't use a colon here.",
-		excludeFrom: ["comment","string","metadata"]
+		excludeFrom: ["comment","string","metadata","yaml"]
 	}
 	errorSources.push(e1);
 

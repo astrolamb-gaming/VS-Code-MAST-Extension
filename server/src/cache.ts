@@ -421,6 +421,63 @@ export class MissionCache {
 		let go = await initializeArtemisGlobals();
 		showProgressBar(true);
 		let sigParser = /'(.*?)'/g;
+		const parseDocSignatureParams = (signatureText: string): Array<{ name: string; optional: boolean }> => {
+			const parsed: Array<{ name: string; optional: boolean }> = [];
+			let token = '';
+			let depth = 0;
+			let tokenOptional = false;
+
+			const pushToken = () => {
+				const raw = token.trim();
+				token = '';
+				if (!raw) {
+					tokenOptional = depth > 0;
+					return;
+				}
+
+				let cleaned = raw.replace(/[\[\]]/g, '').trim();
+				if (cleaned === '' || cleaned === '/' || cleaned === '*' || cleaned === '...') {
+					tokenOptional = depth > 0;
+					return;
+				}
+
+				cleaned = cleaned.replace(/^\*\*?/, '').trim();
+				const baseName = cleaned.split('=')[0].split(':')[0].trim();
+				if (baseName !== '') {
+					const hasInlineDefault = cleaned.includes('=');
+					parsed.push({ name: baseName, optional: tokenOptional || hasInlineDefault });
+				}
+
+				tokenOptional = depth > 0;
+			};
+
+			for (const ch of signatureText) {
+				if (ch === '[') {
+					depth++;
+					if (token.trim() === '') {
+						tokenOptional = true;
+					}
+					continue;
+				}
+				if (ch === ']') {
+					pushToken();
+					depth = Math.max(0, depth - 1);
+					continue;
+				}
+				if (ch === ',') {
+					pushToken();
+					continue;
+				}
+
+				if (token.length === 0 && /\S/.test(ch)) {
+					tokenOptional = depth > 0;
+				}
+				token += ch;
+			}
+
+			pushToken();
+			return parsed;
+		};
 		let globalInfo: any = [];
 		let globalNames:string[][] = [];
 		for (const g of globals) {
@@ -528,21 +585,35 @@ export class MissionCache {
 						// If there's no sig info, such as for math.hypot, we can do this to parse the documentation
 						if (f.parameters.length === 0 && doc !== undefined) {
 							let paramCheck = /\((.*?)\)/g;
-							let params:string[] = [];
+							let params: Array<{ name: string; optional: boolean }> = [];
 							while (m = paramCheck.exec(doc)) {
 								if (doc.includes(name + m[0])) {
 									f.rawParams = m[1];
-									params = m[1].split(",");
+									params = parseDocSignatureParams(m[1]);
 									break;
 								}
 							}
+							const fallbackRawParams: string[] = [];
 							for (const p of params) {
-								if (p !== "self") {
-									const param = new Parameter(p,f.parameters.length,"");
+								if (p.name !== "self") {
+									const argType = typeMap.get(p.name);
+									const mappedDefault = defaultMap.get(p.name);
+									let rawParam = p.name;
+									if (argType !== undefined && argType !== '') {
+										rawParam += `: ${argType}`;
+									}
+									if (mappedDefault !== undefined && mappedDefault !== '') {
+										rawParam += ` = ${mappedDefault}`;
+									} else if (p.optional) {
+										// Bracketed signatures like sub[, start[, end]] denote optional params.
+										rawParam += ' = None';
+									}
+									const param = new Parameter(rawParam,f.parameters.length,docMap.get(p.name) || "");
 									f.parameters.push(param);
+									fallbackRawParams.push(rawParam);
 								}
 							}
-							f.rawParams = params.join(', ');
+							f.rawParams = fallbackRawParams.join(', ');
 						}
 						_c.methods.push(f);
 					}
@@ -1544,17 +1615,29 @@ export class MissionCache {
 	}
 
 	tryApplyFileAsGlobal(f:PyFile, g:string[]) {
-		if (g[0] === "sbs") {
-			// Treat sbs differently
+		const importedModule = (g[0] || '').trim();
+		if (importedModule === '') {
 			return;
 		}
+
+		const baseName = path.basename(f.uri, '.py');
+		if (importedModule === 'sbs') {
+			if (baseName !== 'sbs') {
+				return;
+			}
+			f.isGlobal = true;
+			f.globalAlias = 'sbs';
+			f.applyImportedGlobalAlias(false);
+			return;
+		}
+
 		const file = f.uri.replace(/\//g,".").replace(/\\/g,".");
-		if (file.includes(g[0]) && file.endsWith(".py")) {
+		if (file.includes(importedModule) && file.endsWith(".py")) {
 			f.isGlobal = true;
 			f.globalAlias = g[1] || "";
-			const moduleBase = (g[0] || '').split('.').pop() || '';
+			const moduleBase = importedModule.split('.').pop() || '';
 			const alias = f.globalAlias || moduleBase;
-			const createPrefixedFunctions = alias !== 'names';
+			const createPrefixedFunctions = alias !== 'names' && alias !== 'sbs';
 			f.applyImportedGlobalAlias(createPrefixedFunctions);
 		}
 	}

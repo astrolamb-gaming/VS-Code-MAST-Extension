@@ -146,7 +146,11 @@ export class PyFile extends FileCache {
 			if (path.basename(this.uri).replace(".py", "") === o) {
 				const c = new ClassObject("", path.basename(this.uri));
 				c.name = o;
-				c.methods = [...this.defaultFunctions];
+				c.methods = this.defaultFunctions.map((func) => {
+					const copy = func.copy();
+					copy.className = c.name;
+					return copy;
+				});
 				this.classes.push(c);
 
 				this.defaultFunctions = [];
@@ -224,7 +228,11 @@ export class PyFile extends FileCache {
 
 		const aliasClass = new ClassObject("", path.basename(this.uri));
 		aliasClass.name = this.globalAlias;
-		aliasClass.methods = this.defaultFunctions.map((func) => func.copy());
+		aliasClass.methods = this.defaultFunctions.map((func) => {
+			const copy = func.copy();
+			copy.className = aliasClass.name;
+			return copy;
+		});
 		this.classes.push(aliasClass);
 
 		if (createPrefixedFunctions) {
