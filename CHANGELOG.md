@@ -20,6 +20,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * Fix issue where triggered signals weren't being recognized, causing diagnostic saying the signal is emitted but not used.
 * Fix triple quotes when they are being used to pass yaml data.
 * Fix issue with function signatures not being properly registered with named arguments [#31](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues/31)
+* Add style definition functionality (autocomplete, go to definition, find all references) per [#20](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues/20)
 * Add torpedo attribute keys and values to autocompletion.
 * Add applicable autocompletion functionality to python files, with option to enable/disable this: `mast.enablePython`
 * If python autocompletion is enabled, all available functions are available through autocompletion, and when one is selected it will auto-populate the import if not already there.
