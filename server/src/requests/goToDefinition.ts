@@ -61,6 +61,42 @@ function collectMethodCandidates(docUri: string, methodName: string): Location[]
 	return ret;
 }
 
+function getHoveredStyleReference(str: string, pos: integer): string | undefined {
+	const rx = /\$([A-Za-z_]\w*)/g;
+	let m: RegExpExecArray | null;
+	while ((m = rx.exec(str)) !== null) {
+		const start = m.index;
+		const end = start + m[0].length;
+		if (pos >= start && pos <= end) {
+			return m[1];
+		}
+	}
+	return undefined;
+}
+
+function getStyleDefinitionLocation(doc: TextDocument, styleName: string): Location | undefined {
+	const cache = getCache(doc.uri);
+	const mastFile = cache.getMastFile(doc.uri);
+	if (!mastFile) {
+		return undefined;
+	}
+	const target = (styleName || '').trim().toLowerCase();
+	if (target.length === 0) {
+		return undefined;
+	}
+	const def = (mastFile.styleDefinitions || []).find((entry) => (entry.name || '').toLowerCase() === target);
+	if (!def) {
+		return undefined;
+	}
+	return {
+		uri: fileFromUri(mastFile.uri || doc.uri),
+		range: {
+			start: { line: def.line, character: def.character },
+			end: { line: def.line, character: def.character + def.length }
+		}
+	};
+}
+
 export async function onDefinition(doc:TextDocument,pos:Position): Promise<Location | undefined> {
 	// parseVariables(doc);
 	// return;
@@ -85,6 +121,10 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 	const text = doc.getText();
 
 	let hoveredLine = getCurrentLineFromTextDocument(pos, doc);
+	const styleRef = getHoveredStyleReference(hoveredLine, pos.character);
+	if (styleRef) {
+		return getStyleDefinitionLocation(doc, styleRef);
+	}
 	debug(hoveredLine);
 	const range = getHoveredWordRange(hoveredLine, pos.character);
 	// const symbol = hoveredLine.substring(range.start,range.end);

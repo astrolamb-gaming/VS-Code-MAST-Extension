@@ -104,6 +104,14 @@ function buildGlobalModuleMemberCompletions(cache: MissionCache, receiver: strin
 	return items;
 }
 
+function getStyleReferencePrefix(textBeforeCursor: string): string | undefined {
+	const m = textBeforeCursor.match(/(?:^|[^A-Za-z0-9_])\$([A-Za-z_]\w*)?$/);
+	if (!m) {
+		return undefined;
+	}
+	return m[1] || '';
+}
+
 type Behavior = {
 	name: string;
 	documentation?: string;
@@ -575,6 +583,28 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		debug("Is in Yaml")
 		ci = ci.concat(cache.getCompletions());
 		return ci;
+	}
+
+	if (!isPythonDocument) {
+		const stylePrefix = getStyleReferencePrefix(iStr);
+		if (stylePrefix !== undefined) {
+			const mastFile = cache.getMastFile(text.uri);
+			const defs = mastFile.styleDefinitions || [];
+			for (const def of defs) {
+				if (stylePrefix && !def.name.toLowerCase().startsWith(stylePrefix.toLowerCase())) {
+					continue;
+				}
+				ci.push({
+					label: `$${def.name}`,
+					kind: CompletionItemKind.Variable,
+					insertText: def.name,
+					documentation: def.text || 'Style definition'
+				});
+			}
+			if (ci.length > 0) {
+				return ci;
+			}
+		}
 	}
 
 	// TODO: Check and make absolutely sure that isTextInBracket is working properly

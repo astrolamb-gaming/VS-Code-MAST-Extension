@@ -36,6 +36,18 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 	// _prof('getTokenContextAtPosition');
 
 	let hoveredLine = getCurrentLineFromTextDocument(_pos.position, text);
+	const styleRef = getHoveredStyleReference(hoveredLine, _pos.position.character);
+	if (styleRef) {
+		const mastFile = cache.getMastFile(text.uri);
+		const def = (mastFile.styleDefinitions || []).find((entry) => entry.name === styleRef);
+		if (def) {
+			return {
+				contents: def.text && def.text.trim() !== ''
+					? `Style \$${def.name}\n\n${def.text}`
+					: `Style \$${def.name}`
+			};
+		}
+	}
 	// const symbol = getHoveredSymbol(hoveredLine, _pos.position.character);
 	let symbol = tokenContext.token?.text;
 	if (symbol === undefined) {
@@ -433,6 +445,19 @@ export function getHoveredWordRange(str:string, pos: integer): CRange {
 		}
 	}
 	return r;
+}
+
+function getHoveredStyleReference(str: string, pos: integer): string | undefined {
+	const rx = /\$([A-Za-z_]\w*)/g;
+	let m: RegExpExecArray | null;
+	while ((m = rx.exec(str)) !== null) {
+		const start = m.index;
+		const end = start + m[0].length;
+		if (pos >= start && pos <= end) {
+			return m[1];
+		}
+	}
+	return undefined;
 }
 
 

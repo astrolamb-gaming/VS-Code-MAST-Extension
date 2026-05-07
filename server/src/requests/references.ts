@@ -229,6 +229,64 @@ function getTokenContextNearPosition(doc: TextDocument, tokens: any[], position:
 	return ctx;
 }
 
+function getHoveredStyleReference(str: string, pos: number): string | undefined {
+	const rx = /\$([A-Za-z_]\w*)/g;
+	let m: RegExpExecArray | null;
+	while ((m = rx.exec(str)) !== null) {
+		const start = m.index;
+		const end = start + m[0].length;
+		if (pos >= start && pos <= end) {
+			return m[1];
+		}
+	}
+	return undefined;
+}
+
+function getStyleReferenceLocations(doc: TextDocument, styleName: string, includeDeclaration: boolean): Location[] {
+	const cache = getCache(doc.uri);
+	const target = (styleName || '').trim().toLowerCase();
+	if (target.length === 0) {
+		return [];
+	}
+
+	const locs: Location[] = [];
+	const mastFiles = cache.mastFileCache.concat(cache.missionMastModules);
+	for (const mastFile of mastFiles) {
+		const text = mastFile.lastText;
+		if (!text || text.length === 0) {
+			continue;
+		}
+
+		const textDoc = TextDocument.create(mastFile.uri, 'mast', 1, text);
+		const lines = text.split(/\r?\n/);
+		for (let lineNum = 0; lineNum < lines.length; lineNum++) {
+			const line = lines[lineNum];
+			const declMatch = line.match(/^\s*=\$([A-Za-z_]\w*)\b/);
+			const declStart = declMatch ? line.indexOf(`$${declMatch[1]}`) : -1;
+
+			const rx = /\$([A-Za-z_]\w*)/g;
+			let m: RegExpExecArray | null;
+			while ((m = rx.exec(line)) !== null) {
+				if ((m[1] || '').toLowerCase() !== target) {
+					continue;
+				}
+				const isDeclaration = declMatch !== null && m.index === declStart;
+				if (!includeDeclaration && isDeclaration) {
+					continue;
+				}
+				const start = { line: lineNum, character: m.index };
+				const end = { line: lineNum, character: m.index + m[0].length };
+				locs.push({
+					uri: fileFromUri(textDoc.uri),
+					range: { start, end }
+				});
+			}
+		}
+	}
+
+	return dedupeLocations(locs);
+}
+
 function isBlobAccessorSetGetCall(tokens: any[], position: Position, doc: TextDocument): boolean {
 	const isBlobLikeAccessorName = (name: string): boolean => {
 		const n = (name || '').toLowerCase();
@@ -395,6 +453,10 @@ export async function onReferences(doc: TextDocument, params:ReferenceParams): P
 	if (!tokenContext.token) {
 		debug("No token found at position, using hovered-symbol fallback");
 		const line = getCurrentLineFromTextDocument(params.position, doc);
+		const styleRef = getHoveredStyleReference(line, params.position.character);
+		if (styleRef) {
+			return getStyleReferenceLocations(doc, styleRef, params.context?.includeDeclaration ?? true);
+		}
 		const fallbackWord = (getHoveredSymbol(line, params.position.character) || '').trim();
 		if (!fallbackWord) {
 			return locs;
@@ -435,6 +497,11 @@ export async function onReferences(doc: TextDocument, params:ReferenceParams): P
 	}
 
 	debug(word);
+	const styleRef = getHoveredStyleReference(getCurrentLineFromTextDocument(params.position, doc), params.position.character)
+		|| (token.type === 'style-definition' ? word.replace(/^\$/, '') : undefined);
+	if (styleRef) {
+		return getStyleReferenceLocations(doc, styleRef, params.context?.includeDeclaration ?? true);
+	}
 
 	// Label-ish tokens should resolve against labels directly.
 	// Exception: route-label tokens that are signal paths (shared/signal/... or signal/...)

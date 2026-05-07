@@ -2894,6 +2894,40 @@ export class MastStateMachineLexer {
 
 			const current = this.text[this.pos];
 
+			// Style definition detection: lines matching ^[ \t]*=\$name ...
+			// Tokenize the keyword and name, but skip the description portion.
+			if (this.isLineStart() && current === '=') {
+				const rest = this.text.substring(this.pos);
+				const styleDefMatch = rest.match(/^(=)(\$)([A-Za-z_]\w*)\b/);
+				if (styleDefMatch) {
+					// Skip the '=' and '$' without emitting tokens
+					this.advance(); // skip '='
+					this.advance(); // skip '$'
+
+					// Emit the style name
+					const nameLength = styleDefMatch[3].length;
+					const nameStartChar = this.char;
+					const nameStartLine = this.line;
+					for (let i = 0; i < nameLength; i++) {
+						this.advance();
+					}
+					this.tokens.push({
+						type: 'style-definition',
+						modifier: 'definition',
+						line: nameStartLine,
+						character: nameStartChar,
+						length: nameLength,
+						text: styleDefMatch[3]
+					});
+
+					// Skip rest of line (description portion)
+					while (this.pos < this.text.length && this.text[this.pos] !== '\n') {
+						this.advance();
+					}
+					continue;
+				}
+			}
+
 			// If we are inside a multi-line delimiter-based string block (e.g. ^^^...^^^ or """..."""),
 			// treat each full line as f-string content until a closing delimiter is encountered.
 			if (this.activeLineStringDelimiter !== null && this.isLineStart()) {

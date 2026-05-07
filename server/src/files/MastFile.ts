@@ -25,6 +25,14 @@ export interface ExtractedItem {
 	length: number;
 }
 
+export interface StyleDefinitionEntry {
+	name: string;
+	text: string;
+	line: number;
+	character: number;
+	length: number;
+}
+
 
 /**
  * Represents a mast file.
@@ -55,6 +63,7 @@ export class MastFile extends FileCache {
 	links: Word[] = [];
 	prefabs: LabelInfo[] = [];
 	words: Word[] = [];
+	styleDefinitions: StyleDefinitionEntry[] = [];
 	inZip: boolean = false;
 	loaded: boolean = false;
 
@@ -130,7 +139,37 @@ export class MastFile extends FileCache {
 
 		// Parse words
 		this.words = [];// parseWords(textDocument);
+		this.styleDefinitions = this.parseStyleDefinitions(textDocument);
 		this.loaded = true;
+	}
+
+	private parseStyleDefinitions(doc: TextDocument): StyleDefinitionEntry[] {
+		const ret: StyleDefinitionEntry[] = [];
+		const seen = new Set<string>();
+		const text = doc.getText();
+		const rx = /^[ \t]*=\$([A-Za-z_]\w*)\b(.*)$/gm;
+		let m: RegExpExecArray | null;
+		while ((m = rx.exec(text)) !== null) {
+			const full = m[0];
+			const name = m[1];
+			const trailing = (m[2] || '').trim();
+			const nameInFull = full.indexOf(`$${name}`);
+			const absolute = m.index + (nameInFull >= 0 ? nameInFull : 0);
+			const pos = doc.positionAt(absolute);
+			const key = name.toLowerCase();
+			if (seen.has(key)) {
+				continue;
+			}
+			seen.add(key);
+			ret.push({
+				name,
+				text: trailing,
+				line: pos.line,
+				character: pos.character,
+				length: name.length + 1
+			});
+		}
+		return ret;
 	}
 
 	/**
@@ -293,6 +332,7 @@ export class MastFile extends FileCache {
 		this.prefabs = parsePrefabs(this.labelNames);
 		this.variables = parseVariablesFromTokens(doc, this.tokens);
 		this.words = [];// parseWords(doc);
+		this.styleDefinitions = this.parseStyleDefinitions(doc);
 
 		this.lastText = newText;
 		this.loaded = true;
