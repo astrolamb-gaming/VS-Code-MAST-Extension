@@ -1648,8 +1648,18 @@ export class MastStateMachineLexer {
 		const startLine = this.line;
 		const startChar = this.char;
 
+		// Leading-dot float (e.g. .1 or .1f)
+		if (this.text[this.pos] === '.' && this.isDigit(this.peek()!)) {
+			this.advance(); // .
+			while (this.pos < this.text.length && (this.isDigit(this.text[this.pos]) || this.text[this.pos] === '_')) {
+				this.advance();
+			}
+			if (this.pos < this.text.length && /[fF]/.test(this.text[this.pos])) {
+				this.advance();
+			}
+		}
 		// Hex, binary, octal
-		if (this.text[this.pos] === '0' && (this.peek() === 'x' || this.peek() === 'X')) {
+		else if (this.text[this.pos] === '0' && (this.peek() === 'x' || this.peek() === 'X')) {
 			this.advance(); // 0
 			this.advance(); // x/X
 			while (this.pos < this.text.length && (/[0-9a-fA-F_]/.test(this.text[this.pos]))) {
@@ -1678,6 +1688,9 @@ export class MastStateMachineLexer {
 				while (this.pos < this.text.length && (this.isDigit(this.text[this.pos]) || this.text[this.pos] === '_')) {
 					this.advance();
 				}
+			}
+			if (this.pos < this.text.length && /[fF]/.test(this.text[this.pos])) {
+				this.advance();
 			}
 		}
 
@@ -2013,9 +2026,13 @@ export class MastStateMachineLexer {
 			}
 
 			// Number literal
-			if (this.isDigit(ch)) {
+			if (this.isDigit(ch) || (ch === '.' && pos + 1 < exprEnd && /[0-9]/.test(this.text[pos + 1]))) {
 				const start = pos;
-				if (this.text[pos] === '0' && pos + 1 < exprEnd && (this.text[pos + 1] === 'x' || this.text[pos + 1] === 'X')) {
+				if (this.text[pos] === '.' && pos + 1 < exprEnd && /[0-9]/.test(this.text[pos + 1])) {
+					pos++; // .
+					while (pos < exprEnd && /[0-9_]/.test(this.text[pos])) pos++;
+					if (pos < exprEnd && /[fF]/.test(this.text[pos])) pos++;
+				} else if (this.text[pos] === '0' && pos + 1 < exprEnd && (this.text[pos + 1] === 'x' || this.text[pos + 1] === 'X')) {
 					pos += 2;
 					while (pos < exprEnd && /[0-9a-fA-F_]/.test(this.text[pos])) pos++;
 				} else if (this.text[pos] === '0' && pos + 1 < exprEnd && (this.text[pos + 1] === 'b' || this.text[pos + 1] === 'B')) {
@@ -2030,6 +2047,7 @@ export class MastStateMachineLexer {
 						pos++;
 						while (pos < exprEnd && /[0-9_]/.test(this.text[pos])) pos++;
 					}
+					if (pos < exprEnd && /[fF]/.test(this.text[pos])) pos++;
 				}
 				const p = this.doc.positionAt(start);
 				tokens.push({ type: 'number', line: p.line, character: p.character, length: pos - start, text: this.text.substring(start, pos) });
@@ -3205,8 +3223,8 @@ export class MastStateMachineLexer {
 				continue;
 			}
 
-			// Number literals (supports separators like 60_000)
-			if (this.isDigit(current)) {
+			// Number literals (supports separators like 60_000 and leading-dot floats like .1f)
+			if (this.isDigit(current) || (current === '.' && this.isDigit(this.peek() || ''))) {
 				const token = this.scanNumber();
 				this.tokens.push(token);
 				continue;
