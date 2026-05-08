@@ -1903,6 +1903,19 @@ export class MastStateMachineLexer {
 	 */
 	private scanFStringInterpolations(stringStartPos: number, stringEndPos: number): TokenInfo[] {
 		const tokens: TokenInfo[] = [];
+		const pushPlainStringSegment = (start: number, end: number) => {
+			if (end <= start) {
+				return;
+			}
+			const p = this.doc.positionAt(start);
+			tokens.push({
+				type: 'string',
+				line: p.line,
+				character: p.character,
+				length: end - start,
+				text: this.text.substring(start, end)
+			});
+		};
 		let segmentStart = stringStartPos;
 		let i = stringStartPos;
 		while (i < stringEndPos) {
@@ -1915,7 +1928,10 @@ export class MastStateMachineLexer {
 
 				// Emit string segment before interpolation
 				if (i > segmentStart) {
-					tokens.push(...this.tokenizePlainSegmentWithEmbeddedCode(segmentStart, i, 'string'));
+					// Keep plain f-string text as string tokens only.
+					// Function-like substrings in plain text (e.g. "foo(bar)") should
+					// not be promoted to function/method tokens unless inside { ... }.
+					pushPlainStringSegment(segmentStart, i);
 				}
 
 				// Otherwise it's an interpolation expression
@@ -1966,7 +1982,7 @@ export class MastStateMachineLexer {
 
 		// Emit trailing string segment
 		if (stringEndPos > segmentStart) {
-			tokens.push(...this.tokenizePlainSegmentWithEmbeddedCode(segmentStart, stringEndPos, 'string'));
+			pushPlainStringSegment(segmentStart, stringEndPos);
 		}
 
 		return tokens;
@@ -2893,6 +2909,25 @@ export class MastStateMachineLexer {
 			}
 
 			const current = this.text[this.pos];
+
+			// Treat any line whose first non-whitespace character is '%' as an
+			// f-string line. This keeps interpolation behavior consistent even
+			// when the '%' is preceded by indentation.
+			if (this.isLineStart()) {
+				let firstNonWs = this.pos;
+				while (firstNonWs < this.text.length && (this.text[firstNonWs] === ' ' || this.text[firstNonWs] === '\t')) {
+					firstNonWs++;
+				}
+				if (firstNonWs < this.text.length && this.text[firstNonWs] === '%') {
+					if (this.pos < firstNonWs) {
+						this.advanceTo(firstNonWs);
+					}
+					const strStart = this.pos;
+					this.scanLineStartString();
+					this.tokens.push(...this.scanFStringInterpolations(strStart, this.pos));
+					continue;
+				}
+			}
 
 			// Style definition detection: lines matching ^[ \t]*=\$name ...
 			// Tokenize the keyword and name, but skip the description portion.
