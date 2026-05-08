@@ -63,6 +63,10 @@ export class PyFile extends FileCache {
 		this.defaultFunctions = [];
 		this.variableNames = [];
 		this.pyTokens = [];
+		// Reset parsed global exports/imports so incremental reparses do not
+		// accumulate stale entries from previous file versions.
+		this.globalFiles = [];
+		this.globals = [];
 		this.globalAliasApplied = false;
 		const originalText = text;
 
@@ -124,20 +128,30 @@ export class PyFile extends FileCache {
 		let findMastGlobals = /class\s+MastGlobals:.*?globals\s*=\s*{(.*?)}/ms;
 		let n = text.match(findMastGlobals);
 		// debug(n);
+		const parsedGlobals = new Map<string, string>();
 		if (n !== null) {
 			const globalsBlock = n[1].replace(/#.*/g, "");
-			const newGlobals: string[][] = [];
 			const globalEntryRegEx = /["']([\w]+)["'][\t ]*:[\t ]*([^,\n}]+)/g;
 			let g: RegExpExecArray | null;
 			while (g = globalEntryRegEx.exec(globalsBlock)) {
 				const globalRef = g[1];
 				const globalVar = g[2].trim();
 				if (globalVar.includes("__build_class__")) continue; // This is a special Python thing that we don't need to worry about.
-				newGlobals.push([globalRef, globalVar]);
+				parsedGlobals.set(globalRef, globalVar);
 			}
-			// debug(newGlobals);
-			this.globals = newGlobals;
-			// debug("^^^ GLOBALS!")
+		}
+
+		// Support imperative global alias declarations like:
+		// MastGlobals.globals["some_global_name"] = some_function_name
+		// The RHS symbol is resolved later against known parsed functions.
+		const globalAssignRegEx = /MastGlobals\.globals\s*\[\s*["']([A-Za-z_]\w*)["']\s*\]\s*=\s*([A-Za-z_]\w*)/g;
+		let ga: RegExpExecArray | null;
+		while ((ga = globalAssignRegEx.exec(text)) !== null) {
+			parsedGlobals.set(ga[1], ga[2]);
+		}
+
+		if (parsedGlobals.size > 0) {
+			this.globals = Array.from(parsedGlobals.entries()).map(([globalRef, globalVar]) => [globalRef, globalVar]);
 		}
 
 

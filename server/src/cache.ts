@@ -1476,6 +1476,40 @@ export class MissionCache {
 			}
 		}
 
+		// Build callable aliases exported through MastGlobals.globals.
+		// Example: MastGlobals.globals["mast_name"] = python_function
+		// creates a callable named mast_name that resolves to python_function.
+		for (const g of this.mastClassGlobals) {
+			if (!g || g.length < 2) {
+				continue;
+			}
+			const aliasName = (g[0] || '').trim();
+			const targetName = (g[1] || '').trim();
+			if (aliasName === '' || targetName === '' || aliasName === targetName) {
+				continue;
+			}
+
+			const existingAlias = methodIndex.get(aliasName);
+			if (existingAlias && existingAlias.length > 0) {
+				continue;
+			}
+
+			const target = methodIndex.get(targetName)?.[0];
+			if (!target) {
+				continue;
+			}
+
+			const alias = target.copy();
+			alias.name = aliasName;
+			if (!alias.documentation || alias.documentation.trim() === '') {
+				alias.documentation = `Global alias for ${targetName}`;
+			} else {
+				alias.documentation = `${alias.documentation}\n\nGlobal alias for ${targetName}`;
+			}
+			methods.push(alias);
+			this.addMethodToIndex(methodIndex, alias);
+		}
+
 		for (const py of this.pyFileCache) {
 			for (const c of py.classes) {
 				for (const method of c.methods) {
