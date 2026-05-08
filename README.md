@@ -25,7 +25,7 @@ MAST references:
 	- NOTE: It's very difficult to determine the type of a variable programmatically for python (and, therefore, MAST). The extension can't really do it, so you'll have to keep track of what each variable represents.
 	The extension will try to give you options that show the object type associated with that option.
 * Autocompletion for labels in current file and files in scope
-* Autocompletion for roles, inventory keys, data set (blob) keys, and link keys.
+* Autocompletion for roles, inventory keys, shared string, keys, shared variable keys, data set (blob) keys, and link keys.
 * Function signature information (i.e. notes on argument types)
 * Go To Definition functionality for sbs_utils and modules for functions and labels in scope.
 * Hover information functionality
