@@ -54,6 +54,8 @@ import { onPrepareRename, onRenameRequest } from './requests/renameSymbol';
 import { getWordRangeAtPosition } from './tokens/words';
 import { getSemanticTokens, TOKEN_TYPES, TOKEN_MODIFIERS, getEmptySemanticTokens, tokenizeDocument, buildSemanticTokens } from './requests/semanticTokens';
 import { getSemanticTokensCache } from './requests/semanticTokensCache';
+import * as path from 'path';
+import { URI } from 'vscode-uri';
 
 function createNoopConnection(): any {
 	const noop = () => undefined;
@@ -1183,22 +1185,92 @@ connection.onNotification('custom/compileMission', async (request: { sourceUri?:
 	}
 	try {
 		debug('compileMission: received request for ' + uri);
-		const diagnostics = await runCompileMastFileWithStatus(document);
-		const errors = diagnostics.map(d => ({
-			message: d.message,
-			uri,
-			line: d.range.start.line + 1,
-			character: d.range.start.character + 1,
-			endLine: d.range.end.line + 1,
-			endCharacter: d.range.end.character + 1,
-			severity: d.severity,
-			source: d.source || 'MAST Compiler'
-		}));
-		sendToClient('compileMissionResult', { errors, message: errors.length === 0 ? 'No compile errors found.' : `${errors.length} error(s) found.` });
-		debug('compileMission: sent result with ' + errors.length + ' error(s)');
+		sendToClient('compileMissionProgress', { reset: true, message: 'Starting mission compile...' });
+
+		const missionFolder = getCache(uri).missionURI;
+		if (!missionFolder || !fs.existsSync(missionFolder)) {
+			sendToClient('compileMissionResult', { errors: [], files: [], message: 'Compile failed: Mission folder not found.' });
+			return;
+		}
+
+		const collectMastFiles = (dir: string): string[] => {
+			let ret: string[] = [];
+			const entries = fs.readdirSync(dir, { withFileTypes: true });
+			for (const entry of entries) {
+				const fullPath = path.join(dir, entry.name);
+				if (entry.isDirectory()) {
+					if (entry.name === '__lib__' || entry.name.startsWith('.')) {
+						continue;
+					}
+					ret = ret.concat(collectMastFiles(fullPath));
+					continue;
+				}
+				if (entry.name.toLowerCase().endsWith('.mast')) {
+					ret.push(fullPath);
+				}
+			}
+			return ret;
+		};
+
+		const mastFiles = collectMastFiles(missionFolder).sort((a, b) => a.localeCompare(b));
+		if (mastFiles.length === 0) {
+			sendToClient('compileMissionResult', { errors: [], files: [], message: 'No .mast files found in mission folder.' });
+			return;
+		}
+
+		const compileLimit = 10;
+		const filesToCompile = mastFiles.slice(0, compileLimit);
+		if (mastFiles.length > compileLimit) {
+			sendToClient('compileMissionProgress', {
+				message: `Found ${mastFiles.length} .mast file(s). Compiling first ${compileLimit} file(s) for testing.`
+			});
+		} else {
+			sendToClient('compileMissionProgress', {
+				message: `Found ${mastFiles.length} .mast file(s).`
+			});
+		}
+
+		const files: { uri: string; errorCount: number }[] = [];
+		const errors: { message: string; uri: string; line: number; character: number; endLine: number; endCharacter: number; severity: number | undefined; source: string }[] = [];
+
+		let fileIndex = 0;
+		for (const mastFilePath of filesToCompile) {
+			fileIndex += 1;
+			const fileUri = URI.file(mastFilePath).toString();
+			sendToClient('compileMissionProgress', {
+				message: `Compiling (${fileIndex}/${filesToCompile.length}): ${mastFilePath}`
+			});
+			const openDocument = documents.get(fileUri);
+			const content = openDocument ? openDocument.getText() : fs.readFileSync(mastFilePath, 'utf-8');
+			const compileDocument = TextDocument.create(fileUri, 'mast', openDocument?.version || 1, content);
+			const diagnostics = await runCompileMastFileWithStatus(compileDocument);
+			files.push({ uri: fileUri, errorCount: diagnostics.length });
+			for (const d of diagnostics) {
+				errors.push({
+					message: d.message,
+					uri: fileUri,
+					line: d.range.start.line + 1,
+					character: d.range.start.character + 1,
+					endLine: d.range.end.line + 1,
+					endCharacter: d.range.end.character + 1,
+					severity: d.severity,
+					source: d.source || 'MAST Compiler'
+				});
+			}
+		}
+
+		const fileErrorCount = files.filter(f => f.errorCount > 0).length;
+		sendToClient('compileMissionResult', {
+			errors,
+			files,
+			message: errors.length === 0
+				? `Compiled ${files.length} file(s). No compile errors found.${mastFiles.length > compileLimit ? ` (Stopped after ${compileLimit} files.)` : ''}`
+				: `${errors.length} error(s) found across ${fileErrorCount}/${files.length} file(s).${mastFiles.length > compileLimit ? ` (Stopped after ${compileLimit} files.)` : ''}`
+		});
+		debug('compileMission: compiled ' + files.length + ' file(s), found ' + errors.length + ' error(s)');
 	} catch (e) {
 		debug('compileMission command failed: ' + e);
-		sendToClient('compileMissionResult', { errors: [], message: 'Compile failed: ' + String(e) });
+		sendToClient('compileMissionResult', { errors: [], files: [], message: 'Compile failed: ' + String(e) });
 	}
 });
 

@@ -507,13 +507,34 @@ export function activate(context: ExtensionContext) {
 	context.subscriptions.push(mastNotif);
 
 	let compileOutputChannel: vscode.OutputChannel | undefined;
-	const compileMissionResult = client.onNotification('custom/compileMissionResult', (payload: { errors: { uri: string; message: string; line: number; character: number; endLine: number; endCharacter: number; severity?: number; source: string }[]; message: string }) => {
+	const compileMissionProgress = client.onNotification('custom/compileMissionProgress', (payload: { message?: string; reset?: boolean } | undefined) => {
 		if (!compileOutputChannel) {
 			compileOutputChannel = window.createOutputChannel('MAST: Compile Results');
 		}
-		compileOutputChannel.clear();
+		if (payload?.reset) {
+			compileOutputChannel.clear();
+		}
 		compileOutputChannel.show(true);
+		if (payload?.message) {
+			compileOutputChannel.appendLine(payload.message);
+		}
+	});
+	context.subscriptions.push(compileMissionProgress);
+
+	const compileMissionResult = client.onNotification('custom/compileMissionResult', (payload: { errors: { uri: string; message: string; line: number; character: number; endLine: number; endCharacter: number; severity?: number; source: string }[]; files?: { uri: string; errorCount: number }[]; message: string }) => {
+		if (!compileOutputChannel) {
+			compileOutputChannel = window.createOutputChannel('MAST: Compile Results');
+		}
+		compileOutputChannel.show(true);
+		compileOutputChannel.appendLine('');
 		compileOutputChannel.appendLine(payload.message);
+		if (payload.files && payload.files.length > 0) {
+			compileOutputChannel.appendLine('');
+			compileOutputChannel.appendLine('Per-file results:');
+			for (const fileResult of payload.files) {
+				compileOutputChannel.appendLine(`- ${vscode.Uri.parse(fileResult.uri).fsPath}: ${fileResult.errorCount} error(s)`);
+			}
+		}
 
 		const groupedDiagnostics = new Map<string, vscode.Diagnostic[]>();
 		if (payload.errors.length > 0) {
