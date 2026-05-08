@@ -1582,7 +1582,10 @@ export class MastStateMachineLexer {
 					};
 				}
 
-				if (cache.getCallableForName(text, true)) {
+				// Standalone identifiers should only be promoted to functions when
+				// they match a global/default callable. Class methods must be
+				// referenced through member access (obj.method or Class.method).
+				if (cache.getMethod(text)) {
 					return {
 						type: 'function',
 						modifier: 'reference',
