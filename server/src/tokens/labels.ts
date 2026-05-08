@@ -1488,10 +1488,27 @@ function hasGuardingIfThatTerminates(doc: TextDocument, scopeStart: number, toke
 	if (!name || tokenStart <= scopeStart) return false;
 	const text = doc.getText().substring(scopeStart, tokenStart);
 	const lines = text.split(/\r?\n/);
+	const escapedName = escapeRegex(name);
+	const clauseRx = /^\s*(?:to_\w+\s*\(.*?\)|[\w.]+)\s+is(?:\s+not)?\s+None\s*$/;
+	const nameInClause = new RegExp(`(?:to_\\w+\\s*\\([ \t]*${escapedName}[ \t]*(?:,[^)]*)?\\)|\\b${escapedName}\\b)\\s+is(?:\\s+not)?\\s+None`);
 
 	// Search backwards for a matching if-line so we find the nearest guard.
 	for (let i = lines.length - 1; i >= 0; i--) {
 		const line = lines[i];
+
+		// Also treat inline conditional jumps as guard+terminator, e.g.
+		// `jump some_label if some_var is None`.
+		// When this condition is true, control flow exits the current path.
+		const jumpIfRx = /^[ \t]*jump\b.+?\bif[ \t]+(.+?)\s*$/;
+		const jumpIfMatch = jumpIfRx.exec(line);
+		if (jumpIfMatch) {
+			const condition = jumpIfMatch[1];
+			const clauses = condition.split(/\bor\b/);
+			if (clauses.every(c => clauseRx.test(c)) && nameInClause.test(condition)) {
+				return true;
+			}
+		}
+
 		// Match guarding `if` lines of the form:
 		//   `if <name> is None:` / `if <name> is not None:`
 		//   `if to_*(name) is None:` (possibly multiple clauses joined by `or`)
@@ -1503,12 +1520,9 @@ function hasGuardingIfThatTerminates(doc: TextDocument, scopeStart: number, toke
 		const condition = ifLineMatch[1];
 		// Verify the overall condition only contains `is None` / `is not None` guard clauses
 		// (each clause separated by `or`). Any clause not matching would be a different kind of if.
-		const clauseRx = /^\s*(?:to_\w+\s*\(.*?\)|[\w.]+)\s+is(?:\s+not)?\s+None\s*$/;
 		const clauses = condition.split(/\bor\b/);
 		if (!clauses.every(c => clauseRx.test(c))) continue;
 		// Check that `name` appears as a guarded argument in at least one clause.
-		const escapedName = escapeRegex(name);
-		const nameInClause = new RegExp(`(?:to_\\w+\\s*\\([ \t]*${escapedName}[ \t]*(?:,[^)]*)?\\)|\\b${escapedName}\\b)\\s+is(?:\\s+not)?\\s+None`);
 		if (!nameInClause.test(condition)) continue;
 		// If there's trailing code on the same line after the colon, check it for terminator
 		const sameLineAfter = (ifLineMatch[2] || '').trim();
