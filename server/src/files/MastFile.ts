@@ -13,7 +13,7 @@ import { fileFromUri } from '../fileFunctions';
 import { sleep } from '../python/python';
 import { getRoutesInFile } from '../tokens/routeLabels';
 import { parseSignalsInFile, SignalInfo } from '../tokens/signals';
-import { extractRolesFromMastFile, extractSignalsFromMastFile, extractInventoryKeysFromMastFile, extractBlobKeysFromMastFile, extractLinksFromMastFile, tokenizeMastFile, tokenizeMastSlice } from '../tokens/mastStringExtractor';
+import { extractRolesFromMastFile, extractSignalsFromMastFile, extractInventoryKeysFromMastFile, extractSharedVariableKeysFromMastFile, extractBlobKeysFromMastFile, extractLinksFromMastFile, tokenizeMastFile, tokenizeMastSlice } from '../tokens/mastStringExtractor';
 import { Token } from '../tokens/tokenBasedExtractor';
 
 export interface ExtractedItem {
@@ -59,6 +59,7 @@ export class MastFile extends FileCache {
 	signals: SignalInfo[] = [];
 	roles: Word[] = [];
 	inventory_keys: Word[] = [];
+	shared_variable_keys: Word[] = [];
 	blob_keys: Word[] = [];
 	links: Word[] = [];
 	prefabs: LabelInfo[] = [];
@@ -133,6 +134,7 @@ export class MastFile extends FileCache {
 		}
 		this.blob_keys = extractBlobKeysFromMastFile(textDocument, tokens);
 		this.inventory_keys = extractInventoryKeysFromMastFile(textDocument, tokens);
+		this.shared_variable_keys = extractSharedVariableKeysFromMastFile(textDocument, tokens);
 		
 		this.links = extractLinksFromMastFile(textDocument, tokens);
 		this.signals = extractSignalsFromMastFile(textDocument, tokens);
@@ -324,6 +326,7 @@ export class MastFile extends FileCache {
 		// Keep other token-based arrays for now using existing extractors
 		this.blob_keys = extractBlobKeysFromMastFile(doc, this.tokens);
 		this.inventory_keys = extractInventoryKeysFromMastFile(doc, this.tokens);
+		this.shared_variable_keys = extractSharedVariableKeysFromMastFile(doc, this.tokens);
 		this.links = extractLinksFromMastFile(doc, this.tokens);
 		this.signals = extractSignalsFromMastFile(doc, this.tokens);
 

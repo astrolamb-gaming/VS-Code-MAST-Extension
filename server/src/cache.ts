@@ -109,11 +109,13 @@ export class MissionCache {
 	private linksCache: Word[] = [];
 	private rolesCache: Word[] = [];
 	private inventoryKeysCache: Word[] = [];
+	private sharedVariableKeysCache: Word[] = [];
 	private signalsByFile: Map<string, SignalInfo[]> = new Map();
 	private blobKeysByFile: Map<string, Word[]> = new Map();
 	private linksByFile: Map<string, Word[]> = new Map();
 	private rolesByFile: Map<string, Word[]> = new Map();
 	private inventoryKeysByFile: Map<string, Word[]> = new Map();
+	private sharedVariableKeysByFile: Map<string, Word[]> = new Map();
 	/** Debounce timers: uri -> NodeJS.Timeout for deferred full Python re-parse */
 	private _reparseTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
 
@@ -1278,11 +1280,11 @@ export class MissionCache {
 	}
 
 	private syncMastExtractedItems(file: MastFile) {
-		this.syncExtractedItemsForUri(file.uri, file.signals, file.blob_keys, file.links, file.roles, file.inventory_keys);
+		this.syncExtractedItemsForUri(file.uri, file.signals, file.blob_keys, file.links, file.roles, file.inventory_keys, file.shared_variable_keys);
 	}
 
 	private syncPyExtractedItems(file: PyFile, includeBlobKeys: boolean) {
-		this.syncExtractedItemsForUri(file.uri, file.signals, includeBlobKeys ? file.blob_keys : [], file.links, file.roles, file.inventory_keys);
+		this.syncExtractedItemsForUri(file.uri, file.signals, includeBlobKeys ? file.blob_keys : [], file.links, file.roles, file.inventory_keys, file.shared_variable_keys);
 	}
 
 	private syncExtractedItemsForUri(
@@ -1291,7 +1293,8 @@ export class MissionCache {
 		blobKeys: Word[],
 		links: Word[],
 		roles: Word[],
-		inventoryKeys: Word[]
+		inventoryKeys: Word[],
+		sharedVariableKeys: Word[]
 	) {
 		const normalizedUri = fixFileName(uri);
 		this.replaceSignalContribution(normalizedUri, signals);
@@ -1299,6 +1302,7 @@ export class MissionCache {
 		this.replaceWordContribution(this.linksByFile, 'linksCache', normalizedUri, links);
 		this.replaceWordContribution(this.rolesByFile, 'rolesCache', normalizedUri, roles);
 		this.replaceWordContribution(this.inventoryKeysByFile, 'inventoryKeysCache', normalizedUri, inventoryKeys);
+		this.replaceWordContribution(this.sharedVariableKeysByFile, 'sharedVariableKeysCache', normalizedUri, sharedVariableKeys);
 	}
 
 	private removeExtractedItemsForUri(uri: string) {
@@ -1308,11 +1312,12 @@ export class MissionCache {
 		this.replaceWordContribution(this.linksByFile, 'linksCache', normalizedUri, []);
 		this.replaceWordContribution(this.rolesByFile, 'rolesCache', normalizedUri, []);
 		this.replaceWordContribution(this.inventoryKeysByFile, 'inventoryKeysCache', normalizedUri, []);
+		this.replaceWordContribution(this.sharedVariableKeysByFile, 'sharedVariableKeysCache', normalizedUri, []);
 	}
 
 	private replaceWordContribution(
 		contributions: Map<string, Word[]>,
-		cacheKey: 'blobKeysCache' | 'linksCache' | 'rolesCache' | 'inventoryKeysCache',
+		cacheKey: 'blobKeysCache' | 'linksCache' | 'rolesCache' | 'inventoryKeysCache' | 'sharedVariableKeysCache',
 		uri: string,
 		nextWords: Word[]
 	) {
@@ -2254,6 +2259,14 @@ export class MissionCache {
 	getInventoryKeys(folder: string): Word[] {
 		// folder = fixFileName(folder);
 		return [...this.inventoryKeysCache];
+	}
+
+	/**
+	 * @param folder The folder the current file is in, or just the file uri
+	 * @returns shared keys from get/set_shared_variable and get/set_shared_string calls in scope
+	 */
+	getSharedVariableKeys(folder: string): Word[] {
+		return [...this.sharedVariableKeysCache];
 	}
 
 	/**

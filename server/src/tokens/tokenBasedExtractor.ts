@@ -23,6 +23,7 @@ export interface ExtractedStrings {
 	roles: Word[];
 	signals: SignalInfo[];
 	inventoryKeys: Word[];
+	sharedVariableKeys: Word[];
 	blobKeys: Word[];
 	links: Word[];
 }
@@ -62,6 +63,7 @@ export class TokenBasedExtractor {
 			roles: this.extractRoles(),
 			signals: this.extractSignals(),
 			inventoryKeys: this.extractInventoryKeys(),
+			sharedVariableKeys: this.extractSharedVariableKeys(),
 			blobKeys: this.extractBlobKeys(),
 			links: this.extractLinks()
 		};
@@ -164,6 +166,16 @@ export class TokenBasedExtractor {
 		return this.mergeWords([
 			...this.extractStringsByFunctionKeywords(['inventory']),
 			...this.extractDocumentedWords(['inventory'])
+		]);
+	}
+
+	/**
+	 * Extract keys used by get/set_shared_variable() and get/set_shared_string() calls.
+	 */
+	public extractSharedVariableKeys(): Word[] {
+		return this.mergeWords([
+			...this.extractStringsByFunctionKeywords(['shared_variable', 'shared_string']),
+			...this.extractDocumentedWords(['shared_variable', 'shared_string'])
 		]);
 	}
 

@@ -140,6 +140,11 @@ function collectWordLocationsAcrossCategories(doc: TextDocument, word: string): 
 		locs = locs.concat(convertWordsToLocations(matchingInventory));
 	}
 
+	const matchingSharedVars = cache.getSharedVariableKeys(doc.uri).filter(k => k.name === word);
+	if (matchingSharedVars.length > 0) {
+		locs = locs.concat(convertWordsToLocations(matchingSharedVars));
+	}
+
 	const matchingBlob = cache.getBlobKeys().filter(k => k.name === word);
 	if (matchingBlob.length > 0) {
 		locs = locs.concat(convertWordsToLocations(matchingBlob));
@@ -645,6 +650,11 @@ export async function onReferences(doc: TextDocument, params:ReferenceParams): P
 
 		if (paramName.includes('inventory') || funcName.includes('inventory')) {
 			const keys = cache.getInventoryKeys(doc.uri).filter(k => k.name === word);
+			if (keys.length > 0) return dedupeLocations(convertWordsToLocations(keys));
+		}
+
+		if (paramName.includes('shared') || funcName.includes('shared_variable') || funcName.includes('shared_string')) {
+			const keys = cache.getSharedVariableKeys(doc.uri).filter(k => k.name === word);
 			if (keys.length > 0) return dedupeLocations(convertWordsToLocations(keys));
 		}
 

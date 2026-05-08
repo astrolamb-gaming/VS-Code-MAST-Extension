@@ -75,6 +75,13 @@ export function extractInventoryKeysFromMastFile(doc: TextDocument, tokens?: Tok
 }
 
 /**
+ * Get just the shared-variable keys from a MAST file
+ */
+export function extractSharedVariableKeysFromMastFile(doc: TextDocument, tokens?: Token[]): ReturnType<TokenBasedExtractor['extractSharedVariableKeys']> {
+	return createExtractor(doc, tokens).extractSharedVariableKeys();
+}
+
+/**
  * Get just the blob keys from a MAST file
  */
 export function extractBlobKeysFromMastFile(doc: TextDocument, tokens?: Token[]): ReturnType<TokenBasedExtractor['extractBlobKeys']> {

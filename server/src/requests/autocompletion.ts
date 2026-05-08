@@ -751,6 +751,11 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				return getWordsAsCompletionItems("Inventory Key", cache.getInventoryKeys(text.uri), text)
 			}
 
+			// Shared keys in get/set_shared_variable(...) and get/set_shared_string(...)
+			if (func.includes("shared_variable") || func.includes("shared_string")) {
+				return getWordsAsCompletionItems("Shared Variable Key", cache.getSharedVariableKeys(text.uri), text)
+			}
+
 			// Link names in link()/linked_to()/has_link()/etc.
 			if (func.includes("link")) {
 				const links = cache.getLinks();
@@ -1396,6 +1401,11 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			if (arg === "link_name" || arg === "link") {
 				const links = cache.getLinks();
 				ci = ci.concat(getWordsAsCompletionItems("Link",links, text));
+				return ci;
+			}
+			if (arg === "shared_variable" || arg === "shared_var" || arg === "shared_string" || arg === "string_name" || arg === "var_name") {
+				const sharedKeys = cache.getSharedVariableKeys(text.uri);
+				ci = ci.concat(getWordsAsCompletionItems("Shared Variable Key", sharedKeys, text));
 				return ci;
 			}
 		}

@@ -11,7 +11,7 @@ import { Word, parseWords } from '../tokens/words';
 import { parseSignalsInFile, SignalInfo } from '../tokens/signals';
 import { CRange, getMatchesForRegex, replaceRegexMatchWithUnderscore } from '../tokens/comments';
 // legacy role/blob/inventory/link scanners replaced by token-based extractors
-import { extractBlobKeysFromPythonFile, extractInventoryKeysFromPythonFile, extractLinksFromPythonFile, extractRolesFromPythonFile, extractSignalsFromPythonFile, tokenizePythonFile } from '../tokens/pythonStringExtractor';
+import { extractBlobKeysFromPythonFile, extractInventoryKeysFromPythonFile, extractSharedVariableKeysFromPythonFile, extractLinksFromPythonFile, extractRolesFromPythonFile, extractSignalsFromPythonFile, tokenizePythonFile } from '../tokens/pythonStringExtractor';
 import { PythonLexer } from '../data/pythonLexer';
 import { Token } from '../tokens/tokenBasedExtractor';
 
@@ -24,6 +24,7 @@ export class PyFile extends FileCache {
 	globalFiles: string[][] = [];
 	signals: SignalInfo[] = [];
 	inventory_keys: Word[] = [];
+	shared_variable_keys: Word[] = [];
 	links:Word[] = [];
 	blob_keys: Word[] = [];
 	pyTokens: Token[] = [];
@@ -85,6 +86,7 @@ export class PyFile extends FileCache {
 		this.roles = extractRolesFromPythonFile(doc, tokens);
 		this.blob_keys = extractBlobKeysFromPythonFile(doc, tokens);
 		this.inventory_keys = extractInventoryKeysFromPythonFile(doc, tokens);
+		this.shared_variable_keys = extractSharedVariableKeysFromPythonFile(doc, tokens);
 		this.links = extractLinksFromPythonFile(doc, tokens);
 		this.signals = extractSignalsFromPythonFile(doc, tokens);
 
@@ -223,6 +225,7 @@ export class PyFile extends FileCache {
 		this.roles = extractRolesFromPythonFile(doc, tokens);
 		this.blob_keys = extractBlobKeysFromPythonFile(doc, tokens);
 		this.inventory_keys = extractInventoryKeysFromPythonFile(doc, tokens);
+		this.shared_variable_keys = extractSharedVariableKeysFromPythonFile(doc, tokens);
 		this.links = extractLinksFromPythonFile(doc, tokens);
 		this.signals = extractSignalsFromPythonFile(doc, tokens);
 	}

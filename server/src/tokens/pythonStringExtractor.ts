@@ -416,6 +416,13 @@ export function extractInventoryKeysFromPythonFile(doc: TextDocument, tokens?: T
 }
 
 /**
+ * Get just the shared-variable keys from a Python file
+ */
+export function extractSharedVariableKeysFromPythonFile(doc: TextDocument, tokens?: Token[]): ReturnType<TokenBasedExtractor['extractSharedVariableKeys']> {
+	return createExtractor(doc, tokens).extractSharedVariableKeys();
+}
+
+/**
  * Get just the blob keys from a Python file
  */
 export function extractBlobKeysFromPythonFile(doc: TextDocument, tokens?: Token[]): ReturnType<TokenBasedExtractor['extractBlobKeys']> {

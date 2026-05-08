@@ -22,7 +22,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * Fix issue with function signatures not being properly registered with named arguments [#31](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues/31)
 * Add style definition functionality (autocomplete, go to definition, find all references) per [#20](https://github.com/astrolamb-gaming/VS-Code-MAST-Extension/issues/20)
 * Add torpedo attribute keys and values to autocompletion.
-* Add applicable autocompletion functionality to python files, with option to enable/disable this: `mast.enablePython`
+* Add applicable autocompletion, Go To Definition, and Find All References functionality to python files, with option to enable/disable this: `mast.enablePython`
 * If python autocompletion is enabled, all available functions are available through autocompletion, and when one is selected it will auto-populate the import if not already there.
 	* If the mission folder is a mastlib, will use the `from sbs_utils.procedural.gui import x` syntax.
 	* If the mission folder is an sbslib, will use the `from ..procedural.links import x` syntax.
