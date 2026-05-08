@@ -1093,12 +1093,30 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 
 	let mainNames: string[] = [];
 	let definedNames: string[] = [];
-	// Track absolute offsets of definitions for each name so we can enforce
-	// that a definition must appear on an earlier line than the reference
-	// (to avoid treating `hi = hi + 1` as valid when `hi` is undefined).
-	const definedOffsets: Map<string, number[]> = new Map();
+	// Track definitions in two scopes:
+	// - global: top-level + ==main== labels
+	// - local: current non-main label only
+	// A reference is valid when either scope has a prior definition line.
+	const globalDefinedOffsets: Map<string, number[]> = new Map();
+	let localDefinedOffsets: Map<string, number[]> = new Map();
 	let isInLabel = false;
+	let isInMainLabel = false;
 	let currentScopeStart = 0;
+
+	// Seed mission-wide globals before scanning local tokens so variables
+	// defined under ==main== (or at top-level) in any mast file are treated
+	// as defined everywhere in the mission.
+	for (const mastFile of cache.mastFileCache.concat(cache.missionMastModules)) {
+		for (const v of mastFile.variables || []) {
+			if (!v || !v.name || !v.isGlobalScope || v.equals === 'Random Text Option') {
+				continue;
+			}
+			const arr = globalDefinedOffsets.get(v.name) || [];
+			// The exact offset is not needed for mission-wide globals.
+			arr.push(0);
+			globalDefinedOffsets.set(v.name, arr);
+		}
+	}
 
 	for (const token of tokens) {
 		// If we're starting a new label scope, reset the defined names. Variables are scoped to their label, so definitions in one label don't affect references in another.
@@ -1110,6 +1128,10 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 				definedNames = [];
 				isInLabel = true;
 				currentScopeStart = doc.offsetAt({ line: token.line, character: token.character });
+				isInMainLabel = token.type === 'label' && token.text.toLowerCase() === 'main';
+				if (!isInMainLabel) {
+					localDefinedOffsets = new Map();
+				}
 			}
 			continue;
 		}
@@ -1132,17 +1154,17 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 			}
 			const name = token.text;
 			const offset = tokenStart;
-			if (!isInLabel) {
+			if (!isInLabel || isInMainLabel) {
 				mainNames.push(name);
-				const arr = definedOffsets.get(name) || [];
+				const arr = globalDefinedOffsets.get(name) || [];
 				arr.push(offset);
-				definedOffsets.set(name, arr);
+				globalDefinedOffsets.set(name, arr);
 				continue;
 			}
 			definedNames.push(name);
-			const arr2 = definedOffsets.get(name) || [];
+			const arr2 = localDefinedOffsets.get(name) || [];
 			arr2.push(offset);
-			definedOffsets.set(name, arr2);
+			localDefinedOffsets.set(name, arr2);
 			continue;
 		}
 		if (token.modifier === 'reference') {
@@ -1153,18 +1175,23 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 			// A variable is considered defined only if there exists a prior
 			// definition that appears on an earlier line than this reference.
 			const hasPriorDef = (() => {
-				const arr = definedOffsets.get(token.text);
-				if (!arr || arr.length === 0) return false;
-				for (const off of arr) {
-					const lf = doc.positionAt(off).line;
-					if (lf < token.line) return true;
-				}
-				return false;
+				const hasPriorFrom = (arr: number[] | undefined): boolean => {
+					if (!arr || arr.length === 0) return false;
+					for (const off of arr) {
+						const lf = doc.positionAt(off).line;
+						if (lf < token.line) return true;
+					}
+					return false;
+				};
+				// Global variables (top-level/==main==) are considered available
+				// across label scopes regardless of declaration order.
+				const hasGlobalDef = (globalDefinedOffsets.get(token.text) || []).length > 0;
+				return hasPriorFrom(localDefinedOffsets.get(token.text)) || hasGlobalDef;
 			})();
 			if (hasPriorDef) continue;
 			const hasPriorTextDefinition = hasPriorTextualDefinitionInScope(
 				doc,
-				isInLabel ? currentScopeStart : 0,
+				(!isInLabel || isInMainLabel) ? 0 : currentScopeStart,
 				tokenStart,
 				token.text
 			);
@@ -1177,32 +1204,32 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 					token.text
 				);
 				if (hasGuard) {
-					if (!isInLabel) {
+					if (!isInLabel || isInMainLabel) {
 						mainNames.push(token.text);
-						const arr = definedOffsets.get(token.text) || [];
+						const arr = globalDefinedOffsets.get(token.text) || [];
 						arr.push(isInLabel ? currentScopeStart : 0);
-						definedOffsets.set(token.text, arr);
+						globalDefinedOffsets.set(token.text, arr);
 					} else {
 						definedNames.push(token.text);
-						const arr = definedOffsets.get(token.text) || [];
+						const arr = localDefinedOffsets.get(token.text) || [];
 						arr.push(isInLabel ? currentScopeStart : 0);
-						definedOffsets.set(token.text, arr);
+						localDefinedOffsets.set(token.text, arr);
 					}
 					continue;
 				}
 			}
 			if (hasPriorTextDefinition) {
 				const defOffset = hasPriorTextDefinition as number;
-				if (!isInLabel) {
+				if (!isInLabel || isInMainLabel) {
 					mainNames.push(token.text);
-					const arr = definedOffsets.get(token.text) || [];
+					const arr = globalDefinedOffsets.get(token.text) || [];
 					arr.push(defOffset);
-					definedOffsets.set(token.text, arr);
+					globalDefinedOffsets.set(token.text, arr);
 				} else {
 					definedNames.push(token.text);
-					const arr = definedOffsets.get(token.text) || [];
+					const arr = localDefinedOffsets.get(token.text) || [];
 					arr.push(defOffset);
-					definedOffsets.set(token.text, arr);
+					localDefinedOffsets.set(token.text, arr);
 				}
 				continue;
 			}

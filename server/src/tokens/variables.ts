@@ -20,13 +20,14 @@ export interface Variable {
 	range: Range,
 	doc: string,
 	equals: string,
-	types: string[]
+	types: string[],
+	isGlobalScope?: boolean
 }
 
 interface VariableDocLookup {
 	namedDocsByScopedName: Map<string, string>;
 	lineScopedDocs: Map<number, string>;
-	labelDefinitionLines: number[];
+	labelScopeEntries: Array<{ line: number; scopeKey: string }>;
 }
 
 export let variables: CompletionItem[] = [];
@@ -46,15 +47,22 @@ function isLabelDefinitionToken(token: Token): boolean {
 	return token.type === 'label' || token.type === 'route-label' || token.type === 'media-label';
 }
 
-function getLabelScopeKeyForLine(line: number, labelDefinitionLines: number[]): string {
-	let scopeLine = -1;
-	for (const labelLine of labelDefinitionLines) {
-		if (labelLine > line) {
+function getLabelScopeKeyForLine(line: number, labelScopeEntries: Array<{ line: number; scopeKey: string }>): string {
+	let scopeKey = 'global';
+	for (const entry of labelScopeEntries) {
+		if (entry.line > line) {
 			break;
 		}
-		scopeLine = labelLine;
+		scopeKey = entry.scopeKey;
 	}
-	return scopeLine >= 0 ? `L${scopeLine}` : 'global';
+	return scopeKey;
+}
+
+function isMainLabelDefinitionToken(token: Token): boolean {
+	if (!isLabelDefinitionToken(token)) {
+		return false;
+	}
+	return token.type === 'label' && token.text.toLowerCase() === 'main';
 }
 
 function isDefaultDefinitionPrefix(prefix: string): boolean {
@@ -114,7 +122,7 @@ function parseArgDirectiveFromComment(commentText: string): { name?: string; des
 
 export function getArgDocForLabel(doc: TextDocument, tokens: Token[] | undefined, labelLine: number, name: string): string {
 	const lookup = buildVariableDocLookup(doc, tokens);
-	const scopeKey = getLabelScopeKeyForLine(labelLine, lookup.labelDefinitionLines);
+	const scopeKey = getLabelScopeKeyForLine(labelLine, lookup.labelScopeEntries);
 	return (
 		lookup.namedDocsByScopedName.get(`${scopeKey}::${name}`) ||
 		lookup.namedDocsByScopedName.get(`global::${name}`) ||
@@ -131,17 +139,16 @@ function buildVariableDocLookupFromTokens(tokens: Token[]): VariableDocLookup {
 		}
 		return a.character - b.character;
 	});
-	const labelDefinitionLines: number[] = [];
+	const labelScopeEntries: Array<{ line: number; scopeKey: string }> = [];
 
 	let pendingAnonymous: string | undefined = undefined;
 	let pendingScopeKey = 'global';
 	let currentScopeKey = 'global';
 	for (const token of orderedTokens) {
 		if (isLabelDefinitionToken(token)) {
-			currentScopeKey = `L${token.line}`;
-			if (!labelDefinitionLines.includes(token.line)) {
-				labelDefinitionLines.push(token.line);
-			}
+			// Variables/docs declared under ==main== are treated as global scope.
+			currentScopeKey = isMainLabelDefinitionToken(token) ? 'global' : `L${token.line}`;
+			labelScopeEntries.push({ line: token.line, scopeKey: currentScopeKey });
 			pendingAnonymous = undefined;
 			continue;
 		}
@@ -168,8 +175,8 @@ function buildVariableDocLookupFromTokens(tokens: Token[]): VariableDocLookup {
 		}
 	}
 
-	labelDefinitionLines.sort((a, b) => a - b);
-	return { namedDocsByScopedName, lineScopedDocs, labelDefinitionLines };
+	labelScopeEntries.sort((a, b) => a.line - b.line);
+	return { namedDocsByScopedName, lineScopedDocs, labelScopeEntries };
 }
 
 function buildVariableDocLookup(doc: TextDocument, tokens?: Token[]): VariableDocLookup {
@@ -207,7 +214,7 @@ function buildVariableDocLookup(doc: TextDocument, tokens?: Token[]): VariableDo
 		}
 	}
 
-	return { namedDocsByScopedName, lineScopedDocs, labelDefinitionLines: [] };
+	return { namedDocsByScopedName, lineScopedDocs, labelScopeEntries: [] };
 }
 /**
  * 
@@ -311,7 +318,7 @@ export function parseVariablesFromTokens(doc: TextDocument, tokens: Token[]): Va
 		const line = text.substring(lineStartOffset, lineEndOffset);
 		const eq = line.indexOf('=');
 		const equalsValue = eq > -1 ? line.substring(eq + 1).trim() : '';
-		const scopeKey = getLabelScopeKeyForLine(token.line, docLookup.labelDefinitionLines);
+		const scopeKey = getLabelScopeKeyForLine(token.line, docLookup.labelScopeEntries);
 		const scopedNamedDoc = docLookup.namedDocsByScopedName.get(`${scopeKey}::${token.text}`);
 		const globalNamedDoc = docLookup.namedDocsByScopedName.get(`global::${token.text}`);
 
@@ -320,7 +327,8 @@ export function parseVariablesFromTokens(doc: TextDocument, tokens: Token[]): Va
 			range,
 			doc: scopedNamedDoc || docLookup.lineScopedDocs.get(token.line) || globalNamedDoc || '',
 			equals: equalsValue,
-			types: []
+			types: [],
+			isGlobalScope: scopeKey === 'global'
 		});
 	}
 
@@ -340,7 +348,7 @@ export function parseVariablesFromTokens(doc: TextDocument, tokens: Token[]): Va
 			start: doc.positionAt(absStart),
 			end: doc.positionAt(absStart + varName.length)
 		};
-		const scopeKey = getLabelScopeKeyForLine(token.line, docLookup.labelDefinitionLines);
+		const scopeKey = getLabelScopeKeyForLine(token.line, docLookup.labelScopeEntries);
 		const scopedNamedDoc = docLookup.namedDocsByScopedName.get(`${scopeKey}::${varName}`);
 		const globalNamedDoc = docLookup.namedDocsByScopedName.get(`global::${varName}`);
 		ret.push({
@@ -348,7 +356,8 @@ export function parseVariablesFromTokens(doc: TextDocument, tokens: Token[]): Va
 			range,
 			doc: scopedNamedDoc || globalNamedDoc || '',
 			equals: 'Random Text Option',
-			types: ['string']
+			types: ['string'],
+			isGlobalScope: scopeKey === 'global'
 		});
 	}
 

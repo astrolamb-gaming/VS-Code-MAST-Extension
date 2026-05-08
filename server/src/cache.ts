@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { CompletionItem, integer, Location, SignatureInformation } from 'vscode-languageserver';
+import { CompletionItem, CompletionItemKind, integer, Location, SignatureInformation } from 'vscode-languageserver';
 import { MastFile } from './files/MastFile';
 import { PyFile } from './files/PyFile';
 import { parseLabelsInFile, LabelInfo, getMainLabelAtPos } from './tokens/labels';
@@ -1896,26 +1896,45 @@ export class MissionCache {
 	 * @returns A list of {@link CompletionItem CompletionItem}
 	 */
 	getVariableCompletionItems(doc:TextDocument|undefined): CompletionItem[] {
-		// const parent = getParentFolder(URI.parse(file).fsPath);
-		// const inits = getInitContents(fixFileName(doc?.uri));
-		let uri = ""
+		let uri = "";
 		if (doc) uri = fixFileName(doc.uri);
 		let ci: CompletionItem[] = [];
+
+		// Keep current-file variables available, and expose only global-scope
+		// variables from other files. Variables defined under ==main== are
+		// parsed as global-scope and therefore show up everywhere.
+		const pushVariable = (v: Variable, prioritize: boolean = false) => {
+			const item: CompletionItem = {
+				label: v.name,
+				kind: CompletionItemKind.Variable,
+				labelDetails: { description: "var" },
+				sortText: `${prioritize ? '__' : '___'}${v.name}`
+			};
+			ci.push(item);
+		};
+
 		for (const m of this.mastFileCache) {
 			if (m.uri === uri) {
-				for (const v of m.getVariableNames()) {
-					v.sortText = "__" + v.label
-					ci.push(v);
+				for (const v of m.variables) {
+					pushVariable(v, true);
 				}
 				continue;
 			}
-			ci = ci.concat(m.getVariableNames());
+			for (const v of m.variables) {
+				if (v.isGlobalScope) {
+					pushVariable(v);
+				}
+			}
 		}
 		for (const m of this.missionMastModules) {
-			ci = ci.concat(m.getVariableNames());
+			for (const v of m.variables) {
+				if (v.isGlobalScope) {
+					pushVariable(v);
+				}
+			}
 		}
-		//const arrUniq = [...new Map(ci.map(v => [v.label, v])).values()]
-		return ci;
+
+		return [...new Map(ci.map((v) => [v.label, v])).values()];
 	}
 
 	/**

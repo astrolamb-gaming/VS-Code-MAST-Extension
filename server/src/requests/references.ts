@@ -9,6 +9,8 @@ import { getCallContextFromTokens } from './signatureHelp';
 import { LabelInfo } from '../tokens/labels';
 import { getCurrentLineFromTextDocument, getHoveredSymbol } from './hover';
 import { matchesClassName } from '../data';
+import { getMainLabelAtPos } from '../tokens/labels';
+import { Variable } from '../tokens/variables';
 
 function dedupeLocations(locs: Location[]): Location[] {
 	const map = new Map<string, Location>();
@@ -382,6 +384,61 @@ function isBlobAccessorSetGetCall(tokens: any[], position: Position, doc: TextDo
 	return false;
 }
 
+function isMainScopeVariableDefinition(doc: TextDocument, variable: Variable): boolean {
+	if (variable.isGlobalScope) {
+		return true;
+	}
+	const cache = getCache(doc.uri);
+	const labels = cache.getMastFile(doc.uri)?.labelNames || [];
+	const pos = doc.offsetAt(variable.range.start);
+	const main = getMainLabelAtPos(pos, labels);
+	return (main?.name || '').toLowerCase() === 'main';
+}
+
+function hasMainVariableDefinition(doc: TextDocument, name: string): boolean {
+	const cache = getCache(doc.uri);
+
+	// Treat definitions parsed in ==main== as global, regardless of file.
+	for (const mastFile of cache.mastFileCache.concat(cache.missionMastModules)) {
+		for (const v of mastFile.variables || []) {
+			if (v.name !== name || v.equals === 'Random Text Option') {
+				continue;
+			}
+			if (v.isGlobalScope || isMainScopeVariableDefinition(doc, v)) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+function getVariableLocations(doc: TextDocument, name: string, includeDeclaration: boolean): Location[] {
+	const cache = getCache(doc.uri);
+	const locs: Location[] = [];
+
+	// Variable references are semantic tokens, so scan each mast file token stream
+	// and include exact-name matches for variable tokens.
+	for (const mastFile of cache.mastFileCache.concat(cache.missionMastModules)) {
+		for (const token of mastFile.tokens || []) {
+			if (token.type !== 'variable' || token.text !== name) {
+				continue;
+			}
+			if (!includeDeclaration && token.modifier === 'definition') {
+				continue;
+			}
+			locs.push({
+				uri: fileFromUri(mastFile.uri),
+				range: {
+					start: { line: token.line, character: token.character },
+					end: { line: token.line, character: token.character + token.length }
+				}
+			});
+		}
+	}
+
+	return dedupeLocations(locs);
+}
+
 function getWordAtCursorInCommaSeparatedStringToken(token: any, position: Position): string {
 	const raw = (token?.text || '').trim();
 	if (!raw) {
@@ -532,6 +589,12 @@ export async function onReferences(doc: TextDocument, params:ReferenceParams): P
 	// to label references (label names can be used as first-class values,
 	// e.g. task_schedule(some_label)).
 	if (token.type === 'variable') {
+		// Variables defined under ==main== are treated as global and should
+		// return references across mast files.
+		if (hasMainVariableDefinition(doc, word)) {
+			return getVariableLocations(doc, word, params.context?.includeDeclaration ?? true);
+		}
+
 		const labelLocs = getLabelLocations(doc, word);
 		if (labelLocs.length > 0) {
 			return labelLocs;

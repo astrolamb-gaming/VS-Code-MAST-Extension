@@ -6,8 +6,9 @@ import { debug } from 'console';
 import { getCurrentLineFromTextDocument, getHoveredSymbol, getHoveredWordRange } from './hover';
 import { getCache } from '../cache';
 import { URI } from 'vscode-uri';
-import { getLabelLocation } from '../tokens/labels';
+import { getLabelLocation, getMainLabelAtPos } from '../tokens/labels';
 import { asClasses, matchesClassName } from '../data';
+import { Variable } from '../tokens/variables';
 
 function toFileLocation(loc: Location): Location {
 	return {
@@ -59,6 +60,82 @@ function collectMethodCandidates(docUri: string, methodName: string): Location[]
 	}
 
 	return ret;
+}
+
+function isMainScopeVariableDefinition(doc: TextDocument, variable: Variable): boolean {
+	if (variable.isGlobalScope) {
+		return true;
+	}
+	const cache = getCache(doc.uri);
+	const labels = cache.getMastFile(doc.uri)?.labelNames || [];
+	const pos = doc.offsetAt(variable.range.start);
+	const main = getMainLabelAtPos(pos, labels);
+	return (main?.name || '').toLowerCase() === 'main';
+}
+
+function resolveVariableDefinition(doc: TextDocument, symbol: string, pos: Position): Location | undefined {
+	const cache = getCache(doc.uri);
+	const vars = cache.getVariables(doc).filter((v) => v.name === symbol && v.equals !== 'Random Text Option');
+	if (vars.length === 0) {
+		return undefined;
+	}
+
+	const currentOffset = doc.offsetAt(pos);
+	const currentScopeLabels = cache.getLabelsAtPos(doc, currentOffset, true);
+	const currentMain = getMainLabelAtPos(currentOffset, currentScopeLabels);
+	const inMainScope = (currentMain?.name || '').toLowerCase() === 'main';
+
+	// Prefer nearest prior definition in the same local label scope.
+	if (!inMainScope && currentMain) {
+		const local = vars
+			.filter((v) => {
+				const defOffset = doc.offsetAt(v.range.start);
+				if (defOffset > currentOffset) return false;
+				const defMain = getMainLabelAtPos(defOffset, currentScopeLabels);
+				return defMain && defMain.start === currentMain.start && (defMain.name || '').toLowerCase() !== 'main';
+			})
+			.sort((a, b) => doc.offsetAt(b.range.start) - doc.offsetAt(a.range.start));
+		if (local.length > 0) {
+			return { uri: fileFromUri(doc.uri), range: local[0].range };
+		}
+	}
+
+	// For global references, prefer variables defined in top-level or ==main==.
+	const globalCandidates = vars
+		.filter((v) => isMainScopeVariableDefinition(doc, v))
+		.sort((a, b) => doc.offsetAt(a.range.start) - doc.offsetAt(b.range.start));
+	if (globalCandidates.length > 0) {
+		const prior = globalCandidates
+			.filter((v) => doc.offsetAt(v.range.start) <= currentOffset)
+			.sort((a, b) => doc.offsetAt(b.range.start) - doc.offsetAt(a.range.start));
+		const chosen = prior[0] || globalCandidates[0];
+		return { uri: fileFromUri(doc.uri), range: chosen.range };
+	}
+
+	// If the current file has no global definition, resolve against global
+	// variables from other mast files (including imported mast modules).
+	const crossFileGlobals: Location[] = [];
+	for (const mastFile of cache.mastFileCache.concat(cache.missionMastModules)) {
+		for (const v of mastFile.variables || []) {
+			if (v.name !== symbol || v.equals === 'Random Text Option' || !v.isGlobalScope) {
+				continue;
+			}
+			crossFileGlobals.push({
+				uri: fileFromUri(mastFile.uri),
+				range: v.range
+			});
+		}
+	}
+	if (crossFileGlobals.length > 0) {
+		return crossFileGlobals[0];
+	}
+
+	// Fallback: nearest prior definition in file.
+	const priorAny = vars
+		.filter((v) => doc.offsetAt(v.range.start) <= currentOffset)
+		.sort((a, b) => doc.offsetAt(b.range.start) - doc.offsetAt(a.range.start));
+	const chosenAny = priorAny[0] || vars[0];
+	return { uri: fileFromUri(doc.uri), range: chosenAny.range };
 }
 
 function getHoveredStyleReference(str: string, pos: integer): string | undefined {
@@ -225,6 +302,12 @@ export async function onDefinition(doc:TextDocument,pos:Position): Promise<Locat
 		}
 	}
 	debug(symbol);
+	if (tokenContext?.token?.type === 'variable' && symbol) {
+		const varDef = resolveVariableDefinition(doc, symbol, pos);
+		if (varDef) {
+			return varDef;
+		}
+	}
 	let loc = getLabelLocation(symbol, doc, pos);
 	debug(loc);
 	if (loc) return loc;
