@@ -401,7 +401,7 @@ function hasMainVariableDefinition(doc: TextDocument, name: string): boolean {
 	// Treat definitions parsed in ==main== as global, regardless of file.
 	for (const mastFile of cache.mastFileCache.concat(cache.missionMastModules)) {
 		for (const v of mastFile.variables || []) {
-			if (v.name !== name || v.equals === 'Random Text Option') {
+			if (v.name !== name) {
 				continue;
 			}
 			if (v.isGlobalScope || isMainScopeVariableDefinition(doc, v)) {

@@ -2306,6 +2306,7 @@ export class MastStateMachineLexer {
 
 
 		const tokenList:TokenInfo[] = [];
+		let matchedCommsThing: string | undefined;
 
 		for (const c of commsThings) {
 			if (this.text.substring(this.pos).startsWith(c)) {
@@ -2320,7 +2321,36 @@ export class MastStateMachineLexer {
 					text: c
 				})
 				this.advanceTo(this.pos+c.length);
+				matchedCommsThing = c;
 				break;
+			}
+		}
+
+		if (matchedCommsThing === '<var') {
+			// `<var name>` introduces a variable slot and should be treated as a
+			// variable definition token, not a label/function reference.
+			this.skipWhitespace();
+			if (this.pos < this.text.length && this.isIdentifierStart(this.text[this.pos])) {
+				const startLine = this.line;
+				const startChar = this.char;
+				const startPos = this.pos;
+				while (this.pos < this.text.length && this.isIdentifierPart(this.text[this.pos])) {
+					this.advance();
+				}
+				const name = this.text.substring(startPos, this.pos);
+				tokenList.push({
+					type: 'variable',
+					modifier: 'definition',
+					line: startLine,
+					character: startChar,
+					length: name.length,
+					text: name
+				});
+			}
+
+			this.skipWhitespace();
+			if (this.pos < this.text.length && this.text[this.pos] === '>') {
+				this.advance();
 			}
 		}
 

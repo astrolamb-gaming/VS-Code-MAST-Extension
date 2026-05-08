@@ -75,7 +75,7 @@ function isMainScopeVariableDefinition(doc: TextDocument, variable: Variable): b
 
 function resolveVariableDefinition(doc: TextDocument, symbol: string, pos: Position): Location | undefined {
 	const cache = getCache(doc.uri);
-	const vars = cache.getVariables(doc).filter((v) => v.name === symbol && v.equals !== 'Random Text Option');
+	const vars = cache.getVariables(doc).filter((v) => v.name === symbol);
 	if (vars.length === 0) {
 		return undefined;
 	}
@@ -117,7 +117,7 @@ function resolveVariableDefinition(doc: TextDocument, symbol: string, pos: Posit
 	const crossFileGlobals: Location[] = [];
 	for (const mastFile of cache.mastFileCache.concat(cache.missionMastModules)) {
 		for (const v of mastFile.variables || []) {
-			if (v.name !== symbol || v.equals === 'Random Text Option' || !v.isGlobalScope) {
+			if (v.name !== symbol || !v.isGlobalScope) {
 				continue;
 			}
 			crossFileGlobals.push({

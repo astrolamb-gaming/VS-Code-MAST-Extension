@@ -827,6 +827,14 @@ function escapeRegex(text: string): string {
 	return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function getVariableNameFromStringOptionTokenText(tokenText: string): string | undefined {
+	if (!tokenText) {
+		return undefined;
+	}
+	const m = tokenText.match(/^<var[ \t]+([A-Za-z_]\w*)>$/);
+	return m ? m[1] : undefined;
+}
+
 function hasPriorTextualDefinitionInScope(doc: TextDocument, scopeStart: number, tokenStart: number, name: string): number | null {
 	if (!name || tokenStart <= scopeStart) {
 		return null;
@@ -837,6 +845,8 @@ function hasPriorTextualDefinitionInScope(doc: TextDocument, scopeStart: number,
 		`^[\\t ]*(default[ \\\t]+)?((shared|assigned|client|temp)[ \\\t]+)?${nameRe}[\\t ]*(?==[^=])`,
 		'gm'
 	);
+	// Also accept explicit variable-option definitions like `<var some_name>`.
+	const varOptionDefRx = new RegExp(`^[\\t ]*<var[ \\t]+${nameRe}>`, 'gm');
 	// Also accept YAML-style metadata keys like `name:` (common in label metadata blocks)
 	const yamlKeyRx = new RegExp(`^[\\t ]*${nameRe}[\\t]*:`, 'gm');
 	// Accept dict keys on button/comms lines: +[...]"text" {"name": value, ...}:
@@ -850,6 +860,12 @@ function hasPriorTextualDefinitionInScope(doc: TextDocument, scopeStart: number,
 		const tokenLine = doc.positionAt(tokenStart).line;
 		if (matchLine < tokenLine) return abs;
 		// else continue searching for earlier matches
+	}
+	while ((m = varOptionDefRx.exec(scopeText)) !== null) {
+		const abs = scopeStart + m.index;
+		const matchLine = doc.positionAt(abs).line;
+		const tokenLine = doc.positionAt(tokenStart).line;
+		if (matchLine < tokenLine) return abs;
 	}
 	while ((m = yamlKeyRx.exec(scopeText)) !== null) {
 		const abs = scopeStart + m.index;
@@ -1108,7 +1124,7 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 	// as defined everywhere in the mission.
 	for (const mastFile of cache.mastFileCache.concat(cache.missionMastModules)) {
 		for (const v of mastFile.variables || []) {
-			if (!v || !v.name || !v.isGlobalScope || v.equals === 'Random Text Option') {
+			if (!v || !v.name || !v.isGlobalScope) {
 				continue;
 			}
 			const arr = globalDefinedOffsets.get(v.name) || [];
@@ -1132,6 +1148,28 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 				if (!isInMainLabel) {
 					localDefinedOffsets = new Map();
 				}
+			}
+			continue;
+		}
+
+		// Support `<var some_name>` as a definition source. These are tokenized as
+		// stringOption and should participate in variable scope checks.
+		if (token.type === 'stringOption') {
+			const optionVarName = getVariableNameFromStringOptionTokenText(token.text);
+			if (!optionVarName) {
+				continue;
+			}
+			const optionOffset = doc.offsetAt({ line: token.line, character: token.character });
+			if (!isInLabel || isInMainLabel) {
+				mainNames.push(optionVarName);
+				const arr = globalDefinedOffsets.get(optionVarName) || [];
+				arr.push(optionOffset);
+				globalDefinedOffsets.set(optionVarName, arr);
+			} else {
+				definedNames.push(optionVarName);
+				const arr = localDefinedOffsets.get(optionVarName) || [];
+				arr.push(optionOffset);
+				localDefinedOffsets.set(optionVarName, arr);
 			}
 			continue;
 		}
@@ -1278,9 +1316,13 @@ function getUndefinedVariableReferenceNamesInLabel(doc: TextDocument, label: Lab
 	const definedNames = new Set<string>();
 	const scopeText = fullText.substring(start, end);
 	const defRX = /^[\t ]*(default[ \t]+)?((shared|assigned|client|temp)[ \t]+)?([a-zA-Z_]\w*)[\t ]*(?==[^=])/gm;
+	const varOptionDefRX = /^[\t ]*<var[ \t]+([a-zA-Z_]\w*)>/gm;
 	let dm: RegExpExecArray | null;
 	while (dm = defRX.exec(scopeText)) {
 		definedNames.add(dm[4]);
+	}
+	while (dm = varOptionDefRX.exec(scopeText)) {
+		definedNames.add(dm[1]);
 	}
 
 	// Known labels should never be treated as undefined metadata variables,
