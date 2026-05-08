@@ -41,9 +41,22 @@ export async function compileMastFile(textDocument: TextDocument): Promise<Diagn
 	// return [];
 	let ret: Diagnostic[] = [];
 	const cache = getCache(textDocument.uri); 
+	const documentText = textDocument.getText();
+	const maxLine = Math.max(0, textDocument.lineCount - 1);
 	// const file = fixFileName(textDocument.uri);
 	const file = cache.missionURI+"/story.mast";
-	let cm: string[] = await compileMission(file, textDocument.getText(), cache.storyJson)
+	let cmResult = await compileMission(file, textDocument.getText(), cache.storyJson);
+	if (!Array.isArray(cmResult)) {
+		debug('compileMastFile setup error: ' + cmResult.error);
+		const setupDiag: Diagnostic = {
+			range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+			message: cmResult.error,
+			severity: DiagnosticSeverity.Warning,
+			source: 'MAST Compiler Setup'
+		};
+		return [setupDiag];
+	}
+	let cm: string[] = cmResult
 	// debug(cm);
 	let ma: RegExpMatchArray | null;
 	for (const e of cm) {
@@ -69,7 +82,7 @@ export async function compileMastFile(textDocument: TextDocument): Promise<Diagn
 			// debug(ma);
 			if (ma !== null) {
 				errFile = ma[1];
-				lineNum = parseFloat(ma[2]) - 1;
+				lineNum = Math.min(maxLine, Math.max(0, parseFloat(ma[2]) - 1));
 				if (ma[4] !== undefined) lineContents = ma[4];
 				// debug(lines[2]);
 				// debug(lineContents);
@@ -77,13 +90,17 @@ export async function compileMastFile(textDocument: TextDocument): Promise<Diagn
 				let sPos = {line: lineNum, character: 0};
 				// debug(sPos);
 				// debug(textDocument.offsetAt(sPos));
-				let ePos = {line: lineNum + 1, character: 0};
-				// debug(ePos);
-				let e = textDocument.offsetAt(ePos)-1;
-				// debug(e);
-				let fileLine = textDocument.getText().substring(textDocument.offsetAt(sPos),e);
+				const lineStartOffset = textDocument.offsetAt(sPos);
+				const nextLineOffset = lineNum < maxLine
+					? textDocument.offsetAt({line: lineNum + 1, character: 0})
+					: documentText.length;
+				const lineEndOffset = Math.max(lineStartOffset, nextLineOffset > lineStartOffset ? nextLineOffset - 1 : nextLineOffset);
+				let fileLine = documentText.substring(lineStartOffset, lineEndOffset);
 				// debug(fileLine);
 				chr = fileLine.indexOf(lineContents);
+				if (chr < 0) {
+					chr = 0;
+				}
 				// debug(chr);
 			}
 			ma = lines[3].match(moduleRx);
@@ -94,7 +111,9 @@ export async function compileMastFile(textDocument: TextDocument): Promise<Diagn
 			} 
 			
 			let message = errorText + "  in:\n`" + lineContents + "`\n";
-			let endPos = textDocument.positionAt(textDocument.offsetAt({line: lineNum+1, character: 0})-1);
+			let endPos = lineNum < maxLine
+				? textDocument.positionAt(textDocument.offsetAt({line: lineNum+1, character: 0})-1)
+				: textDocument.positionAt(documentText.length);
 			const r: Range = {
 				start: {line: lineNum, character: chr},
 				end: endPos

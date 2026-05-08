@@ -46,7 +46,7 @@ import { getCurrentLineFromTextDocument, getHoveredSymbol, onHover } from './req
 import { onSignatureHelp } from './requests/signatureHelp';
 import fs = require("fs");
 import { getArtemisGlobals, initializeArtemisGlobals } from './artemisGlobals';
-import { getCurrentDiagnostics, validateTextDocument } from './requests/validate';
+import { compileMastFile, getCurrentDiagnostics, validateTextDocument } from './requests/validate';
 import { onDefinition } from './requests/goToDefinition';
 import { getCache } from './cache';
 import { onReferences } from './requests/references';
@@ -137,10 +137,7 @@ async function refreshRuntimeSettings(): Promise<void> {
 	const mastLanguageServerConfig = await connection.workspace.getConfiguration("mastLanguageServer");
 	allowMultipleCaches = mastLanguageServerConfig?.allowMultipleCaches ?? true;
 	cacheTimeout = mastLanguageServerConfig?.cacheTimeout ?? 0;
-
-	const mastConfig = await connection.workspace.getConfiguration("mast");
-	const legacyEnablePython = mastLanguageServerConfig?.enablePythonCompletions;
-	enablePythonCompletions = mastConfig?.enablePython ?? legacyEnablePython ?? true;
+	enablePythonCompletions = mastLanguageServerConfig?.enablePythonCompletions ?? true;
 }
 
 // let functionData : SignatureInformation[] = [];
@@ -393,6 +390,8 @@ interface MAST_Settings {
 	maxNumberOfProblems: number;
 	allowMultipleCaches: boolean;
 	cacheTimout: number;
+	autoCompile: boolean;
+	compileDiagnosticsDelayMs: number;
 }
 
 // The global settings, used when the `workspace/configuration` request is not supported by the client.
@@ -401,21 +400,163 @@ interface MAST_Settings {
 const defaultSettings: MAST_Settings = { 
 	maxNumberOfProblems: 1000,
 	allowMultipleCaches: true,
-	cacheTimout: 0	
+	cacheTimout: 0,
+	autoCompile: true,
+	compileDiagnosticsDelayMs: 250
 };
 let globalSettings: MAST_Settings = defaultSettings;
 
 // Cache the settings of all open documents
 const documentSettings = new Map<string, Thenable<MAST_Settings>>();
 
+const REGULAR_DIAGNOSTICS_DELAY_MS = 250;
+const pendingValidationDiagnosticsPublish = new Map<string, ReturnType<typeof setTimeout>>();
+const pendingCompileDiagnosticsPublish = new Map<string, ReturnType<typeof setTimeout>>();
+const publishedValidationDiagnostics = new Map<string, Diagnostic[]>();
+const publishedCompileDiagnostics = new Map<string, Diagnostic[]>();
+let activeCompilationCount = 0;
+
+function updateCompileActivity(started: boolean): void {
+	const previousCount = activeCompilationCount;
+	activeCompilationCount = Math.max(0, activeCompilationCount + (started ? 1 : -1));
+	if (previousCount === 0 && activeCompilationCount > 0) {
+		sendToClient('compileStatus', { active: true });
+	} else if (previousCount > 0 && activeCompilationCount === 0) {
+		sendToClient('compileStatus', { active: false });
+	}
+}
+
+async function runCompileMastFileWithStatus(document: TextDocument): Promise<Diagnostic[]> {
+	updateCompileActivity(true);
+	try {
+		return await compileMastFile(document);
+	} finally {
+		updateCompileActivity(false);
+	}
+}
+
+async function resolveDocumentSettings(resource?: string): Promise<MAST_Settings> {
+	if (!hasConfigurationCapability || !resource) {
+		return globalSettings;
+	}
+
+	const mastLanguageServerConfig = await connection.workspace.getConfiguration({
+		scopeUri: resource,
+		section: 'mastLanguageServer'
+	});
+
+	return {
+		maxNumberOfProblems: mastLanguageServerConfig?.maxNumberOfProblems ?? defaultSettings.maxNumberOfProblems,
+		allowMultipleCaches: mastLanguageServerConfig?.allowMultipleCaches ?? defaultSettings.allowMultipleCaches,
+		cacheTimout: mastLanguageServerConfig?.cacheTimout ?? defaultSettings.cacheTimout,
+		autoCompile: mastLanguageServerConfig?.autoCompile ?? defaultSettings.autoCompile,
+		compileDiagnosticsDelayMs: mastLanguageServerConfig?.compileDiagnosticsDelayMs ?? defaultSettings.compileDiagnosticsDelayMs
+	};
+}
+
+function getPublishedDiagnostics(uri: string): Diagnostic[] {
+	return (publishedValidationDiagnostics.get(uri) || []).concat(publishedCompileDiagnostics.get(uri) || []);
+}
+
+function publishMergedDiagnostics(uri: string): void {
+	connection.sendDiagnostics({ uri, diagnostics: getPublishedDiagnostics(uri) });
+}
+
+async function computeValidationDiagnosticsForDocument(document: TextDocument): Promise<Diagnostic[]> {
+	let cache = getCache(document.uri);
+	await cache.awaitLoaded();
+	return validateTextDocument(document);
+}
+
+async function computeDiagnosticsForDocument(document: TextDocument): Promise<Diagnostic[]> {
+	const settings = await getDocumentSettings(document.uri);
+	let [val, comp]: [Diagnostic[], Diagnostic[]] = await Promise.all([
+		computeValidationDiagnosticsForDocument(document),
+		settings.autoCompile ? runCompileMastFileWithStatus(document) : Promise.resolve([])
+	]);
+	publishedValidationDiagnostics.set(document.uri, val);
+	if (comp.length > 0) {
+		publishedCompileDiagnostics.set(document.uri, comp);
+	} else {
+		publishedCompileDiagnostics.delete(document.uri);
+	}
+	return val.concat(comp);
+}
+
+function scheduleValidationDiagnosticsPublish(uri: string): void {
+	const existing = pendingValidationDiagnosticsPublish.get(uri);
+	if (existing) {
+		clearTimeout(existing);
+	}
+
+	const handle = setTimeout(async () => {
+		pendingValidationDiagnosticsPublish.delete(uri);
+		const document = documents.get(uri);
+		if (!document || document.languageId !== 'mast') {
+			return;
+		}
+
+		try {
+			const diagnostics = await computeValidationDiagnosticsForDocument(document);
+			publishedValidationDiagnostics.set(uri, diagnostics);
+			publishMergedDiagnostics(uri);
+		} catch (e) {
+			debug(e);
+		}
+	}, REGULAR_DIAGNOSTICS_DELAY_MS);
+
+	pendingValidationDiagnosticsPublish.set(uri, handle);
+}
+
+function scheduleCompileDiagnosticsPublish(uri: string, delayMs: number): void {
+	const existing = pendingCompileDiagnosticsPublish.get(uri);
+	if (existing) {
+		clearTimeout(existing);
+	}
+
+	const handle = setTimeout(async () => {
+		pendingCompileDiagnosticsPublish.delete(uri);
+		const document = documents.get(uri);
+		if (!document || document.languageId !== 'mast') {
+			return;
+		}
+
+		try {
+			const settings = await getDocumentSettings(uri);
+			if (!settings.autoCompile) {
+				publishedCompileDiagnostics.delete(uri);
+				publishMergedDiagnostics(uri);
+				return;
+			}
+
+			const diagnostics = await runCompileMastFileWithStatus(document);
+			if (diagnostics.length > 0) {
+				publishedCompileDiagnostics.set(uri, diagnostics);
+			} else {
+				publishedCompileDiagnostics.delete(uri);
+			}
+			publishMergedDiagnostics(uri);
+		} catch (e) {
+			debug(e);
+		}
+	}, Math.max(0, delayMs));
+
+	pendingCompileDiagnosticsPublish.set(uri, handle);
+}
+
 connection.onDidChangeConfiguration(async change => {
 	if (hasConfigurationCapability) {
 		// Reset all cached document settings
 		documentSettings.clear();
 	} else {
-		globalSettings = (
-			(change.settings.languageServerExample || defaultSettings)
-		);
+		const mastLanguageServerConfig = change.settings?.mastLanguageServer;
+		globalSettings = {
+			maxNumberOfProblems: mastLanguageServerConfig?.maxNumberOfProblems ?? defaultSettings.maxNumberOfProblems,
+			allowMultipleCaches: mastLanguageServerConfig?.allowMultipleCaches ?? defaultSettings.allowMultipleCaches,
+			cacheTimout: mastLanguageServerConfig?.cacheTimout ?? defaultSettings.cacheTimout,
+			autoCompile: mastLanguageServerConfig?.autoCompile ?? defaultSettings.autoCompile,
+			compileDiagnosticsDelayMs: mastLanguageServerConfig?.compileDiagnosticsDelayMs ?? defaultSettings.compileDiagnosticsDelayMs
+		};
 	}
 	await refreshRuntimeSettings();
 	// Refresh the diagnostics since the `maxNumberOfProblems` could have changed.
@@ -430,10 +571,7 @@ export function getDocumentSettings(resource: string): Thenable<MAST_Settings> {
 	}
 	let result = documentSettings.get(resource);
 	if (!result) {
-		result = connection.workspace.getConfiguration({
-			scopeUri: resource,
-			section: 'MAST Language Server'
-		});
+		result = resolveDocumentSettings(resource);
 		documentSettings.set(resource, result);
 	}
 	return result;
@@ -448,6 +586,21 @@ documents.onDidClose(e => {
 	// 	getCache(e.document.uri).removeMastFile(e.document.uri)
 	// }
 	documentSettings.delete(e.document.uri);
+	const pendingValidationPublish = pendingValidationDiagnosticsPublish.get(e.document.uri);
+	if (pendingValidationPublish) {
+		clearTimeout(pendingValidationPublish);
+		pendingValidationDiagnosticsPublish.delete(e.document.uri);
+	}
+	const pendingCompilePublish = pendingCompileDiagnosticsPublish.get(e.document.uri);
+	if (pendingCompilePublish) {
+		clearTimeout(pendingCompilePublish);
+		pendingCompileDiagnosticsPublish.delete(e.document.uri);
+	}
+	publishedValidationDiagnostics.delete(e.document.uri);
+	publishedCompileDiagnostics.delete(e.document.uri);
+	if (e.document.languageId === 'mast') {
+		connection.sendDiagnostics({ uri: e.document.uri, diagnostics: [] });
+	}
 	// Invalidate semantic tokens cache for this document
 	getSemanticTokensCache().invalidate(e.document.uri);
 });
@@ -463,12 +616,17 @@ connection.languages.diagnostics.on(async (params) => {
 	if (document !== undefined) {
 		if (document.languageId !== "mast") return ret;
 		try {
-			let cache = getCache(params.textDocument.uri);
-			await cache.awaitLoaded();
-			// debug("Validating....");
-			// let [val, comp]: Diagnostic[][] = await Promise.all([validateTextDocument(document), compileMastFile(document)]);
-			// const ret = val.concat(comp);
-			let ret: Diagnostic[] = await validateTextDocument(document);
+			let ret: Diagnostic[];
+			if (
+				publishedValidationDiagnostics.has(document.uri) ||
+				publishedCompileDiagnostics.has(document.uri) ||
+				pendingValidationDiagnosticsPublish.has(document.uri) ||
+				pendingCompileDiagnosticsPublish.has(document.uri)
+			) {
+				ret = getPublishedDiagnostics(document.uri);
+			} else {
+				ret = await computeDiagnosticsForDocument(document);
+			}
 			
 			// debug("Validation complete.");
 			return {
@@ -515,6 +673,31 @@ documents.onDidChangeContent(change => {
 
 		// Invalidate semantic token cache so next request recomputes from new text
 		getSemanticTokensCache().invalidate(doc.uri);
+		if (doc.uri.endsWith('.mast')) {
+			publishedValidationDiagnostics.delete(doc.uri);
+			publishedCompileDiagnostics.delete(doc.uri);
+			publishMergedDiagnostics(doc.uri);
+			scheduleValidationDiagnosticsPublish(doc.uri);
+			void (async () => {
+				try {
+					const settings = await getDocumentSettings(doc.uri);
+					if (!documents.get(doc.uri)) {
+						return;
+					}
+					if (!settings.autoCompile) {
+						const pendingCompilePublish = pendingCompileDiagnosticsPublish.get(doc.uri);
+						if (pendingCompilePublish) {
+							clearTimeout(pendingCompilePublish);
+							pendingCompileDiagnosticsPublish.delete(doc.uri);
+						}
+						return;
+					}
+					scheduleCompileDiagnosticsPublish(doc.uri, settings.compileDiagnosticsDelayMs);
+				} catch (e) {
+					debug(e);
+				}
+			})();
+		}
 	} catch (e) {
 		debug(e);
 		console.error(e);
@@ -985,7 +1168,39 @@ connection.onNotification('custom/openFaceBuilder', async (request: { sourceUri?
 // Useful for debugging the client
 connection.onNotification("custom/debug", (response) => {
 	debug(response);
-})
+});
+
+connection.onNotification('custom/compileMission', async (request: { sourceUri?: string } | undefined) => {
+	const uri = request?.sourceUri;
+	if (!uri) {
+		sendWarning('MAST Compile: No document URI provided.');
+		return;
+	}
+	const document = documents.get(uri);
+	if (!document) {
+		sendWarning('MAST Compile: Document not found in server. Save the file and try again.');
+		return;
+	}
+	try {
+		debug('compileMission: received request for ' + uri);
+		const diagnostics = await runCompileMastFileWithStatus(document);
+		const errors = diagnostics.map(d => ({
+			message: d.message,
+			uri,
+			line: d.range.start.line + 1,
+			character: d.range.start.character + 1,
+			endLine: d.range.end.line + 1,
+			endCharacter: d.range.end.character + 1,
+			severity: d.severity,
+			source: d.source || 'MAST Compiler'
+		}));
+		sendToClient('compileMissionResult', { errors, message: errors.length === 0 ? 'No compile errors found.' : `${errors.length} error(s) found.` });
+		debug('compileMission: sent result with ' + errors.length + ' error(s)');
+	} catch (e) {
+		debug('compileMission command failed: ' + e);
+		sendToClient('compileMissionResult', { errors: [], message: 'Compile failed: ' + String(e) });
+	}
+});
 
 
 

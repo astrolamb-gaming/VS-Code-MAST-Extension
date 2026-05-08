@@ -27,6 +27,7 @@ MAST references:
 * Autocompletion for labels in current file and files in scope
 * Autocompletion for roles, inventory keys, shared string, keys, shared variable keys, data set (blob) keys, and link keys.
 * Function signature information (i.e. notes on argument types)
+* Checks for correct function argument counts
 * Go To Definition functionality for sbs_utils and modules for functions and labels in scope.
 * Hover information functionality
 * Rename Symbol functionality for variables in the current label
@@ -81,8 +82,6 @@ Included dependencies:
 ## Planned Features
 
 * Additional error checking
-* Check that functions contain the correct number of arguments
-* Variable type checking in functions
 
 ## Release Notes
 
@@ -94,13 +93,40 @@ Contributions are more than welcome! I am by no means an expert when it comes to
 
 ## Extension Settings
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
 This extension contributes the following settings:
 
-* `myExtension.enable`: Enable/disable this extension.
+* `mastLanguageServer.enablePythonCompletions`:
+	Enable MAST language-server function-related completions in Python files, including blob keys, inventory keys, roles, links, argument hints, and related call completions.
+	Default: `true`
+
+* `mastLanguageServer.maxNumberOfProblems`:
+	Controls the maximum number of problems produced by the server.
+	Scope: `resource`
+	Default: `100`
+
+* `mastLanguageServer.trace.server`:
+	Traces the communication between VS Code and the language server.
+	Allowed values: `off`, `messages`, `verbose`
+	Scope: `window`
+	Default: `off`
+
+* `mastLanguageServer.allowMultipleCaches`:
+	If enabled, the extension caches applicable files for every mission opened during the session. If disabled, it only caches files for the currently active mission.
+	Default: `true`
+
+* `mastLanguageServer.cacheTimout`:
+	If not `0`, the cache expires after the specified number of minutes to clear memory.
+	Default: `0`
+
+* `mastLanguageServer.autoCompile`:
+	Enables MAST compiler checks during normal diagnostics updates. The manual `MAST: Compile Mission` command still runs regardless of this setting.
+	Scope: `resource`
+	Default: `true`
+
+* `mastLanguageServer.compileDiagnosticsDelayMs`:
+	Controls the delay in milliseconds after the last edit before automatic compile diagnostics run. Regular non-compiler diagnostics still update on the normal short debounce.
+	Scope: `resource`
+	Default: `250`
 
 ## Working with Markdown
 

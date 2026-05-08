@@ -187,16 +187,18 @@ export async function getGlobalFunctions(sj:StoryJson): Promise<string[]> {
 	return ret;
 }
 
-export async function compileMission(mastFile: string, content: string, sj:StoryJson): Promise<string[]> {
+export async function compileMission(mastFile: string, content: string, sj:StoryJson): Promise<string[] | {error: string}> {
 	mastFile = fixFileName(mastFile);
 	let errors: string[] = [];
-	// const o =  buildOptions(sj, [mastFile, content]);
 	let g = await initializeArtemisGlobals();
 	const artDir = g.artemisDir;
+	if (!artDir) return { error: 'Artemis directory not configured.' };
 	const o = buildOptions(sj, [artDir, mastFile]);
-	if (o === null) return [];
-	//errors = await runScript(basicOptions);
+	if (o === null) return { error: 'Python runtime (PyRuntime) not found in Artemis directory.' };
+	if (!sj.sbslib || sj.sbslib.length === 0) return { error: 'story.json has no sbslib entry. Cannot compile.' };
+	debug('compileMission: running Python shell for ' + mastFile);
 	errors = await bigFile(o, content);
+	debug('compileMission: Python returned ' + errors.length + ' message(s)');
 	return errors;
 }
 

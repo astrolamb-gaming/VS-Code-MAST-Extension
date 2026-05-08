@@ -218,15 +218,10 @@
 			"type": "object",
 			"title": "MAST",
 			"properties": {
-				"mast.enablePython": {
-					"type": "boolean",
-					"default": true,
-					"description": "Enable MAST language-server function-related completions in Python files (blob keys, inventory keys, roles, links, argument hints, and related call completions)."
-				},
 				"mastLanguageServer.enablePythonCompletions": {
 					"type": "boolean",
 					"default": true,
-					"description": "Legacy setting for Python completions. Prefer mast.enablePython. If mast.enablePython is set, it takes precedence."
+					"description": "Enable MAST language-server function-related completions in Python files (blob keys, inventory keys, roles, links, argument hints, and related call completions)."
 				},
 				"mastLanguageServer.maxNumberOfProblems": {
 					"scope": "resource",
@@ -254,6 +249,19 @@
 					"type": "number",
 					"default": 0,
 					"description": "If not zero, the cache will expire to clear memory after the specified number (in minutes)."
+				},
+				"mastLanguageServer.autoCompile": {
+					"scope": "resource",
+					"type": "boolean",
+					"default": true,
+					"description": "Enable MAST compiler checks during normal diagnostics updates. Manual compile commands still run regardless of this setting."
+				},
+				"mastLanguageServer.compileDiagnosticsDelayMs": {
+					"scope": "resource",
+					"type": "number",
+					"default": 250,
+					"minimum": 0,
+					"description": "Delay in milliseconds after the last edit before automatic compile diagnostics run. Regular non-compiler diagnostics still update on the normal short debounce."
 				}
 			}
 		},
@@ -277,6 +285,10 @@
 			{
 				"command": "mast.NewMissionScaffold",
 				"title": "MAST: New Mission Scaffold"
+			},
+			{
+				"command": "mast.compileMission",
+				"title": "MAST: Compile Mission"
 			}
 		],
 		"keybindings": [

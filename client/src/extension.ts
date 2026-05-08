@@ -34,6 +34,8 @@ let timer: NodeJS.Timeout;
 let statusBarShownAt = 0;
 let pendingStatusBarHide: NodeJS.Timeout | undefined;
 const MIN_LOADING_STATUS_MS = 1500;
+let loadingStatusVisible = false;
+let compilingStatusVisible = false;
 
 let client: LanguageClient;
 let outputChannel: LogOutputChannel;
@@ -66,6 +68,8 @@ const MAST_STARTER_ZIP = 'https://codeload.github.com/artemis-sbs/mast_starter/z
 
 export function activate(context: ExtensionContext) {
 	debug("Activating extension.");
+	const compileDiagnostics = vscode.languages.createDiagnosticCollection('mast-compile');
+	context.subscriptions.push(compileDiagnostics);
 	// The server is implemented in node
 	const serverModule = context.asAbsolutePath(
 		path.join('server', 'out', 'server.js')
@@ -94,6 +98,10 @@ export function activate(context: ExtensionContext) {
 	};
 
 	vscode.workspace.onDidChangeTextDocument((event) => {
+		if (event.document.languageId === 'mast') {
+			compileDiagnostics.delete(event.document.uri);
+		}
+
 		const activeEditor = vscode.window.activeTextEditor;
 		if (!activeEditor || event.document !== activeEditor.document) return;
 
@@ -110,6 +118,12 @@ export function activate(context: ExtensionContext) {
 			vscode.commands.executeCommand('editor.action.triggerSuggest');
 		}
 	});
+
+	context.subscriptions.push(vscode.workspace.onDidCloseTextDocument((document) => {
+		if (document.languageId === 'mast') {
+			compileDiagnostics.delete(document.uri);
+		}
+	}));
 
 	context.subscriptions.push(vscode.commands.registerCommand('mast.smartEnter', async () => {
 		const editor = vscode.window.activeTextEditor;
@@ -443,6 +457,11 @@ export function activate(context: ExtensionContext) {
 		updateStatusBarItem(show);
 	});
 	context.subscriptions.push(prog);
+
+	const compileStatus = client.onNotification('custom/compileStatus', (payload: { active?: boolean } | undefined) => {
+		updateCompileStatusBarItem(!!payload?.active);
+	});
+	context.subscriptions.push(compileStatus);
 	// updateStatusBarItem(true);
 
 	let warning = client.onNotification('custom/warning', (message)=>{
@@ -487,6 +506,63 @@ export function activate(context: ExtensionContext) {
 	const mastNotif = client.onNotification('custom/mastNotif', (message)=>{debug(message);})
 	context.subscriptions.push(mastNotif);
 
+	let compileOutputChannel: vscode.OutputChannel | undefined;
+	const compileMissionResult = client.onNotification('custom/compileMissionResult', (payload: { errors: { uri: string; message: string; line: number; character: number; endLine: number; endCharacter: number; severity?: number; source: string }[]; message: string }) => {
+		if (!compileOutputChannel) {
+			compileOutputChannel = window.createOutputChannel('MAST: Compile Results');
+		}
+		compileOutputChannel.clear();
+		compileOutputChannel.show(true);
+		compileOutputChannel.appendLine(payload.message);
+
+		const groupedDiagnostics = new Map<string, vscode.Diagnostic[]>();
+		if (payload.errors.length > 0) {
+			compileOutputChannel.appendLine('');
+			for (const e of payload.errors) {
+				compileOutputChannel.appendLine(`[${e.source}] Line ${e.line}, Col ${e.character}: ${e.message}`);
+				const uri = vscode.Uri.parse(e.uri);
+				const range = new vscode.Range(
+					Math.max(0, e.line - 1),
+					Math.max(0, e.character - 1),
+					Math.max(0, e.endLine - 1),
+					Math.max(0, e.endCharacter - 1)
+				);
+				const diagnostic = new vscode.Diagnostic(
+					range,
+					e.message,
+					(e.severity as vscode.DiagnosticSeverity | undefined) ?? vscode.DiagnosticSeverity.Error
+				);
+				diagnostic.source = e.source;
+				const existing = groupedDiagnostics.get(uri.toString()) || [];
+				existing.push(diagnostic);
+				groupedDiagnostics.set(uri.toString(), existing);
+			}
+		}
+
+		const activeDocUri = vscode.window.activeTextEditor?.document.uri;
+		if (activeDocUri) {
+			compileDiagnostics.delete(activeDocUri);
+		}
+		for (const [uriString, diagnostics] of groupedDiagnostics) {
+			compileDiagnostics.set(vscode.Uri.parse(uriString), diagnostics);
+		}
+	});
+	context.subscriptions.push(compileMissionResult);
+
+	context.subscriptions.push(vscode.commands.registerCommand('mast.compileMission', async () => {
+		debug('mast.compileMission command triggered');
+		if (!client) {
+			window.showWarningMessage('MAST client is not ready yet.');
+			return;
+		}
+		const activeDoc = vscode.window.activeTextEditor?.document;
+		if (!activeDoc || activeDoc.languageId !== 'mast') {
+			window.showWarningMessage('Open a .mast file and set focus to it before compiling.');
+			return;
+		}
+		client.sendNotification('custom/compileMission', { sourceUri: activeDoc.uri.toString() });
+	}));
+
 	// This opens the specified file in the editor.
 	const showJson = client.onNotification('custom/showFile', (file, open=false)=>{
 		file = vscode.Uri.file(file);
@@ -513,27 +589,24 @@ export function activate(context: ExtensionContext) {
 }
 
 function updateStatusBarItem(show:boolean): void {
-	// if (!timer) return;
-	// if (!timer.hasRef()) return;
-	// statusBarItemText = text;
 	if (show) {
 		if (pendingStatusBarHide) {
 			clearTimeout(pendingStatusBarHide);
 			pendingStatusBarHide = undefined;
 		}
-		if (!myStatusBarItem.text || statusBarShownAt === 0) {
+		if (!loadingStatusVisible || statusBarShownAt === 0) {
 			statusBarShownAt = Date.now();
 		}
-		myStatusBarItem.text = "$(loading~spin) Loading MAST Data";
-		myStatusBarItem.backgroundColor = new ThemeColor('statusBarItem.warningBackground')
-		myStatusBarItem.show();
+		loadingStatusVisible = true;
+		renderStatusBarItem();
 		debug('Status bar loading indicator shown');
 	} else {
 		const elapsed = statusBarShownAt > 0 ? Date.now() - statusBarShownAt : MIN_LOADING_STATUS_MS;
 		const hide = () => {
-			myStatusBarItem.hide();
+			loadingStatusVisible = false;
 			statusBarShownAt = 0;
 			pendingStatusBarHide = undefined;
+			renderStatusBarItem();
 			debug('Status bar loading indicator hidden');
 		};
 		if (elapsed >= MIN_LOADING_STATUS_MS) {
@@ -545,6 +618,34 @@ function updateStatusBarItem(show:boolean): void {
 		}
 		// timer.unref();
 	}
+}
+
+function updateCompileStatusBarItem(show: boolean): void {
+	if (show && pendingStatusBarHide) {
+		clearTimeout(pendingStatusBarHide);
+		pendingStatusBarHide = undefined;
+	}
+	compilingStatusVisible = show;
+	renderStatusBarItem();
+	debug(show ? 'Status bar compile indicator shown' : 'Status bar compile indicator hidden');
+}
+
+function renderStatusBarItem(): void {
+	if (compilingStatusVisible) {
+		myStatusBarItem.text = '$(sync~spin) Compiling...';
+		myStatusBarItem.backgroundColor = new ThemeColor('statusBarItem.warningBackground');
+		myStatusBarItem.show();
+		return;
+	}
+
+	if (loadingStatusVisible) {
+		myStatusBarItem.text = '$(loading~spin) Loading MAST Data';
+		myStatusBarItem.backgroundColor = new ThemeColor('statusBarItem.warningBackground');
+		myStatusBarItem.show();
+		return;
+	}
+
+	myStatusBarItem.hide();
 }
 
 
