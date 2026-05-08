@@ -36,6 +36,27 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 	// _prof('getTokenContextAtPosition');
 
 	let hoveredLine = getCurrentLineFromTextDocument(_pos.position, text);
+	const hoveredRange = getHoveredWordRange(hoveredLine, _pos.position.character);
+	// Only resolve callable fallback hovers when syntax indicates a call/member access.
+	// This prevents plain variable names (e.g. `ship` arg) from picking up method docs.
+	const shouldResolveCallableFallback = (() => {
+		if (tokenContext.token?.type === 'function' || tokenContext.token?.type === 'method') {
+			return true;
+		}
+		let prev = hoveredRange.start - 1;
+		while (prev >= 0 && /[ \t]/.test(hoveredLine[prev])) {
+			prev--;
+		}
+		if (prev >= 0 && hoveredLine[prev] === '.') {
+			return true;
+		}
+
+		let next = hoveredRange.end;
+		while (next < hoveredLine.length && /[ \t]/.test(hoveredLine[next])) {
+			next++;
+		}
+		return next < hoveredLine.length && hoveredLine[next] === '(';
+	})();
 	const styleRef = getHoveredStyleReference(hoveredLine, _pos.position.character);
 	if (styleRef) {
 		const mastFile = cache.getMastFile(text.uri);
@@ -282,9 +303,11 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 				return {contents: key[1]}
 			}
 		}
-		const callable = cache.getCallableForName(symbol || '');
-		if (callable) {
-			return { contents: callable.buildMarkUpContent() };
+		if (shouldResolveCallableFallback) {
+			const callable = cache.getCallableForName(symbol || '');
+			if (callable) {
+				return { contents: callable.buildMarkUpContent() };
+			}
 		}
 		for (const c of cache.getClasses()) {
 			if (matchesClassName(c.name, symbol)) {
@@ -299,7 +322,7 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 	// Now we'll check for any instance where it COULD be a function name. Because Python.
 	// _prof('before getMethod')
 	debug("Checking for method match")
-	let func = getCache(text.uri).getMethod(symbol);
+	let func = shouldResolveCallableFallback ? getCache(text.uri).getMethod(symbol) : undefined;
 	// _prof('getMethod');
 	debug("Method: " + func?.name);
 	if (func) {
