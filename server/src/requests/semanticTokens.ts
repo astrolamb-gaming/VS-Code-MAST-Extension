@@ -2253,7 +2253,23 @@ export class MastStateMachineLexer {
 
 	private scanStyleDefRef() : TokenInfo | null {
 		this.skipWhitespace();
-		if (this.pos < this.text.length && this.text[this.pos] === "[") {
+
+		// Button/comms targets may include a selector prefix before [style],
+		// e.g. +!0[$gamemaster]. Scan to the first '[' on this line and treat
+		// bracketed $name as a style reference regardless of prefix text.
+		const lineEnd = this.text.indexOf('\n', this.pos);
+		const stop = lineEnd === -1 ? this.text.length : lineEnd;
+		let bracketPos = this.pos;
+		while (bracketPos < stop && this.text[bracketPos] !== '[') {
+			// If a quoted label starts before '[', this is not a style target slot.
+			if (this.text[bracketPos] === '"' || this.text[bracketPos] === "'") {
+				return null;
+			}
+			bracketPos++;
+		}
+
+		if (bracketPos < stop && this.text[bracketPos] === '[') {
+			this.advanceTo(bracketPos);
 			const startChar = this.char;
 			const startPos = this.pos;
 			while (this.pos < this.text.length && this.text[this.pos] !== "]") {
