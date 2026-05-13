@@ -161,6 +161,26 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 			return { contents: varHover };
 		}
 
+		const globalCandidates = cache.getGlobalVariables(symbol).filter((v) => v.doc && v.doc.trim() !== '');
+		if (globalCandidates.length > 0) {
+			let best = globalCandidates[0];
+			for (const v of globalCandidates) {
+				if ((v.doc || '').trim().length > (best.doc || '').trim().length) {
+					best = v;
+				}
+			}
+
+			let varHover = `Description:\n${best.doc.trim()}`;
+			if (best.types && best.types.length > 0) {
+				const uniqTypes = [...new Set(best.types.filter(t => t && t.trim().length > 0))];
+				if (uniqTypes.length > 0) {
+					varHover += `\n\nPossible types:\n${uniqTypes.join('\n')}`;
+				}
+			}
+
+			return { contents: varHover };
+		}
+
 		if (mainLabel) {
 			const argDoc = getArgDocForLabel(text, tokens || [], mainLabel.range.start.line, symbol);
 			if (argDoc && argDoc.trim() !== '') {

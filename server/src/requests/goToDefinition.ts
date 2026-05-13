@@ -114,18 +114,7 @@ function resolveVariableDefinition(doc: TextDocument, symbol: string, pos: Posit
 
 	// If the current file has no global definition, resolve against global
 	// variables from other mast files (including imported mast modules).
-	const crossFileGlobals: Location[] = [];
-	for (const mastFile of cache.mastFileCache.concat(cache.missionMastModules)) {
-		for (const v of mastFile.variables || []) {
-			if (v.name !== symbol || !v.isGlobalScope) {
-				continue;
-			}
-			crossFileGlobals.push({
-				uri: fileFromUri(mastFile.uri),
-				range: v.range
-			});
-		}
-	}
+	const crossFileGlobals = cache.getGlobalVariableLocations(symbol);
 	if (crossFileGlobals.length > 0) {
 		return crossFileGlobals[0];
 	}

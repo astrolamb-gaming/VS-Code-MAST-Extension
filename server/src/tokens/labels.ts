@@ -1189,8 +1189,12 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 		});
 	}
 
+	const isInMetadataRange = (tokenStart: number): boolean => {
+		return metadataRanges.some((r) => tokenStart >= r.start && tokenStart < r.end);
+	};
+
 	const isMetadataKeyReference = (tokenStart: number, tokenLength: number): boolean => {
-		const inMetadata = metadataRanges.some((r) => tokenStart >= r.start && tokenStart < r.end);
+		const inMetadata = isInMetadataRange(tokenStart);
 		if (!inMetadata) {
 			return false;
 		}
@@ -1397,6 +1401,9 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 			continue;
 		}
 		if (token.modifier === 'reference') {
+			if (isInMetadataRange(tokenStart)) {
+				continue;
+			}
 			if (isMetadataKeyReference(tokenStart, token.length)) {
 				continue;
 			}

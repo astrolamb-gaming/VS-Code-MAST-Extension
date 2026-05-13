@@ -7,7 +7,7 @@ import { parseLabelsInFile, LabelInfo, getMainLabelAtPos } from './tokens/labels
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
 import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } from './tokens/routeLabels';
-import { fixFileName, getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readFileSync, readZipArchive } from './fileFunctions';
+import { fileFromUri, fixFileName, getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readFileSync, readZipArchive } from './fileFunctions';
 import { connection, requestClientQuickPick, showProgressBar as showProgressBar } from './server';
 import { URI } from 'vscode-uri';
 import { getArtemisGlobals, initializeArtemisGlobals } from './artemisGlobals';
@@ -1993,6 +1993,47 @@ export class MissionCache {
 			}
 		}
 		return vars;
+	}
+
+	/**
+	 * Get all mission-global variables, optionally filtered by name.
+	 */
+	getGlobalVariables(name?: string): Variable[] {
+		const globals: Variable[] = [];
+		for (const mastFile of this.mastFileCache.concat(this.missionMastModules)) {
+			for (const variable of mastFile.variables || []) {
+				if (!variable.isGlobalScope) {
+					continue;
+				}
+				if (name && variable.name !== name) {
+					continue;
+				}
+				globals.push(variable);
+			}
+		}
+		return globals;
+	}
+
+	/**
+	 * Get source locations for all mission-global variables, optionally filtered by name.
+	 */
+	getGlobalVariableLocations(name?: string): Location[] {
+		const locations: Location[] = [];
+		for (const mastFile of this.mastFileCache.concat(this.missionMastModules)) {
+			for (const variable of mastFile.variables || []) {
+				if (!variable.isGlobalScope) {
+					continue;
+				}
+				if (name && variable.name !== name) {
+					continue;
+				}
+				locations.push({
+					uri: fileFromUri(mastFile.uri),
+					range: variable.range
+				});
+			}
+		}
+		return locations;
 	}
 
 	/**

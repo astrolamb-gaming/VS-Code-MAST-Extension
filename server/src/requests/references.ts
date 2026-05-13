@@ -402,19 +402,7 @@ function isMainScopeVariableDefinition(doc: TextDocument, variable: Variable): b
 
 function hasMainVariableDefinition(doc: TextDocument, name: string): boolean {
 	const cache = getCache(doc.uri);
-
-	// Treat definitions parsed in ==main== as global, regardless of file.
-	for (const mastFile of cache.mastFileCache.concat(cache.missionMastModules)) {
-		for (const v of mastFile.variables || []) {
-			if (v.name !== name) {
-				continue;
-			}
-			if (v.isGlobalScope || isMainScopeVariableDefinition(doc, v)) {
-				return true;
-			}
-		}
-	}
-	return false;
+	return cache.getGlobalVariables(name).length > 0;
 }
 
 function getVariableLocations(doc: TextDocument, name: string, includeDeclaration: boolean): Location[] {

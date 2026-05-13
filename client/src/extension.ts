@@ -36,6 +36,7 @@ let pendingStatusBarHide: NodeJS.Timeout | undefined;
 const MIN_LOADING_STATUS_MS = 1500;
 let loadingStatusVisible = false;
 let compilingStatusVisible = false;
+let isApplyingQuotePasteFix = false;
 
 let client: LanguageClient;
 let outputChannel: LogOutputChannel;
@@ -98,12 +99,59 @@ export function activate(context: ExtensionContext) {
 	};
 
 	vscode.workspace.onDidChangeTextDocument((event) => {
+		if (isApplyingQuotePasteFix) {
+			return;
+		}
+
 		if (event.document.languageId === 'mast') {
 			compileDiagnostics.delete(event.document.uri);
 		}
 
 		const activeEditor = vscode.window.activeTextEditor;
 		if (!activeEditor || event.document !== activeEditor.document) return;
+
+		if (event.document.languageId === 'mast' && event.contentChanges.length > 0) {
+			const edits: Array<{ pos: vscode.Position; text: string }> = [];
+			for (const change of event.contentChanges) {
+				if (!change.text.includes('\n')) {
+					continue;
+				}
+
+				const startLine = change.range.start.line;
+				const startLineText = event.document.lineAt(startLine).text;
+				const prefixMatch = startLineText.match(/^(\s*\")/);
+				if (!prefixMatch) {
+					continue;
+				}
+				const quotePrefix = prefixMatch[1];
+
+				const insertedStartOffset = change.rangeOffset;
+				const insertedEndOffset = insertedStartOffset + change.text.length;
+				const insertedEndPos = event.document.positionAt(insertedEndOffset);
+
+				for (let line = startLine + 1; line <= insertedEndPos.line; line++) {
+					if (line >= event.document.lineCount) {
+						break;
+					}
+					const lineText = event.document.lineAt(line).text;
+					if (/^\s*\"/.test(lineText)) {
+						continue;
+					}
+					edits.push({ pos: new vscode.Position(line, 0), text: quotePrefix });
+				}
+			}
+
+			if (edits.length > 0) {
+				isApplyingQuotePasteFix = true;
+				void activeEditor.edit((editBuilder) => {
+					for (const e of edits) {
+						editBuilder.insert(e.pos, e.text);
+					}
+				}).finally(() => {
+					isApplyingQuotePasteFix = false;
+				});
+			}
+		}
 
 		const cursorPos = activeEditor.selection.active;
 		const textBeforeCursor = event.document.getText(

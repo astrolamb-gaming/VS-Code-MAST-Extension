@@ -76,6 +76,10 @@ function isDefaultDefinitionPrefix(prefix: string): boolean {
 	return next === ' ' || next === '\t';
 }
 
+function isSharedDefinitionPrefix(prefix: string): boolean {
+	return /\bshared\b/.test(prefix);
+}
+
 function parseArgDirectiveFromComment(commentText: string): { name?: string; description: string } | null {
 	let trimmed = commentText.trimStart();
 	if (trimmed.startsWith('#')) {
@@ -318,9 +322,11 @@ export function parseVariablesFromTokens(doc: TextDocument, tokens: Token[]): Va
 		const line = text.substring(lineStartOffset, lineEndOffset);
 		const eq = line.indexOf('=');
 		const equalsValue = eq > -1 ? line.substring(eq + 1).trim() : '';
+		const linePrefix = line.substring(0, Math.max(0, token.character)).trimStart();
 		const scopeKey = getLabelScopeKeyForLine(token.line, docLookup.labelScopeEntries);
 		const scopedNamedDoc = docLookup.namedDocsByScopedName.get(`${scopeKey}::${token.text}`);
 		const globalNamedDoc = docLookup.namedDocsByScopedName.get(`global::${token.text}`);
+		const isSharedDefinition = isSharedDefinitionPrefix(linePrefix);
 
 		ret.push({
 			name: token.text,
@@ -328,7 +334,7 @@ export function parseVariablesFromTokens(doc: TextDocument, tokens: Token[]): Va
 			doc: scopedNamedDoc || docLookup.lineScopedDocs.get(token.line) || globalNamedDoc || '',
 			equals: equalsValue,
 			types: [],
-			isGlobalScope: scopeKey === 'global'
+			isGlobalScope: scopeKey === 'global' || isSharedDefinition
 		});
 	}
 
