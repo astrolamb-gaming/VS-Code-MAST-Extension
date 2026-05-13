@@ -226,6 +226,7 @@ export function parseLabelsFromTokens(doc: TextDocument, tokens: Token[]): Label
 	const mainLabels: LabelInfo[] = [];
 	const inlineLabels: LabelInfo[] = [];
 
+	let lastLabelName = '';
 	for (const token of tokens) {
 		if (token.modifier !== 'definition') continue;
 		if (token.type !== 'label' && token.type !== 'route-label' && token.type !== 'media-label') continue;
@@ -1109,15 +1110,52 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 
 	let mainNames: string[] = [];
 	let definedNames: string[] = [];
-	// Track definitions in two scopes:
-	// - global: top-level + ==main== labels
-	// - local: current non-main label only
-	// A reference is valid when either scope has a prior definition line.
 	const globalDefinedOffsets: Map<string, number[]> = new Map();
 	let localDefinedOffsets: Map<string, number[]> = new Map();
 	let isInLabel = false;
 	let isInMainLabel = false;
 	let currentScopeStart = 0;
+
+	// --- Embedded Python comprehension variable support ---
+	// Find all variables introduced by comprehensions inside ~~...~~ blocks and [ ... ] brackets with 'if' clauses
+	const fullText = doc.getText();
+	// Regex to match ~~...~~ blocks (non-greedy)
+	const codeBlockRegex = /~~([\s\S]*?)~~/g;
+	// Regex to match [ ... ] bracket comprehensions with 'if' (non-greedy)
+	const bracketCompRegex = /\[([^\]]*?for\s+[a-zA-Z_][a-zA-Z0-9_]*\s+in[^\]]*?if[^\]]*?)\]/g;
+	// Regex to match comprehension variables: for <var> in ...
+	const comprehensionVarRegex = /for\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+in/g;
+	// Map of offset ranges to sets of comprehension variables
+	const comprehensionVarsByRange: Array<{ start: number, end: number, vars: Set<string> }> = [];
+	let match;
+	// ~~...~~ code blocks
+	while ((match = codeBlockRegex.exec(fullText)) !== null) {
+		const block = match[1];
+		const blockStart = match.index;
+		const blockEnd = match.index + match[0].length;
+		const vars = new Set<string>();
+		let vMatch;
+		while ((vMatch = comprehensionVarRegex.exec(block)) !== null) {
+			vars.add(vMatch[1]);
+		}
+		if (vars.size > 0) {
+			comprehensionVarsByRange.push({ start: blockStart, end: blockEnd, vars });
+		}
+	}
+	// [ ... ] bracket comprehensions with 'if'
+	while ((match = bracketCompRegex.exec(fullText)) !== null) {
+		const block = match[1];
+		const blockStart = match.index;
+		const blockEnd = match.index + match[0].length;
+		const vars = new Set<string>();
+		let vMatch;
+		while ((vMatch = comprehensionVarRegex.exec(block)) !== null) {
+			vars.add(vMatch[1]);
+		}
+		if (vars.size > 0) {
+			comprehensionVarsByRange.push({ start: blockStart, end: blockEnd, vars });
+		}
+	}
 
 	// Seed mission-wide globals before scanning local tokens so variables
 	// defined under ==main== (or at top-level) in any mast file are treated
@@ -1128,7 +1166,6 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 				continue;
 			}
 			const arr = globalDefinedOffsets.get(v.name) || [];
-			// The exact offset is not needed for mission-wide globals.
 			arr.push(0);
 			globalDefinedOffsets.set(v.name, arr);
 		}
@@ -1137,9 +1174,6 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 	for (const token of tokens) {
 		// If we're starting a new label scope, reset the defined names. Variables are scoped to their label, so definitions in one label don't affect references in another.
 		if (token.type === 'label' || token.type === 'route-label' || token.type === 'media-label') {
-			// Only a label *definition* starts a new variable scope. Label *references*
-			// (e.g. `jump foo`, `->foo`, or a prefab name passed as an argument) must
-			// not reset the scope, or variables defined earlier in the block are lost.
 			if (token.modifier === 'definition') {
 				definedNames = [];
 				isInLabel = true;
@@ -1148,12 +1182,23 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 				if (!isInMainLabel) {
 					localDefinedOffsets = new Map();
 				}
+				// If this label is a prefab, add 'prefab' and 'self' as defined variables
+				const labelName = token.text || '';
+				const offset = doc.offsetAt({ line: token.line, character: token.character });
+				if (/prefab/i.test(labelName)) {
+					definedNames.push('prefab');
+					definedNames.push('self');
+					localDefinedOffsets.set('prefab', [offset]);
+					localDefinedOffsets.set('self', [offset]);
+				} else if (/objective/i.test(labelName)) {
+					definedNames.push('self');
+					localDefinedOffsets.set('self', [offset]);
+				}
 			}
 			continue;
 		}
 
-		// Support `<var some_name>` as a definition source. These are tokenized as
-		// stringOption and should participate in variable scope checks.
+		// Support <var some_name> as a definition source. These are tokenized as stringOption and should participate in variable scope checks.
 		if (token.type === 'stringOption') {
 			const optionVarName = getVariableNameFromStringOptionTokenText(token.text);
 			if (!optionVarName) {
@@ -1184,10 +1229,18 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 		const isLambdaParamDefinition = lineLambdaScopes.some((scope) => scope.paramStarts.has(tokenStart) && scope.params.has(token.text));
 		const isInLambdaBodyForParam = lineLambdaScopes.some((scope) => tokenStart >= scope.bodyStart && tokenStart < scope.bodyEnd && scope.params.has(token.text));
 
+		// --- Embedded Python comprehension variable check ---
+		// If this variable is within a ~~...~~ block and matches a comprehension variable, treat as defined
+		let isComprehensionVar = false;
+		for (const block of comprehensionVarsByRange) {
+			if (tokenStart >= block.start && tokenStart < block.end && block.vars.has(token.text)) {
+				isComprehensionVar = true;
+				break;
+			}
+		}
+
 		if (token.modifier === 'definition') {
 			if (isLambdaParamDefinition) {
-				// Lambda parameter names are line-local definitions and should not
-				// leak into label-level scope for later lines.
 				continue;
 			}
 			const name = token.text;
@@ -1206,12 +1259,9 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 			continue;
 		}
 		if (token.modifier === 'reference') {
-			if (isLambdaParamDefinition || isInLambdaBodyForParam) {
+			if (isLambdaParamDefinition || isInLambdaBodyForParam || isComprehensionVar) {
 				continue;
 			}
-			// Check if the token text is in the list of defined names. If it is, continue. If not, add a diagnostic.
-			// A variable is considered defined only if there exists a prior
-			// definition that appears on an earlier line than this reference.
 			const hasPriorDef = (() => {
 				const hasPriorFrom = (arr: number[] | undefined): boolean => {
 					if (!arr || arr.length === 0) return false;
@@ -1221,8 +1271,6 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 					}
 					return false;
 				};
-				// Global variables (top-level/==main==) are considered available
-				// across label scopes regardless of declaration order.
 				const hasGlobalDef = (globalDefinedOffsets.get(token.text) || []).length > 0;
 				return hasPriorFrom(localDefinedOffsets.get(token.text)) || hasGlobalDef;
 			})();
@@ -1272,10 +1320,10 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 				continue;
 			}
 			if (cache.getMastGlobal(token.text)) {
-				continue; // It's a known MastGlobals symbol, so treat as defined.
+				continue;
 			}
 			if (cache.getCallableForName(token.text, true)) {
-				continue; // Known callable reference (function/method/constructor), e.g. callback arg.
+				continue;
 			}
 			const labelNames = cache.getLabelsAtPos(doc, doc.offsetAt({ line: token.line, character: token.character }), false);
 			if (labelNames.find(l => l.name === token.text)) {

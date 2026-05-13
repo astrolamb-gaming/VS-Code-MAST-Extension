@@ -174,6 +174,58 @@ type TorpedoValueOption = {
 	documentation?: string;
 };
 
+// W3C color names supported by all browsers (140 colors)
+const W3C_COLOR_NAMES = [
+	'aliceblue', 'antiquewhite', 'aqua', 'aquamarine', 'azure',
+	'beige', 'bisque', 'black', 'blanchedalmond', 'blue',
+	'blueviolet', 'brown', 'burlywood', 'cadetblue', 'chartreuse',
+	'chocolate', 'coral', 'cornflowerblue', 'cornsilk', 'crimson',
+	'cyan', 'darkblue', 'darkcyan', 'darkgoldenrod', 'darkgray',
+	'darkgrey', 'darkgreen', 'darkkhaki', 'darkmagenta', 'darkolivegreen',
+	'darkorange', 'darkorchid', 'darkred', 'darksalmon', 'darkseagreen',
+	'darkslateblue', 'darkslategray', 'darkslategrey', 'darkturquoise', 'darkviolet',
+	'deeppink', 'deepskyblue', 'dimgray', 'dimgrey', 'dodgerblue',
+	'firebrick', 'floralwhite', 'forestgreen', 'fuchsia', 'gainsboro',
+	'ghostwhite', 'gold', 'goldenrod', 'gray', 'grey',
+	'green', 'greenyellow', 'honeydew', 'hotpink', 'indianred',
+	'indigo', 'ivory', 'khaki', 'lavender', 'lavenderblush',
+	'lawngreen', 'lemonchiffon', 'lightblue', 'lightcoral', 'lightcyan',
+	'lightgoldenrodyellow', 'lightgray', 'lightgrey', 'lightgreen', 'lightpink',
+	'lightsalmon', 'lightseagreen', 'lightskyblue', 'lightslategray', 'lightslategrey',
+	'lightsteelblue', 'lightyellow', 'lime', 'limegreen', 'linen',
+	'magenta', 'maroon', 'mediumaquamarine', 'mediumblue', 'mediumorchid',
+	'mediumpurple', 'mediumseagreen', 'mediumslateblue', 'mediumspringgreen', 'mediumturquoise',
+	'mediumvioletred', 'midnightblue', 'mintcream', 'mistyrose', 'moccasin',
+	'navajowhite', 'navy', 'oldlace', 'olive', 'olivedrab',
+	'orange', 'orangered', 'orchid', 'palegoldenrod', 'palegreen',
+	'paleturquoise', 'palevioletred', 'papayawhip', 'peachpuff', 'peru',
+	'pink', 'plum', 'powderblue', 'purple', 'red',
+	'rosybrown', 'royalblue', 'saddlebrown', 'salmon', 'sandybrown',
+	'seagreen', 'seashell', 'sienna', 'silver', 'skyblue',
+	'slateblue', 'slategray', 'slategrey', 'snow', 'springgreen',
+	'steelblue', 'tan', 'teal', 'thistle', 'tomato',
+	'turquoise', 'violet', 'wheat', 'white', 'whitesmoke',
+	'yellow', 'yellowgreen'
+];
+
+function getW3CColorCompletions(colorPrefix: string = ''): CompletionItem[] {
+	const normalizedPrefix = colorPrefix.trim().toLowerCase();
+	const ret: CompletionItem[] = [];
+	
+	for (const color of W3C_COLOR_NAMES) {
+		if (normalizedPrefix && !color.toLowerCase().startsWith(normalizedPrefix)) {
+			continue;
+		}
+		ret.push({
+			label: color,
+			kind: CompletionItemKind.Color,
+			insertText: color,
+			sortText: 'a_' + color  // Sort after custom values but maintain alphabetical within colors
+		});
+	}
+	
+	return ret;
+}
 
 // TODO: Base this information dynamically off of something in the data folder for Cosmos.
 const torpedoAttributeValueOptions: Record<string, TorpedoValueOption[]> = {
@@ -186,7 +238,7 @@ const torpedoAttributeValueOptions: Record<string, TorpedoValueOption[]> = {
 		{ value: 'homing', documentation: 'Homes in on target and compensates for movement.' },
 		{ value: 'mine', documentation: 'Stays in place and detonates when a ship is near.' }
 	],
-	flare_color: [
+	flare_color: W3C_COLOR_NAMES.map(name => ({ value: name })).concat([
 		{ value: 'fire' },
 		{ value: 'white' },
 		{ value: 'red' },
@@ -195,8 +247,8 @@ const torpedoAttributeValueOptions: Record<string, TorpedoValueOption[]> = {
 		{ value: 'yellow' },
 		{ value: 'orange' },
 		{ value: 'purple' }
-	],
-	trail_color: [
+	]),
+	trail_color: W3C_COLOR_NAMES.map(name => ({ value: name })).concat([
 		{ value: 'fire' },
 		{ value: 'white' },
 		{ value: 'red' },
@@ -205,8 +257,8 @@ const torpedoAttributeValueOptions: Record<string, TorpedoValueOption[]> = {
 		{ value: 'yellow' },
 		{ value: 'orange' },
 		{ value: 'purple' }
-	],
-	explosion_color: [
+	]),
+	explosion_color: W3C_COLOR_NAMES.map(name => ({ value: name })).concat([
 		{ value: 'fire' },
 		{ value: 'white' },
 		{ value: 'red' },
@@ -215,7 +267,7 @@ const torpedoAttributeValueOptions: Record<string, TorpedoValueOption[]> = {
 		{ value: 'yellow' },
 		{ value: 'orange' },
 		{ value: 'purple' }
-	]
+	])
 };
 
 function getCurrentStringContentBeforeCursor(iStr: string): string | undefined {
@@ -889,6 +941,14 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 						ci.push(c);
 					}
 					return ci;
+				}
+				// Handle any parameter containing "color" with W3C color name completions
+				if (a.includes("color")) {
+					const valuePrefix = getCurrentStringContentBeforeCursor(iStr) || '';
+					const colorCompletions = getW3CColorCompletions(valuePrefix);
+					if (colorCompletions.length > 0) {
+						return colorCompletions;
+					}
 				}
 				if (a === "label" || a === "path") {
 					const start = iStr.indexOf("//");
