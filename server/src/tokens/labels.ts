@@ -184,6 +184,16 @@ function getMetadata(text:string):string {
 	return text;
 }
 
+function inheritMetadata(parentMetadata: string, childMetadata: string): string {
+	if (!parentMetadata) {
+		return childMetadata;
+	}
+	if (!childMetadata) {
+		return parentMetadata;
+	}
+	return parentMetadata + "\n\n" + childMetadata;
+}
+
 export function buildLabelDocs(label:LabelInfo): MarkupContent {
 	let val = "";
 	if (label.metadata !== "") {
@@ -340,6 +350,7 @@ export function parseLabelsFromTokens(doc: TextDocument, tokens: Token[]): Label
 	for (const ml of mainLabels) {
 		for (const sl of inlineLabels) {
 			if (sl.start > ml.start && sl.start < ml.end) {
+				sl.metadata = inheritMetadata(ml.metadata, sl.metadata);
 				ml.subLabels.push(sl);
 			}
 		}
@@ -361,6 +372,7 @@ export function parseLabelsInFile(text: string, src: string): LabelInfo[] {
 		for (const j in subLabels) {
 			const sl = subLabels[j];
 			if (sl.start > ml.start && sl.start < ml.end) {
+				sl.metadata = inheritMetadata(ml.metadata, sl.metadata);
 				ml.subLabels.push(sl);
 			}
 		}
@@ -1112,9 +1124,14 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 	let definedNames: string[] = [];
 	const globalDefinedOffsets: Map<string, number[]> = new Map();
 	let localDefinedOffsets: Map<string, number[]> = new Map();
+	// Snapshot of variables defined so far in the current main label, so they
+	// can be inherited when entering a sublabel (--sub--) of that main label.
+	let mainLabelDefinedOffsets: Map<string, number[]> = new Map();
 	let isInLabel = false;
 	let isInMainLabel = false;
+	let isInSubLabel = false;
 	let currentScopeStart = 0;
+	let currentMainScopeStart = 0;
 
 	// --- Embedded Python comprehension variable support ---
 	// Find all variables introduced by comprehensions inside ~~...~~ blocks and [ ... ] brackets with 'if' clauses
@@ -1175,13 +1192,34 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 		// If we're starting a new label scope, reset the defined names. Variables are scoped to their label, so definitions in one label don't affect references in another.
 		if (token.type === 'label' || token.type === 'route-label' || token.type === 'media-label') {
 			if (token.modifier === 'definition') {
-				definedNames = [];
 				isInLabel = true;
 				currentScopeStart = doc.offsetAt({ line: token.line, character: token.character });
 				isInMainLabel = token.type === 'label' && token.text.toLowerCase() === 'main';
-				if (!isInMainLabel) {
-					localDefinedOffsets = new Map();
+
+				// Determine if this is a sublabel (--name-- / ++name++) by checking
+				// whether the line's prefix before the name contains '='.
+				const lineStartOffset = doc.offsetAt({ line: token.line, character: 0 });
+				const tokenOffset = doc.offsetAt({ line: token.line, character: token.character });
+				const linePrefix = fullText.substring(lineStartOffset, tokenOffset);
+				const isSubLabel = token.type === 'label' && !linePrefix.includes('=');
+
+				if (isSubLabel) {
+					// Sublabels inherit variables defined in their parent main label scope.
+					// Copy the main label's snapshot so sublabel-local additions stay isolated.
+					localDefinedOffsets = new Map(mainLabelDefinedOffsets);
+					definedNames = Array.from(localDefinedOffsets.keys());
+					isInSubLabel = true;
+				} else {
+					// Entering a new main/route/media label — start fresh and reset the snapshot.
+					definedNames = [];
+					if (!isInMainLabel) {
+						localDefinedOffsets = new Map();
+					}
+					currentMainScopeStart = currentScopeStart;
+					mainLabelDefinedOffsets = new Map();
+					isInSubLabel = false;
 				}
+
 				// If this label is a prefab, add 'prefab' and 'self' as defined variables
 				const labelName = token.text || '';
 				const offset = doc.offsetAt({ line: token.line, character: token.character });
@@ -1215,6 +1253,11 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 				const arr = localDefinedOffsets.get(optionVarName) || [];
 				arr.push(optionOffset);
 				localDefinedOffsets.set(optionVarName, arr);
+				if (!isInSubLabel) {
+					const arr2 = mainLabelDefinedOffsets.get(optionVarName) || [];
+					arr2.push(optionOffset);
+					mainLabelDefinedOffsets.set(optionVarName, arr2);
+				}
 			}
 			continue;
 		}
@@ -1256,6 +1299,13 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 			const arr2 = localDefinedOffsets.get(name) || [];
 			arr2.push(offset);
 			localDefinedOffsets.set(name, arr2);
+			// If we're in the main label body (not a sublabel), also update the
+			// snapshot so subsequent sublabels of this main label inherit the variable.
+			if (!isInSubLabel) {
+				const arr3 = mainLabelDefinedOffsets.get(name) || [];
+				arr3.push(offset);
+				mainLabelDefinedOffsets.set(name, arr3);
+			}
 			continue;
 		}
 		if (token.modifier === 'reference') {
@@ -1275,9 +1325,13 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 				return hasPriorFrom(localDefinedOffsets.get(token.text)) || hasGlobalDef;
 			})();
 			if (hasPriorDef) continue;
+			const textualScopeStart = (!isInLabel || isInMainLabel)
+				? 0
+				: (isInSubLabel ? currentMainScopeStart : currentScopeStart);
+
 			const hasPriorTextDefinition = hasPriorTextualDefinitionInScope(
 				doc,
-				(!isInLabel || isInMainLabel) ? 0 : currentScopeStart,
+				textualScopeStart,
 				tokenStart,
 				token.text
 			);
@@ -1285,7 +1339,7 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 			if (!hasPriorTextDefinition) {
 				const hasGuard = hasGuardingIfThatTerminates(
 					doc,
-					isInLabel ? currentScopeStart : 0,
+					textualScopeStart,
 					tokenStart,
 					token.text
 				);
