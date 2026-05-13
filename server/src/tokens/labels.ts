@@ -646,6 +646,7 @@ function findBadLabels(t: TextDocument) : Diagnostic[] {
 	const text = t.getText();
 	const cache = getCache(t.uri);
 	const tokens = cache.getMastFile(t.uri)?.tokens;
+	const metadataRanges = getMetadataFenceRanges(text);
 	const diagnostics: Diagnostic[] = [];
 	const any: RegExp = /(^ *?=+?.*?$)|(^ *?-+?.*?$)/gm;
 	const whiteSpaceWarning: RegExp = /^ +?/;
@@ -659,6 +660,10 @@ function findBadLabels(t: TextDocument) : Diagnostic[] {
 	let m: RegExpExecArray | null;
 	// Iterate over regular labels
 	while (m = any.exec(text)) {
+		const inMetadata = metadataRanges.some((r) => m && m.index >= r.start && m.index < r.end);
+		if (inMetadata) {
+			continue;
+		}
 		let lbl = m[0].trim();
 		if (lbl.startsWith("#")) {
 			continue;
@@ -729,6 +734,10 @@ function findBadLabels(t: TextDocument) : Diagnostic[] {
 	const slashCheck = / *?\/\/.+?\/\//; // contains two or more sets of "//"
 	const formatCheck = /.*?\/\/\w+(\/(\w+))*.*/m; // checks for proper //something/something/something format
 	while (m = routes.exec(text)) {
+		const inMetadata = metadataRanges.some((r) => m && m.index >= r.start && m.index < r.end);
+		if (inMetadata) {
+			continue;
+		}
 		/**
 		 * I still want to implement a more robust version of this someday, but for now
 		 * we're removing due to the use of // as an operator
@@ -985,6 +994,16 @@ function splitTopLevelCommaSegments(text: string): Array<{ start: number, end: n
 	return segments;
 }
 
+function getMetadataFenceRanges(text: string): Array<{ start: number; end: number }> {
+	const ranges: Array<{ start: number; end: number }> = [];
+	const metadataBlockRx = /metadata\s*:\s*(?:```|\n[ \t]*```)([\s\S]*?)```/gim;
+	let m: RegExpExecArray | null;
+	while ((m = metadataBlockRx.exec(text)) !== null) {
+		ranges.push({ start: m.index, end: m.index + m[0].length });
+	}
+	return ranges;
+}
+
 function getLambdaScopesByLine(doc: TextDocument): Map<number, LambdaScopeInfo[]> {
 	const scopesByLine = new Map<number, LambdaScopeInfo[]>();
 	const fullText = doc.getText();
@@ -1156,6 +1175,39 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 	}
 	const cache = getCache(doc.uri);
 	const lambdaScopesByLine = getLambdaScopesByLine(doc);
+	const fullText = doc.getText();
+
+	// Precompute metadata fenced-block ranges so metadata keys (e.g. `foo:`)
+	// are not treated as undefined variable references.
+	const metadataRanges: Array<{ start: number; end: number }> = [];
+	const metadataBlockRx = /metadata\s*:\s*(?:```|\n[ \t]*```)([\s\S]*?)```/gim;
+	let metadataMatch: RegExpExecArray | null;
+	while ((metadataMatch = metadataBlockRx.exec(fullText)) !== null) {
+		metadataRanges.push({
+			start: metadataMatch.index,
+			end: metadataMatch.index + metadataMatch[0].length
+		});
+	}
+
+	const isMetadataKeyReference = (tokenStart: number, tokenLength: number): boolean => {
+		const inMetadata = metadataRanges.some((r) => tokenStart >= r.start && tokenStart < r.end);
+		if (!inMetadata) {
+			return false;
+		}
+
+		const pos = doc.positionAt(tokenStart);
+		const lineStart = doc.offsetAt({ line: pos.line, character: 0 });
+		const lineEnd = pos.line + 1 < doc.lineCount
+			? doc.offsetAt({ line: pos.line + 1, character: 0 }) - 1
+			: fullText.length;
+		const lineText = fullText.substring(lineStart, lineEnd);
+		const tokenCol = tokenStart - lineStart;
+		let i = tokenCol + tokenLength;
+		while (i < lineText.length && /[\t ]/.test(lineText[i])) {
+			i++;
+		}
+		return i < lineText.length && lineText[i] === ':';
+	};
 
 	let mainNames: string[] = [];
 	let definedNames: string[] = [];
@@ -1172,7 +1224,6 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 
 	// --- Embedded Python comprehension variable support ---
 	// Find all variables introduced by comprehensions inside ~~...~~ blocks and [ ... ] brackets with 'if' clauses
-	const fullText = doc.getText();
 	// Regex to match ~~...~~ blocks (non-greedy)
 	const codeBlockRegex = /~~([\s\S]*?)~~/g;
 	// Regex to match [ ... ] bracket comprehensions with 'if' (non-greedy)
@@ -1346,6 +1397,9 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 			continue;
 		}
 		if (token.modifier === 'reference') {
+			if (isMetadataKeyReference(tokenStart, token.length)) {
+				continue;
+			}
 			if (isCommsStyleSelectorReference(doc, tokenStart)) {
 				continue;
 			}
@@ -1478,9 +1532,7 @@ function getUndefinedVariableReferenceNamesInLabel(doc: TextDocument, label: Lab
 		const n = (current.name || '').trim();
 		if (!n) continue;
 		knownLabelNames.add(n);
-		if (n.startsWith('//')) {
-			knownLabelNames.add(n.substring(2));
-		} else {
+		if (!n.startsWith('//')) {
 			knownLabelNames.add(`//${n}`);
 		}
 		for (const sub of current.subLabels || []) {
