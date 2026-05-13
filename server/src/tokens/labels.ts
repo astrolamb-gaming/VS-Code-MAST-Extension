@@ -895,6 +895,43 @@ function hasPriorTextualDefinitionInScope(doc: TextDocument, scopeStart: number,
 	return null;
 }
 
+function isCommsStyleSelectorReference(doc: TextDocument, tokenStart: number): boolean {
+	const fullText = doc.getText();
+	const tokenPos = doc.positionAt(tokenStart);
+	const lineStart = doc.offsetAt({ line: tokenPos.line, character: 0 });
+	const lineEnd = tokenPos.line + 1 < doc.lineCount
+		? doc.offsetAt({ line: tokenPos.line + 1, character: 0 }) - 1
+		: fullText.length;
+	if (lineEnd <= lineStart) {
+		return false;
+	}
+
+	const lineText = fullText.substring(lineStart, lineEnd);
+	const tokenCol = tokenStart - lineStart;
+	if (tokenCol < 0 || tokenCol > lineText.length) {
+		return false;
+	}
+
+	const left = lineText.substring(0, tokenCol);
+	const bracketStart = left.lastIndexOf('[');
+	if (bracketStart < 0) {
+		return false;
+	}
+
+	const bracketEnd = lineText.indexOf(']', bracketStart + 1);
+	if (bracketEnd < 0 || tokenCol > bracketEnd) {
+		return false;
+	}
+
+	// Selector must be attached to a comms/button style prefix.
+	const prefix = lineText.substring(0, bracketStart).trim();
+	if (!prefix.startsWith('+') && !prefix.startsWith('()') && !prefix.startsWith('<<') && !prefix.startsWith('>>') && !prefix.startsWith('<all>')) {
+		return false;
+	}
+
+	return true;
+}
+
 function splitTopLevelCommaSegments(text: string): Array<{ start: number, end: number }> {
 	const segments: Array<{ start: number, end: number }> = [];
 	let segStart = 0;
@@ -1309,6 +1346,9 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 			continue;
 		}
 		if (token.modifier === 'reference') {
+			if (isCommsStyleSelectorReference(doc, tokenStart)) {
+				continue;
+			}
 			if (isLambdaParamDefinition || isInLambdaBodyForParam || isComprehensionVar) {
 				continue;
 			}
