@@ -755,6 +755,7 @@ export class MissionCache {
 		if (testingPython) return;
 		const uri = this.missionURI;
 		const seenModuleFiles = new Set<string>();
+		const workspaceFolders = await this.getWorkspaceFolderPaths();
 		let globals = getArtemisGlobals();
 		if (globals === undefined) {
 			globals = await initializeArtemisGlobals();
@@ -783,33 +784,40 @@ export class MissionCache {
 					let moduleMastLoaded = 0;
 					let moduleSource = 'zip';
 					debug("Unzipping: " + zip);
+					const moduleBaseName = this.storyJson.getModuleBaseName(zip).toLowerCase();
 					
 					let found = false;
 					let missions = globals!.getAllMissions()
 					for (const m of missions) {
-						if (this.storyJson.getModuleBaseName(zip).toLowerCase().includes(m.toLowerCase())) {
+						if (moduleBaseName.includes(m.toLowerCase())) {
 							found = true;
 							moduleSource = 'mission-folder';
 							// Here we refer to the mission instead of the zip
 							const missionFolder = path.join(globals!.artemisDir,"data","missions",m);
-							const files = getFilesInDir(missionFolder,true);
-							for (const f of files) {
-								if (f.endsWith(".py")|| f.endsWith(".mast")) {
-									const fileKey = fixFileName(f).toLowerCase();
-									if (seenModuleFiles.has(fileKey)) {
-										continue;
-									}
-									const data = await readFile(f);
-									seenModuleFiles.add(fileKey);
-									debug("Loading: " + path.basename(f));
-									this.handleZipData(data, f);
-									if (f.endsWith('.py')) modulePyLoaded++;
-									if (f.endsWith('.mast')) moduleMastLoaded++;
-								}
-							}
+							const folderCounts = await this.loadModuleFilesFromFolder(missionFolder, seenModuleFiles);
+							modulePyLoaded += folderCounts.py;
+							moduleMastLoaded += folderCounts.mast;
 							break;
 						}
 					}
+
+					if (!found) {
+						for (const folderPath of workspaceFolders) {
+							const folderName = path.basename(folderPath).toLowerCase();
+							if (!folderName || !moduleBaseName.includes(folderName)) {
+								continue;
+							}
+							const folderCounts = await this.loadModuleFilesFromFolder(folderPath, seenModuleFiles);
+							if (folderCounts.py > 0 || folderCounts.mast > 0) {
+								found = true;
+								moduleSource = 'workspace-folder';
+								modulePyLoaded += folderCounts.py;
+								moduleMastLoaded += folderCounts.mast;
+								break;
+							}
+						}
+					}
+
 					if (!found) {
 						// Here we load the module from the zip
 						const zipPath = path.join(this.missionLibFolder,zip);
@@ -827,7 +835,7 @@ export class MissionCache {
 									if (seenModuleFiles.has(archiveKey)) {
 										continue;
 									}
-									processFile = saveZipTempFile(file,fileData);
+									processFile = saveZipTempFile(processFile,fileData);
 									seenModuleFiles.add(archiveKey);
 									this.handleZipData(fileData,processFile);
 									if (file.endsWith('.py')) modulePyLoaded++;
@@ -869,6 +877,44 @@ export class MissionCache {
 		} catch (e) {
 			debug(e);
 		}
+	}
+
+	private async getWorkspaceFolderPaths(): Promise<string[]> {
+		try {
+			const folders = await connection.workspace.getWorkspaceFolders();
+			if (!folders) {
+				return [];
+			}
+			return folders
+				.map((folder) => URI.parse(folder.uri).fsPath)
+				.filter((folderPath) => folderPath !== '' && fs.existsSync(folderPath));
+		} catch (e) {
+			debug('Unable to read workspace folders while resolving modules');
+			debug(e);
+			return [];
+		}
+	}
+
+	private async loadModuleFilesFromFolder(folderPath: string, seenModuleFiles: Set<string>): Promise<{ py: number; mast: number }> {
+		let py = 0;
+		let mast = 0;
+		const files = getFilesInDir(folderPath, true);
+		for (const f of files) {
+			if (!(f.endsWith('.py') || f.endsWith('.mast'))) {
+				continue;
+			}
+			const fileKey = fixFileName(f).toLowerCase();
+			if (seenModuleFiles.has(fileKey)) {
+				continue;
+			}
+			const data = await readFile(f);
+			seenModuleFiles.add(fileKey);
+			debug('Loading: ' + path.basename(f));
+			this.handleZipData(data, f);
+			if (f.endsWith('.py')) py++;
+			if (f.endsWith('.mast')) mast++;
+		}
+		return { py, mast };
 	}
 
 	/**
@@ -1465,9 +1511,6 @@ export class MissionCache {
 		const classMethodIndex = new Map<string, Function[]>();
 
 		for (const py of this.pyFileCache) {
-			if (!py.isGlobal) {
-				continue;
-			}
 			for (const method of py.defaultFunctions) {
 				methods.push(method);
 				this.addMethodToIndex(methodIndex, method);
@@ -2212,10 +2255,8 @@ export class MissionCache {
 				ci.push(c.buildCompletionItem());
 			}
 			for (const p of this.pyFileCache) {
-				if (p.isGlobal) {
-					for (const f of p.defaultFunctions) {
-						ci.push(f.buildCompletionItem());
-					}
+				for (const f of p.defaultFunctions) {
+					ci.push(f.buildCompletionItem());
 				}
 			}
 			return ci;
