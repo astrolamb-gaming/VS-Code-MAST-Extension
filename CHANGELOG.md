@@ -27,6 +27,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * If python autocompletion is enabled, all available functions are available through autocompletion, and when one is selected it will auto-populate the import if not already there.
 	* If the mission folder is a mastlib, will use the `from sbs_utils.procedural.gui import x` syntax.
 	* If the mission folder is an sbslib, will use the `from ..procedural.links import x` syntax.
+* Improve workspace support
 
 
 ### 0.18.1
