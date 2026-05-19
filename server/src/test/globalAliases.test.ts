@@ -3,9 +3,12 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { after, describe, it } from 'mocha';
-import { MissionCache } from '../cache';
+import { getCache, MissionCache } from '../cache';
 import { matchesClassName } from '../data';
+import { checkFunctionSignatures } from '../errorChecking';
 import { PyFile } from '../files/PyFile';
+import { TextDocument } from 'vscode-languageserver-textdocument';
+import { URI } from 'vscode-uri';
 
 const tempRoots: string[] = [];
 
@@ -31,6 +34,21 @@ function createMissionCache(testName: string): { cache: MissionCache; missionDir
 	const workspaceFile = path.join(missionDir, 'main.mast');
 	return {
 		cache: new MissionCache(workspaceFile),
+		missionDir,
+	};
+}
+
+function createRegisteredMissionCache(testName: string): { cache: MissionCache; missionDir: string } {
+	const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mast-cache-test-'));
+	tempRoots.push(root);
+
+	const missionDir = path.join(root, 'data', 'missions', testName);
+	fs.mkdirSync(missionDir, { recursive: true });
+	fs.writeFileSync(path.join(missionDir, 'story.json'), '{}', 'utf8');
+
+	const workspaceFile = path.join(missionDir, 'main.mast');
+	return {
+		cache: getCache(workspaceFile),
 		missionDir,
 	};
 }
@@ -199,5 +217,33 @@ def port_side():
 		assert.ok(sbsClass);
 		assert.ok(sbsClass?.methods.some((method) => method.name === 'get_hull_map'));
 		assert.equal(sidesPy.classes.some((classObject) => classObject.name === 'sbs'), false);
+	});
+
+	it('reports missing required args for unresolved member calls despite satisfied unrelated overloads', () => {
+		const { cache, missionDir } = createRegisteredMissionCache('required-arg-member-call');
+
+		const alphaPy = new PyFile(path.join(missionDir, 'alpha.py'), `
+class alpha:
+    def do_work(self, required_name):
+        pass
+`);
+		const betaPy = new PyFile(path.join(missionDir, 'beta.py'), `
+class beta:
+    def do_work(self, optional_name = None):
+        pass
+`);
+		cache.addMissionPyFile(alphaPy);
+		cache.addMissionPyFile(betaPy);
+
+		const mastPath = path.join(missionDir, 'main.mast');
+		const mastText = 'with unknown_ref.do_work():\n    pass\n';
+		fs.writeFileSync(mastPath, mastText, 'utf8');
+
+		const mastDoc = TextDocument.create(URI.file(mastPath).toString(), 'mast', 1, mastText);
+		cache.updateFileInfo(mastDoc);
+
+		const diagnostics = checkFunctionSignatures(mastDoc);
+		assert.ok(diagnostics.length > 0);
+		assert.ok(diagnostics.some((diag) => diag.message.includes("Missing required argument(s): 'required_name'")));
 	});
 });

@@ -29,8 +29,8 @@ export function checkLastLine(textDocument: TextDocument): Diagnostic | undefine
 				start: textDocument.positionAt(text.length - lastLine.length),
 				end: textDocument.positionAt(text.length)
 			},
-			message: "MAST Compiler Error: File must end with an empty line.",
-			source: "MAST Compiler "+ __filename
+			message: "MAST Error: File must end with an empty line.",
+			source: "MAST Error: "+ __filename
 		};
 		return diagnostic
 	}
@@ -295,10 +295,12 @@ export function checkFunctionSignatures(textDocument: TextDocument): Diagnostic[
 		// Build callable candidates. For ambiguous names, prefer lower-arity
 		// callables so unknown receiver types don't over-report missing args.
 		let candidates = isMemberCall ? cache.getPossibleMethods(funcName) : [];
+		let receiverResolved = false;
 		if (isMemberCall && receiverName && candidates.length > 0) {
 			const receiverMatches = candidates.filter((cand) => (cand.className || '') === receiverName);
 			if (receiverMatches.length > 0) {
 				candidates = receiverMatches;
+				receiverResolved = true;
 			}
 		}
 		if (!isMemberCall) {
@@ -306,7 +308,11 @@ export function checkFunctionSignatures(textDocument: TextDocument): Diagnostic[
 			if (globalMethod) {
 				candidates.push(globalMethod);
 			}
-			candidates = candidates.concat(cache.getPossibleMethods(funcName));
+			const classCandidates = cache.getPossibleMethods(funcName).filter((cand) => {
+				const cn = (cand.className || '').trim();
+				return cand.functionType === 'constructor' || cn === funcName;
+			});
+			candidates = candidates.concat(classCandidates);
 		}
 		if (candidates.length === 0) {
 			const fallback = cache.getCallableForName(funcName, isMemberCall);
@@ -353,18 +359,26 @@ export function checkFunctionSignatures(textDocument: TextDocument): Diagnostic[
 			};
 		});
 
-		// If any candidate is satisfied, no missing-argument diagnostic.
-		if (evals.some((e) => e.unfulfilled.length === 0)) {
-			continue;
+		const satisfied = evals.filter((e) => e.unfulfilled.length === 0);
+		if (satisfied.length > 0) {
+			// For unresolved member calls (obj.func(...), unknown obj type),
+			// do not let unrelated low-arity methods hide missing required args.
+			if (!isMemberCall || receiverResolved || satisfied.length === evals.length) {
+				continue;
+			}
 		}
 
+		const evalPool = (isMemberCall && !receiverResolved && satisfied.length > 0)
+			? evals.filter((e) => e.unfulfilled.length > 0)
+			: evals;
+
 		// Ambiguous call: prefer the candidate with the least arguments.
-		evals.sort((a, b) => {
+		evalPool.sort((a, b) => {
 			if (a.requiredCount !== b.requiredCount) return a.requiredCount - b.requiredCount;
 			if (a.totalParams !== b.totalParams) return a.totalParams - b.totalParams;
 			return a.unfulfilled.length - b.unfulfilled.length;
 		});
-		const unfulfilled = evals[0].unfulfilled;
+		const unfulfilled = evalPool[0].unfulfilled;
 
 		if (unfulfilled.length > 0) {
 			const callEnd = parenOpenOffset + 1 + argsStr.length + 1; // +1 for closing ')'

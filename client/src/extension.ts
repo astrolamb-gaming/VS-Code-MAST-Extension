@@ -147,9 +147,14 @@ export function activate(context: ExtensionContext) {
 					for (const e of edits) {
 						editBuilder.insert(e.pos, e.text);
 					}
-				}).finally(() => {
-					isApplyingQuotePasteFix = false;
-				});
+				}).then(
+					() => {
+						isApplyingQuotePasteFix = false;
+					},
+					() => {
+						isApplyingQuotePasteFix = false;
+					}
+				);
 			}
 		}
 

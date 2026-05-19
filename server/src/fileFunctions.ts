@@ -200,11 +200,21 @@ export function getInitContents(uri: string) : string[] {
 }
 
 export function getMissionFolder(uri: string) : string {
+	uri = (uri || '').trim();
+	if (uri === '') {
+		return '';
+	}
 	// Check if it's the right format
 	if (uri.startsWith("file")) {
 		uri = URI.parse(uri).fsPath;
 	}
-	let arr = uri.split(path.sep);
+	// Normalize to forward slashes so mission-path parsing is stable regardless
+	// of platform separators, short paths, or URI-derived fsPath format.
+	const normalized = uri.replace(/\\/g, '/');
+	let arr = normalized.split('/');
+	if (arr.length > 0 && arr[0] === '') {
+		arr = arr.slice(1);
+	}
 	let retArr = [];
 	let found = false;
 	for (let i = 0; i < arr.length; i++) {
@@ -225,7 +235,7 @@ export function getMissionFolder(uri: string) : string {
 
 	}
 	// Rebuild the path
-	let ret = retArr.join(path.sep);
+	let ret = retArr.join('/');
 	//debug(ret);
 	// Check if it's in a mission folder
 	if (!found) {

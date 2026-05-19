@@ -23,6 +23,7 @@ import { Word } from './tokens/words';
 import { SignalInfo } from './tokens/signals';
 
 export const testingPython = false;
+const isMochaProcess = process.argv.some((arg) => arg.toLowerCase().includes('mocha')) || !!process.env.MOCHA_WORKER_ID;
 
 interface MissionLibManifest {
 	version?: string;
@@ -312,6 +313,10 @@ export class MissionCache {
 	 * Does NOT handle new files, it will be added when it is opened.
 	 */
 	startWatchers() {
+		if (isMochaProcess) {
+			return;
+		}
+
 		let w = fs.watch(this.missionURI, {"recursive": true}, (eventType, filename) => {
 			// debug("fs.watch() EVENT: ")
 			// debug(eventType);
@@ -881,7 +886,12 @@ export class MissionCache {
 
 	private async getWorkspaceFolderPaths(): Promise<string[]> {
 		try {
-			const folders = await connection.workspace.getWorkspaceFolders();
+			const getWorkspaceFolders = connection?.workspace?.getWorkspaceFolders;
+			if (typeof getWorkspaceFolders !== 'function') {
+				return [];
+			}
+
+			const folders = await getWorkspaceFolders();
 			if (!folders) {
 				return [];
 			}
@@ -1911,7 +1921,8 @@ export class MissionCache {
 			return sameClassMethod;
 		}
 
-		return possible[0];
+		// For plain calls `name(...)`, do not return unrelated class methods.
+		return undefined;
 	}
 
 	/**
@@ -2561,7 +2572,7 @@ export function getCache(name:string, reloadCache:boolean = false): MissionCache
  * TODO: Make this a user-customizable option.
  */
 function cacheGC() {
-	setInterval(()=>{
+	const gcTimer = setInterval(()=>{
 		const now = Date.now();
 		for (const [key, c] of caches.entries()) {
 			if (now - c.lastAccessed > 1000 * 60 * 7) { // 7 minutes
@@ -2571,6 +2582,11 @@ function cacheGC() {
 			}
 		}
 	}, 1000 * 60 * 5); // run every 5 minutes
+
+	// Do not keep Node alive just for background cache cleanup.
+	if (typeof gcTimer.unref === 'function') {
+		gcTimer.unref();
+	}
 }
 
 // start GC loop
