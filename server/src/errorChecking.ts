@@ -368,16 +368,26 @@ export function checkFunctionSignatures(textDocument: TextDocument): Diagnostic[
 			}
 		}
 
-		const evalPool = (isMemberCall && !receiverResolved && satisfied.length > 0)
-			? evals.filter((e) => e.unfulfilled.length > 0)
-			: evals;
-
-		// Ambiguous call: prefer the candidate with the least arguments.
-		evalPool.sort((a, b) => {
+		// Sort all evals by required-param count ascending so the lowest-arity
+		// candidate is always first. For ambiguous member calls (unresolved
+		// receiver) we only report an error when even the overload with the
+		// fewest required parameters is unsatisfied — if it is satisfied we
+		// have no grounds to flag the call.
+		evals.sort((a, b) => {
 			if (a.requiredCount !== b.requiredCount) return a.requiredCount - b.requiredCount;
 			if (a.totalParams !== b.totalParams) return a.totalParams - b.totalParams;
 			return a.unfulfilled.length - b.unfulfilled.length;
 		});
+
+		if (isMemberCall && !receiverResolved && evals[0].unfulfilled.length === 0) {
+			// The lowest-arity overload is satisfied — suppress the diagnostic.
+			continue;
+		}
+
+		const evalPool = (isMemberCall && !receiverResolved && satisfied.length > 0)
+			? evals.filter((e) => e.unfulfilled.length > 0)
+			: evals;
+
 		const unfulfilled = evalPool[0].unfulfilled;
 
 		if (unfulfilled.length > 0) {
