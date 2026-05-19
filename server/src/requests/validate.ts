@@ -110,6 +110,18 @@ export async function compileMastFile(textDocument: TextDocument): Promise<Diagn
 				}
 			} 
 			
+			// Suppress import-path resolution errors that fire while the compiler
+			// is still initialising (e.g. "expected str, bytes or os.PathLike
+			// object, not NoneType" on `import <file>`).  These are transient
+			// setup artefacts, not real script errors.
+			// TODO: Fix the compiler error for imports properly. Talk to Doug. This is a temporary fix.
+			const isImportPathError =
+				errorText.includes('expected str, bytes or os.PathLike object, not NoneType') &&
+				/^\s*import\s+/i.test(lineContents);
+			if (isImportPathError) {
+				continue;
+			}
+
 			let message = errorText + "  in:\n`" + lineContents + "`\n";
 			let endPos = lineNum < maxLine
 				? textDocument.positionAt(textDocument.offsetAt({line: lineNum+1, character: 0})-1)
