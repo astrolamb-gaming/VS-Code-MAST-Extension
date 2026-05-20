@@ -7,7 +7,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ### To-DO and WIP
 
 * TODO: Add more info about shipdata entries to the art arguments for space objects
-* WIP: Get mast complier errors from the compiler itself, so the game doesn't have to be running to check for compiler errors.
+* ~~WIP: Get mast complier errors from the compiler itself, so the game doesn't have to be running to check for compiler errors.~~
 * ~~TODO: Add certain parts of the MAST file functionality to apply to Python files as well (completions, go to definition, etc.)~~ DONE!
 
 ### 0.18.2
