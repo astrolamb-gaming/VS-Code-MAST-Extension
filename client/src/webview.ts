@@ -7,6 +7,7 @@ import * as fs from 'fs';
 
 let shipPanel: WebviewPanel | undefined = undefined;
 let facePanel: WebviewPanel | undefined = undefined;
+let uiBuilderPanel: WebviewPanel | undefined = undefined;
 
 interface ShipViewerShip {
 	key: string;
@@ -55,6 +56,10 @@ interface FaceViewerEntry {
 	raceId: string;
 	fileName: string;
 	imageUri: string;
+}
+
+interface UIBuilderConfig {
+	sourceUri: string;
 }
 
 const MODEL_EXTENSIONS = ['.obj'];
@@ -316,6 +321,24 @@ function buildFaceViewerHtml(context: vscode.ExtensionContext, webview: vscode.W
 	template = template.split('__FACES_JS_URI__').join(facesJsUri);
 	template = template.split('__FACE_ENTRIES_JSON__').join(entriesJson);
 	template = template.split('__FACE_VIEWER_CONFIG_JSON__').join(viewerConfigJson);
+
+	return template;
+}
+
+function buildUIBuilderHtml(context: vscode.ExtensionContext, webview: vscode.Webview, config: UIBuilderConfig): string {
+	const nonce = getNonce();
+	const mediaPath = path.join(context.extensionPath, 'client', 'src', 'media', 'uiBuilder.html');
+	let template = fs.readFileSync(mediaPath, 'utf8');
+	const mediaRoot = vscode.Uri.joinPath(context.extensionUri, 'client', 'src', 'media');
+	const cssUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaRoot, 'uiBuilder.css')).toString();
+	const jsUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaRoot, 'uiBuilder.js')).toString();
+	const configJson = JSON.stringify(config).replace(/</g, '\\u003c');
+
+	template = template.split('__CSP_SOURCE__').join(webview.cspSource);
+	template = template.split('__NONCE__').join(nonce);
+	template = template.split('__UI_BUILDER_CSS_URI__').join(cssUri);
+	template = template.split('__UI_BUILDER_JS_URI__').join(jsUri);
+	template = template.split('__UI_BUILDER_CONFIG_JSON__').join(configJson);
 
 	return template;
 }
@@ -621,6 +644,78 @@ export function generateFaceWebview(context: vscode.ExtensionContext, payload: F
 	const entries = buildFaceEntries(payload, facePanel);
 	facePanel.title = 'Face String Builder';
 	facePanel.webview.html = buildFaceViewerHtml(context, facePanel.webview, entries, payload);
+}
+
+export function generateUIBuilderWebview(context: vscode.ExtensionContext) {
+	const targetColumn = vscode.window.activeTextEditor?.viewColumn ?? vscode.ViewColumn.One;
+	const mediaRoot = vscode.Uri.joinPath(context.extensionUri, 'client', 'src', 'media');
+	const localRoots: vscode.Uri[] = [mediaRoot];
+
+	if (uiBuilderPanel) {
+		uiBuilderPanel.reveal(targetColumn);
+	} else {
+		uiBuilderPanel = vscode.window.createWebviewPanel(
+			'uiBuilder',
+			'MAST UI Builder',
+			targetColumn,
+			{
+				enableScripts: true,
+				retainContextWhenHidden: true,
+				localResourceRoots: localRoots
+			}
+		);
+
+		uiBuilderPanel.onDidDispose(
+			() => {
+				uiBuilderPanel = undefined;
+			},
+			null,
+			context.subscriptions
+		);
+
+		uiBuilderPanel.webview.onDidReceiveMessage(async (message) => {
+			if (!message) {
+				return;
+			}
+
+			if (message.command === 'insertGuiCode') {
+				const code = typeof message.code === 'string' ? message.code : '';
+				if (!code.trim()) {
+					vscode.window.showWarningMessage('No generated GUI code to insert.');
+					return;
+				}
+
+				const targetUri = typeof message.targetUri === 'string' ? message.targetUri : '';
+				const inserted = await insertTextIntoEditor(targetUri, code);
+				if (!inserted) {
+					vscode.window.showWarningMessage('No active editor to insert GUI code into.');
+					return;
+				}
+
+				vscode.window.showInformationMessage('Inserted generated GUI code.');
+				return;
+			}
+
+			if (message.command === 'copyGuiCode') {
+				const code = typeof message.code === 'string' ? message.code : '';
+				if (!code.trim()) {
+					return;
+				}
+				await vscode.env.clipboard.writeText(code);
+				vscode.window.showInformationMessage('Copied generated GUI code to clipboard.');
+			}
+		});
+
+		context.subscriptions.push(uiBuilderPanel);
+	}
+
+	if (!uiBuilderPanel) {
+		return;
+	}
+
+	const sourceUri = vscode.window.activeTextEditor?.document.uri.toString() || '';
+	uiBuilderPanel.title = 'MAST UI Builder';
+	uiBuilderPanel.webview.html = buildUIBuilderHtml(context, uiBuilderPanel.webview, { sourceUri });
 }
 
 export function getWebviewContent(content: string): string {

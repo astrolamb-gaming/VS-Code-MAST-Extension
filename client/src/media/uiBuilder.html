@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src __CSP_SOURCE__ https: data:; style-src __CSP_SOURCE__ 'unsafe-inline'; script-src 'nonce-__NONCE__';">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAST UI Builder</title>
+    <link rel="stylesheet" href="__UI_BUILDER_CSS_URI__">
+</head>
+<body>
+    <div class="page">
+        <aside class="left-pane">
+            <h2>UI Elements</h2>
+            <p class="hint">Drag elements into the layout canvas.</p>
+            <div id="palette" class="palette"></div>
+
+            <div class="inspector">
+                <h3>Selected Element</h3>
+                <div id="selected-empty" class="muted">Select an element on the canvas.</div>
+                <div id="selected-editor" class="hidden">
+                    <div class="field">
+                        <label for="selected-type">Type</label>
+                        <input id="selected-type" type="text" readonly>
+                    </div>
+                    <div class="field">
+                        <label for="selected-args">Arguments</label>
+                        <input id="selected-args" type="text" placeholder="label='Example', left=0, top=0">
+                    </div>
+                    <div class="field-row">
+                        <button id="delete-selected" class="danger">Delete</button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="right-pane">
+            <div class="canvas-header">
+                <h2>Cosmos GUI Canvas</h2>
+                <div class="actions">
+                    <button id="clear-canvas">Clear Canvas</button>
+                    <button id="regenerate-code">Regenerate Code</button>
+                </div>
+            </div>
+            <div id="canvas" class="canvas"></div>
+
+            <section class="code-panel">
+                <div class="code-header">
+                    <h3>Generated MAST Code</h3>
+                    <span id="code-mode" class="mode-pill">Auto</span>
+                </div>
+                <textarea id="code-output" spellcheck="false"></textarea>
+                <div class="code-actions">
+                    <button id="copy-code">Copy</button>
+                    <button id="insert-code" class="primary">Insert Into Editor</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script type="application/json" id="ui-builder-config">__UI_BUILDER_CONFIG_JSON__</script>
+    <script nonce="__NONCE__" src="__UI_BUILDER_JS_URI__"></script>
+</body>
+</html>

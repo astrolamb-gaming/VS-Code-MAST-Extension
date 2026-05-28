@@ -20,7 +20,7 @@ import {
 	ServerOptions,
 	TransportKind
 } from 'vscode-languageclient/node';
-import { generateFaceWebview, generateShipWebview } from './webview';
+import { generateFaceWebview, generateShipWebview, generateUIBuilderWebview } from './webview';
 
 let mainProgress: Progress<{
     message?: string;
@@ -340,6 +340,11 @@ export function activate(context: ExtensionContext) {
 		client.sendNotification('custom/openFaceBuilder', {
 			sourceUri: vscode.window.activeTextEditor?.document.uri.toString() || ''
 		});
+	}));
+
+	context.subscriptions.push(vscode.commands.registerCommand('mast.UI_Builder', () => {
+		debug('mast.UI_Builder command triggered');
+		generateUIBuilderWebview(context);
 	}));
 
 	context.subscriptions.push(vscode.commands.registerCommand('mast.runSbsLib', async () => {
