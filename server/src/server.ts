@@ -858,7 +858,7 @@ connection.onCompletionResolve(async (completionItem: CompletionItem): Promise<C
 	}
 
 	const sourceFile = completionItem.data.sourceFile as string;
-	const functionName = completionItem.data.functionName as string;
+	const functionName = (completionItem.data.functionName as string) || (completionItem.data.className as string);
 	const text = activeDoc.getText();
 	const cache = getCache(activeDoc.uri);
 

@@ -109,7 +109,12 @@ export class ClassObject {
 			documentation: this.documentation,
 			detail: ci_details, //(this.constructorFunction) ? this.constructorFunction.documentation : this.documentation, //this.documentation as string,
 			labelDetails: labelDetails,
-			insertText: this.name
+			insertText: this.name,
+			data: {
+				sourceFile: this.sourceFile,
+				functionName: this.name,
+				className: this.name
+			}
 		}
 		return ci;
 	}
