@@ -41,10 +41,9 @@ export class StoryJson {
 		//debug(files)
 		for (const m of files) {
 			const libDir = path.join(getArtemisGlobals().artemisDir,"data","missions","__lib__",m);
-			const libName = this.getModuleBaseName(m);
 			if (getArtemisGlobals().libModules.includes(libDir)) {
 				// Module found. Check for updated versions
-				let latest = this.getLatestVersion(libName);
+				let latest = this.getLatestVersion(m);
 				if (latest === "") {
 					continue;
 				}
@@ -62,7 +61,7 @@ export class StoryJson {
 			} else {
 				// Module NOT found. Show error message and recommend latest version.
 				errors = 0;
-				const lv = path.basename(this.getLatestVersion(libName));
+				const lv = path.basename(this.getLatestVersion(m));
 				debug("Module NOT found");
 				break;
 			}
@@ -113,14 +112,15 @@ export class StoryJson {
 
 	/**
 	 * 
-	 * @param name Name of the module, excluding the version number (call getModuleBaseName() first)
+	 * @param name Name of the module, including the version number.
 	 * @returns String with the name of the most recent version. If the
 	 */
 	getLatestVersion(name:string) {
 		let version = 0;
 		let latestFile = "";
 		for (const file of getArtemisGlobals().libModules) {
-			if (file.includes(name)) {
+			if (this.getModuleBaseName(file) === this.getModuleBaseName(name)) {
+			// if (file.includes(name)) {
 				const v = this.getVersionPriority(file);
 				if (v > version) {
 					version = v;
@@ -185,8 +185,7 @@ export class StoryJson {
 		try {
 		let data = fs.readFileSync(this.uri,"utf-8");
 		for (const module of libs) {
-			let name = this.getModuleBaseName(module);
-			const newest = this.getLatestVersion(name);
+			const newest = this.getLatestVersion(module);
 			data = data.replace(module, path.basename(newest));
 		}
 		fs.writeFileSync(this.uri,data);
@@ -257,7 +256,7 @@ export class StoryJson {
 		if (ret === undefined) return false;
 		if (ret.title === generate) {
 			// Create story.json
-			let latest = path.basename(this.getLatestVersion("artemis-sbs.sbs_utils"));
+			let latest = path.basename(this.getLatestVersion("artemis-sbs.sbs_utils.v1.3.0.sbslib"));
 			fs.writeFileSync(this.uri, "{\n\t\"sbslib\": [\"" + latest + "\"],\n\t\"mastlib\": []\n}", {"encoding": "utf-8"});
 			return true;
 		} else if (ret.title === gen_pop) {
