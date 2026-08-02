@@ -54,6 +54,7 @@ import { onPrepareRename, onRenameRequest } from './requests/renameSymbol';
 import { getWordRangeAtPosition } from './tokens/words';
 import { getSemanticTokens, TOKEN_TYPES, TOKEN_MODIFIERS, getEmptySemanticTokens, tokenizeDocument, buildSemanticTokens } from './requests/semanticTokens';
 import { getSemanticTokensCache } from './requests/semanticTokensCache';
+import { getGridIcons, parseIconSet } from './resources/iconSets';
 import * as path from 'path';
 import { URI } from 'vscode-uri';
 
@@ -1164,6 +1165,36 @@ connection.onNotification('custom/openFaceBuilder', async (request: { sourceUri?
 	} catch (e) {
 		debug('Failed to open face builder: ' + e);
 		sendWarning('Failed to open Face String Builder. Check MAST output logs for details.');
+	}
+});
+
+connection.onNotification('custom/openIconViewer', async (request: { mode?: string; sourceUri?: string } | undefined) => {
+	try {
+		const globals = getArtemisGlobals() || await initializeArtemisGlobals();
+		if (!globals || !globals.artemisDir) {
+			sendWarning('Artemis directory not found. Cannot open Grid Icon Viewer.');
+			return;
+		}
+
+		if (!globals.gridIcons || globals.gridIcons.length === 0) {
+			await parseIconSet(path.join(globals.artemisDir, 'data', 'graphics', 'grid-icon-sheet.png'), 128, false);
+			globals.gridIcons = getGridIcons();
+		}
+
+		const icons = (globals.gridIcons || []).map(icon => ({
+			index: icon.index,
+			filePath: icon.filePath
+		}));
+
+		sendToClient('icons', {
+			artemisDir: globals.artemisDir,
+			icons,
+			mode: request?.mode || 'browse',
+			sourceUri: request?.sourceUri || ''
+		});
+	} catch (e) {
+		debug('Failed to open icon viewer: ' + e);
+		sendWarning('Failed to open Grid Icon Viewer. Check MAST output logs for details.');
 	}
 });
 

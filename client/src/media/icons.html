@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src __CSP_SOURCE__ data: blob:; style-src __CSP_SOURCE__; script-src 'nonce-__NONCE__' __CSP_SOURCE__;">
+    <title>Grid Icon Viewer</title>
+    <link rel="stylesheet" href="__ICONS_CSS_URI__">
+</head>
+<body>
+    <header class="topbar">
+        <div>
+            <h1>Grid Icon Viewer</h1>
+            <p>Browse grid-icon-sheet tiles and use the selected index.</p>
+        </div>
+        <input id="search" class="search" placeholder="Filter by index" />
+    </header>
+
+    <main class="layout">
+        <section class="gallery-wrap">
+            <div id="gallery" class="gallery"></div>
+        </section>
+        <aside class="details">
+            <div class="details-card">
+                <div class="preview-wrap">
+                    <img id="preview" class="preview" alt="Selected icon preview" />
+                </div>
+                <div class="meta">
+                    <div class="meta-label">Selected Index</div>
+                    <div id="selectedIndex" class="meta-value">None</div>
+                </div>
+                <div class="actions">
+                    <button id="copyBtn" class="btn">Copy Index</button>
+                    <button id="insertBtn" class="btn btn-primary" hidden>Insert Index</button>
+                </div>
+                <div id="status" class="status">Select an icon to begin.</div>
+            </div>
+        </aside>
+    </main>
+
+    <script nonce="__NONCE__">window.__ICON_ENTRIES__ = __ICON_ENTRIES_JSON__;</script>
+    <script nonce="__NONCE__">window.__ICON_VIEWER_CONFIG__ = __ICON_VIEWER_CONFIG_JSON__;</script>
+    <script nonce="__NONCE__" src="__ICONS_JS_URI__"></script>
+</body>
+</html>

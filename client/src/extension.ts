@@ -20,7 +20,7 @@ import {
 	ServerOptions,
 	TransportKind
 } from 'vscode-languageclient/node';
-import { generateFaceWebview, generateShipWebview } from './webview';
+import { generateFaceWebview, generateIconWebview, generateShipWebview } from './webview';
 
 let mainProgress: Progress<{
     message?: string;
@@ -290,6 +290,11 @@ export function activate(context: ExtensionContext) {
 		generateFaceWebview(context, payload);
 	});
 
+	const icons = client.onNotification('custom/icons', (payload)=>{
+		debug('Received icons notification payload; artemisDir: ' + payload?.artemisDir + ', icons: ' + (payload?.icons?.length || 0));
+		generateIconWebview(context, payload);
+	});
+
 	const openShipPicker = client.onNotification('custom/openShipPicker', async (payload)=>{
 		debug('Received ship picker request for arg: ' + payload?.argumentName);
 		const choice = await window.showInformationMessage(
@@ -338,6 +343,18 @@ export function activate(context: ExtensionContext) {
 		}
 		debug('Sending custom/openFaceBuilder notification to server');
 		client.sendNotification('custom/openFaceBuilder', {
+			sourceUri: vscode.window.activeTextEditor?.document.uri.toString() || ''
+		});
+	}));
+
+	context.subscriptions.push(vscode.commands.registerCommand('mast.openIconViewer', () => {
+		debug('mast.openIconViewer command triggered');
+		if (!client) {
+			window.showWarningMessage('MAST client is not ready yet.');
+			return;
+		}
+		debug('Sending custom/openIconViewer notification to server');
+		client.sendNotification('custom/openIconViewer', {
 			sourceUri: vscode.window.activeTextEditor?.document.uri.toString() || ''
 		});
 	}));

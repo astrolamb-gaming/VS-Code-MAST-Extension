@@ -279,6 +279,10 @@
 				"title": "MAST: Open Face String Builder"
 			},
 			{
+				"command": "mast.openIconViewer",
+				"title": "MAST: Open Grid Icon Viewer"
+			},
+			{
 				"command": "mast.runSbsLib",
 				"title": "MAST: Build sbslib/mastlib"
 			},

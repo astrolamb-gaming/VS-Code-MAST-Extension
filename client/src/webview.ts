@@ -7,6 +7,7 @@ import * as fs from 'fs';
 
 let shipPanel: WebviewPanel | undefined = undefined;
 let facePanel: WebviewPanel | undefined = undefined;
+let iconPanel: WebviewPanel | undefined = undefined;
 
 interface ShipViewerShip {
 	key: string;
@@ -54,6 +55,23 @@ interface FaceViewerPayload {
 interface FaceViewerEntry {
 	raceId: string;
 	fileName: string;
+	imageUri: string;
+}
+
+interface IconViewerIcon {
+	index: string;
+	filePath: string;
+}
+
+interface IconViewerPayload {
+	artemisDir: string;
+	icons: IconViewerIcon[];
+	mode?: string;
+	sourceUri?: string;
+}
+
+interface IconViewerEntry {
+	index: string;
 	imageUri: string;
 }
 
@@ -265,6 +283,34 @@ function buildFaceEntries(payload: FaceViewerPayload, panel: WebviewPanel): Face
 	return entries;
 }
 
+function buildIconEntries(payload: IconViewerPayload, panel: WebviewPanel): IconViewerEntry[] {
+	const entries: IconViewerEntry[] = [];
+
+	for (const icon of payload.icons || []) {
+		const index = (icon.index || '').trim();
+		const filePath = (icon.filePath || '').trim();
+		if (!index || !filePath || !fs.existsSync(filePath)) {
+			continue;
+		}
+
+		entries.push({
+			index,
+			imageUri: panel.webview.asWebviewUri(vscode.Uri.file(filePath)).toString()
+		});
+	}
+
+	entries.sort((a, b) => {
+		const ai = Number.parseInt(a.index, 10);
+		const bi = Number.parseInt(b.index, 10);
+		if (!Number.isNaN(ai) && !Number.isNaN(bi)) {
+			return ai - bi;
+		}
+		return a.index.localeCompare(b.index);
+	});
+
+	return entries;
+}
+
 function buildShipViewerHtml(context: vscode.ExtensionContext, webview: vscode.Webview, entries: ShipViewerEntry[], payload: ShipViewerPayload): string {
 	const nonce = getNonce();
 	const mediaPath = path.join(context.extensionPath, 'client', 'src', 'media', 'ships.html');
@@ -316,6 +362,29 @@ function buildFaceViewerHtml(context: vscode.ExtensionContext, webview: vscode.W
 	template = template.split('__FACES_JS_URI__').join(facesJsUri);
 	template = template.split('__FACE_ENTRIES_JSON__').join(entriesJson);
 	template = template.split('__FACE_VIEWER_CONFIG_JSON__').join(viewerConfigJson);
+
+	return template;
+}
+
+function buildIconViewerHtml(context: vscode.ExtensionContext, webview: vscode.Webview, entries: IconViewerEntry[], payload: IconViewerPayload): string {
+	const nonce = getNonce();
+	const mediaPath = path.join(context.extensionPath, 'client', 'src', 'media', 'icons.html');
+	let template = fs.readFileSync(mediaPath, 'utf8');
+	const mediaRoot = vscode.Uri.joinPath(context.extensionUri, 'client', 'src', 'media');
+	const iconsCssUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaRoot, 'icons.css')).toString();
+	const iconsJsUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaRoot, 'icons.js')).toString();
+	const entriesJson = JSON.stringify(entries).replace(/</g, '\\u003c');
+	const viewerConfigJson = JSON.stringify({
+		mode: payload.mode || 'browse',
+		sourceUri: payload.sourceUri || ''
+	}).replace(/</g, '\\u003c');
+
+	template = template.split('__CSP_SOURCE__').join(webview.cspSource);
+	template = template.split('__NONCE__').join(nonce);
+	template = template.split('__ICONS_CSS_URI__').join(iconsCssUri);
+	template = template.split('__ICONS_JS_URI__').join(iconsJsUri);
+	template = template.split('__ICON_ENTRIES_JSON__').join(entriesJson);
+	template = template.split('__ICON_VIEWER_CONFIG_JSON__').join(viewerConfigJson);
 
 	return template;
 }
@@ -621,6 +690,88 @@ export function generateFaceWebview(context: vscode.ExtensionContext, payload: F
 	const entries = buildFaceEntries(payload, facePanel);
 	facePanel.title = 'Face String Builder';
 	facePanel.webview.html = buildFaceViewerHtml(context, facePanel.webview, entries, payload);
+}
+
+export function generateIconWebview(context: vscode.ExtensionContext, payload: IconViewerPayload) {
+	const targetColumn = vscode.window.activeTextEditor?.viewColumn ?? vscode.ViewColumn.One;
+	const mediaRoot = vscode.Uri.joinPath(context.extensionUri, 'client', 'src', 'media');
+	const localRoots: vscode.Uri[] = [mediaRoot];
+	if (payload?.artemisDir) {
+		localRoots.push(vscode.Uri.file(payload.artemisDir));
+	}
+
+	const iconTempRoot = path.join(os.tmpdir(), 'cosmosImages', 'iconSets');
+	if (fs.existsSync(iconTempRoot)) {
+		localRoots.push(vscode.Uri.file(iconTempRoot));
+	}
+
+	if (iconPanel) {
+		iconPanel.reveal(targetColumn);
+	} else {
+		iconPanel = vscode.window.createWebviewPanel(
+			'iconViewer',
+			'Grid Icon Viewer',
+			targetColumn,
+			{
+				enableScripts: true,
+				retainContextWhenHidden: true,
+				localResourceRoots: localRoots
+			}
+		);
+
+		iconPanel.onDidDispose(
+			() => {
+				iconPanel = undefined;
+			},
+			null,
+			context.subscriptions
+		);
+
+		iconPanel.webview.onDidReceiveMessage(async (message) => {
+			if (!message) {
+				return;
+			}
+
+			if (message.command === 'insertIconIndex') {
+				const index = typeof message.index === 'string' ? message.index : '';
+				if (!index) {
+					vscode.window.showWarningMessage('No icon index provided by icon viewer.');
+					return;
+				}
+
+				const targetUri = typeof message.targetUri === 'string' ? message.targetUri : '';
+				const inserted = await insertTextIntoEditor(targetUri, index);
+				if (!inserted) {
+					vscode.window.showWarningMessage('No active editor to insert icon index into.');
+					return;
+				}
+
+				vscode.window.showInformationMessage('Inserted icon index: ' + index);
+				iconPanel?.dispose();
+				return;
+			}
+
+			if (message.command === 'copyIconIndex') {
+				const index = typeof message.index === 'string' ? message.index : '';
+				if (!index) {
+					return;
+				}
+
+				await vscode.env.clipboard.writeText(index);
+				vscode.window.showInformationMessage('Copied icon index: ' + index);
+			}
+		});
+
+		context.subscriptions.push(iconPanel);
+	}
+
+	if (!iconPanel) {
+		return;
+	}
+
+	const entries = buildIconEntries(payload, iconPanel);
+	iconPanel.title = 'Grid Icon Viewer';
+	iconPanel.webview.html = buildIconViewerHtml(context, iconPanel.webview, entries, payload);
 }
 
 export function getWebviewContent(content: string): string {
