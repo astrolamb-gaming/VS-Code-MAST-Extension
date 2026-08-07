@@ -581,6 +581,19 @@ export function getDocumentSettings(resource: string): Thenable<MAST_Settings> {
 }
 
 // Only keep settings for open documents
+documents.onDidOpen((e) => {
+	try {
+		const doc = e.document;
+		if (!doc.uri.endsWith('.mast') && !doc.uri.endsWith('.py')) {
+			return;
+		}
+		const cache = getCache(doc.uri);
+		cache.warnIfMissingFromInit(doc.uri).catch((err) => debug(err));
+	} catch (err) {
+		debug(err);
+	}
+});
+
 documents.onDidClose(e => {
 	// This would break things, because it's only CLOSING, not DELETING
 	// if (e.document.uri.endsWith(".py")) {

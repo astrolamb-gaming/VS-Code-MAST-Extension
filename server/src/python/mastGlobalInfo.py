@@ -83,6 +83,7 @@ if not loaded:
 		exc_type, exc_value, exc_tb = sys.exc_info()
 		stack_trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
 		print(stack_trace)
+		sys.exit(0)
 else:
 	sys.exit(0)
 

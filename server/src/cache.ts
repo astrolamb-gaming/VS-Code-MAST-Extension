@@ -119,6 +119,24 @@ export class MissionCache {
 	private sharedVariableKeysByFile: Map<string, Word[]> = new Map();
 	/** Debounce timers: uri -> NodeJS.Timeout for deferred full Python re-parse */
 	private _reparseTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
+	/** Buffered prompts for adding newly seen files to __init__.mast */
+	private _pendingInitPrompts: Map<string, ReturnType<typeof setTimeout>> = new Map();
+	/** Timestamp history for recent rename events used to detect bulk file operations */
+	private _recentRenameEvents: number[] = [];
+	/** While active, suppress add-to-__init__.mast warnings (used during git checkout-like bursts) */
+	private _suppressInitPromptUntil = 0;
+	/** Deduplicate missing __init__.mast warnings per file for the cache lifetime */
+	private _warnedMissingInitRefs: Set<string> = new Set();
+	/** Tracks whether the one-time initial unreferenced-file scan has already run */
+	private _didRunInitialInitCheck = false;
+	/** Incrementing identifier used to scope Ignore all to a single warning batch */
+	private _warningBatchCounter = 0;
+	/** Batches explicitly silenced via Ignore all */
+	private _ignoredWarningBatches: Set<number> = new Set();
+	/** Active prompt batch for clustered watcher events */
+	private _activePromptBatchId: number | undefined = undefined;
+	/** Expiration timestamp for the active watcher prompt batch */
+	private _activePromptBatchExpiresAt = 0;
 
 	constructor(workspaceUri: string) {
 		//debug(workspaceUri);
@@ -278,6 +296,10 @@ export class MissionCache {
 		debug("Number of py files: "+this.pyFileCache.length);
 		debug("Everything is loaded");
 		this.startWatchers();
+		if (!this._didRunInitialInitCheck) {
+			this._didRunInitialInitCheck = true;
+			this.warnForUnreferencedFilesOnInitialLoad().catch((e) => debug(e));
+		}
 		const loadElapsed = Date.now() - loadStart;
 		this.logLoadTiming('load:complete', loadElapsed, `loaded=${this.isLoaded()}`);
 		if (this._loadedResolve) {
@@ -306,6 +328,165 @@ export class MissionCache {
 	}
 
 	watchers: fs.FSWatcher[] = [];
+	private trackRenameBurst() {
+		const now = Date.now();
+		this._recentRenameEvents.push(now);
+		const windowStart = now - 1500;
+		while (this._recentRenameEvents.length > 0 && this._recentRenameEvents[0] < windowStart) {
+			this._recentRenameEvents.shift();
+		}
+		if (this._recentRenameEvents.length >= 8) {
+			this._suppressInitPromptUntil = Math.max(this._suppressInitPromptUntil, now + 10000);
+		}
+	}
+
+	private shouldSuppressInitPrompt() {
+		return Date.now() < this._suppressInitPromptUntil;
+	}
+
+	private beginWarningBatch(): number {
+		this._warningBatchCounter += 1;
+		return this._warningBatchCounter;
+	}
+
+	private isWarningBatchIgnored(batchId: number | undefined): boolean {
+		if (batchId === undefined) return false;
+		return this._ignoredWarningBatches.has(batchId);
+	}
+
+	private getOrCreatePromptBatch(): number {
+		const now = Date.now();
+		if (this._activePromptBatchId === undefined || now > this._activePromptBatchExpiresAt) {
+			this._activePromptBatchId = this.beginWarningBatch();
+		}
+		this._activePromptBatchExpiresAt = now + 1500;
+		return this._activePromptBatchId;
+	}
+
+	private isInitManagedFile(filePath: string) {
+		const normalized = fixFileName(filePath);
+		if (normalized.includes("/sbs_utils/")) return false;
+		if (normalized.endsWith("/__init__.py") || normalized.endsWith("/__init__.mast")) return false;
+		return normalized.endsWith(".py") || normalized.endsWith(".mast");
+	}
+
+	private getFileNameCandidates(filePath: string): Set<string> {
+		const base = path.basename(filePath).toLowerCase();
+		const withoutExt = base.replace(/\.(py|mast)$/i, '');
+		const candidates = new Set<string>([base, withoutExt]);
+		return candidates;
+	}
+
+	private getInitEntryCandidates(entry: string): Set<string> {
+		const ret = new Set<string>();
+		let token = (entry || '').split('#')[0].trim();
+		if (!token) return ret;
+
+		if (token.startsWith('from ') && token.includes(' import ')) {
+			const importSplit = token.split(' import ');
+			const fromPart = importSplit[0].replace(/^from\s+/, '').trim();
+			const importPart = importSplit[1].trim().split(/\s+/)[0] || '';
+			token = importPart || fromPart;
+		} else {
+			token = token.split(/\s+/)[0] || token;
+		}
+
+		token = token.replace(/,+$/, '').trim();
+		if (!token) return ret;
+
+		const normalizedPath = token.replace(/\\/g, '/');
+		const slashPart = normalizedPath.split('/').pop() || normalizedPath;
+		const dotPart = slashPart.includes('.') && !slashPart.endsWith('.py') && !slashPart.endsWith('.mast')
+			? slashPart.split('.').pop() || slashPart
+			: slashPart;
+		const lower = dotPart.toLowerCase();
+		ret.add(lower);
+		ret.add(lower.replace(/\.(py|mast)$/i, ''));
+		return ret;
+	}
+
+	private isReferencedInInit(filePath: string): boolean {
+		const normalized = fixFileName(filePath);
+		const folder = path.dirname(normalized);
+		const initPath = path.join(folder, '__init__.mast');
+		if (!fs.existsSync(initPath)) {
+			return false;
+		}
+
+		const fileCandidates = this.getFileNameCandidates(normalized);
+		const initEntries = getInitContents(normalized);
+		for (const entry of initEntries) {
+			const entryCandidates = this.getInitEntryCandidates(entry);
+			for (const candidate of entryCandidates) {
+				if (fileCandidates.has(candidate)) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	async warnIfMissingFromInit(filePath: string, warningBatchId?: number): Promise<void> {
+		const normalized = fixFileName(filePath);
+		if (this.isWarningBatchIgnored(warningBatchId)) return;
+		if (!this.isInitManagedFile(normalized)) return;
+		if (!fs.existsSync(normalized)) return;
+		if (this.isReferencedInInit(normalized)) return;
+		if (this._warnedMissingInitRefs.has(normalized)) return;
+
+		const result = await this.tryAddToInitFile(path.dirname(normalized), path.basename(normalized), warningBatchId);
+		if (result !== 'ignored-all') {
+			this._warnedMissingInitRefs.add(normalized);
+		}
+	}
+
+	private async warnForUnreferencedFilesOnInitialLoad() {
+		const batchId = this.beginWarningBatch();
+		const files = getFilesInDir(this.missionURI, true);
+		for (const file of files) {
+			if (this.isWarningBatchIgnored(batchId)) {
+				break;
+			}
+			await this.warnIfMissingFromInit(file, batchId);
+		}
+	}
+
+	private queueInitPrompt(folder: string, newFile: string) {
+		const key = path.join(folder, newFile);
+		const existing = this._pendingInitPrompts.get(key);
+		if (existing) {
+			clearTimeout(existing);
+		}
+
+		const timer = setTimeout(async () => {
+			this._pendingInitPrompts.delete(key);
+			if (this.shouldSuppressInitPrompt()) {
+				return;
+			}
+			const batchId = this.getOrCreatePromptBatch();
+			if (this.isWarningBatchIgnored(batchId)) {
+				return;
+			}
+			const filePath = path.join(folder, newFile);
+			if (!fs.existsSync(filePath)) {
+				return;
+			}
+			await this.warnIfMissingFromInit(filePath, batchId);
+		}, 1200);
+
+		this._pendingInitPrompts.set(key, timer);
+	}
+
+	private clearPendingInitPrompts() {
+		for (const timer of this._pendingInitPrompts.values()) {
+			clearTimeout(timer);
+		}
+		this._pendingInitPrompts.clear();
+		this._activePromptBatchId = undefined;
+		this._activePromptBatchExpiresAt = 0;
+	}
+
 	/**
 	 * Start file system watchers
 	 * These enable cache reloading if story.json is changed, or if a mastlib/sbslib file is changed.
@@ -327,10 +508,12 @@ export class MissionCache {
 			// debug(this.missionURI)
 			// debug(filename)
 			if (eventType === "rename") {
+				this.trackRenameBurst();
 				const filePath = path.join(this.missionURI, filename);
 
 				// Check if the file was added
 				if (fs.existsSync(filePath)) {
+					if (!filename.endsWith(".py") && !filename.endsWith(".mast")) return;
 					console.log(`File added: ${filename}`);
 					const init = getInitContents(path.join(this.missionURI, filename));
 					let inInit = false;
@@ -341,7 +524,7 @@ export class MissionCache {
 						}
 					}
 					if (!inInit) {
-						this.tryAddToInitFile(path.dirname(path.join(this.missionURI, filename)), path.basename(filename));
+						this.queueInitPrompt(path.dirname(path.join(this.missionURI, filename)), path.basename(filename));
 					}
 				} else {
 					if (filename?.endsWith(".py")) {
@@ -410,6 +593,9 @@ export class MissionCache {
 		this.watchers.push(w2);
 	}
 	endWatchers() {
+		this.clearPendingInitPrompts();
+		this._recentRenameEvents = [];
+		this._suppressInitPromptUntil = 0;
 		for (const w of this.watchers) {
 			w.close();
 		}
@@ -706,24 +892,35 @@ export class MissionCache {
 	}
 
 	// TODO: When a file is opened, check if it is in __init__.mast. If not, prompt the user to add it.
-	private async tryAddToInitFile(folder:string, newFile:string) {
-		if (!newFile.endsWith(".mast") && !newFile.endsWith(".py")) return;
+	private async tryAddToInitFile(folder:string, newFile:string, warningBatchId?: number): Promise<'added' | 'ignored-all' | 'dismissed' | 'skipped'> {
+		if (!newFile.endsWith(".mast") && !newFile.endsWith(".py")) return 'skipped';
 
 		let ret = await connection.window.showWarningMessage(
 			"File not found in '__init__.mast': " + newFile,
 			{title: "Add " + newFile + " to __init__.mast"},
-			{title: "Don't add"}
+			{title: "Don't add"},
+			{title: "Ignore all"}
 			//{title: hide} // TODO: Add this later!!!!!!
 		);
-		if (ret === undefined) return true;
+		if (ret === undefined) return 'dismissed';
+		if (ret.title === "Ignore all") {
+			if (warningBatchId !== undefined) {
+				this._ignoredWarningBatches.add(warningBatchId);
+			}
+			this.clearPendingInitPrompts();
+			return 'ignored-all';
+		}
 		if (ret.title === "Add " + newFile + " to __init__.mast") {
 			try {
 				fs.writeFile(path.join(folder,"__init__.mast"), "\nimport " + newFile, {flag: "a+"}, ()=>{});
+				return 'added';
 			} catch (e) {
 				debug("Can't add " + newFile + " to __init__.mast");
 				debug(e);
+				return 'dismissed';
 			}
 		}
+		return 'dismissed';
 	}
 
 	/**
