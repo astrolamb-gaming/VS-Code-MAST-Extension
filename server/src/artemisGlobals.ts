@@ -48,6 +48,8 @@ export class ArtemisGlobals {
 	artFiles: CompletionItem[] = [];
 	faceArtFiles: FaceFile[] = [];
 	gridIcons: IconIndex[] = [];
+	private libWatcher: fs.FSWatcher | undefined;
+	private faceArtWatcher: fs.FSWatcher | undefined;
 	/**
 	 * 0: Not loaded
 	 * 1: Loading but not complete
@@ -71,8 +73,34 @@ export class ArtemisGlobals {
 		this.shipData = new ShipData(this.artemisDir);
 	}
 
+	private replaceShipData(artemisDir: string) {
+		if (this.shipData) {
+			this.shipData.dispose();
+		}
+		this.shipData = new ShipData(artemisDir);
+	}
+
+	private resetWatchers() {
+		if (this.libWatcher) {
+			this.libWatcher.close();
+			this.libWatcher = undefined;
+		}
+		if (this.faceArtWatcher) {
+			this.faceArtWatcher.close();
+			this.faceArtWatcher = undefined;
+		}
+	}
+
+	dispose() {
+		this.resetWatchers();
+		if (this.shipData) {
+			this.shipData.dispose();
+		}
+	}
+
 	loadArtemisGlobals() {
 		this.loadingState = 1;
+		this.resetWatchers();
 		if (this.artemisDir ===  null) {
 			// Do something, throw an error, whatever it takes, artemis dir not found
 			this.skyboxes = [];
@@ -82,7 +110,7 @@ export class ArtemisGlobals {
 			this.widget_stylestrings = [];
 			this.libModules = [];
 			this.libModuleCompletionItems = [];
-			this.shipData = new ShipData("");
+			this.replaceShipData("");
 			debug("Artemis directory not found. Global information not loaded.");
 			artemisDirNotFoundError();
 		} else {
@@ -95,13 +123,15 @@ export class ArtemisGlobals {
 			debug("Loading libs");
 			this.libModules = this.loadLibs();
 			let libPath = path.join(this.artemisDir,'data','missions','__lib__')
-			fs.watch(libPath, (eventType, filename)=>{
-				this.libModules = this.loadLibs();
-			});
+			if (fs.existsSync(libPath)) {
+				this.libWatcher = fs.watch(libPath, () => {
+					this.libModules = this.loadLibs();
+				});
+			}
 			debug("Done loading libs.")
 			this.libModuleCompletionItems = [];
 			debug("Getting ship data")
-			this.shipData = new ShipData(this.artemisDir);
+			this.replaceShipData(this.artemisDir);
 			this.shipData.load();
 			debug("ship data gotten")
 			for (const lib of this.libModules) {
@@ -114,11 +144,13 @@ export class ArtemisGlobals {
 			this.artFiles = this.findArtFiles(true);
 			this.faceArtFiles = this.loadFaceArt();
 			const allFaceFiles = path.join(this.artemisDir, "data", "graphics", "allFaceFiles.txt");
-			fs.watch(allFaceFiles, (eventType, filename)=>{
-				if (eventType === "change") {
-					this.faceArtFiles = this.loadFaceArt();
-				}
-			});
+			if (fs.existsSync(allFaceFiles)) {
+				this.faceArtWatcher = fs.watch(allFaceFiles, (eventType) => {
+					if (eventType === "change") {
+						this.faceArtFiles = this.loadFaceArt();
+					}
+				});
+			}
 			parseIconSet(path.join(this.artemisDir,"data","graphics","grid-icon-sheet.png"),128,false);
 			debug("Grid Icon Sheet parsed")
 			this.gridIcons = getGridIcons();
@@ -437,6 +469,12 @@ export function getArtemisGlobals(): ArtemisGlobals {
 		globals.loadArtemisGlobals();
 	}
 	return globals;
+}
+
+export function disposeArtemisGlobals() {
+	if (globals) {
+		globals.dispose();
+	}
 }
 
 async function artemisDirNotFoundError() {

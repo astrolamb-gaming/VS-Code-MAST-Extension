@@ -48,7 +48,8 @@ import fs = require("fs");
 import { getArtemisGlobals, initializeArtemisGlobals } from './artemisGlobals';
 import { compileMastFile, getCurrentDiagnostics, validateTextDocument } from './requests/validate';
 import { onDefinition } from './requests/goToDefinition';
-import { getCache } from './cache';
+import { disposeAllCaches, getCache } from './cache';
+import { disposeArtemisGlobals } from './artemisGlobals';
 import { onReferences } from './requests/references';
 import { onPrepareRename, onRenameRequest } from './requests/renameSymbol';
 import { getWordRangeAtPosition } from './tokens/words';
@@ -1491,4 +1492,9 @@ connection.languages.semanticTokens.on(async (params: SemanticTokensParams) => {
 });
 
 // Listen on the connection
+connection.onShutdown(() => {
+	disposeAllCaches();
+	disposeArtemisGlobals();
+});
+
 connection.listen();

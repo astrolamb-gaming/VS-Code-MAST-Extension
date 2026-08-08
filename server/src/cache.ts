@@ -38,6 +38,23 @@ interface MissionPackageLayout {
 	zip: Set<string>;
 }
 
+interface SharedLibWatcherEntry {
+	watcher: fs.FSWatcher;
+	caches: Set<MissionCache>;
+	pendingFiles: Set<string>;
+	timer: ReturnType<typeof setTimeout> | null;
+}
+
+const SHARED_LIB_RELOAD_DEBOUNCE_MS = 400;
+const CACHE_RELOAD_DEBOUNCE_MS = 250;
+const CACHE_GC_IDLE_MS = 1000 * 60 * 3;
+const CACHE_GC_INTERVAL_MS = 1000 * 60;
+const sharedLibWatchers: Map<string, SharedLibWatcherEntry> = new Map();
+
+function normalizeWatchedFilename(filename: string): string {
+	return path.basename(fixFileName(filename || '')).toLowerCase();
+}
+
 export class MissionCache {
 
 	missionName: string = "";
@@ -166,6 +183,9 @@ export class MissionCache {
 	private _loadedPromise: Promise<void> = Promise.resolve();
 	private _loadedResolve: (() => void) | null = null;
 	private _isLoading = false;
+	private _reloadQueued = false;
+	private _reloadTimer: ReturnType<typeof setTimeout> | null = null;
+	private _sharedLibWatcherKey: string | null = null;
 
 	private logLoadTiming(stage: string, elapsedMs: number, details: string = '') {
 		const suffix = details ? ` | ${details}` : '';
@@ -198,136 +218,253 @@ export class MissionCache {
 		// create a new loaded promise for callers waiting on awaitLoaded()
 		this._loadedPromise = new Promise((resolve) => { this._loadedResolve = resolve; });
 		showProgressBar(true);
-		// (re)set all the arrays before (re)populating them.
-		// this.missionClasses = [];
-		// this.missionDefaultFunctions = [];
-		this.missionMastModules = [];
-		this.missionPyModules = [];
-		this.pyFileCache = [];
-		this.resourceLabels = [];
-		this.mediaLabels = [];
-		this.mastFileCache = [];
-		this.invalidateStructureCaches();
-		this.resetExtractedItemCaches();
-		this.resetMissionPackageLayout();
-		const layoutStart = Date.now();
-		await this.loadMissionPackageLayout();
-		this.logLoadTiming(
-			'loadMissionPackageLayout',
-			Date.now() - layoutStart,
-			`sbslib=${this.missionPackageLayout.sbslib.size}, mastlib=${this.missionPackageLayout.mastlib.size}, zip=${this.missionPackageLayout.zip.size}`
-		);
-		this.storyJson = new StoryJson(path.join(this.missionURI,"story.json"));
-		
-		const storyStart = Date.now();
-		await this.storyJson.readFile()
-		this.logLoadTiming(
-			'storyJson.readFile',
-			Date.now() - storyStart,
-			`sbslib=${this.storyJson.sbslib.length}, mastlib=${this.storyJson.mastlib.length}`
-		);
+		try {
+			this.clearReparseTimers();
+			this._ignoredWarningBatches.clear();
+			// (re)set all the arrays before (re)populating them.
+			// this.missionClasses = [];
+			// this.missionDefaultFunctions = [];
+			this.missionMastModules = [];
+			this.missionPyModules = [];
+			this.pyFileCache = [];
+			this.resourceLabels = [];
+			this.mediaLabels = [];
+			this.mastFileCache = [];
+			this.invalidateStructureCaches();
+			this.resetExtractedItemCaches();
+			this.resetMissionPackageLayout();
+			const layoutStart = Date.now();
+			await this.loadMissionPackageLayout();
+			this.logLoadTiming(
+				'loadMissionPackageLayout',
+				Date.now() - layoutStart,
+				`sbslib=${this.missionPackageLayout.sbslib.size}, mastlib=${this.missionPackageLayout.mastlib.size}, zip=${this.missionPackageLayout.zip.size}`
+			);
+			this.storyJson = new StoryJson(path.join(this.missionURI,"story.json"));
+			
+			const storyStart = Date.now();
+			await this.storyJson.readFile()
+			this.logLoadTiming(
+				'storyJson.readFile',
+				Date.now() - storyStart,
+				`sbslib=${this.storyJson.sbslib.length}, mastlib=${this.storyJson.mastlib.length}`
+			);
+				// .then(()=>{
+			debug("pyFileCache length: " + this.pyFileCache.length)
+			const modulesStart = Date.now();
+			await this.modulesLoaded();
+			this.logLoadTiming('modulesLoaded', Date.now() - modulesStart, `pyFiles=${this.pyFileCache.length}, mastModules=${this.missionMastModules.length}`);
 			// .then(()=>{
-		debug("pyFileCache length: " + this.pyFileCache.length)
-		const modulesStart = Date.now();
-		await this.modulesLoaded();
-		this.logLoadTiming('modulesLoaded', Date.now() - modulesStart, `pyFiles=${this.pyFileCache.length}, mastModules=${this.missionMastModules.length}`);
-		// .then(()=>{
-		debug("Modules loaded for " + this.missionName);
-		// showProgressBar(false);
-		this.storyJsonLoaded = true;
+			debug("Modules loaded for " + this.missionName);
+			// showProgressBar(false);
+			this.storyJsonLoaded = true;
 
-		// Now we do the python checks for the MastGlobals that don't exist already
-		let globals: string[][] = [];
-		for (const p of this.pyFileCache) {
-			if (p.globals.length > 0) {
-				globals = globals.concat(p.globals)
+			// Now we do the python checks for the MastGlobals that don't exist already
+			let globals: string[][] = [];
+			for (const p of this.pyFileCache) {
+				if (p.globals.length > 0) {
+					globals = globals.concat(p.globals)
+				}
 			}
-		}
-		// // debug(globals);
-		// globals.push(["dict","dict"]);
-		// debug(globals);
-		const globalsStart = Date.now();
-		await this.loadPythonGlobals(globals)
-		this.logLoadTiming('loadPythonGlobals', Date.now() - globalsStart, `globals=${globals.length}`);
-		// .then((info)=>{
-		debug("Loaded globals")
-		this.pyInfoLoaded = true;
-		// });
-		debug("New pyFileCache length: " + this.pyFileCache.length)
-				// })
+			// // debug(globals);
+			// globals.push(["dict","dict"]);
+			// debug(globals);
+			const globalsStart = Date.now();
+			await this.loadPythonGlobals(globals)
+			this.logLoadTiming('loadPythonGlobals', Date.now() - globalsStart, `globals=${globals.length}`);
+			// .then((info)=>{
+			debug("Loaded globals")
+			this.pyInfoLoaded = true;
+			// });
+			debug("New pyFileCache length: " + this.pyFileCache.length)
+					// })
 //File structure for sbs_utils changed, so we'll just comment this out..
-		// 	// });
-		// let p = await loadSbs()//.then(async (p)=>{
-		// showProgressBar(true);
-		// if (p !== null) {
-		// 	this.addMissionPyFile(p);
-		// 	// this.missionPyModules.push(p);
-		// 	// debug("addding " + p.uri);
-		// 	// this.missionClasses = this.missionClasses.concat(p.classes);
-		// }
-		// debug("Finished loading sbs_utils for " + this.missionName);
-		// showProgressBar(false);
-		this.sbsLoaded = true;
-			// await this.awaitLoaded();
-		// });
+			// 	// });
+			// let p = await loadSbs()//.then(async (p)=>{
+			// showProgressBar(true);
+			// if (p !== null) {
+			// 	this.addMissionPyFile(p);
+			// 	// this.missionPyModules.push(p);
+			// 	// debug("addding " + p.uri);
+			// 	// this.missionClasses = this.missionClasses.concat(p.classes);
+			// }
+			// debug("Finished loading sbs_utils for " + this.missionName);
+			// showProgressBar(false);
+			this.sbsLoaded = true;
+				// await this.awaitLoaded();
+			// });
 
 
-		this.deprecatedFunctions = [];
-		
-		for (const p of this.pyFileCache) {
-			for (const f of p.defaultFunctions) {
-				if (f.documentation.toLowerCase().includes("deprecated")) {
-					this.deprecatedFunctions.push(f);
+			this.deprecatedFunctions = [];
+			
+			for (const p of this.pyFileCache) {
+				for (const f of p.defaultFunctions) {
+					if (f.documentation.toLowerCase().includes("deprecated")) {
+						this.deprecatedFunctions.push(f);
+					}
 				}
 			}
-		}
-		for (const p of this.missionPyModules) {
-			for (const f of p.defaultFunctions) {
-				if (f.documentation.toLowerCase().includes("deprecated")) {
-					this.deprecatedFunctions.push(f);
+			for (const p of this.missionPyModules) {
+				for (const f of p.defaultFunctions) {
+					if (f.documentation.toLowerCase().includes("deprecated")) {
+						this.deprecatedFunctions.push(f);
+					}
 				}
 			}
-		}
 
-		this.checkForCacheUpdates();
-		debug(this.missionURI);
-		
-		//this.checkForInitFolder(this.missionURI);
-		debug("Number of py files: "+this.pyFileCache.length);
-		debug("Everything is loaded");
-		this.startWatchers();
-		if (!this._didRunInitialInitCheck) {
-			this._didRunInitialInitCheck = true;
-			this.warnForUnreferencedFilesOnInitialLoad().catch((e) => debug(e));
+			this.checkForCacheUpdates();
+			debug(this.missionURI);
+			
+			//this.checkForInitFolder(this.missionURI);
+			debug("Number of py files: "+this.pyFileCache.length);
+			debug("Everything is loaded");
+			if (!this._didRunInitialInitCheck) {
+				this._didRunInitialInitCheck = true;
+				this.warnForUnreferencedFilesOnInitialLoad().catch((e) => debug(e));
+			}
+			const loadElapsed = Date.now() - loadStart;
+			this.logLoadTiming('load:complete', loadElapsed, `loaded=${this.isLoaded()}`);
+		} catch (e) {
+			connection.console.error(`[load:${this.missionName}] load failed`);
+			debug(e);
+		} finally {
+			if (this.watchers.length === 0) {
+				this.startWatchers();
+			}
+			if (this._loadedResolve) {
+				this._loadedResolve();
+				this._loadedResolve = null;
+			}
+			this._isLoading = false;
+			showProgressBar(false);
 		}
-		const loadElapsed = Date.now() - loadStart;
-		this.logLoadTiming('load:complete', loadElapsed, `loaded=${this.isLoaded()}`);
-		if (this._loadedResolve) {
-			this._loadedResolve();
-			this._loadedResolve = null;
-		}
-		this._isLoading = false;
-		showProgressBar(false);
 	}
 
 	/**
 	 * Reload the cache after it's already been loaded to reset everything.
 	 */
 	async reload() {
-		// Don't load until it's finished loading the first time
-		if (this.awaitingReload) return;
+		if (this.awaitingReload) {
+			this._reloadQueued = true;
+			return;
+		}
 		const reloadStart = Date.now();
 		this.logLoadTiming('reload:start', 0);
 		this.awaitingReload = true;
-		debug("Awaiting loaded")
-		await this.awaitLoaded();
-		await this.load();
-		debug("Reload complete.");
-		this.logLoadTiming('reload:complete', Date.now() - reloadStart);
-		this.awaitingReload = false;
+		try {
+			do {
+				this._reloadQueued = false;
+				debug("Awaiting loaded")
+				await this.awaitLoaded();
+				await this.load();
+			} while (this._reloadQueued);
+			debug("Reload complete.");
+			this.logLoadTiming('reload:complete', Date.now() - reloadStart);
+		} finally {
+			this.awaitingReload = false;
+		}
 	}
 
 	watchers: fs.FSWatcher[] = [];
+
+	private clearReparseTimers() {
+		for (const timer of this._reparseTimers.values()) {
+			clearTimeout(timer);
+		}
+		this._reparseTimers.clear();
+	}
+
+	private clearReloadTimer() {
+		if (this._reloadTimer) {
+			clearTimeout(this._reloadTimer);
+			this._reloadTimer = null;
+		}
+	}
+
+	scheduleReload(reason: string, delayMs: number = CACHE_RELOAD_DEBOUNCE_MS) {
+		this.clearReloadTimer();
+		this._reloadTimer = setTimeout(() => {
+			this._reloadTimer = null;
+			this.logLoadTiming('reload:scheduled', 0, reason);
+			this.reload().catch((e) => debug(e));
+		}, delayMs);
+		if (typeof this._reloadTimer.unref === 'function') {
+			this._reloadTimer.unref();
+		}
+	}
+
+	private registerSharedLibWatcher(libFolder: string) {
+		const watcherKey = normalizeCacheKey(libFolder);
+		this._sharedLibWatcherKey = watcherKey;
+		let entry = sharedLibWatchers.get(watcherKey);
+		if (!entry) {
+			const pendingFiles = new Set<string>();
+			const watcher = fs.watch(libFolder, {}, (_eventType, filename) => {
+				const normalized = normalizeWatchedFilename(filename?.toString() || '');
+				if (normalized === '') return;
+				const currentEntry = sharedLibWatchers.get(watcherKey);
+				if (!currentEntry) return;
+				pendingFiles.add(normalized);
+				if (currentEntry.timer) {
+					clearTimeout(currentEntry.timer);
+				}
+				currentEntry.timer = setTimeout(() => {
+					const flushedEntry = sharedLibWatchers.get(watcherKey);
+					if (!flushedEntry) return;
+					const changedFiles = Array.from(flushedEntry.pendingFiles);
+					flushedEntry.pendingFiles.clear();
+					flushedEntry.timer = null;
+					for (const cache of flushedEntry.caches) {
+						if (cache.shouldReloadForLibraryChanges(changedFiles)) {
+							cache.scheduleReload(`shared-lib:${changedFiles.join(',')}`, SHARED_LIB_RELOAD_DEBOUNCE_MS);
+						}
+					}
+				}, SHARED_LIB_RELOAD_DEBOUNCE_MS);
+				if (typeof currentEntry.timer.unref === 'function') {
+					currentEntry.timer.unref();
+				}
+			});
+			entry = {
+				watcher,
+				caches: new Set<MissionCache>(),
+				pendingFiles,
+				timer: null
+			};
+			sharedLibWatchers.set(watcherKey, entry);
+		}
+		entry.caches.add(this);
+	}
+
+	private unregisterSharedLibWatcher() {
+		if (!this._sharedLibWatcherKey) return;
+		const entry = sharedLibWatchers.get(this._sharedLibWatcherKey);
+		if (entry) {
+			entry.caches.delete(this);
+			if (entry.caches.size === 0) {
+				if (entry.timer) {
+					clearTimeout(entry.timer);
+				}
+				entry.watcher.close();
+				sharedLibWatchers.delete(this._sharedLibWatcherKey);
+			}
+		}
+		this._sharedLibWatcherKey = null;
+	}
+
+	shouldReloadForLibraryChanges(filenames: string[]): boolean {
+		if (filenames.length === 0) {
+			return false;
+		}
+		const referencedLibs = new Set<string>();
+		for (const lib of this.storyJson.sbslib) {
+			referencedLibs.add(normalizeWatchedFilename(lib));
+		}
+		for (const lib of this.storyJson.mastlib) {
+			referencedLibs.add(normalizeWatchedFilename(lib));
+		}
+		return filenames.some((filename) => referencedLibs.has(normalizeWatchedFilename(filename)));
+	}
+
 	private trackRenameBurst() {
 		const now = Date.now();
 		this._recentRenameEvents.push(now);
@@ -559,41 +696,24 @@ export class MissionCache {
 				}
 			}
 			if (filename ==="story.json" && eventType === "change") {
-				this.reload();
+				this.scheduleReload('mission:story.json');
 			}
 			if (filename === "__lib__.json" && eventType === "change") {
-				this.reload();
+				this.scheduleReload('mission:__lib__.json');
 			}
 		});
 		this.watchers.push(w);
 		// Watches for changes to the sbs_lib or mast_lib files
 		let libFolder = path.join(getArtemisGlobals().artemisDir, "data", "missions", "__lib__");
-		// debug(libFolder);
-		let w2 = fs.watch(libFolder, {}, (eventType, filename) => {
-			// TODO: Only load the bits applicable for these files?
-			// More efficient to only reload what needs reloaded.
-			// As is, will need to reload the whole cache...
-			
-			// debug("Event Type: " + eventType);
-			if (eventType === "change") {
-				debug("Change detected - checking if update is needed")
-				// debug(filename + "  Changed\n\nHERE\n\n................");
-				for (const lib of this.storyJson.sbslib) {
-					if (lib === filename) {
-						this.reload();
-					}
-				}
-				for (const lib of this.storyJson.mastlib) {
-					if (lib === filename) {	
-						this.reload();
-					}
-				}
-			}
-		});
-		this.watchers.push(w2);
+		if (libFolder && fs.existsSync(libFolder)) {
+			this.registerSharedLibWatcher(libFolder);
+		}
 	}
 	endWatchers() {
 		this.clearPendingInitPrompts();
+		this.clearReparseTimers();
+		this.clearReloadTimer();
+		this.unregisterSharedLibWatcher();
 		this._recentRenameEvents = [];
 		this._suppressInitPromptUntil = 0;
 		for (const w of this.watchers) {
@@ -1256,11 +1376,13 @@ export class MissionCache {
 		this.linksCache = [];
 		this.rolesCache = [];
 		this.inventoryKeysCache = [];
+		this.sharedVariableKeysCache = [];
 		this.signalsByFile.clear();
 		this.blobKeysByFile.clear();
 		this.linksByFile.clear();
 		this.rolesByFile.clear();
 		this.inventoryKeysByFile.clear();
+		this.sharedVariableKeysByFile.clear();
 	}
 
 	private resetMissionPackageLayout() {
@@ -2762,6 +2884,17 @@ export function getCache(name:string, reloadCache:boolean = false): MissionCache
 	return ret;
 }
 
+export function disposeAllCaches() {
+	for (const cache of caches.values()) {
+		try {
+			cache.endWatchers();
+		} catch (e) {
+			debug(e);
+		}
+	}
+	caches.clear();
+}
+
 
 
 /**
@@ -2772,13 +2905,13 @@ function cacheGC() {
 	const gcTimer = setInterval(()=>{
 		const now = Date.now();
 		for (const [key, c] of caches.entries()) {
-			if (now - c.lastAccessed > 1000 * 60 * 7) { // 7 minutes
+			if (now - c.lastAccessed > CACHE_GC_IDLE_MS) {
 				// stop watchers and free resources
 				try { c.endWatchers(); } catch (e) { debug(e); }
 				caches.delete(key);
 			}
 		}
-	}, 1000 * 60 * 5); // run every 5 minutes
+	}, CACHE_GC_INTERVAL_MS);
 
 	// Do not keep Node alive just for background cache cleanup.
 	if (typeof gcTimer.unref === 'function') {

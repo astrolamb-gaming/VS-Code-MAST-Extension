@@ -22,6 +22,10 @@ export class ShipData {
 	artemisDir: string;
 	ships: Ship[] = [];
 	textDoc:TextDocument|undefined;
+	private watcher: fs.FSWatcher | undefined;
+	private loadTimer: ReturnType<typeof setTimeout> | undefined;
+	private loadInFlight: Promise<void> | null = null;
+	private reloadQueued = false;
 	constructor(artemisDir: string) {
 		this.artemisDir = artemisDir;
 		if (artemisDir === "") return;
@@ -30,21 +34,71 @@ export class ShipData {
 		// } catch(e) {
 		// 	debug(e);
 		// }
-		fs.watch(artemisDir, (eventType, filename)=>{
-			this.load();
-		})
+		this.startWatcher();
 		
 	}
 
-	load(): Promise<void> {
-		return new Promise((resolve) => {
-			let file = path.join(this.artemisDir,"data","shipData.yaml");
-			if (!fs.existsSync(file)) {
-				file = path.join(this.artemisDir,"data","shipData.json");
+	private startWatcher() {
+		const dataFolder = path.join(this.artemisDir, 'data');
+		if (!fs.existsSync(dataFolder)) {
+			return;
+		}
+		this.watcher = fs.watch(dataFolder, (eventType, filename) => {
+			const normalized = path.basename((filename || '').toString()).toLowerCase();
+			if (normalized !== 'shipdata.yaml' && normalized !== 'shipdata.json') {
+				return;
 			}
-			this.filePath = file;
-			if (file !== null) {
-				readFile(file).then((contents)=>{
+			if (eventType !== 'change' && eventType !== 'rename') {
+				return;
+			}
+			this.scheduleLoad();
+		});
+	}
+
+	private scheduleLoad(delayMs: number = 250) {
+		if (this.loadTimer) {
+			clearTimeout(this.loadTimer);
+		}
+		this.loadTimer = setTimeout(() => {
+			this.loadTimer = undefined;
+			this.load().catch((e) => debug(e));
+		}, delayMs);
+		if (typeof this.loadTimer.unref === 'function') {
+			this.loadTimer.unref();
+		}
+	}
+
+	dispose() {
+		if (this.loadTimer) {
+			clearTimeout(this.loadTimer);
+			this.loadTimer = undefined;
+		}
+		if (this.watcher) {
+			this.watcher.close();
+			this.watcher = undefined;
+		}
+	}
+
+	load(): Promise<void> {
+		if (this.loadInFlight) {
+			this.reloadQueued = true;
+			return this.loadInFlight;
+		}
+		this.loadInFlight = (async () => {
+			try {
+				do {
+					this.reloadQueued = false;
+					let file = path.join(this.artemisDir,"data","shipData.yaml");
+					if (!fs.existsSync(file)) {
+						file = path.join(this.artemisDir,"data","shipData.json");
+					}
+					this.filePath = file;
+					if (!file || !fs.existsSync(file)) {
+						this.fileExists = false;
+						continue;
+					}
+
+					const contents = await readFile(file);
 					this.textDoc = TextDocument.create(this.filePath,path.extname(this.filePath),0,contents)
 					
 					// contents = contents.replace(/\/\/.*?(\n|$)/gm,"");
@@ -60,20 +114,15 @@ export class ShipData {
 						debug("shipData.json NOT parsed properly");
 						debug(err);
 						this.shipDataJsonError(err);
-						
 					}
 					this.roles = this.parseRolesText(this.textDoc);
-					// debug(this.data);
-					// debug(typeof this.data[0]);
 					this.fileExists = true;
-					resolve();
-				});
-			} else {
-			//throw new Error("shipData.json not found!");
-			this.fileExists = false;
-			resolve();
-		}
-		});
+				} while (this.reloadQueued);
+			} finally {
+				this.loadInFlight = null;
+			}
+		})();
+		return this.loadInFlight;
 	}
 
 	async shipDataJsonError(err: Error) {
