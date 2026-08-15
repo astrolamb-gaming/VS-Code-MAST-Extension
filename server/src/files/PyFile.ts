@@ -21,6 +21,7 @@ export class PyFile extends FileCache {
 	classes: ClassObject[] = [];
 	words: Word[] = [];
 	roles: Word[] = [];
+	lastText: string | undefined = undefined;
 	globalFiles: string[][] = [];
 	signals: SignalInfo[] = [];
 	inventory_keys: Word[] = [];
@@ -59,6 +60,11 @@ export class PyFile extends FileCache {
 	}
 
 	parseWholeFile(text: string) {
+		if (this.lastText === text && this.defaultFunctions.length > 0 && this.classes.length > 0) {
+			return;
+		}
+		this.lastText = text;
+
 		// Gotta clear old data
 		this.classes = [];
 		this.defaultFunctions = [];
@@ -209,6 +215,11 @@ export class PyFile extends FileCache {
 	 * result from load time can stay intact.
 	 */
 	parseTokensOnly(text: string) {
+		if (this.lastText === text) {
+			return;
+		}
+		this.lastText = text;
+
 		this.variableNames = [];
 		this.pyTokens = [];
 

@@ -134,13 +134,26 @@ export let hasDiagnosticRelatedInformationCapability = false;
 let allowMultipleCaches = true;
 let cacheTimeout = 0;
 let enablePythonCompletions = true;
+const isDebugLanguageServer = process.execArgv.some((arg) => arg.includes('--inspect') || arg.includes('--debug'));
+let enableProfilingCollectionSetting = false;
 export let labelNames : LabelInfo[] = [];
+
+export function isProfilingCollectionEnabled(): boolean {
+	return isDebugLanguageServer || enableProfilingCollectionSetting;
+}
+
+export function getProfilingCollectionMode(): 'off' | 'debug' | 'setting' {
+	if (enableProfilingCollectionSetting) return 'setting';
+	if (isDebugLanguageServer) return 'debug';
+	return 'off';
+}
 
 async function refreshRuntimeSettings(): Promise<void> {
 	const mastLanguageServerConfig = await connection.workspace.getConfiguration("mastLanguageServer");
 	allowMultipleCaches = mastLanguageServerConfig?.allowMultipleCaches ?? true;
 	cacheTimeout = mastLanguageServerConfig?.cacheTimeout ?? 0;
 	enablePythonCompletions = mastLanguageServerConfig?.enablePythonCompletions ?? true;
+	enableProfilingCollectionSetting = mastLanguageServerConfig?.enableProfilingCollection ?? false;
 }
 
 // let functionData : SignatureInformation[] = [];
@@ -395,6 +408,7 @@ interface MAST_Settings {
 	cacheTimout: number;
 	autoCompile: boolean;
 	compileDiagnosticsDelayMs: number;
+	enableProfilingCollection: boolean;
 }
 
 // The global settings, used when the `workspace/configuration` request is not supported by the client.
@@ -405,7 +419,8 @@ const defaultSettings: MAST_Settings = {
 	allowMultipleCaches: true,
 	cacheTimout: 0,
 	autoCompile: true,
-	compileDiagnosticsDelayMs: 250
+	compileDiagnosticsDelayMs: 250,
+	enableProfilingCollection: false
 };
 let globalSettings: MAST_Settings = defaultSettings;
 
@@ -453,7 +468,8 @@ async function resolveDocumentSettings(resource?: string): Promise<MAST_Settings
 		allowMultipleCaches: mastLanguageServerConfig?.allowMultipleCaches ?? defaultSettings.allowMultipleCaches,
 		cacheTimout: mastLanguageServerConfig?.cacheTimout ?? defaultSettings.cacheTimout,
 		autoCompile: mastLanguageServerConfig?.autoCompile ?? defaultSettings.autoCompile,
-		compileDiagnosticsDelayMs: mastLanguageServerConfig?.compileDiagnosticsDelayMs ?? defaultSettings.compileDiagnosticsDelayMs
+		compileDiagnosticsDelayMs: mastLanguageServerConfig?.compileDiagnosticsDelayMs ?? defaultSettings.compileDiagnosticsDelayMs,
+		enableProfilingCollection: mastLanguageServerConfig?.enableProfilingCollection ?? defaultSettings.enableProfilingCollection
 	};
 }
 
@@ -558,7 +574,8 @@ connection.onDidChangeConfiguration(async change => {
 			allowMultipleCaches: mastLanguageServerConfig?.allowMultipleCaches ?? defaultSettings.allowMultipleCaches,
 			cacheTimout: mastLanguageServerConfig?.cacheTimout ?? defaultSettings.cacheTimout,
 			autoCompile: mastLanguageServerConfig?.autoCompile ?? defaultSettings.autoCompile,
-			compileDiagnosticsDelayMs: mastLanguageServerConfig?.compileDiagnosticsDelayMs ?? defaultSettings.compileDiagnosticsDelayMs
+			compileDiagnosticsDelayMs: mastLanguageServerConfig?.compileDiagnosticsDelayMs ?? defaultSettings.compileDiagnosticsDelayMs,
+			enableProfilingCollection: mastLanguageServerConfig?.enableProfilingCollection ?? defaultSettings.enableProfilingCollection
 		};
 	}
 	await refreshRuntimeSettings();

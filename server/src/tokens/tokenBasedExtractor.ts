@@ -345,19 +345,10 @@ export class TokenBasedExtractor {
 		const words: Word[] = [];
 		
 		const tags = this.getDocumentedKeyTags();
-		// if (tags.length > 0) {
-		// 	debug("KEY TAGS:")
-		// 	debug(tags);
-		// 	debug("KEYWORDS:")
-		// 	debug(keywords);
-		// }
 		for (const tag of tags) {
-			debug("Processing tag: " + tag.name + " of type " + tag.keyType);
 			if (!(keywords.includes(tag.keyType))) {
-				debug("Tag type: " + tag.keyType + " not in keywords");
 				continue;
 			}
-			debug("Matched tag: " + tag.name + " of type " + tag.keyType);
 
 			const token: Token = {
 				type: 'string',
@@ -385,10 +376,6 @@ export class TokenBasedExtractor {
 				}
 				this.addWord(words, value, token, tag.description);
 			}
-		}
-		if (tags.length > 0) {
-			debug("Extracted documented keys:");
-			debug(words);
 		}
 		return this.mergeWords(words);
 	}

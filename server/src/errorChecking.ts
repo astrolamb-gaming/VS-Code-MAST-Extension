@@ -4,6 +4,7 @@ import {ErrorInstance, hasDiagnosticRelatedInformationCapability} from './server
 import { debug } from 'console';
 import { isInComment, isInString, replaceRegexMatchWithUnderscore, isInSquareBrackets, getTokenTypeAtOffset } from './tokens/comments';
 import { getCache } from './cache';
+import { matchesClassName } from './data';
 
 /**
  * Checks if the file ends with an empty line.
@@ -297,7 +298,13 @@ export function checkFunctionSignatures(textDocument: TextDocument): Diagnostic[
 		let candidates = isMemberCall ? cache.getPossibleMethods(funcName) : [];
 		let receiverResolved = false;
 		if (isMemberCall && receiverName && candidates.length > 0) {
-			const receiverMatches = candidates.filter((cand) => (cand.className || '') === receiverName);
+			const receiverMatches = candidates.filter((cand) => {
+				const className = (cand.className || '').trim();
+				const receiverText = receiverName.trim();
+				return className === receiverText
+					|| className.toLowerCase() === receiverText.toLowerCase()
+					|| matchesClassName(className, receiverText);
+			});
 			if (receiverMatches.length > 0) {
 				candidates = receiverMatches;
 				receiverResolved = true;
@@ -359,48 +366,42 @@ export function checkFunctionSignatures(textDocument: TextDocument): Diagnostic[
 			};
 		});
 
-		const satisfied = evals.filter((e) => e.unfulfilled.length === 0);
+		const relevantEvals = evals.filter((e) => e.requiredCount >= 0);
+		const satisfied = relevantEvals.filter((e) => e.unfulfilled.length === 0);
 		if (satisfied.length > 0) {
-			// For unresolved member calls (obj.func(...), unknown obj type),
-			// do not let unrelated low-arity methods hide missing required args.
-			if (!isMemberCall || receiverResolved || satisfied.length === evals.length) {
-				continue;
-			}
-		}
-
-		// Sort all evals by required-param count ascending so the lowest-arity
-		// candidate is always first. For ambiguous member calls (unresolved
-		// receiver) we only report an error when even the overload with the
-		// fewest required parameters is unsatisfied — if it is satisfied we
-		// have no grounds to flag the call.
-		evals.sort((a, b) => {
-			if (a.requiredCount !== b.requiredCount) return a.requiredCount - b.requiredCount;
-			if (a.totalParams !== b.totalParams) return a.totalParams - b.totalParams;
-			return a.unfulfilled.length - b.unfulfilled.length;
-		});
-
-		if (isMemberCall && !receiverResolved && evals[0].unfulfilled.length === 0) {
-			// The lowest-arity overload is satisfied — suppress the diagnostic.
+			// If any overload can accept the supplied arguments, keep the call valid.
+			// This avoids false positives for ambiguous same-name methods where one
+			// overload is optional and another requires more arguments.
 			continue;
 		}
 
-		const evalPool = (isMemberCall && !receiverResolved && satisfied.length > 0)
-			? evals.filter((e) => e.unfulfilled.length > 0)
-			: evals;
+		if (relevantEvals.length === 0) continue;
 
-		const unfulfilled = evalPool[0].unfulfilled;
+		const minRequiredCount = Math.min(...relevantEvals.map((e) => e.requiredCount));
+		const maxRequiredCount = Math.max(...relevantEvals.map((e) => e.requiredCount));
+		if (positionalCount < minRequiredCount) {
+			const candidateEvals = relevantEvals
+				.filter((e) => e.requiredCount === minRequiredCount)
+				.sort((a, b) => {
+					if (a.totalParams !== b.totalParams) return a.totalParams - b.totalParams;
+					return a.unfulfilled.length - b.unfulfilled.length;
+				});
+			const bestEval = candidateEvals[0];
+			if (!bestEval) continue;
 
-		if (unfulfilled.length > 0) {
-			const callEnd = parenOpenOffset + 1 + argsStr.length + 1; // +1 for closing ')'
-			diagnostics.push({
-				severity: DiagnosticSeverity.Error,
-				range: {
-					start: textDocument.positionAt(callStart),
-					end: textDocument.positionAt(callEnd)
-				},
-				message: `Missing required argument(s): ${unfulfilled.map(n => `'${n}'`).join(', ')}`,
-				source: 'mast extension'
-			});
+			const unfulfilled = bestEval.unfulfilled;
+			if (unfulfilled.length > 0) {
+				const callEnd = parenOpenOffset + 1 + argsStr.length + 1; // +1 for closing ')'
+				diagnostics.push({
+					severity: DiagnosticSeverity.Error,
+					range: {
+						start: textDocument.positionAt(callStart),
+						end: textDocument.positionAt(callEnd)
+					},
+					message: `Missing required argument(s): ${unfulfilled.map(n => `'${n}'`).join(', ')}`,
+					source: 'mast extension'
+				});
+			}
 		}
 	}
 

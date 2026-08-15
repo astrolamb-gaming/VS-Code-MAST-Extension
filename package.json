@@ -262,6 +262,12 @@
 					"default": 250,
 					"minimum": 0,
 					"description": "Delay in milliseconds after the last edit before automatic compile diagnostics run. Regular non-compiler diagnostics still update on the normal short debounce."
+				},
+				"mastLanguageServer.enableProfilingCollection": {
+					"scope": "window",
+					"type": "boolean",
+					"default": false,
+					"description": "Collect language-server profiling summaries. Disabled by default for users; automatically active during debug sessions."
 				}
 			}
 		},
@@ -312,6 +318,7 @@
 		"watch": "tsc -b -w",
 		"lint": "eslint",
 		"postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
+		"test:regression": "npm run compile && mocha \"server/out/test/**/*.test.js\"",
 		"test:unit": "npm run compile && mocha \"server/out/test/**/*.test.js\"",
 		"test": "sh ./scripts/e2e.sh"
 	},

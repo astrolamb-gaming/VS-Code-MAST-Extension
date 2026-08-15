@@ -104,6 +104,9 @@ export class MastFile extends FileCache {
 	// }
 
 	parse(text: string) {
+		if (this.lastText === text && this.loaded) {
+			return;
+		}
 		this.loaded = false;
 		// debug("parsing mast file: " + this.uri)
 		const textDocument: TextDocument = TextDocument.create(this.uri, "mast", 1, text);

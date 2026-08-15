@@ -219,7 +219,7 @@ export function getMissionFolder(uri: string) : string {
 	let found = false;
 	for (let i = 0; i < arr.length; i++) {
 		// Check if this is the mission folder
-		if (arr[i] !== "missions") {
+		if (arr[i].toLowerCase() !== "missions") {
 			retArr.push(arr[i]);
 		} else {
 			retArr.push(arr[i]);
@@ -236,6 +236,9 @@ export function getMissionFolder(uri: string) : string {
 	}
 	// Rebuild the path
 	let ret = retArr.join('/');
+	// Keep Windows drive letters consistently uppercase so URI-derived paths
+	// and direct fs paths resolve to the same cache key and test expectation.
+	ret = ret.replace(/^([a-z]):\//, (_match, drive: string) => `${drive.toUpperCase()}:/`);
 	//debug(ret);
 	// Check if it's in a mission folder
 	if (!found) {

@@ -114,17 +114,19 @@ export function resetSemanticTokensCache(): void {
 }
 
 export function convertVariableTokensToLabelOrFunction(tokens: TokenInfo[], text:TextDocument): void {
-	const testtoken = "prefab_side_generic";
 	const cache = getCache(text.uri);
+	const labelLookupCache = new Map<string, boolean>();
+	const moduleLookupCache = new Map<string, boolean>();
+	const methodLookupCache = new Map<string, boolean>();
 	for (const token of tokens) {
 		if (token.type === 'variable' && token.modifier === 'reference') {
-			if (token.text === testtoken) {
-				console.log("test token found");
-				console.log(cache.getLabel(token.text));
+			let isLabelReference = labelLookupCache.get(token.text);
+			if (isLabelReference === undefined) {
+				const labelNames = cache.getLabelsAtPos(text, text.offsetAt({ line: token.line, character: token.character }), false);
+				isLabelReference = labelNames.find(l => l.name === token.text) !== undefined;
+				labelLookupCache.set(token.text, isLabelReference);
 			}
-			const labelNames = cache.getLabelsAtPos(text, text.offsetAt({ line: token.line, character: token.character }), false);
-			if (labelNames.find(l => l.name === token.text)) {
-				console.log(`Converting ${token.text} to label reference`);
+			if (isLabelReference) {
 				token.type = token.text.startsWith('//') ? 'route-label' : 'label';
 				continue;
 			}
@@ -134,15 +136,24 @@ export function convertVariableTokensToLabelOrFunction(tokens: TokenInfo[], text
 			// 	continue;
 			// }
 			const normalized = token.text;
-			if (cache.getMastGlobal(normalized)) {
+			let isModuleReference = moduleLookupCache.get(normalized);
+			if (isModuleReference === undefined) {
+				isModuleReference = !!cache.getMastGlobal(normalized);
+				moduleLookupCache.set(normalized, isModuleReference);
+			}
+			if (isModuleReference) {
 				token.type = 'module';
 				token.modifier = 'reference';
 				continue;
 			}
 			// This line was causing variables to show up as class methods (and properties) improperly
 			// if (cache.getMethod(normalized) || (cache.getPossibleMethods(normalized) || []).length > 0) {
-			if (cache.getMethod(normalized)) {
-				console.log(`Converting ${token.text} to function reference`);
+			let isMethodReference = methodLookupCache.get(normalized);
+			if (isMethodReference === undefined) {
+				isMethodReference = !!cache.getMethod(normalized);
+				methodLookupCache.set(normalized, isMethodReference);
+			}
+			if (isMethodReference) {
 				token.type = 'function';
 				continue;
 			}

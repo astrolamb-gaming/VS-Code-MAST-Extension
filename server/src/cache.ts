@@ -8,7 +8,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
 import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } from './tokens/routeLabels';
 import { fileFromUri, fixFileName, getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readFileSync, readZipArchive } from './fileFunctions';
-import { connection, requestClientQuickPick, showProgressBar as showProgressBar } from './server';
+import { connection, getProfilingCollectionMode, isProfilingCollectionEnabled, requestClientQuickPick, showProgressBar as showProgressBar } from './server';
 import { URI } from 'vscode-uri';
 import { getArtemisGlobals, initializeArtemisGlobals } from './artemisGlobals';
 import * as os from 'os';
@@ -36,6 +36,12 @@ interface MissionPackageLayout {
 	sbslib: Set<string>;
 	mastlib: Set<string>;
 	zip: Set<string>;
+}
+
+interface ProfilingStageStats {
+	count: number;
+	totalMs: number;
+	maxMs: number;
 }
 
 export class MissionCache {
@@ -137,6 +143,9 @@ export class MissionCache {
 	private _activePromptBatchId: number | undefined = undefined;
 	/** Expiration timestamp for the active watcher prompt batch */
 	private _activePromptBatchExpiresAt = 0;
+	/** Aggregated profiling metrics for load/reload phases */
+	private _profilingStageStats: Map<string, ProfilingStageStats> = new Map();
+	private _profilingSampleCount = 0;
 
 	constructor(workspaceUri: string) {
 		//debug(workspaceUri);
@@ -175,6 +184,58 @@ export class MissionCache {
 		} catch (e) {
 			debug(e);
 		}
+
+		if (!isMochaProcess && isProfilingCollectionEnabled()) {
+			this.recordProfilingSample(stage, elapsedMs);
+			if (stage === 'load:complete' || stage === 'reload:complete') {
+				this.flushProfilingSummary(stage);
+			}
+		}
+	}
+
+	private recordProfilingSample(stage: string, elapsedMs: number) {
+		const existing = this._profilingStageStats.get(stage);
+		if (existing) {
+			existing.count += 1;
+			existing.totalMs += elapsedMs;
+			existing.maxMs = Math.max(existing.maxMs, elapsedMs);
+		} else {
+			this._profilingStageStats.set(stage, {
+				count: 1,
+				totalMs: elapsedMs,
+				maxMs: elapsedMs
+			});
+		}
+		this._profilingSampleCount += 1;
+	}
+
+	private flushProfilingSummary(triggerStage: string) {
+		if (this._profilingStageStats.size === 0) {
+			return;
+		}
+
+		const ranked = [...this._profilingStageStats.entries()]
+			.map(([stage, stats]) => ({
+				stage,
+				count: stats.count,
+				totalMs: stats.totalMs,
+				avgMs: Math.round(stats.totalMs / Math.max(1, stats.count)),
+				maxMs: stats.maxMs
+			}))
+			.sort((a, b) => b.totalMs - a.totalMs)
+			.slice(0, 8)
+			.map((item) => `${item.stage}: count=${item.count}, total=${item.totalMs}ms, avg=${item.avgMs}ms, max=${item.maxMs}ms`)
+			.join(' || ');
+
+		const mode = getProfilingCollectionMode();
+		try {
+			connection.console.log(`[profile:${this.missionName}] trigger=${triggerStage} mode=${mode} samples=${this._profilingSampleCount} | ${ranked}`);
+		} catch (e) {
+			debug(e);
+		}
+
+		this._profilingStageStats.clear();
+		this._profilingSampleCount = 0;
 	}
 
 	async load() {
