@@ -128,6 +128,22 @@ This extension contributes the following settings:
 	Scope: `resource`
 	Default: `250`
 
+* `mastLanguageServer.enableProfilingCollection`:
+	Collects language-server profiling summaries by recording mission-load timing stages and writing a summary when a load or reload completes.
+	Disabled by default for normal users; it is automatically active during debug sessions.
+	Scope: `window`
+	Default: `false`
+
+## Profiling
+
+Use the profiler when you want to diagnose slow mission loads or cache rebuilds. Enable the setting `mastLanguageServer.enableProfilingCollection` in VS Code settings, then reload the project or trigger a mission load. The language server will log a summary like the following to the server log output:
+
+```text
+[profile:MissionName] trigger=load:complete mode=setting samples=12 | loadMissionPackageLayout: count=1, total=134ms, avg=134ms, max=134ms || storyJson.readFile: count=1, total=48ms, avg=48ms, max=48ms
+```
+
+This output shows the slowest stages, how many times each stage ran, and the average and maximum timing for each stage. The same data is also collected automatically while running a debug session, even if the setting is off. The extension also writes the same summary to a file named `mast-profiler.log` in the mission folder, so you can attach it to a bug report or send it to the developer for debugging. This is primarily intended for diagnosing performance issues in the extension itself, not for regular end-user workflows.
+
 ## Working with Markdown
 
 You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:

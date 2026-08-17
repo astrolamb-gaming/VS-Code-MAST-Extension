@@ -60,6 +60,20 @@ after(() => {
 });
 
 describe('global alias regression coverage', () => {
+	it('writes profiler summaries to a log file', () => {
+		const { cache, missionDir } = createMissionCache('profiling-log');
+		(cache as any)._profilingStageStats.set('load:start', { count: 1, totalMs: 120, maxMs: 120 });
+		(cache as any)._profilingStageStats.set('load:complete', { count: 2, totalMs: 300, maxMs: 200 });
+		(cache as any)._profilingSampleCount = 3;
+
+		(cache as any).flushProfilingSummary('load:complete');
+
+		const logPath = path.join(missionDir, 'mast-profiler.log');
+		assert.ok(fs.existsSync(logPath));
+		const content = fs.readFileSync(logPath, 'utf8');
+		assert.match(content, /\[profile:.*\] trigger=load:complete mode=(debug|setting|off) samples=3/);
+	});
+
 	it('normalizes simulation classes to sim', () => {
 		const simulationPy = createPyFile('simulation.py', `
 class simulation:

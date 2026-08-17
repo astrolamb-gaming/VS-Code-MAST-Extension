@@ -228,8 +228,19 @@ export class MissionCache {
 			.join(' || ');
 
 		const mode = getProfilingCollectionMode();
+		const summary = `[profile:${this.missionName}] trigger=${triggerStage} mode=${mode} samples=${this._profilingSampleCount} | ${ranked}`;
 		try {
-			connection.console.log(`[profile:${this.missionName}] trigger=${triggerStage} mode=${mode} samples=${this._profilingSampleCount} | ${ranked}`);
+			connection.console.log(summary);
+		} catch (e) {
+			debug(e);
+		}
+
+		try {
+			if (this.missionURI) {
+				const logPath = path.join(this.missionURI, 'mast-profiler.log');
+				const line = `${new Date().toISOString()} ${summary}\n`;
+				fs.appendFileSync(logPath, line, 'utf8');
+			}
 		} catch (e) {
 			debug(e);
 		}
