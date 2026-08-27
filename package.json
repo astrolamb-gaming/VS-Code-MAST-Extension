@@ -293,6 +293,10 @@
 				"title": "MAST: Build sbslib/mastlib"
 			},
 			{
+				"command": "mast.purgePaxmeshes",
+				"title": "Purge Paxmeshes"
+			},
+			{
 				"command": "mast.NewMissionScaffold",
 				"title": "MAST: New Mission Scaffold"
 			},

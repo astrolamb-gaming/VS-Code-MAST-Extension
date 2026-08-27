@@ -394,6 +394,43 @@ export function activate(context: ExtensionContext) {
 		window.showInformationMessage(`Running: ${command}`);
 	}));
 
+	context.subscriptions.push(vscode.commands.registerCommand('mast.purgePaxmeshes', async () => {
+		debug('mast.purgePaxmeshes command triggered');
+
+		const missionsDir = resolveMissionsDirectoryFromOpenMast();
+		if (!missionsDir) {
+			window.showWarningMessage('Could not find a parent "missions" folder from any open .mast file. Open a .mast file within a Cosmos mission and try again.');
+			return;
+		}
+
+		const shipsDir = path.join(path.dirname(missionsDir), 'graphics', 'ships');
+		if (!fs.existsSync(shipsDir)) {
+			window.showInformationMessage(`Paxmesh folder not found: ${shipsDir}`);
+			return;
+		}
+
+		const confirmation = await window.showWarningMessage(
+			`Delete all .paxmesh files in ${shipsDir}?`,
+			{ modal: true },
+			'Delete Paxmeshes'
+		);
+		if (confirmation !== 'Delete Paxmeshes') {
+			return;
+		}
+
+		try {
+			// Restrict deletion to regular files with the exact .paxmesh extension.
+			const entries = await fs.promises.readdir(shipsDir, { withFileTypes: true });
+			const paxmeshFiles = entries.filter((entry) => entry.isFile() && path.extname(entry.name).toLowerCase() === '.paxmesh');
+			await Promise.all(paxmeshFiles.map((entry) => fs.promises.unlink(path.join(shipsDir, entry.name))));
+			window.showInformationMessage(`Deleted ${paxmeshFiles.length} .paxmesh file${paxmeshFiles.length === 1 ? '' : 's'}.`);
+		} catch (error: any) {
+			const message = error?.message ?? String(error);
+			debug(`Failed to purge paxmesh files: ${message}`);
+			window.showErrorMessage(`Failed to purge .paxmesh files: ${message}`);
+		}
+	}));
+
 	context.subscriptions.push(vscode.commands.registerCommand('mast.NewMissionScaffold', async () => {
 		debug('mast.NewMissionScaffold command triggered');
 
