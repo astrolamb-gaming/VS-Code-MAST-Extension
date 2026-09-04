@@ -233,7 +233,7 @@ def port_side():
 		assert.equal(sidesPy.classes.some((classObject) => classObject.name === 'sbs'), false);
 	});
 
-	it('reports missing required args for unresolved member calls despite satisfied unrelated overloads', () => {
+	it('does not report missing required args for unresolved member calls when an overload accepts none', () => {
 		const { cache, missionDir } = createRegisteredMissionCache('required-arg-member-call');
 
 		const alphaPy = new PyFile(path.join(missionDir, 'alpha.py'), `
@@ -257,7 +257,34 @@ class beta:
 		cache.updateFileInfo(mastDoc);
 
 		const diagnostics = checkFunctionSignatures(mastDoc);
+		assert.equal(diagnostics.length, 0, JSON.stringify(diagnostics, null, 2));
+	});
+
+	it('reports missing required args for unresolved member calls when all overloads require arguments', () => {
+		const { cache, missionDir } = createRegisteredMissionCache('required-arg-member-call-all-required');
+
+		const alphaPy = new PyFile(path.join(missionDir, 'alpha.py'), `
+class alpha:
+    def do_work(self, required_name):
+        pass
+`);
+		const betaPy = new PyFile(path.join(missionDir, 'beta.py'), `
+class beta:
+    def do_work(self, other_required):
+        pass
+`);
+		cache.addMissionPyFile(alphaPy);
+		cache.addMissionPyFile(betaPy);
+
+		const mastPath = path.join(missionDir, 'main.mast');
+		const mastText = 'with unknown_ref.do_work():\n    pass\n';
+		fs.writeFileSync(mastPath, mastText, 'utf8');
+
+		const mastDoc = TextDocument.create(URI.file(mastPath).toString(), 'mast', 1, mastText);
+		cache.updateFileInfo(mastDoc);
+
+		const diagnostics = checkFunctionSignatures(mastDoc);
 		assert.ok(diagnostics.length > 0);
-		assert.ok(diagnostics.some((diag) => diag.message.includes("Missing required argument(s): 'required_name'")));
+		assert.ok(diagnostics.some((diag) => diag.message.includes('Missing required argument(s):')));
 	});
 });

@@ -298,25 +298,28 @@ export function checkFunctionSignatures(textDocument: TextDocument): Diagnostic[
 		if (positionalCount === -1) continue;
 
 		const globalMethod = cache.getMethod(funcName);
-		let candidates = globalMethod ? [globalMethod] : [];
-		if (isMemberCall) {
-			candidates = candidates.concat(cache.getPossibleMethods(funcName));
-		}
-		if (candidates.length === 0) continue;
+		const possibleMethods = cache.getPossibleMethods(funcName);
+		let candidatePool = globalMethod ? [globalMethod] : [];
 
-		const scopedCandidates = isMemberCall && receiverName
-			? candidates.filter((cand) => {
-				if (cand === globalMethod) {
-					return true;
-				}
-				const className = (cand.className || '').trim();
-				const receiverText = receiverName.trim();
-				return className === receiverText
-					|| className.toLowerCase() === receiverText.toLowerCase()
-					|| matchesClassName(className, receiverText);
-			})
-			: candidates;
-		const candidatePool = scopedCandidates.length > 0 ? scopedCandidates : candidates;
+		if (isMemberCall) {
+			const receiverText = receiverName?.trim() || '';
+			const matchingMethods = receiverText === ''
+				? []
+				: possibleMethods.filter((cand) => {
+					const className = (cand.className || '').trim();
+					return className === receiverText
+						|| className.toLowerCase() === receiverText.toLowerCase()
+						|| matchesClassName(className, receiverText);
+				});
+
+			if (matchingMethods.length > 0) {
+				candidatePool = candidatePool.concat(matchingMethods);
+			} else if (possibleMethods.length > 0) {
+				candidatePool = possibleMethods;
+			}
+		}
+
+		if (candidatePool.length === 0) continue;
 
 		const evals = candidatePool.map((cand) => {
 			const required = getRequiredParams(cand);
