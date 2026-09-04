@@ -125,30 +125,47 @@ export function parseSignalsInFile(doc: TextDocument) {
 }
 
 export function checkForUnusedSignals(doc:TextDocument):Diagnostic[] {
-	let ret = [];
+	let ret: Diagnostic[] = [];
+	const seenDiagnostics = new Set<string>();
 	const cache = getCache(doc.uri);
 	const signals = cache.getSignals();
+	const makeDiagKey = (name: string, loc: Location, message: string): string => {
+		const uri = fixFileName(loc.uri).toLowerCase();
+		return `${name}|${message}|${uri}|${loc.range.start.line}:${loc.range.start.character}:${loc.range.end.line}:${loc.range.end.character}`;
+	};
+	const pushUniqueDiagnostic = (name: string, loc: Location, message: string, severity: DiagnosticSeverity): void => {
+		const key = makeDiagKey(name, loc, message);
+		if (seenDiagnostics.has(key)) {
+			return;
+		}
+		seenDiagnostics.add(key);
+		ret.push({
+			range: loc.range,
+			message,
+			severity
+		});
+	};
 	for (const s of signals) {
 		if (s.emit.length === 0) {
-			for (const loc of s.triggered) {
-				if (fixFileName(doc.uri)!==fixFileName(loc.uri)) continue;
-				const d: Diagnostic = {
-					range: loc.range,
-					message: 'The signal '+ s.name + ' is never emitted',
-					severity: DiagnosticSeverity.Warning
-				}
-				ret.push(d);
+			const localTrigger = s.triggered.find((loc) => fixFileName(doc.uri)===fixFileName(loc.uri));
+			if (localTrigger) {
+				pushUniqueDiagnostic(
+					s.name,
+					localTrigger,
+					'The signal '+ s.name + ' is never emitted',
+					DiagnosticSeverity.Warning
+				);
 			}
 		}
 		if (s.triggered.length === 0) {
-			for (const loc of s.emit) {
-				if (fixFileName(doc.uri)!==fixFileName(loc.uri)) continue;
-				const d: Diagnostic = {
-					range: loc.range,
-					message: 'The signal '+ s.name + ' is emitted but never used',
-					severity: DiagnosticSeverity.Information
-				}
-				ret.push(d);
+			const localEmit = s.emit.find((loc) => fixFileName(doc.uri)===fixFileName(loc.uri));
+			if (localEmit) {
+				pushUniqueDiagnostic(
+					s.name,
+					localEmit,
+					'The signal '+ s.name + ' is emitted but never used',
+					DiagnosticSeverity.Information
+				);
 			}
 		}
 	}

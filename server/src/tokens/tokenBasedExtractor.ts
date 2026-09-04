@@ -94,12 +94,25 @@ export class TokenBasedExtractor {
 		// Find signal_emit() calls
 		for (let i = 0; i < this.tokens.length - 1; i++) {
 			const token = this.tokens[i];
-			
-			if (this.isCallableToken(token) && token.text === 'signal_emit') {
+
+			if (!this.isCallableToken(token)) {
+				continue;
+			}
+
+			if (token.text === 'signal_emit') {
 				const stringToken = this.findNextStringToken(i);
 				if (stringToken) {
 					const signalName = this.extractStringValue(stringToken.text);
 					this.addSignalUsage(signalMap, signalName, stringToken, true);
+				}
+			}
+
+			// Generic named signal arguments, e.g. set_timer(..., signal="my_signal")
+			const namedSignalToken = this.findNamedStringArgumentInCall(i, 'signal');
+			if (namedSignalToken) {
+				const signalName = this.extractStringValue(namedSignalToken.text);
+				if (signalName) {
+					this.addSignalUsage(signalMap, signalName, namedSignalToken, true);
 				}
 			}
 		}
@@ -599,6 +612,69 @@ export class TokenBasedExtractor {
 	}
 
 	/**
+	 * Find a named argument in a call where the value is a string literal,
+	 * e.g. func(..., signal="name").
+	 */
+	private findNamedStringArgumentInCall(startIndex: number, argName: string): Token | null {
+		let openParen = startIndex + 1;
+		while (openParen < this.tokens.length && !(this.tokens[openParen].type === 'operator' && this.tokens[openParen].text === '(')) {
+			openParen++;
+		}
+		if (openParen >= this.tokens.length) {
+			return null;
+		}
+
+		let parenDepth = 1;
+		let segmentStartOffset = this.doc.offsetAt({
+			line: this.tokens[openParen].line,
+			character: this.tokens[openParen].character + this.tokens[openParen].length
+		});
+		for (let i = openParen + 1; i < this.tokens.length; i++) {
+			const token = this.tokens[i];
+
+			if (token.type === 'operator') {
+				if (token.text === '(') {
+					parenDepth++;
+					continue;
+				}
+				if (token.text === ')') {
+					parenDepth--;
+					if (parenDepth === 0) {
+						break;
+					}
+					continue;
+				}
+				if (parenDepth === 1 && token.text === ',') {
+					segmentStartOffset = this.doc.offsetAt({
+						line: token.line,
+						character: token.character + token.length
+					});
+					continue;
+				}
+			}
+
+			if (parenDepth !== 1) {
+				continue;
+			}
+
+			if (token.type === 'operator' && token.text === '=') {
+				const value = this.tokens[i + 1];
+				if (!value || value.type !== 'string') {
+					continue;
+				}
+
+				const eqOffset = this.doc.offsetAt({ line: token.line, character: token.character });
+				const lhs = this.doc.getText().substring(segmentStartOffset, eqOffset).trim();
+				if (lhs.toLowerCase() === argName.toLowerCase()) {
+					return value;
+				}
+			}
+		}
+
+		return null;
+	}
+
+	/**
 	 * Extract the string content from a string token (remove quotes)
 	 */
 	private extractStringValue(tokenText: string): string {
@@ -657,10 +733,15 @@ export class TokenBasedExtractor {
 			signal.description = description;
 		}
 		
+		const key = `${location.uri}:${location.range.start.line}:${location.range.start.character}:${location.range.end.line}:${location.range.end.character}`;
 		if (isEmit) {
-			signal.emit.push(location);
+			if (!signal.emit.some((loc) => `${loc.uri}:${loc.range.start.line}:${loc.range.start.character}:${loc.range.end.line}:${loc.range.end.character}` === key)) {
+				signal.emit.push(location);
+			}
 		} else {
-			signal.triggered.push(location);
+			if (!signal.triggered.some((loc) => `${loc.uri}:${loc.range.start.line}:${loc.range.start.character}:${loc.range.end.line}:${loc.range.end.character}` === key)) {
+				signal.triggered.push(location);
+			}
 		}
 	}
 

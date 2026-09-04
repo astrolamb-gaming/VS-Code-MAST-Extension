@@ -193,12 +193,25 @@ function inheritMetadata(parentMetadata: string, childMetadata: string): string 
 	return parentMetadata + "\n\n" + childMetadata;
 }
 
+function getBuiltInRouteLabelDocs(labelName: string): string | undefined {
+	if (labelName.startsWith('shared/signal/')) {
+		return "Signals are script defined events, emitted using the 'signal_emit()' function.\nOnly the server receives shared signals.";
+	}
+	if (labelName.startsWith('signal/')) {
+		return "Signals are script defined events, emitted using the 'signal_emit()' function.\nThe server and all clients receive this signal.";
+	}
+	return undefined;
+}
+
 export function buildLabelDocs(label:LabelInfo): MarkupContent {
 	let val = "";
 	if (label.metadata !== "") {
 		val = label.comments + "\n\nDefault metadata:  \n```  \n" + label.metadata + "\n```\n"
 	} else {
 		val = label.comments;
+	}
+	if (label.type === 'route' && val === '') {
+		val = getBuiltInRouteLabelDocs(label.name) || '';
 	}
 	if (val === "") {
 		val = "No information specified for the '" + label.name + "' label.";
