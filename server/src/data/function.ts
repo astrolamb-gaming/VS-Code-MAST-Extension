@@ -42,7 +42,8 @@ export interface IFunction {
 	/**
 	 * Return type of the function
 	 */
-	returnType: string
+	returnType: string,
+	isDeprecated: boolean
 }
 
 export interface IParameter {
@@ -60,6 +61,7 @@ export class Function implements IFunction {
 	rawParams: string;
 	parameters: IParameter[];
 	returnType: string;
+	isDeprecated: boolean;
 	sourceFile: string;
 	startIndex: integer = 0;
 	location: Location;
@@ -73,6 +75,7 @@ export class Function implements IFunction {
 		f.rawParams = this.rawParams;
 		f.parameters = this.parameters;
 		f.returnType = this.returnType;
+		f.isDeprecated = this.isDeprecated;
 		f.sourceFile = this.sourceFile;
 		f.startIndex = this.startIndex;
 		f.location = this.location;
@@ -89,6 +92,7 @@ export class Function implements IFunction {
 		returnType?: string;
 		documentation?: string;
 		functionType?: string;
+		isDeprecated?: boolean;
 		decorators?: string[];
 		location?: Location;
 		isAsync?: boolean;
@@ -106,6 +110,7 @@ export class Function implements IFunction {
 			const rawDocstring = preParsed.documentation || '';
 			this.documentation = this.parseDocString(rawDocstring);
 			this.functionType = preParsed.functionType || 'function';
+			this.isDeprecated = preParsed.isDeprecated ?? this.detectFunctionDeprecation(rawDocstring);
 			this.location = preParsed.location || this.location;
 			this.applyDocstringTypes(rawDocstring);
 			
@@ -146,6 +151,7 @@ export class Function implements IFunction {
 		let comments = getRegExMatch(raw, comment).replace("\"\"\"","").replace("\"\"\"","").trim();
 		const rawDocstring = comments;
 		this.documentation = this.parseDocString(rawDocstring);
+		this.isDeprecated = this.detectFunctionDeprecation(rawDocstring);
 
 		this.returnType = getRegExMatch(raw, returnValue).replace(/(:|->)/g, "").trim();
 		if (this.returnType === "") {
@@ -364,6 +370,40 @@ export class Function implements IFunction {
 		}
 
 		return info;
+	}
+
+	private detectFunctionDeprecation(docstring: string): boolean {
+		if (!docstring) {
+			return false;
+		}
+
+		const lines = docstring.split(/\r?\n/);
+		let inParams = false;
+		const startSection = /^(args|arguments|parameters|params)\s*:?$/i;
+		const endSection = /^(returns?|raises?|yield|yields|notes?|examples?|example|see also)\s*:?$/i;
+
+		for (const rawLine of lines) {
+			const trimmed = rawLine.trim();
+			if (!trimmed) {
+				continue;
+			}
+			if (startSection.test(trimmed)) {
+				inParams = true;
+				continue;
+			}
+			if (endSection.test(trimmed)) {
+				inParams = false;
+				continue;
+			}
+			if (inParams) {
+				continue;
+			}
+			if (/\bdeprecated\b/i.test(trimmed)) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	private applyDocstringTypes(docstring: string): void {

@@ -388,7 +388,7 @@ export function checkForDeprecatedFunctions(textDocument: TextDocument): Diagnos
 
 
 	let cache = getCache(textDocument.uri)
-	for (const f of cache.deprecatedFunctions) {
+	for (const f of cache.getMethods().filter((method) => method.isDeprecated)) {
 		const regex = new RegExp(`\\b${f.name}\\b`, "g");
 		let m: RegExpExecArray | null;
 		while (m = regex.exec(text)) {

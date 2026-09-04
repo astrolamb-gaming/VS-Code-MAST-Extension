@@ -4,7 +4,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { after, describe, it } from 'mocha';
 import { getCache, MissionCache } from '../cache';
-import { checkFunctionSignatures } from '../errorChecking';
+import { checkForDeprecatedFunctions, checkFunctionSignatures } from '../errorChecking';
 import { PyFile } from '../files/PyFile';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
@@ -104,6 +104,33 @@ class Mast:
 
 		const diagnostics = checkFunctionSignatures(mastDoc);
 		assert.equal(diagnostics.length, 0, JSON.stringify(diagnostics, null, 2));
+	});
+
+	it('does not warn when only an argument is deprecated', () => {
+		const { cache, missionDir } = createRegisteredMissionCache('argument-only-deprecation');
+
+		cache.addMissionPyFile(new PyFile(path.join(missionDir, 'helpers.py'), `
+def gui_button(props, is_sub_task = None):
+    """
+    Add a button to the layout.
+
+    Args:
+        props (str): Button label.
+        is_sub_task (bool, optional): Deprecated. Use the library default.
+    """
+    pass
+
+def old_button():
+    """Deprecated: use gui_button instead."""
+    pass
+`));
+
+		const mastDoc = createMastDocument(missionDir, 'gui_button("fire")\nold_button()\n');
+		cache.updateFileInfo(mastDoc);
+
+		const diagnostics = checkForDeprecatedFunctions(mastDoc);
+		assert.equal(diagnostics.length, 1, JSON.stringify(diagnostics, null, 2));
+		assert.ok(diagnostics[0].message.includes('old_button'));
 	});
 
 	it('ignores possible calls in comments and strings', () => {

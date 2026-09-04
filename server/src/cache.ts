@@ -348,14 +348,14 @@ export class MissionCache {
 		
 		for (const p of this.pyFileCache) {
 			for (const f of p.defaultFunctions) {
-				if (f.documentation.toLowerCase().includes("deprecated")) {
+				if (f.isDeprecated) {
 					this.deprecatedFunctions.push(f);
 				}
 			}
 		}
 		for (const p of this.missionPyModules) {
 			for (const f of p.defaultFunctions) {
-				if (f.documentation.toLowerCase().includes("deprecated")) {
+				if (f.isDeprecated) {
 					this.deprecatedFunctions.push(f);
 				}
 			}
