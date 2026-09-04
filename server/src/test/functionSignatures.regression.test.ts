@@ -71,6 +71,41 @@ def do_work(required_name, optional_name = None):
 		assert.equal(diagnostics.length, 0);
 	});
 
+	it('does not report missing args when named arguments are reordered', () => {
+		const { cache, missionDir } = createRegisteredMissionCache('named-argument-reorder');
+
+		cache.addMissionPyFile(new PyFile(path.join(missionDir, 'helpers.py'), `
+def some_func(one, two, three):
+    pass
+`));
+
+		const mastDoc = createMastDocument(missionDir, 'some_func(1, three=2, two=3)\n');
+		cache.updateFileInfo(mastDoc);
+
+		const diagnostics = checkFunctionSignatures(mastDoc);
+		assert.equal(diagnostics.length, 0, JSON.stringify(diagnostics, null, 2));
+	});
+
+	it('prefers the global signal_emit callable over a Mast member method', () => {
+		const { cache, missionDir } = createRegisteredMissionCache('signal-emit-global-preference');
+
+		cache.addMissionPyFile(new PyFile(path.join(missionDir, 'helpers.py'), `
+def signal_emit(signal_name):
+    pass
+`));
+
+		cache.addMissionPyFile(new PyFile(path.join(missionDir, 'mast.py'), `
+class Mast:
+    def signal_emit(self, signal_name, target_id):
+        pass
+`));
+		const mastDoc = createMastDocument(missionDir, 'Mast.signal_emit("ping")\n');
+		cache.updateFileInfo(mastDoc);
+
+		const diagnostics = checkFunctionSignatures(mastDoc);
+		assert.equal(diagnostics.length, 0, JSON.stringify(diagnostics, null, 2));
+	});
+
 	it('ignores possible calls in comments and strings', () => {
 		const { cache, missionDir } = createRegisteredMissionCache('comments-and-strings');
 

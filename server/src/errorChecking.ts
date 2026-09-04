@@ -231,6 +231,23 @@ function parseCallArgs(argsStr: string): { positionalCount: integer; namedArgs: 
 	return { positionalCount, namedArgs };
 }
 
+function getTrailingIdentifierBeforeDot(text: string): string | undefined {
+	let end = text.length - 1;
+	while (end >= 0 && /\s/.test(text[end])) {
+		end--;
+	}
+	if (end < 0 || text[end] !== '.') {
+		return undefined;
+	}
+
+	let start = end - 1;
+	while (start >= 0 && /[A-Za-z0-9_]/.test(text[start])) {
+		start--;
+	}
+	const ident = text.substring(start + 1, end).trim();
+	return ident || undefined;
+}
+
 /**
  * Returns the required parameters of a function: those with no default value
  * that are not `self`, `*args`, or `**kwargs`.
@@ -255,7 +272,6 @@ export function checkFunctionSignatures(textDocument: TextDocument): Diagnostic[
 	const tokens = cache.getMastFile(textDocument.uri)?.tokens || [];
 	const diagnostics: Diagnostic[] = [];
 
-	// Match potential function calls: word(
 	const callRegex = /\b(\w+)\s*\(/g;
 	let m: RegExpExecArray | null;
 	while ((m = callRegex.exec(text)) !== null) {
@@ -264,91 +280,55 @@ export function checkFunctionSignatures(textDocument: TextDocument): Diagnostic[
 
 		const callStart = m.index;
 		const parenOpenOffset = m.index + m[0].length - 1; // index of '('
-
-		// Detect member calls (obj.func(...)) and keep them in scope for
-		// argument validation.
 		let prev = callStart - 1;
 		while (prev >= 0 && /\s/.test(text[prev])) {
 			prev--;
 		}
 		const isMemberCall = prev >= 0 && text[prev] === '.';
+		const receiverName = isMemberCall ? getTrailingIdentifierBeforeDot(text.substring(0, prev + 1)) : undefined;
 
-		let receiverName: string | undefined;
-		if (isMemberCall) {
-			let r = prev - 1;
-			while (r >= 0 && /\s/.test(text[r])) {
-				r--;
-			}
-			let end = r;
-			while (r >= 0 && /\w/.test(text[r])) {
-				r--;
-			}
-			if (end >= r + 1) {
-				receiverName = text.substring(r + 1, end + 1);
-			}
-		}
-
-		// Skip calls inside comments or strings
 		const tokenType = getTokenTypeAtOffset(textDocument, tokens, callStart);
 		if (tokenType === 'comment') continue;
 		if (tokenType === 'string') continue;
 
-		// Build callable candidates. For ambiguous names, prefer lower-arity
-		// callables so unknown receiver types don't over-report missing args.
-		let candidates = isMemberCall ? cache.getPossibleMethods(funcName) : [];
-		let receiverResolved = false;
-		if (isMemberCall && receiverName && candidates.length > 0) {
-			const receiverMatches = candidates.filter((cand) => {
+		const argsStr = extractArgString(text, parenOpenOffset + 1);
+		if (argsStr === null) continue;
+
+		const { positionalCount, namedArgs } = parseCallArgs(argsStr);
+		if (positionalCount === -1) continue;
+
+		const globalMethod = cache.getMethod(funcName);
+		let candidates = globalMethod ? [globalMethod] : [];
+		if (isMemberCall) {
+			candidates = candidates.concat(cache.getPossibleMethods(funcName));
+		}
+		if (candidates.length === 0) continue;
+
+		const scopedCandidates = isMemberCall && receiverName
+			? candidates.filter((cand) => {
+				if (cand === globalMethod) {
+					return true;
+				}
 				const className = (cand.className || '').trim();
 				const receiverText = receiverName.trim();
 				return className === receiverText
 					|| className.toLowerCase() === receiverText.toLowerCase()
 					|| matchesClassName(className, receiverText);
-			});
-			if (receiverMatches.length > 0) {
-				candidates = receiverMatches;
-				receiverResolved = true;
-			}
-		}
-		if (!isMemberCall) {
-			const globalMethod = cache.getMethod(funcName);
-			if (globalMethod) {
-				candidates.push(globalMethod);
-			}
-			const classCandidates = cache.getPossibleMethods(funcName).filter((cand) => {
-				const cn = (cand.className || '').trim();
-				return cand.functionType === 'constructor' || cn === funcName;
-			});
-			candidates = candidates.concat(classCandidates);
-		}
-		if (candidates.length === 0) {
-			const fallback = cache.getCallableForName(funcName, isMemberCall);
-			if (fallback) {
-				candidates = [fallback];
-			}
-		}
-		if (candidates.length === 0) continue;
+			})
+			: candidates;
+		const candidatePool = scopedCandidates.length > 0 ? scopedCandidates : candidates;
 
-		candidates = candidates.filter((cand, idx) => candidates.indexOf(cand) === idx);
-
-		// Extract the raw argument list
-		const argsStr = extractArgString(text, parenOpenOffset + 1);
-		if (argsStr === null) continue;
-
-		// Parse supplied arguments
-		const { positionalCount, namedArgs } = parseCallArgs(argsStr);
-
-		// If unpacking is used we can't validate statically
-		if (positionalCount === -1) continue;
-
-		const evals = candidates.map((cand) => {
+		const evals = candidatePool.map((cand) => {
 			const required = getRequiredParams(cand);
 			const unfulfilled: string[] = [];
 			let positionalUsed = 0;
 			for (const param of required) {
 				const paramName = (param.name || '').replace(/^\*+/, '').trim();
 				if (namedArgs.has(paramName)) continue;
-				if (positionalUsed < positionalCount) { positionalUsed++; continue; }
+				if (positionalUsed < positionalCount) {
+					positionalUsed++;
+					continue;
+				}
 				unfulfilled.push(paramName);
 			}
 
@@ -367,42 +347,32 @@ export function checkFunctionSignatures(textDocument: TextDocument): Diagnostic[
 		});
 
 		const relevantEvals = evals.filter((e) => e.requiredCount >= 0);
-		const satisfied = relevantEvals.filter((e) => e.unfulfilled.length === 0);
-		if (satisfied.length > 0) {
-			// If any overload can accept the supplied arguments, keep the call valid.
-			// This avoids false positives for ambiguous same-name methods where one
-			// overload is optional and another requires more arguments.
+		if (relevantEvals.some((e) => e.unfulfilled.length === 0)) {
 			continue;
 		}
-
 		if (relevantEvals.length === 0) continue;
 
 		const minRequiredCount = Math.min(...relevantEvals.map((e) => e.requiredCount));
-		const maxRequiredCount = Math.max(...relevantEvals.map((e) => e.requiredCount));
-		if (positionalCount < minRequiredCount) {
-			const candidateEvals = relevantEvals
-				.filter((e) => e.requiredCount === minRequiredCount)
-				.sort((a, b) => {
-					if (a.totalParams !== b.totalParams) return a.totalParams - b.totalParams;
-					return a.unfulfilled.length - b.unfulfilled.length;
-				});
-			const bestEval = candidateEvals[0];
-			if (!bestEval) continue;
+		const bestEval = relevantEvals
+			.filter((e) => e.requiredCount === minRequiredCount)
+			.sort((a, b) => {
+				if (a.unfulfilled.length !== b.unfulfilled.length) return a.unfulfilled.length - b.unfulfilled.length;
+				if (a.totalParams !== b.totalParams) return a.totalParams - b.totalParams;
+				return a.cand.name.localeCompare(b.cand.name);
+			})[0];
 
-			const unfulfilled = bestEval.unfulfilled;
-			if (unfulfilled.length > 0) {
-				const callEnd = parenOpenOffset + 1 + argsStr.length + 1; // +1 for closing ')'
-				diagnostics.push({
-					severity: DiagnosticSeverity.Error,
-					range: {
-						start: textDocument.positionAt(callStart),
-						end: textDocument.positionAt(callEnd)
-					},
-					message: `Missing required argument(s): ${unfulfilled.map(n => `'${n}'`).join(', ')}`,
-					source: 'mast extension'
-				});
-			}
-		}
+		if (!bestEval || bestEval.unfulfilled.length === 0) continue;
+
+		const callEnd = parenOpenOffset + 1 + argsStr.length + 1;
+		diagnostics.push({
+			severity: DiagnosticSeverity.Error,
+			range: {
+				start: textDocument.positionAt(callStart),
+				end: textDocument.positionAt(callEnd)
+			},
+			message: `Missing required argument(s): ${bestEval.unfulfilled.map((n) => `'${n}'`).join(', ')}`,
+			source: 'mast extension'
+		});
 	}
 
 	return diagnostics;
