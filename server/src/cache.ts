@@ -2831,6 +2831,10 @@ export function getCache(name:string, reloadCache:boolean = false): MissionCache
 	return ret;
 }
 
+export function getLoadedCaches(): MissionCache[] {
+	return [...caches.values()];
+}
+
 
 
 /**

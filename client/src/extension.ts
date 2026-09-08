@@ -677,6 +677,21 @@ export function activate(context: ExtensionContext) {
 	});
 	context.subscriptions.push(compileMissionResult);
 
+	let cacheProfileOutputChannel: vscode.OutputChannel | undefined;
+	const cacheProfileReport = client.onNotification('custom/cacheProfileReport', (payload: { message?: string; reset?: boolean } | undefined) => {
+		if (!cacheProfileOutputChannel) {
+			cacheProfileOutputChannel = window.createOutputChannel('MAST: Cache Profile');
+		}
+		if (payload?.reset) {
+			cacheProfileOutputChannel.clear();
+		}
+		cacheProfileOutputChannel.show(true);
+		if (payload?.message) {
+			cacheProfileOutputChannel.appendLine(payload.message);
+		}
+	});
+	context.subscriptions.push(cacheProfileReport);
+
 	context.subscriptions.push(vscode.commands.registerCommand('mast.compileMission', async () => {
 		debug('mast.compileMission command triggered');
 		if (!client) {
@@ -704,6 +719,28 @@ export function activate(context: ExtensionContext) {
 			});
 		}
 		window.showInformationMessage('MAST memory snapshot captured. See MAST Client Output and MAST Language Server logs.');
+	}));
+
+	context.subscriptions.push(vscode.commands.registerCommand('mast.profileCacheSize', async () => {
+		debug('mast.profileCacheSize command triggered');
+		if (!client) {
+			window.showWarningMessage('MAST client is not ready yet.');
+			return;
+		}
+		const activeDoc = vscode.window.activeTextEditor?.document;
+		const sourceUri = activeDoc && !activeDoc.isUntitled ? activeDoc.uri.toString() : '';
+		client.sendNotification('custom/profileCacheSize', { sourceUri });
+		window.showInformationMessage('MAST cache profiling started. See MAST: Cache Profile output for results.');
+	}));
+
+	context.subscriptions.push(vscode.commands.registerCommand('mast.profileAllCaches', async () => {
+		debug('mast.profileAllCaches command triggered');
+		if (!client) {
+			window.showWarningMessage('MAST client is not ready yet.');
+			return;
+		}
+		client.sendNotification('custom/profileAllCaches', {});
+		window.showInformationMessage('MAST all-caches profiling started. See MAST: Cache Profile output for results.');
 	}));
 
 	// This opens the specified file in the editor.

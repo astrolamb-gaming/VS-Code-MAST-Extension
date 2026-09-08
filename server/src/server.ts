@@ -48,7 +48,7 @@ import fs = require("fs");
 import { getArtemisGlobals, initializeArtemisGlobals } from './artemisGlobals';
 import { compileMastFile, getCurrentDiagnostics, validateTextDocument } from './requests/validate';
 import { onDefinition } from './requests/goToDefinition';
-import { getCache } from './cache';
+import { getCache, getLoadedCaches } from './cache';
 import { onReferences } from './requests/references';
 import { onPrepareRename, onRenameRequest } from './requests/renameSymbol';
 import { getWordRangeAtPosition } from './tokens/words';
@@ -58,6 +58,8 @@ import { getGridIcons, parseIconSet } from './resources/iconSets';
 import * as path from 'path';
 import { URI } from 'vscode-uri';
 import * as v8 from 'v8';
+import { MastFile } from './files/MastFile';
+import { PyFile } from './files/PyFile';
 
 function createNoopConnection(): any {
 	const noop = () => undefined;
@@ -178,6 +180,213 @@ function appendProfilerLog(missionFolder: string | undefined, line: string): voi
 	} catch (e) {
 		debug(e);
 	}
+}
+
+function formatSignedBytesToMiB(bytes: number): string {
+	const sign = bytes >= 0 ? '+' : '-';
+	return `${sign}${(Math.abs(bytes) / (1024 * 1024)).toFixed(1)}MiB`;
+}
+
+function toWorkspaceishPath(input: string): string {
+	return input.replace(/\\/g, '/');
+}
+
+function dedupeFilesByUri<T extends { uri: string }>(files: T[]): T[] {
+	const seen = new Set<string>();
+	const unique: T[] = [];
+	for (const file of files) {
+		const key = (file.uri || '').toLowerCase();
+		if (!key || seen.has(key)) {
+			continue;
+		}
+		seen.add(key);
+		unique.push(file);
+	}
+	return unique;
+}
+
+function getPyTokenCount(file: PyFile): number {
+	return file.pyTokens?.length ?? 0;
+}
+
+function getMastTokenCount(file: MastFile): number {
+	return file.tokens?.length ?? 0;
+}
+
+function getRetainedTextBytes(file: { lastText?: string }): number {
+	const text = file.lastText || '';
+	return text.length * 2;
+}
+
+type CachedFileEntry = {
+	uri: string;
+	bytes: number;
+	tokens: number;
+	type: 'py' | 'mast';
+};
+
+type CacheMetrics = {
+	missionName: string;
+	pyFiles: number;
+	mastFiles: number;
+	pyTokens: number;
+	mastTokens: number;
+	pyTextBytes: number;
+	mastTextBytes: number;
+	largestRetained: CachedFileEntry[];
+};
+
+function collectCacheMetrics(cache: ReturnType<typeof getCache>): CacheMetrics {
+	const pyFiles = dedupeFilesByUri<PyFile>([...cache.missionPyModules, ...cache.pyFileCache]);
+	const mastFiles = dedupeFilesByUri<MastFile>([...cache.missionMastModules, ...cache.mastFileCache]);
+
+	const pyTextBytes = pyFiles.reduce((sum, file) => sum + getRetainedTextBytes(file), 0);
+	const mastTextBytes = mastFiles.reduce((sum, file) => sum + getRetainedTextBytes(file), 0);
+	const pyTokens = pyFiles.reduce((sum, file) => sum + getPyTokenCount(file), 0);
+	const mastTokens = mastFiles.reduce((sum, file) => sum + getMastTokenCount(file), 0);
+
+	const largestRetained = [...pyFiles, ...mastFiles]
+		.map((file) => ({
+			uri: toWorkspaceishPath(file.uri),
+			bytes: getRetainedTextBytes(file),
+			tokens: file instanceof PyFile ? getPyTokenCount(file) : getMastTokenCount(file),
+			type: file instanceof PyFile ? 'py' as const : 'mast' as const
+		}))
+		.sort((a, b) => b.bytes - a.bytes);
+
+	return {
+		missionName: cache.missionName,
+		pyFiles: pyFiles.length,
+		mastFiles: mastFiles.length,
+		pyTokens,
+		mastTokens,
+		pyTextBytes,
+		mastTextBytes,
+		largestRetained
+	};
+}
+
+function buildCacheProfileReport(cache: ReturnType<typeof getCache>, memoryBefore: NodeJS.MemoryUsage, memoryAfter: NodeJS.MemoryUsage, elapsedMs: number): string {
+	const metrics = collectCacheMetrics(cache);
+
+	const memoryDelta = {
+		rss: memoryAfter.rss - memoryBefore.rss,
+		heapUsed: memoryAfter.heapUsed - memoryBefore.heapUsed,
+		heapTotal: memoryAfter.heapTotal - memoryBefore.heapTotal,
+		external: memoryAfter.external - memoryBefore.external,
+		arrayBuffers: memoryAfter.arrayBuffers - memoryBefore.arrayBuffers
+	};
+
+	const largestRetained = metrics.largestRetained.slice(0, 20);
+
+	const lines: string[] = [];
+	lines.push('[cache-profile]');
+	lines.push(`mission=${metrics.missionName}`);
+	lines.push(`loadDuration=${elapsedMs}ms`);
+	lines.push('');
+	lines.push('1) Parsed file counts');
+	lines.push(`pyFiles=${metrics.pyFiles}`);
+	lines.push(`mastFiles=${metrics.mastFiles}`);
+	lines.push(`totalFiles=${metrics.pyFiles + metrics.mastFiles}`);
+	lines.push('');
+	lines.push('2) Approximate token counts');
+	lines.push(`pyTokens=${metrics.pyTokens}`);
+	lines.push(`mastTokens=${metrics.mastTokens}`);
+	lines.push(`totalTokens=${metrics.pyTokens + metrics.mastTokens}`);
+	lines.push('');
+	lines.push('3) Memory delta (before vs after load)');
+	lines.push(`rss=${formatSignedBytesToMiB(memoryDelta.rss)}`);
+	lines.push(`heapUsed=${formatSignedBytesToMiB(memoryDelta.heapUsed)}`);
+	lines.push(`heapTotal=${formatSignedBytesToMiB(memoryDelta.heapTotal)}`);
+	lines.push(`external=${formatSignedBytesToMiB(memoryDelta.external)}`);
+	lines.push(`arrayBuffers=${formatSignedBytesToMiB(memoryDelta.arrayBuffers)}`);
+	lines.push('');
+	lines.push('4) Top 20 largest cached files by retained text size');
+	if (largestRetained.length === 0) {
+		lines.push('(no cached files loaded)');
+	} else {
+		for (let i = 0; i < largestRetained.length; i++) {
+			const item = largestRetained[i];
+			lines.push(`${i + 1}. [${item.type}] ${item.uri} | text=${formatBytesToMiB(item.bytes)} | tokens=${item.tokens}`);
+		}
+	}
+	lines.push('');
+	lines.push('retainedTextTotals');
+	lines.push(`pyText=${formatBytesToMiB(metrics.pyTextBytes)}`);
+	lines.push(`mastText=${formatBytesToMiB(metrics.mastTextBytes)}`);
+	lines.push(`totalText=${formatBytesToMiB(metrics.pyTextBytes + metrics.mastTextBytes)}`);
+
+	return lines.join('\n');
+}
+
+function buildAllCachesProfileReport(caches: ReturnType<typeof getCache>[], memoryBefore: NodeJS.MemoryUsage, memoryAfter: NodeJS.MemoryUsage, elapsedMs: number): string {
+	const metricsByCache = caches.map((cache) => collectCacheMetrics(cache));
+	const totalPyFiles = metricsByCache.reduce((sum, item) => sum + item.pyFiles, 0);
+	const totalMastFiles = metricsByCache.reduce((sum, item) => sum + item.mastFiles, 0);
+	const totalPyTokens = metricsByCache.reduce((sum, item) => sum + item.pyTokens, 0);
+	const totalMastTokens = metricsByCache.reduce((sum, item) => sum + item.mastTokens, 0);
+	const totalPyTextBytes = metricsByCache.reduce((sum, item) => sum + item.pyTextBytes, 0);
+	const totalMastTextBytes = metricsByCache.reduce((sum, item) => sum + item.mastTextBytes, 0);
+
+	const memoryDelta = {
+		rss: memoryAfter.rss - memoryBefore.rss,
+		heapUsed: memoryAfter.heapUsed - memoryBefore.heapUsed,
+		heapTotal: memoryAfter.heapTotal - memoryBefore.heapTotal,
+		external: memoryAfter.external - memoryBefore.external,
+		arrayBuffers: memoryAfter.arrayBuffers - memoryBefore.arrayBuffers
+	};
+
+	const largestAcrossAll = metricsByCache
+		.flatMap((item) => item.largestRetained.map((entry) => ({ ...entry, missionName: item.missionName })))
+		.sort((a, b) => b.bytes - a.bytes)
+		.slice(0, 20);
+
+	const lines: string[] = [];
+	lines.push('[cache-profile:all]');
+	lines.push(`loadedCaches=${caches.length}`);
+	lines.push(`profileDuration=${elapsedMs}ms`);
+	lines.push('');
+	lines.push('1) Parsed file counts');
+	lines.push(`pyFiles=${totalPyFiles}`);
+	lines.push(`mastFiles=${totalMastFiles}`);
+	lines.push(`totalFiles=${totalPyFiles + totalMastFiles}`);
+	lines.push('perMission:');
+	for (const item of metricsByCache) {
+		lines.push(`- ${item.missionName}: py=${item.pyFiles}, mast=${item.mastFiles}, total=${item.pyFiles + item.mastFiles}`);
+	}
+	lines.push('');
+	lines.push('2) Approximate token counts');
+	lines.push(`pyTokens=${totalPyTokens}`);
+	lines.push(`mastTokens=${totalMastTokens}`);
+	lines.push(`totalTokens=${totalPyTokens + totalMastTokens}`);
+	lines.push('perMission:');
+	for (const item of metricsByCache) {
+		lines.push(`- ${item.missionName}: py=${item.pyTokens}, mast=${item.mastTokens}, total=${item.pyTokens + item.mastTokens}`);
+	}
+	lines.push('');
+	lines.push('3) Memory delta (before vs after profiling loaded caches)');
+	lines.push(`rss=${formatSignedBytesToMiB(memoryDelta.rss)}`);
+	lines.push(`heapUsed=${formatSignedBytesToMiB(memoryDelta.heapUsed)}`);
+	lines.push(`heapTotal=${formatSignedBytesToMiB(memoryDelta.heapTotal)}`);
+	lines.push(`external=${formatSignedBytesToMiB(memoryDelta.external)}`);
+	lines.push(`arrayBuffers=${formatSignedBytesToMiB(memoryDelta.arrayBuffers)}`);
+	lines.push('');
+	lines.push('4) Top 20 largest cached files by retained text size (all loaded caches)');
+	if (largestAcrossAll.length === 0) {
+		lines.push('(no cached files loaded)');
+	} else {
+		for (let i = 0; i < largestAcrossAll.length; i++) {
+			const item = largestAcrossAll[i];
+			lines.push(`${i + 1}. [${item.type}] ${item.uri} | mission=${item.missionName} | text=${formatBytesToMiB(item.bytes)} | tokens=${item.tokens}`);
+		}
+	}
+	lines.push('');
+	lines.push('retainedTextTotals');
+	lines.push(`pyText=${formatBytesToMiB(totalPyTextBytes)}`);
+	lines.push(`mastText=${formatBytesToMiB(totalMastTextBytes)}`);
+	lines.push(`totalText=${formatBytesToMiB(totalPyTextBytes + totalMastTextBytes)}`);
+
+	return lines.join('\n');
 }
 
 // let functionData : SignatureInformation[] = [];
@@ -1269,6 +1478,59 @@ connection.onNotification('custom/profileMemoryUsage', async (request: { sourceU
 	if (request?.clientSnapshot) {
 		connection.console.log(request.clientSnapshot);
 		appendProfilerLog(missionFolder, request.clientSnapshot);
+	}
+});
+
+connection.onNotification('custom/profileCacheSize', async (request: { sourceUri?: string } | undefined) => {
+	const sourceUri = request?.sourceUri;
+	if (!sourceUri) {
+		sendWarning('MAST Cache Profile: Open a mission file and set focus to it before profiling.');
+		return;
+	}
+
+	const memoryBefore = process.memoryUsage();
+	const startedAt = Date.now();
+	let missionFolder: string | undefined;
+
+	try {
+		const cache = getCache(sourceUri, true);
+		missionFolder = cache.missionURI;
+		await cache.awaitLoaded();
+		const memoryAfter = process.memoryUsage();
+		const report = buildCacheProfileReport(cache, memoryBefore, memoryAfter, Date.now() - startedAt);
+		connection.console.log(report);
+		appendProfilerLog(missionFolder, report);
+		sendToClient('cacheProfileReport', { reset: true, message: report });
+	} catch (e) {
+		debug('profileCacheSize failed: ' + e);
+		sendWarning('MAST Cache Profile failed. Check MAST Language Server logs for details.');
+	}
+});
+
+connection.onNotification('custom/profileAllCaches', async () => {
+	const loadedCaches = getLoadedCaches();
+	if (loadedCaches.length === 0) {
+		sendWarning('MAST Cache Profile: No mission caches are currently loaded. Open and load at least one mission first.');
+		return;
+	}
+
+	const memoryBefore = process.memoryUsage();
+	const startedAt = Date.now();
+
+	try {
+		for (const cache of loadedCaches) {
+			await cache.awaitLoaded();
+		}
+		const memoryAfter = process.memoryUsage();
+		const report = buildAllCachesProfileReport(loadedCaches, memoryBefore, memoryAfter, Date.now() - startedAt);
+		connection.console.log(report);
+		sendToClient('cacheProfileReport', { reset: true, message: report });
+		for (const cache of loadedCaches) {
+			appendProfilerLog(cache.missionURI, report);
+		}
+	} catch (e) {
+		debug('profileAllCaches failed: ' + e);
+		sendWarning('MAST Cache Profile (all caches) failed. Check MAST Language Server logs for details.');
 	}
 });
 

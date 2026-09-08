@@ -163,6 +163,23 @@ Where to find results:
 
 This command is lightweight and useful for regression checks while editing large missions or repeatedly reloading cache data.
 
+## Cache Size Profiling
+
+Use the command `MAST: Profile Cache Size` to generate a detailed report of what the language-server cache is retaining for the active mission.
+
+The report includes:
+* Parsed file counts (`.py` and `.mast`)
+* Approximate token counts (Python tokens and MAST tokens)
+* Memory deltas before vs after cache reload (`rss`, `heapUsed`, `heapTotal`, `external`, `arrayBuffers`)
+* Top 20 largest cached files by retained source text size, with token counts
+
+Where to find results:
+* `MAST: Cache Profile` output channel (primary)
+* `MAST Language Server` output log (same report)
+* Mission-local `mast-profiler.log` (when mission context is available)
+
+For multi-mission sessions, use `MAST: Profile All Loaded Caches` to run the same analysis across all currently loaded mission caches in one shot. This is especially useful when `mastLanguageServer.allowMultipleCaches` is enabled.
+
 ## Working with Markdown
 
 You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:

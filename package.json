@@ -307,6 +307,14 @@
 			{
 				"command": "mast.profileMemoryUsage",
 				"title": "MAST: Profile Memory Usage"
+			},
+			{
+				"command": "mast.profileCacheSize",
+				"title": "MAST: Profile Cache Size"
+			},
+			{
+				"command": "mast.profileAllCaches",
+				"title": "MAST: Profile All Loaded Caches"
 			}
 		],
 		"keybindings": [
