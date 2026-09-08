@@ -1226,14 +1226,16 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			if (c.name === "sim") continue;
 			for (const m of c.getVisibleMethods(classes)) {
 				if (m.functionType === "constructor") continue;
-				if (seenGenericMethods.has(m.name)) continue;
-				seenGenericMethods.add(m.name);
+				const ownerName = m.className || c.name;
+				const key = `${ownerName}:${m.name}`;
+				if (seenGenericMethods.has(key)) continue;
+				seenGenericMethods.add(key);
 				const mc: CompletionItem = m.buildCompletionItem();
-				mc.label = "[" + c.name + "]." + m.name;
+				mc.label = "[" + ownerName + "]." + m.name;
 				// mc.label = c.name + "." + m.name;
 
 				// If it's sim, convert back to simulation for this.
-				let className = c.name;
+				let className = ownerName;
 				for (const cn of replaceNames) {
 					if (className === cn[1]) className = cn[0];
 				}
@@ -1241,9 +1243,15 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 				ci.push(mc);
 			}
 			// Add properties.
-			let props = c.buildVariableCompletionItemList();
+			let props = c.buildVariableCompletionItemList(classes);
 			// debug(props);
-			ci = ci.concat(props);
+			for (const prop of props) {
+				const ownerName = prop.data?.className as string | undefined;
+				const key = `${ownerName || c.name}:${prop.label}`;
+				if (seenGenericMethods.has(key)) continue;
+				seenGenericMethods.add(key);
+				ci.push(prop);
+			}
 		}
 		return ci;
 	}

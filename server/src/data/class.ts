@@ -76,7 +76,7 @@ export class ClassObject {
 		// Parse functions
 		let functionSource = (this.name === "") ? sourceFile : this.name;
 		this.methods = this.parseFunctions(raw, functionSource, this.sourceFile);
-		this.properties = parseVariables(raw, functionSource, this.sourceFile);
+		this.properties = parseVariables(raw, functionSource, this.sourceFile, this.name);
 		for (const i in this.methods) {
 			// debug(this.methods[i]);
 			if (this.methods[i].functionType === "constructor") {
@@ -125,6 +125,32 @@ export class ClassObject {
 		return Array.from(result.values());
 	}
 
+	getVisibleProperties(allClasses: ClassObject[] = []): Variable[] {
+		const result = new Map<string, Variable>();
+		const classIndex = new Map<string, ClassObject>();
+		for (const candidate of allClasses) {
+			classIndex.set(candidate.name, candidate);
+		}
+		const visited = new Set<string>();
+		const visit = (className: string | undefined) => {
+			if (!className || visited.has(className)) {
+				return;
+			}
+			visited.add(className);
+			const current = classIndex.get(className) || this;
+			for (const parentName of current.parents) {
+				visit(parentName);
+			}
+			for (const property of current.properties) {
+				const owner = property.className || current.name;
+				const nextProp: Variable = { ...property, className: owner };
+				result.set(nextProp.name, nextProp);
+			}
+		};
+		visit(this.name);
+		return Array.from(result.values());
+	}
+
 	getMethodCompletionItems(allClasses: ClassObject[] = []): CompletionItem[] {
 		let ci: CompletionItem[] = [];
 		for (const m of this.getVisibleMethods(allClasses)) {
@@ -164,13 +190,25 @@ export class ClassObject {
 		return ci;
 	}
 
-	buildVariableCompletionItemList():CompletionItem[] {
+	buildVariableCompletionItemList(allClasses: ClassObject[] = []): CompletionItem[] {
 		let ret: CompletionItem[] = [];
-		for (const v of this.properties) {
+		const seen = new Set<string>();
+		for (const v of this.getVisibleProperties(allClasses)) {
+			const ownerName = v.className || this.name;
+			const key = `${ownerName}:${v.name}`;
+			if (seen.has(key)) {
+				continue;
+			}
+			seen.add(key);
 			const ci: CompletionItem = {
-				label: "[" + this.name + "]." + v.name,
+				label: "[" + ownerName + "]." + v.name,
 				kind: CompletionItemKind.Property,
-				insertText: v.name
+				insertText: v.name,
+				data: {
+					sourceFile: this.sourceFile,
+					className: ownerName,
+					functionName: v.name
+				}
 			}
 			ret.push(ci);
 		}
@@ -285,10 +323,12 @@ export class ClassObject {
 	}
 }
 
-function parseVariables(raw:string, source:string, sourceFile:string):Variable[] {
+function parseVariables(raw:string, source:string, sourceFile:string, className?: string):Variable[] {
 	let ret: Variable[] =[];
 	let def = raw.indexOf("def");
-	raw = raw.substring(0,def);
+	if (def >= 0) {
+		raw = raw.substring(0,def);
+	}
 	let v = /^\s*(\w+)\s*(:\s*(\w+))?=.*$/gm;
 	let m: RegExpExecArray | null;
 	
@@ -309,7 +349,8 @@ function parseVariables(raw:string, source:string, sourceFile:string):Variable[]
 			},
 			doc: '',
 			equals: '',
-			types: [type]
+			types: [type],
+			className: className || ''
 		}
 		ret.push(newVar)
 	}
@@ -330,11 +371,56 @@ function parseVariables(raw:string, source:string, sourceFile:string):Variable[]
 			},
 			doc: '',
 			equals: '',
-			types: []
+			types: [],
+			className: className || ''
 		}
 		ret.push(newVar)
 	}
 	return ret;
+}
+
+export function parseClassPropertiesFromSource(rawText: string, className: string): Variable[] {
+	const lines = rawText.split(/\r?\n/);
+	const classPattern = new RegExp(`^\\s*class\\s+${className.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
+	let startIndex = -1;
+	let indent = 0;
+
+	for (let i = 0; i < lines.length; i++) {
+		const line = lines[i];
+		if (classPattern.test(line)) {
+			startIndex = i;
+			indent = (line.match(/^\s*/)?.[0].length ?? 0);
+			break;
+		}
+	}
+
+	if (startIndex < 0) {
+		return [];
+	}
+
+	const blockLines: string[] = [];
+	for (let i = startIndex + 1; i < lines.length; i++) {
+		const line = lines[i];
+		if (line.trim() === '') {
+			blockLines.push(line);
+			continue;
+		}
+		const currentIndent = (line.match(/^\s*/)?.[0].length ?? 0);
+		if (currentIndent <= indent && /^(class|def|async\s+def)\b/.test(line.trim())) {
+			break;
+		}
+		if (currentIndent <= indent && !line.trim().startsWith('#')) {
+			break;
+		}
+		blockLines.push(line);
+	}
+
+	const blockText = blockLines.join('\n');
+	if (!blockText.trim()) {
+		return [];
+	}
+
+	return parseVariables(blockText, blockText, '', className);
 }
 
 

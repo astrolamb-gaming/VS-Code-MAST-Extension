@@ -21,7 +21,8 @@ export interface Variable {
 	doc: string,
 	equals: string,
 	types: string[],
-	isGlobalScope?: boolean
+	isGlobalScope?: boolean,
+	className?: string
 }
 
 interface VariableDocLookup {

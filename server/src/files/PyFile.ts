@@ -4,7 +4,7 @@ import * as path from 'path';
 import { integer, Range, CompletionItem } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { FileCache, asClasses, prepend } from '../data';
-import { ClassObject, getRegExMatch } from '../data/class';
+import { ClassObject, getRegExMatch, parseClassPropertiesFromSource } from '../data/class';
 import { Function } from '../data/function';
 import { fixFileName } from '../fileFunctions';
 import { Word, parseWords } from '../tokens/words';
@@ -105,6 +105,12 @@ export class PyFile extends FileCache {
 			// PythonLexer now returns ClassObject and Function directly - no conversion needed!
 			this.classes = classes;
 			this.defaultFunctions = functions;
+			for (const classObject of this.classes) {
+				const fallbackProperties = parseClassPropertiesFromSource(originalText, classObject.name);
+				if (fallbackProperties.length > 0) {
+					classObject.properties = fallbackProperties;
+				}
+			}
 			
 		} catch (e) {
 			// If PythonLexer fails, continue without class/function info

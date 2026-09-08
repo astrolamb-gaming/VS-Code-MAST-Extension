@@ -2,6 +2,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Range } from 'vscode-languageserver';
 import { ClassObject } from './class';
 import { Function, IParameter, Parameter } from './function';
+import { Variable } from '../tokens/variables';
 
 /**
  * Token types for Python lexer
@@ -453,8 +454,9 @@ export class PythonLexer {
 			i++;
 		}
 
-		// Parse class body (methods)
+		// Parse class body (methods and class variables)
 		const methods: Function[] = [];
+		const properties: Variable[] = [];
 
 		while (i < this.tokens.length) {
 			if (this.tokens[i].type === TokenType.EOF) {
@@ -492,6 +494,31 @@ export class PythonLexer {
 				if (i < this.tokens.length) i++;
 			}
 
+			if (i < this.tokens.length && this.getLineIndentAtToken(i) === classBodyIndent && this.tokens[i].type === TokenType.IDENTIFIER && /^[A-Za-z_][A-Za-z0-9_]*$/.test(this.tokens[i].value)) {
+				const identifier = this.tokens[i].value;
+				let j = i + 1;
+				let sawAssignment = false;
+				while (j < this.tokens.length && this.tokens[j].type !== TokenType.NEWLINE && this.tokens[j].type !== TokenType.EOF) {
+					if (this.tokens[j].value === '=' || this.tokens[j].value === ':') {
+						sawAssignment = true;
+						break;
+					}
+					j++;
+				}
+				if (sawAssignment && !['pass', 'return', 'break', 'continue', 'yield', 'with', 'for', 'if', 'while', 'try', 'except', 'finally', 'import', 'from', 'lambda'].includes(identifier)) {
+					properties.push({
+						name: identifier,
+						range: { start: { line: this.tokens[i].line, character: this.tokens[i].column }, end: { line: this.tokens[i].line, character: this.tokens[i].column + identifier.length } },
+						doc: '',
+						equals: '',
+						types: [],
+						className: className
+					});
+					while (i < this.tokens.length && this.tokens[i].type !== TokenType.NEWLINE && this.tokens[i].type !== TokenType.EOF) i++;
+					continue;
+				}
+			}
+
 			// Check for method definition
 			if (i < this.tokens.length && this.getLineIndentAtToken(i) === classBodyIndent && this.tokens[i].type === TokenType.KEYWORD && 
 				(this.tokens[i].value === 'def' || this.tokens[i].value === 'async')) {
@@ -512,7 +539,7 @@ export class PythonLexer {
 			parent: bases.length > 0 ? bases[0] : undefined,
 			parents: bases,
 			methods,
-			properties: [],
+			properties,
 			documentation: docstring,
 			location: {
 				uri: this.doc.uri,

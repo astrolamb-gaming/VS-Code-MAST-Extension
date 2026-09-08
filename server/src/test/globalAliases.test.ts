@@ -282,16 +282,36 @@ class Toggle(Button):
 					continue;
 				}
 				const label = method.buildCompletionItem().label;
-				if (seen.has(method.name)) {
+				const key = `${method.className || classObject.name}:${method.name}`;
+				if (seen.has(key)) {
 					continue;
 				}
-				seen.add(method.name);
+				seen.add(key);
 				labels.push(label);
 			}
 		}
 
 		assert.ok(labels.includes('on_message()'));
 		assert.equal(labels.filter((label) => label === 'on_message()').length, 1);
+	});
+
+	it('keeps inherited property labels anchored to the parent class owner', () => {
+		const hierarchyPy = createPyFile('hierarchy.py', `
+class Column:
+    is_hidden = False
+
+class TabControl(Column):
+    pass
+`);
+
+		const tabControl = hierarchyPy.classes.find((classObject) => classObject.name === 'TabControl');
+		assert.ok(tabControl);
+		const items = tabControl!.buildVariableCompletionItemList(hierarchyPy.classes);
+		const labels = items.map((item) => item.label);
+		assert.ok(labels.includes('[Column].is_hidden'));
+		assert.equal(labels.filter((label) => label === '[Column].is_hidden').length, 1);
+		const ownerLabels = items.map((item) => `[${item.data?.className || 'unknown'}].${item.label}`).filter((label) => label.includes('is_hidden'));
+		assert.ok(ownerLabels.some((label) => label.startsWith('[Column].')));
 	});
 
 	it('does not report missing required args for unresolved member calls when an overload accepts none', () => {
