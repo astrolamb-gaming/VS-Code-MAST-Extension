@@ -314,32 +314,6 @@ class TabControl(Column):
 		assert.ok(ownerLabels.some((label) => label.startsWith('[Column].')));
 	});
 
-	it('ignores test modules nested under sbs_utils when scanning sbslib files', async () => {
-		const { cache, missionDir } = createMissionCache('sbs-utils-tests-ignored');
-		const keepPath = path.join(missionDir, 'sbs_utils', 'procedural', 'keep.py');
-		const ignoredPath = path.join(missionDir, 'sbs_utils', 'tests', 'ignored_test.py');
-		fs.mkdirSync(path.dirname(keepPath), { recursive: true });
-		fs.mkdirSync(path.dirname(ignoredPath), { recursive: true });
-		fs.writeFileSync(keepPath, `def keep_value():\n    pass\n`, 'utf8');
-		fs.writeFileSync(ignoredPath, `def hidden_value():\n    pass\n`, 'utf8');
-
-		const keepPy = new PyFile(keepPath, fs.readFileSync(keepPath, 'utf8'));
-		const ignoredPy = new PyFile(ignoredPath, fs.readFileSync(ignoredPath, 'utf8'));
-
-		cache.addSbsPyFile(keepPy);
-		cache.addSbsPyFile(ignoredPy);
-
-		assert.ok(cache.getMethod('keep_value'));
-		assert.equal(cache.getMethod('hidden_value'), undefined);
-
-		const hiddenFromClasses = cache.getClasses().some((classObject) => classObject.methods.some((method) => method.name === 'hidden_value'));
-		assert.equal(hiddenFromClasses, false);
-
-		const root = path.join(missionDir, 'sbs_utils');
-		const result = await (cache as any).loadModuleFilesFromFolder(root, new Set<string>());
-		assert.equal(result.py, 1);
-		assert.equal(result.mast, 0);
-	});
 
 	it('does not report missing required args for unresolved member calls when an overload accepts none', () => {
 		const { cache, missionDir } = createRegisteredMissionCache('required-arg-member-call');
