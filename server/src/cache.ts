@@ -1177,9 +1177,10 @@ export class MissionCache {
 	private async loadModuleFilesFromFolder(folderPath: string, seenModuleFiles: Set<string>): Promise<{ py: number; mast: number }> {
 		let py = 0;
 		let mast = 0;
+		if (folderPath.includes('test')) return { py, mast };
 		const files = getFilesInDir(folderPath, true);
 		for (const f of files) {
-			if (!(f.endsWith('.py') || f.endsWith('.mast'))) {
+			if (!(f.endsWith('.py') || f.endsWith('.mast') || f.includes("test"))) {
 				continue;
 			}
 			const fileKey = fixFileName(f).toLowerCase();
@@ -1205,9 +1206,8 @@ export class MissionCache {
 	 */
 	handleZipData(data:string, file:string = "") {
 		const parseStart = Date.now();
-		let handledAs = 'ignored';
-		// debug("Beginning to load zip data for: " + file);
-		if (file.endsWith("__init__.mast") || file.endsWith("__init__.py")) {
+		let handledAs = 'ignored';		// debug("Beginning to load zip data for: " + file);
+		if (file.endsWith("__init__.mast") || file.endsWith("__init__.py") || file.includes("test")) {
 			// Do nothing
 			handledAs = 'init-skip';
 		} else if (file.endsWith(".py")) {

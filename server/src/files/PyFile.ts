@@ -60,6 +60,12 @@ export class PyFile extends FileCache {
 	}
 
 	parseWholeFile(text: string) {
+		if (this.uri.includes("test")) {
+			this.classes = [];
+			this.defaultFunctions = [];
+			this.pyTokens = [];
+			return;
+		}
 		if (this.lastText === text && this.defaultFunctions.length > 0 && this.classes.length > 0) {
 			return;
 		}
@@ -221,6 +227,16 @@ export class PyFile extends FileCache {
 	 * result from load time can stay intact.
 	 */
 	parseTokensOnly(text: string) {
+		if (this.uri.includes("test")) {
+			this.pyTokens = [];
+			this.roles = [];
+			this.blob_keys = [];
+			this.inventory_keys = [];
+			this.shared_variable_keys = [];
+			this.links = [];
+			this.signals = [];
+			return;
+		}
 		if (this.lastText === text) {
 			return;
 		}
