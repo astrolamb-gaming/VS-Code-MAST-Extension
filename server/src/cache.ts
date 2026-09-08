@@ -1837,21 +1837,17 @@ export class MissionCache {
 			this.addMethodToIndex(methodIndex, alias);
 		}
 
+		const allClasses: ClassObject[] = [];
 		for (const py of this.pyFileCache) {
-			for (const c of py.classes) {
-				for (const method of c.methods) {
-					// this.addMethodToIndex(methodIndex, method);
-					this.addMethodToIndex(classMethodIndex, method);
-				}
-			}
+			allClasses.push(...py.classes);
+		}
+		for (const py of this.missionPyModules) {
+			allClasses.push(...py.classes);
 		}
 
-		for (const py of this.missionPyModules) {
-			for (const c of py.classes) {
-				for (const method of c.methods) {
-					// this.addMethodToIndex(methodIndex, method);
-					this.addMethodToIndex(classMethodIndex, method);
-				}
+		for (const c of allClasses) {
+			for (const method of c.getVisibleMethods(allClasses)) {
+				this.addMethodToIndex(classMethodIndex, method);
 			}
 		}
 
@@ -2151,7 +2147,8 @@ export class MissionCache {
 	 */
 	getPossibleMethods(name:string): Function[] {
 		this.ensureMethodCaches();
-		return [...(this.classMethodIndex?.get(name) || [])];
+		const methods = this.classMethodIndex?.get(name) || [];
+		return [...new Map(methods.map((method) => [method.name + ':' + method.className, method])).values()];
 	}
 
 	/**
@@ -2560,7 +2557,7 @@ export class MissionCache {
 	getSignatureOfMethod(name: string, isClassMethod: boolean=false): SignatureInformation | undefined {
 		if (isClassMethod) {
 			for (const c of this.getClasses()) {
-				for (const f of c.methods) {
+				for (const f of c.getVisibleMethods(this.getClasses())) {
 					if (f.name === name) {
 						return f.buildSignatureInformation();
 					}
@@ -2577,7 +2574,7 @@ export class MissionCache {
 		}
 		if (isClassMethod) {
 			for (const c of this.getClasses()) {
-				for (const m of c.methods) {
+				for (const m of c.getVisibleMethods(this.getClasses())) {
 					if (m.name === name) {
 						return m.buildSignatureInformation();
 					}

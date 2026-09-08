@@ -8,6 +8,7 @@ import { block } from 'sharp';
 export class ClassObject {
 	name: string;
 	parent?: string;
+	parents: string[] = [];
 	methods: Function[] = [];
 	properties: Variable[] = [];
 	constructorFunction?: Function;
@@ -19,6 +20,7 @@ export class ClassObject {
 	constructor(raw: string, sourceFile: string, preParsed?: {
 		name?: string;
 		parent?: string;
+		parents?: string[];
 		methods?: Function[];
 		properties?: Variable[];
 		documentation?: string;
@@ -26,11 +28,16 @@ export class ClassObject {
 	}) {
 		this.sourceFile = sourceFile;
 		this.startPos = 0;
+		this.parents = [];
 		
 		// If pre-parsed data is provided, use it directly (avoids expensive regex parsing)
 		if (preParsed) {
 			this.name = getPreferredClassName(preParsed.name || '');
 			this.parent = preParsed.parent;
+			this.parents = preParsed.parents ? [...preParsed.parents] : (preParsed.parent ? [preParsed.parent] : []);
+			if (!this.parent && this.parents.length > 0) {
+				this.parent = this.parents[0];
+			}
 			this.methods = preParsed.methods || [];
 			this.properties = preParsed.properties || [];
 			this.documentation = preParsed.documentation || '';
@@ -59,7 +66,8 @@ export class ClassObject {
 		
 		this.name = getPreferredClassName(this.name);
 
-		this.parent = getRegExMatch(raw,parentClass).replace(/.*\(/,"").replace(/\):?/,"");
+		this.parents = this.parseParentNames(raw);
+		this.parent = this.parents[0];
 		
 		this.sourceFile = sourceFile;
 		// Should just get the first set of comments, which would be the ones for the class itself
@@ -81,9 +89,46 @@ export class ClassObject {
 		return this;
 	}
 
-	getMethodCompletionItems(): CompletionItem[] {
+	parseParentNames(raw: string): string[] {
+		const match = raw.match(/class\s+[A-Za-z_][A-Za-z0-9_]*\s*\(([^)]*)\)/);
+		if (!match) {
+			return [];
+		}
+		return match[1]
+			.split(',')
+			.map((item) => item.trim())
+			.filter((item) => item.length > 0 && item !== 'self')
+			.filter((item, index, arr) => arr.indexOf(item) === index);
+	}
+
+	getVisibleMethods(allClasses: ClassObject[] = []): Function[] {
+		const result = new Map<string, Function>();
+		const classIndex = new Map<string, ClassObject>();
+		for (const candidate of allClasses) {
+			classIndex.set(candidate.name, candidate);
+		}
+		const visited = new Set<string>();
+		const visit = (className: string | undefined) => {
+			if (!className || visited.has(className)) {
+				return;
+			}
+			visited.add(className);
+			const current = classIndex.get(className) || this;
+			for (const parentName of current.parents) {
+				visit(parentName);
+			}
+			for (const method of current.methods) {
+				result.set(method.name, method);
+			}
+		};
+		visit(this.name);
+		return Array.from(result.values());
+	}
+
+	getMethodCompletionItems(allClasses: ClassObject[] = []): CompletionItem[] {
 		let ci: CompletionItem[] = [];
-		for (const m of this.methods) {
+		for (const m of this.getVisibleMethods(allClasses)) {
+			if (m.functionType === "constructor") continue;
 			ci.push(m.buildCompletionItem());
 		}
 		return ci;

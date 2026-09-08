@@ -510,6 +510,7 @@ export class PythonLexer {
 		const classObj = new ClassObject('', this.doc.uri, {
 			name: className,
 			parent: bases.length > 0 ? bases[0] : undefined,
+			parents: bases,
 			methods,
 			properties: [],
 			documentation: docstring,

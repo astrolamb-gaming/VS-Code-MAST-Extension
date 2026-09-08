@@ -1203,12 +1203,10 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 			// debug(c);
 			if (endsWithIdentifierAccess(iStr, c.name)) {
 				debug(iStr + " contains " + c.name);
-				// TODO: Only use labels with isClassMethod = true
-				// c.methods[0].completionItem.kind == CompletionItemKind.Method;
-				return c.getMethodCompletionItems();
+				return c.getMethodCompletionItems(classes);
 			}
 			if (iStr.endsWith("EVENT.") && c.name === "event") {
-				return c.getMethodCompletionItems();
+				return c.getMethodCompletionItems(classes);
 			}
 		}
 		if (receiverName && cache.getMastGlobal(receiverName)) {
@@ -1219,16 +1217,17 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		}
 		// Then we assume it's an object, but we can't determine the type, so we iterate over all the classes.
 		debug("It's an object, but don't know what class")
+		const seenGenericMethods = new Set<string>();
 		for (const c of classes) {
 			// debug(c.name);
 			if (asClasses.includes(c.name)) continue;
 			if (c.name.includes("Route")) continue;
 			if (c.name === "event") continue;
 			if (c.name === "sim") continue;
-			// debug(c.name);
-			for (const m of c.methods) {
-				// Don't want to include constructors, this is for properties
+			for (const m of c.getVisibleMethods(classes)) {
 				if (m.functionType === "constructor") continue;
+				if (seenGenericMethods.has(m.name)) continue;
+				seenGenericMethods.add(m.name);
 				const mc: CompletionItem = m.buildCompletionItem();
 				mc.label = "[" + c.name + "]." + m.name;
 				// mc.label = c.name + "." + m.name;

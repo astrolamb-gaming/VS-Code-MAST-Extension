@@ -201,30 +201,24 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 		const otherFunctions: Function[] = [];
 		let found = false;
 		for (const co of classObj) {
-			
+			const visibleMethods = co.getVisibleMethods(classObj);
 			if (c === undefined || c === "") {
 				debug("not a class name")
 			}
-			// if (co.name === c) {
-			// 	debug("FOUND")
-			// 	debug(c);
-				for (const m of co.methods) {
-					if(m.name === symbol) {
-						// hoverText = m.buildCompletionItem().detail;// + "\n\n" + m.completionItem.documentation;
-						hoverText = m.buildMarkUpContent();
-						if (hoverText === undefined) {
-							debug("Error, hoverText is undefined")
-							hoverText = ""
-						}
-						
-						if (c && matchesClassName(co.name, c)) {
-							found = true;
-							break;
-						}
-						otherFunctions.push(m);
+			for (const m of visibleMethods) {
+				if(m.name === symbol) {
+					hoverText = m.buildMarkUpContent();
+					if (hoverText === undefined) {
+						debug("Error, hoverText is undefined")
+						hoverText = ""
 					}
+					if (c && matchesClassName(co.name, c)) {
+						found = true;
+						break;
+					}
+					otherFunctions.push(m);
 				}
-			// }
+			}
 			if (found) {
 				break;
 			}

@@ -233,6 +233,67 @@ def port_side():
 		assert.equal(sidesPy.classes.some((classObject) => classObject.name === 'sbs'), false);
 	});
 
+	it('includes inherited methods and deduplicates overridden names in subclass completions', () => {
+		const childPy = createPyFile('subclass.py', `
+class Base:
+    def get_value(self):
+        pass
+
+    def base_only(self):
+        pass
+
+class Child(Base):
+    def get_value(self):
+        pass
+
+    def child_only(self):
+        pass
+`);
+
+		const childClass = childPy.classes.find((classObject) => classObject.name === 'Child');
+		assert.ok(childClass);
+
+		const items = childClass!.getMethodCompletionItems(childPy.classes);
+		const labels = items.map((item) => item.label);
+		assert.ok(labels.includes('get_value()'));
+		assert.ok(labels.includes('base_only()'));
+		assert.ok(labels.includes('child_only()'));
+		assert.equal(labels.filter((label) => label === 'get_value()').length, 1);
+	});
+
+	it('deduplicates inherited method names across generic object completions', () => {
+		const hierarchyPy = createPyFile('hierarchy.py', `
+class Column:
+    def on_message(self):
+        pass
+
+class Button(Column):
+    pass
+
+class Toggle(Button):
+    pass
+`);
+
+		const seen = new Set<string>();
+		const labels: string[] = [];
+		for (const classObject of hierarchyPy.classes) {
+			for (const method of classObject.getVisibleMethods(hierarchyPy.classes)) {
+				if (method.functionType === 'constructor') {
+					continue;
+				}
+				const label = method.buildCompletionItem().label;
+				if (seen.has(method.name)) {
+					continue;
+				}
+				seen.add(method.name);
+				labels.push(label);
+			}
+		}
+
+		assert.ok(labels.includes('on_message()'));
+		assert.equal(labels.filter((label) => label === 'on_message()').length, 1);
+	});
+
 	it('does not report missing required args for unresolved member calls when an overload accepts none', () => {
 		const { cache, missionDir } = createRegisteredMissionCache('required-arg-member-call');
 
