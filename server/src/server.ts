@@ -57,6 +57,7 @@ import { getSemanticTokensCache } from './requests/semanticTokensCache';
 import { getGridIcons, parseIconSet } from './resources/iconSets';
 import * as path from 'path';
 import { URI } from 'vscode-uri';
+import * as v8 from 'v8';
 
 function createNoopConnection(): any {
 	const noop = () => undefined;
@@ -154,6 +155,29 @@ async function refreshRuntimeSettings(): Promise<void> {
 	cacheTimeout = mastLanguageServerConfig?.cacheTimeout ?? 0;
 	enablePythonCompletions = mastLanguageServerConfig?.enablePythonCompletions ?? true;
 	enableProfilingCollectionSetting = mastLanguageServerConfig?.enableProfilingCollection ?? false;
+}
+
+function formatBytesToMiB(bytes: number): string {
+	return `${(bytes / (1024 * 1024)).toFixed(1)}MiB`;
+}
+
+function buildServerMemorySnapshot(): string {
+	const usage = process.memoryUsage();
+	const heapStats = v8.getHeapStatistics();
+	const uptimeSeconds = Math.round(process.uptime());
+	return `\n[memory:server] \npid=${process.pid} \nuptime=${uptimeSeconds}s \nrss=${formatBytesToMiB(usage.rss)} \nheapUsed=${formatBytesToMiB(usage.heapUsed)} \nheapTotal=${formatBytesToMiB(usage.heapTotal)} \nexternal=${formatBytesToMiB(usage.external)} \narrayBuffers=${formatBytesToMiB(usage.arrayBuffers)} \nheapLimit=${formatBytesToMiB(heapStats.heap_size_limit)} \ntotalHeap=${formatBytesToMiB(heapStats.total_heap_size)} \navailableHeap=${formatBytesToMiB(heapStats.total_available_size)}\n`;
+}
+
+function appendProfilerLog(missionFolder: string | undefined, line: string): void {
+	if (!missionFolder) {
+		return;
+	}
+	try {
+		const logPath = path.join(missionFolder, 'mast-profiler.log');
+		fs.appendFileSync(logPath, `${new Date().toISOString()} ${line}\n`, 'utf8');
+	} catch (e) {
+		debug(e);
+	}
 }
 
 // let functionData : SignatureInformation[] = [];
@@ -1225,6 +1249,26 @@ connection.onNotification('custom/openIconViewer', async (request: { mode?: stri
 	} catch (e) {
 		debug('Failed to open icon viewer: ' + e);
 		sendWarning('Failed to open Grid Icon Viewer. Check MAST output logs for details.');
+	}
+});
+
+connection.onNotification('custom/profileMemoryUsage', async (request: { sourceUri?: string; clientSnapshot?: string } | undefined) => {
+	let missionFolder: string | undefined;
+	if (request?.sourceUri) {
+		try {
+			missionFolder = getCache(request.sourceUri).missionURI;
+		} catch (e) {
+			debug(e);
+		}
+	}
+
+	const serverSnapshot = buildServerMemorySnapshot();
+	connection.console.log(serverSnapshot);
+	appendProfilerLog(missionFolder, serverSnapshot);
+
+	if (request?.clientSnapshot) {
+		connection.console.log(request.clientSnapshot);
+		appendProfilerLog(missionFolder, request.clientSnapshot);
 	}
 });
 

@@ -303,6 +303,10 @@
 			{
 				"command": "mast.compileMission",
 				"title": "MAST: Compile Mission"
+			},
+			{
+				"command": "mast.profileMemoryUsage",
+				"title": "MAST: Profile Memory Usage"
 			}
 		],
 		"keybindings": [

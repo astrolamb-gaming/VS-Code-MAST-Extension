@@ -144,6 +144,25 @@ Use the profiler when you want to diagnose slow mission loads or cache rebuilds.
 
 This output shows the slowest stages, how many times each stage ran, and the average and maximum timing for each stage. The same data is also collected automatically while running a debug session, even if the setting is off. The extension also writes the same summary to a file named `mast-profiler.log` in the mission folder, so you can attach it to a bug report or send it to the developer for debugging. This is primarily intended for diagnosing performance issues in the extension itself, not for regular end-user workflows.
 
+## Memory Profiling
+
+Use the command `MAST: Profile Memory Usage` from the Command Palette when you want a quick memory snapshot for both the extension client process and the language server process.
+
+Each snapshot reports:
+* Process id and uptime
+* RSS (resident memory)
+* V8 heap used and total heap size
+* External and array buffer memory
+
+The language server snapshot also includes V8 heap limit and available heap values.
+
+Where to find results:
+* `MAST Client Output` channel: client-side snapshot (`[memory:client]`)
+* `MAST Language Server` output log: server-side snapshot (`[memory:server]`)
+* Mission-local `mast-profiler.log` (when a mission is detected): both snapshots with timestamps
+
+This command is lightweight and useful for regression checks while editing large missions or repeatedly reloading cache data.
+
 ## Working with Markdown
 
 You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:

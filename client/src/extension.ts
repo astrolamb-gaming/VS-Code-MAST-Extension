@@ -691,6 +691,21 @@ export function activate(context: ExtensionContext) {
 		client.sendNotification('custom/compileMission', { sourceUri: activeDoc.uri.toString() });
 	}));
 
+	context.subscriptions.push(vscode.commands.registerCommand('mast.profileMemoryUsage', async () => {
+		debug('mast.profileMemoryUsage command triggered');
+		const activeDoc = vscode.window.activeTextEditor?.document;
+		const sourceUri = activeDoc && !activeDoc.isUntitled ? activeDoc.uri.toString() : '';
+		const clientSnapshot = buildClientMemorySnapshot();
+		outputChannel.appendLine(clientSnapshot);
+		if (client) {
+			client.sendNotification('custom/profileMemoryUsage', {
+				sourceUri,
+				clientSnapshot
+			});
+		}
+		window.showInformationMessage('MAST memory snapshot captured. See MAST Client Output and MAST Language Server logs.');
+	}));
+
 	// This opens the specified file in the editor.
 	const showJson = client.onNotification('custom/showFile', (file, open=false)=>{
 		file = vscode.Uri.file(file);
@@ -799,6 +814,16 @@ export function debug(str:any) {
 	} else {
 		outputChannel.appendLine("client not initialized")
 	}
+}
+
+function formatBytesToMiB(bytes: number): string {
+	return `${(bytes / (1024 * 1024)).toFixed(1)}MiB`;
+}
+
+function buildClientMemorySnapshot(): string {
+	const usage = process.memoryUsage();
+	const uptimeSeconds = Math.round(process.uptime());
+	return `\n[memory:client] \npid=${process.pid} \nuptime=${uptimeSeconds}s \nrss=${formatBytesToMiB(usage.rss)} \nheapUsed=${formatBytesToMiB(usage.heapUsed)} \nheapTotal=${formatBytesToMiB(usage.heapTotal)} \nexternal=${formatBytesToMiB(usage.external)} \narrayBuffers=${formatBytesToMiB(usage.arrayBuffers)}\n`;
 }
 
 function resolveMissionsDirectoryFromOpenMast(): string | undefined {
