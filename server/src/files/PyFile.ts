@@ -60,12 +60,6 @@ export class PyFile extends FileCache {
 	}
 
 	parseWholeFile(text: string) {
-		if (this.uri.includes("test")) {
-			this.classes = [];
-			this.defaultFunctions = [];
-			this.pyTokens = [];
-			return;
-		}
 		if (this.lastText === text && this.defaultFunctions.length > 0 && this.classes.length > 0) {
 			return;
 		}

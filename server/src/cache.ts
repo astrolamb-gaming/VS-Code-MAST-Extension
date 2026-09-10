@@ -576,7 +576,7 @@ export class MissionCache {
 			// could be either 'rename' or 'change'. new file event and delete
 			// also generally emit 'rename'
 			// debug(filename);
-			if (filename === null || filename.includes(".git") || filename.includes("__pycache__") || filename.includes("__init__")) return;
+			if (filename === null || filename.includes(".git") || filename.includes("__pycache__") || filename.includes("__init__") || filename.endsWith(".pyc")) return;
 			// debug(this.missionURI)
 			// debug(filename)
 			if (eventType === "rename") {
@@ -1105,6 +1105,9 @@ export class MissionCache {
 									processFile = path.join(zip,file);
 								}
 								if (file.endsWith(".py") || file.endsWith(".mast")) {
+									if (file.includes("/test/")) {
+										continue;
+									}
 									const archiveKey = fixFileName(processFile).toLowerCase();
 									if (seenModuleFiles.has(archiveKey)) {
 										continue;
@@ -1180,7 +1183,9 @@ export class MissionCache {
 		if (folderPath.includes('test')) return { py, mast };
 		const files = getFilesInDir(folderPath, true);
 		for (const f of files) {
+			debug("Testing: " + f)
 			if (!(f.endsWith('.py') || f.endsWith('.mast') || f.endsWith('.pyc') || f.includes("test"))) {
+				debug("Skipping " + f);
 				continue;
 			}
 			const fileKey = fixFileName(f).toLowerCase();
