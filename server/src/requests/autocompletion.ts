@@ -163,6 +163,10 @@ const behaviorOptions: Behavior[] = [
 		name: "behav_selection",
 		documentation: "Selectable behavior (used for things like nebula/asteroid field scan points)."
 	},
+	{
+		name: "behav_planet",
+		documentation: "Planet behavior."
+	},
 	{ 
 		name: "behav_do_nothing",
 		documentation: "Does nothing. Use for things that don't fit any other category."

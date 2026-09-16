@@ -284,5 +284,18 @@ export function getArtemisDirFromChild(child: string): string | null {
 
 }
 
+export function isDirectory(targetPath: string): boolean {
+    try {
+        // Resolve to absolute path for safety
+        const fullPath = path.resolve(targetPath);
+
+        // Check if path exists and is a directory
+        return fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory();
+    } catch (error) {
+        console.error(`Error checking path: ${error}`);
+        return false;
+    }
+}
+
 //readZipArchive("C:/Users/mholderbaum/Documents/Cosmos-1-0-0/data/missions/__lib__/artemis-sbs.LegendaryMissions.autoplay.v3.9.39.mastlib");
 
