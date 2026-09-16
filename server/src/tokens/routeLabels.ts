@@ -246,7 +246,10 @@ export function getRouteLabelVars(route:string) {
 				caps+"_PARENT_ID",
 				caps+"_PARENT",
 				caps+"_SELECTED_ID",
-				caps+"_SELECTED"
+				caps+"_SELECTED",
+				caps+"_POPUP_ID",
+				caps+"_POPUP_POINT",
+				caps+"_POPUP"
 			];
 			if (con!=="dock") {
 				vars.push(caps+"_POINT");
