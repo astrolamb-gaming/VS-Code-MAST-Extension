@@ -752,8 +752,11 @@ export function activate(context: ExtensionContext) {
 	context.subscriptions.push(showJson);
 	context.subscriptions.push(storyJsonListener);
 	// Start the client. This will also launch the server
-	
-	client.start();
+	void client.start().catch((error: unknown) => {
+		const message = error instanceof Error ? error.message : String(error);
+		outputChannel.appendLine(`Failed to start MAST language server: ${message}`);
+		void window.showErrorMessage(`MAST language server failed to start: ${message}`);
+	});
 
 	// timer = setInterval(() => {
 	// 	if (statusBarItemCount = 4) {

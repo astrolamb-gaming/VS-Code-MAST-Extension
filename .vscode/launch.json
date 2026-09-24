@@ -6,8 +6,15 @@
 			"type": "extensionHost",
 			"request": "launch",
 			"name": "Launch Client",
+			// "port": 9229,
+			"address": "127.0.0.1",
 			"runtimeExecutable": "${execPath}",
-			"args": ["--extensionDevelopmentPath=${workspaceRoot}"],
+			"args": [
+				"--extensionDevelopmentPath=${workspaceRoot}"
+			],
+			"runtimeArgs": [
+				"--inspect-extensions=127.0.0.1:9229"
+			],
 			"outFiles": [
 				"${workspaceRoot}/client/out/**/*.js",
 				"${workspaceRoot}/server/out/**/*.js"
