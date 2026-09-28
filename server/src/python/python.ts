@@ -12,6 +12,34 @@ import { notifyClient, sendWarning } from '../server';
 let pyPath = "";
 let scriptPath = "";
 let regularOptions:Options;
+const PYTHON_SHELL_TIMEOUT_MS = 15000;
+
+function runPythonShellWithTimeout(script: string, options: Options): Promise<string[]> {
+	return new Promise((resolve, reject) => {
+		const shell = new PythonShell(script, options);
+		const messages: string[] = [];
+		let settled = false;
+		const timer = setTimeout(() => {
+			if (settled) return;
+			settled = true;
+			debug(`${script} timed out after ${PYTHON_SHELL_TIMEOUT_MS}ms; terminating process`);
+			(shell as any).kill();
+			reject(new Error(`${script} timed out after ${PYTHON_SHELL_TIMEOUT_MS}ms`));
+		}, PYTHON_SHELL_TIMEOUT_MS);
+
+		shell.on('message', (message: string) => messages.push(message));
+		(shell as any).end((error?: Error) => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timer);
+			if (error) {
+				reject(error);
+			} else {
+				resolve(messages);
+			}
+		});
+	});
+}
 
 export function initializePython(uri: string) {
 	return;
@@ -40,8 +68,7 @@ export function initializePython(uri: string) {
 				}
 			}
 			debug(notFound)
-
-		});
+		}).catch((e) => debug(e));
 		// getTokenInfo("math");
 		/*
 		let globalFuncs = getGlobalFunctions(cache.storyJson.sbslib).then((funcs)=>{
@@ -119,7 +146,7 @@ export async function getSpecificGlobals(cache: MissionCache, globals: any) {
 	if (o === null) return [];
 	debug("Running py shell");
 	try {
-	let messages = await PythonShell.run('mastGlobalInfo.py', o);//.then((messages: any)=>{
+	let messages = await runPythonShellWithTimeout('mastGlobalInfo.py', o);//.then((messages: any)=>{
 		for (let m of messages) {
 			try {
 				// debug(m)
@@ -170,7 +197,7 @@ export async function getGlobalFunctions(sj:StoryJson): Promise<string[]> {
 		const o = buildOptions(sj, []);
 		if (o === null) return[];
 		debug("Starting python shell")
-		await PythonShell.run('mastGlobals.py', o).then((messages: any)=>{
+		await runPythonShellWithTimeout('mastGlobals.py', o).then((messages: any)=>{
 			for (let m of messages) {
 				// try {
 				// 	debug(JSON.parse(m));
@@ -339,14 +366,21 @@ async function bigFile(options: Options, content: string): Promise<string[]> {
 	});
 
 	// end the input stream and allow the process to exit
-	await myscript.end(function (err:Error) {
-		compiled = true
-		// debug(errors);
-		if (err) throw err;
-		// console.log('The exit code was: ' + code);
-		// console.log('The exit signal was: ' + signal);
-		// console.log('finished');
-	});
+	try {
+		await myscript.end(function (err:Error) {
+			compiled = true
+			if (err) {
+				debug('mastCompile.py exited with an error:');
+				debug(err);
+				errors.push(`Python compiler process failed: ${err.message}`);
+			}
+		});
+	} catch (e) {
+		compiled = true;
+		debug('Unable to finish mastCompile.py process:');
+		debug(e);
+		errors.push(`Python compiler process failed: ${String(e)}`);
+	}
 
 	while (!compiled) {
 		await sleep(100);

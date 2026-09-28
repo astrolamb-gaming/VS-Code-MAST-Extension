@@ -54,9 +54,16 @@ export async function getFileContents(dir: string): Promise<string> {
  */
 export async function readFile(dir: string): Promise<string> {
 	dir = fixFileName(dir);
-	// const ret = fs.readFileSync(dir, "utf-8");
-	const ret = fs.readFileSync(dir, "utf-8");
-	return ret;
+	// debug
+	// ("Reading: " + dir);
+	try {
+		const contents = await fs.promises.readFile(dir, "utf-8");
+		// debug("Done Reading " + dir);
+		return contents;
+	} catch (e) {
+		debug(`Failed to read file: ${dir}`);
+		throw e;
+	}
 }
 /**
  * Use to read a local file syncronously

@@ -34,8 +34,8 @@ let timer: NodeJS.Timeout;
 let statusBarShownAt = 0;
 let pendingStatusBarHide: NodeJS.Timeout | undefined;
 const MIN_LOADING_STATUS_MS = 1500;
-let loadingStatusVisible = false;
-let compilingStatusVisible = false;
+let progressStatusVisible = false;
+let progressStatusText = '';
 let isApplyingQuotePasteFix = false;
 
 let client: LanguageClient;
@@ -75,6 +75,9 @@ export function activate(context: ExtensionContext) {
 	const serverModule = context.asAbsolutePath(
 		path.join('server', 'out', 'server.js')
 	);
+	const cpuProfileDir = context.globalStorageUri.fsPath;
+	fs.mkdirSync(cpuProfileDir, { recursive: true });
+	debug(`Language-server CPU profiles will be written to ${cpuProfileDir} when the server exits.`);
 
 	
 
@@ -85,9 +88,16 @@ export function activate(context: ExtensionContext) {
 		debug: {
 			module: serverModule,
 			transport: TransportKind.ipc,
+			options: {
+				execArgv: [
+					'--inspect=127.0.0.1:9239',
+					'--cpu-prof',
+					`--cpu-prof-dir=${cpuProfileDir}`,
+					'--cpu-prof-interval=1000'
+				]
+			},
 		}
 	};
-
 	// Options to control the language client
 	const clientOptions: LanguageClientOptions = {
 		// Register the server for plain text documents
@@ -278,6 +288,10 @@ export function activate(context: ExtensionContext) {
 		serverOptions,
 		clientOptions
 	);
+	const serverRuntimeInfo = client.onNotification('custom/serverRuntimeInfo', (info: { pid?: number; cwd?: string; execArgv?: string[] }) => {
+		debug(`MAST language-server runtime: pid=${info.pid ?? 'unknown'} cwd=${info.cwd ?? 'unknown'} execArgv=${JSON.stringify(info.execArgv || [])}`);
+	});
+	context.subscriptions.push(serverRuntimeInfo);
 
 // #region <--------------------- Ship and Face Webview Region ------------------------>
 	const ships = client.onNotification('custom/ships', (payload)=>{
@@ -560,16 +574,14 @@ export function activate(context: ExtensionContext) {
 	context.subscriptions.push(prog1);
 
 	let statusBarStatus = true;
-	const prog = client.onNotification('custom/progressNotif',(show)=>{
-		updateStatusBarItem(show);
+	const prog = client.onNotification('custom/progressNotif',(payload: { visible?: boolean; text?: string } | boolean)=>{
+		if (typeof payload === 'boolean') {
+			updateProgressStatus(payload, payload ? 'Loading MAST Data' : '');
+		} else {
+			updateProgressStatus(!!payload.visible, payload.text || '');
+		}
 	});
 	context.subscriptions.push(prog);
-
-	const compileStatus = client.onNotification('custom/compileStatus', (payload: { active?: boolean } | undefined) => {
-		updateCompileStatusBarItem(!!payload?.active);
-	});
-	context.subscriptions.push(compileStatus);
-	// updateStatusBarItem(true);
 
 	let warning = client.onNotification('custom/warning', (message)=>{
 		window.showWarningMessage(message);
@@ -581,19 +593,29 @@ export function activate(context: ExtensionContext) {
 			return;
 		}
 
-		const selected = await window.showQuickPick(
-			payload.options.map((option) => ({ label: option })),
-			{
-				title: payload.title || 'Select an option',
-				placeHolder: payload.placeHolder,
-				ignoreFocusOut: true
-			}
-		);
+		let selection: string | undefined;
+		try {
+			const selected = await window.showQuickPick(
+				payload.options.map((option) => ({ label: option })),
+				{
+					title: payload.title || 'Select an option',
+					placeHolder: payload.placeHolder,
+					ignoreFocusOut: true
+				}
+			);
+			selection = selected?.label;
+		} catch (e) {
+			debug(e);
+		}
 
-		client.sendNotification('custom/quickPickResponse', {
-			requestId: payload.requestId,
-			selection: selected?.label
-		});
+		try {
+			client.sendNotification('custom/quickPickResponse', {
+				requestId: payload.requestId,
+				selection
+			});
+		} catch (e) {
+			debug(e);
+		}
 	});
 	context.subscriptions.push(quickPickListener);
 
@@ -752,7 +774,9 @@ export function activate(context: ExtensionContext) {
 	context.subscriptions.push(showJson);
 	context.subscriptions.push(storyJsonListener);
 	// Start the client. This will also launch the server
-	void client.start().catch((error: unknown) => {
+	void client.start().then(() => {
+		debug(`MAST language server started; CPU profile output=${cpuProfileDir}`);
+	}).catch((error: unknown) => {
 		const message = error instanceof Error ? error.message : String(error);
 		outputChannel.appendLine(`Failed to start MAST language server: ${message}`);
 		void window.showErrorMessage(`MAST language server failed to start: ${message}`);
@@ -771,58 +795,43 @@ export function activate(context: ExtensionContext) {
 	// updateStatusBarItem("Loading MAST Extension");
 }
 
-function updateStatusBarItem(show:boolean): void {
+function updateProgressStatus(show: boolean, text: string): void {
 	if (show) {
+		progressStatusText = text || 'Loading MAST Data';
 		if (pendingStatusBarHide) {
 			clearTimeout(pendingStatusBarHide);
 			pendingStatusBarHide = undefined;
 		}
-		if (!loadingStatusVisible || statusBarShownAt === 0) {
+		if (!progressStatusVisible || statusBarShownAt === 0) {
 			statusBarShownAt = Date.now();
 		}
-		loadingStatusVisible = true;
+		progressStatusVisible = true;
 		renderStatusBarItem();
-		debug('Status bar loading indicator shown');
+		debug(`Status bar progress shown: ${progressStatusText}`);
 	} else {
 		const elapsed = statusBarShownAt > 0 ? Date.now() - statusBarShownAt : MIN_LOADING_STATUS_MS;
 		const hide = () => {
-			loadingStatusVisible = false;
+			progressStatusVisible = false;
+			progressStatusText = '';
 			statusBarShownAt = 0;
 			pendingStatusBarHide = undefined;
 			renderStatusBarItem();
-			debug('Status bar loading indicator hidden');
+			debug('Status bar progress hidden');
 		};
 		if (elapsed >= MIN_LOADING_STATUS_MS) {
 			hide();
 		} else {
 			const delay = MIN_LOADING_STATUS_MS - elapsed;
 			pendingStatusBarHide = setTimeout(hide, delay);
-			debug(`Delaying loading indicator hide by ${delay}ms`);
+			debug(`Delaying progress hide by ${delay}ms`);
 		}
 		// timer.unref();
 	}
 }
 
-function updateCompileStatusBarItem(show: boolean): void {
-	if (show && pendingStatusBarHide) {
-		clearTimeout(pendingStatusBarHide);
-		pendingStatusBarHide = undefined;
-	}
-	compilingStatusVisible = show;
-	renderStatusBarItem();
-	debug(show ? 'Status bar compile indicator shown' : 'Status bar compile indicator hidden');
-}
-
 function renderStatusBarItem(): void {
-	if (compilingStatusVisible) {
-		myStatusBarItem.text = '$(sync~spin) Compiling...';
-		myStatusBarItem.backgroundColor = new ThemeColor('statusBarItem.warningBackground');
-		myStatusBarItem.show();
-		return;
-	}
-
-	if (loadingStatusVisible) {
-		myStatusBarItem.text = '$(loading~spin) Loading MAST Data';
+	if (progressStatusVisible) {
+		myStatusBarItem.text = `$(sync~spin) ${progressStatusText}`;
 		myStatusBarItem.backgroundColor = new ThemeColor('statusBarItem.warningBackground');
 		myStatusBarItem.show();
 		return;
@@ -932,7 +941,7 @@ async function cloneMissionTemplateWithGit(missionDir: string, missionParent: st
 		execFile(
 			gitExecutable,
 			['clone', '--depth', '1', MAST_STARTER_REPO, missionDir],
-			{ cwd: missionParent },
+			{ cwd: missionParent, timeout: 120_000 },
 			(error, _stdout, stderr) => {
 				if (error) {
 					if (stderr && stderr.trim().length > 0) {
@@ -1000,6 +1009,9 @@ async function downloadFile(url: string, destinationPath: string): Promise<void>
 
 			const fileStream = fs.createWriteStream(destinationPath);
 			response.pipe(fileStream);
+			response.on('error', (error) => {
+				reject(error);
+			});
 			fileStream.on('finish', () => {
 				fileStream.close();
 				resolve();
@@ -1009,6 +1021,9 @@ async function downloadFile(url: string, destinationPath: string): Promise<void>
 			});
 		});
 
+		request.setTimeout(30_000, () => {
+			request.destroy(new Error('Mission template download timed out.'));
+		});
 		request.on('error', (error) => {
 			reject(error);
 		});

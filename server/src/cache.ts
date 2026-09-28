@@ -8,7 +8,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
 import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } from './tokens/routeLabels';
 import { fileFromUri, fixFileName, getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readFileSync, readZipArchive } from './fileFunctions';
-import { connection, getProfilingCollectionMode, isProfilingCollectionEnabled, requestClientQuickPick, showProgressBar as showProgressBar } from './server';
+import { connection, getProfilingCollectionMode, isProfilingCollectionEnabled, requestClientQuickPick, setProgress } from './server';
 import { URI } from 'vscode-uri';
 import { getArtemisGlobals, initializeArtemisGlobals } from './artemisGlobals';
 import * as os from 'os';
@@ -24,6 +24,18 @@ import { SignalInfo } from './tokens/signals';
 
 export const testingPython = false;
 const isMochaProcess = process.argv.some((arg) => arg.toLowerCase().includes('mocha')) || !!process.env.MOCHA_WORKER_ID;
+let knownWorkspaceFolderUris: string[] = [];
+
+export function setWorkspaceFolderUris(uris: string[]): void {
+	knownWorkspaceFolderUris = [...uris];
+}
+
+export function updateWorkspaceFolderUris(added: string[], removed: string[]): void {
+	const current = new Set(knownWorkspaceFolderUris);
+	for (const uri of removed) current.delete(uri);
+	for (const uri of added) current.add(uri);
+	knownWorkspaceFolderUris = [...current];
+}
 
 interface MissionLibManifest {
 	version?: string;
@@ -104,7 +116,7 @@ export class MissionCache {
 	pyInfoLoaded = false;
 	missionFilesLoaded = false;
 	sbsLoaded = false;
-	awaitingReload = false;
+	// awaitingReload = false;
 	lastAccessed: integer = 0;
 	deprecatedFunctions: Function[] = [];
 	private methodsCache: Function[] | null = null;
@@ -173,24 +185,29 @@ export class MissionCache {
 
 	// Promise that resolves when the cache has finished loading
 	private _loadedPromise: Promise<void> = Promise.resolve();
-	private _loadedResolve: (() => void) | null = null;
 	private _isLoading = false;
+	private get progressOperationId(): string {
+		return `cache:${this.missionURI}`;
+	}
 
 	private logLoadTiming(stage: string, elapsedMs: number, details: string = '') {
-		const suffix = details ? ` | ${details}` : '';
-		const msg = `[load:${this.missionName}] ${stage} took ${elapsedMs}ms${suffix}`;
+		
 		try {
-			connection.console.log(msg);
+			const suffix = details ? ` | ${details}` : '';
+			const msg = `[load:${this.missionName}] ${stage} took ${elapsedMs}ms${suffix}`;
+			debug(msg);
+			// connection.console.log(msg);
 		} catch (e) {
 			debug(e);
 		}
 
-		if (!isMochaProcess && isProfilingCollectionEnabled()) {
-			this.recordProfilingSample(stage, elapsedMs);
-			if (stage === 'load:complete' || stage === 'reload:complete') {
-				this.flushProfilingSummary(stage);
-			}
-		}
+		// if (!isMochaProcess && isProfilingCollectionEnabled()) {
+		// 	this.recordProfilingSample(stage, elapsedMs);
+		// 	if (stage === 'load:complete' || stage === 'reload:complete') {
+		// 		this.flushProfilingSummary(stage);
+		// 	}
+		// }
+		debug("Finished logLoadTiming for stage: " + stage);
 	}
 
 	private recordProfilingSample(stage: string, elapsedMs: number) {
@@ -249,16 +266,27 @@ export class MissionCache {
 		this._profilingSampleCount = 0;
 	}
 
-	async load() {
+	load(): Promise<void> {
 		if (this._isLoading) {
 			debug(`load() called while already loading for ${this.missionName}, ignoring.`);
-			return;
+			return this._loadedPromise;
 		}
 		if (this.missionURI === "") {
 			debug("Mission folder not valid: " + this.missionURI + "\nNot loading cache.")
-			return;
+			return Promise.resolve();
 		}
 		this._isLoading = true;
+		this._loadedPromise = this.loadInternal().catch((e) => {
+			debug(`[load:${this.missionName}] MissionCache.load() failed`);
+			debug(e);
+		}).finally(() => {
+			this._isLoading = false;
+			setProgress(this.progressOperationId, false);
+		});
+		return this._loadedPromise;
+	}
+
+	private async loadInternal(): Promise<void> {
 		this.endWatchers();
 		this.storyJsonLoaded = false;
 		this.pyInfoLoaded = false;
@@ -266,33 +294,48 @@ export class MissionCache {
 		this.sbsLoaded = false;
 		debug("Starting MissionCache.load()");
 		const loadStart = Date.now();
-		this.logLoadTiming('load:start', 0, `uri=${this.missionURI}`);
-		// create a new loaded promise for callers waiting on awaitLoaded()
-		this._loadedPromise = new Promise((resolve) => { this._loadedResolve = resolve; });
-		showProgressBar(true);
+		// this.logLoadTiming('load:start', 0, `uri=${this.missionURI}`);
+		debug("logLoadTiming for 'load:start' recorded");
+		
+		debug("Showing progress bar");
+		setProgress(this.progressOperationId, true, 'Loading MAST Data');
 		// (re)set all the arrays before (re)populating them.
 		// this.missionClasses = [];
 		// this.missionDefaultFunctions = [];
+		debug("Resetting mission cache arrays");
 		this.missionMastModules = [];
 		this.missionPyModules = [];
 		this.pyFileCache = [];
 		this.resourceLabels = [];
 		this.mediaLabels = [];
 		this.mastFileCache = [];
+		debug("Invalidating structure caches");
 		this.invalidateStructureCaches();
+		debug("Resetting extracted item caches");
 		this.resetExtractedItemCaches();
+		debug("Resetting mission package layout");
 		this.resetMissionPackageLayout();
 		const layoutStart = Date.now();
-		await this.loadMissionPackageLayout();
+		debug("Starting to load mission package layout");
+		try {
+			this.loadMissionPackageLayout();
+		} catch (e) {
+			debug(`[load:${this.missionName}] loadMissionPackageLayout failed`);
+			debug(e);
+			this.applyDefaultMastlibLayoutForMissingManifest();
+		}
+		debug("Finished loading mission package layout");
 		this.logLoadTiming(
 			'loadMissionPackageLayout',
 			Date.now() - layoutStart,
 			`sbslib=${this.missionPackageLayout.sbslib.size}, mastlib=${this.missionPackageLayout.mastlib.size}, zip=${this.missionPackageLayout.zip.size}`
 		);
+		debug("Logged mission package layout")
 		this.storyJson = new StoryJson(path.join(this.missionURI,"story.json"));
-		
+		debug("storyJson initialized")
 		const storyStart = Date.now();
-		await this.storyJson.readFile()
+		this.storyJson.readFile()
+		debug("storyJson read from file")
 		this.logLoadTiming(
 			'storyJson.readFile',
 			Date.now() - storyStart,
@@ -374,12 +417,6 @@ export class MissionCache {
 		}
 		const loadElapsed = Date.now() - loadStart;
 		this.logLoadTiming('load:complete', loadElapsed, `loaded=${this.isLoaded()}`);
-		if (this._loadedResolve) {
-			this._loadedResolve();
-			this._loadedResolve = null;
-		}
-		this._isLoading = false;
-		showProgressBar(false);
 	}
 
 	/**
@@ -387,16 +424,19 @@ export class MissionCache {
 	 */
 	async reload() {
 		// Don't load until it's finished loading the first time
-		if (this.awaitingReload) return;
+		if (this._isLoading) return;
 		const reloadStart = Date.now();
-		this.logLoadTiming('reload:start', 0);
-		this.awaitingReload = true;
+		// this.logLoadTiming('reload:start', 0);
+		this._isLoading = true;
 		debug("Awaiting loaded")
-		await this.awaitLoaded();
-		await this.load();
-		debug("Reload complete.");
-		this.logLoadTiming('reload:complete', Date.now() - reloadStart);
-		this.awaitingReload = false;
+		try {
+			await this.awaitLoaded();
+			await this.load();
+			debug("Reload complete.");
+			// this.logLoadTiming('reload:complete', Date.now() - reloadStart);
+		} finally {
+			this._isLoading = false;
+		}
 	}
 
 	watchers: fs.FSWatcher[] = [];
@@ -631,10 +671,10 @@ export class MissionCache {
 				}
 			}
 			if (filename ==="story.json" && eventType === "change") {
-				this.reload();
+				void this.reload().catch((e) => debug(e));
 			}
 			if (filename === "__lib__.json" && eventType === "change") {
-				this.reload();
+				void this.reload().catch((e) => debug(e));
 			}
 		});
 		this.watchers.push(w);
@@ -652,12 +692,12 @@ export class MissionCache {
 				// debug(filename + "  Changed\n\nHERE\n\n................");
 				for (const lib of this.storyJson.sbslib) {
 					if (lib === filename) {
-						this.reload();
+						void this.reload().catch((e) => debug(e));
 					}
 				}
 				for (const lib of this.storyJson.mastlib) {
 					if (lib === filename) {	
-						this.reload();
+						void this.reload().catch((e) => debug(e));
 					}
 				}
 			}
@@ -684,7 +724,7 @@ export class MissionCache {
 
 		// Now we add the globals from the python shell. We have to do this after loading the modules, since some globals are defined in the modules.
 		let go = await initializeArtemisGlobals();
-		showProgressBar(true);
+		setProgress(this.progressOperationId, true, 'Loading Python Globals');
 		let sigParser = /'(.*?)'/g;
 		const parseDocSignatureParams = (signatureText: string): Array<{ name: string; optional: boolean }> => {
 			const parsed: Array<{ name: string; optional: boolean }> = [];
@@ -759,7 +799,12 @@ export class MissionCache {
 			// Add all other names to the list to check globals in python
 			globalNames.push(g);
 		}
-		let info: any[] = await getSpecificGlobals(this, globalNames);
+		let info: any[] = [];
+		if (globalNames.length > 0) {
+			debug(`[load:${this.missionName}] resolving ${globalNames.length} Python globals`);
+			info = await getSpecificGlobals(this, globalNames);
+			debug(`[load:${this.missionName}] Python global lookup returned ${info.length} entries`);
+		}
 		// debug(info);
 		let classes:ClassObject[] = [];
 		for (const g of info) {
@@ -1029,10 +1074,13 @@ export class MissionCache {
 		if (testingPython) return;
 		const uri = this.missionURI;
 		const seenModuleFiles = new Set<string>();
-		const workspaceFolders = await this.getWorkspaceFolderPaths();
+		const workspaceFolders = this.getWorkspaceFolderPaths();
 		let globals = getArtemisGlobals();
+		debug("Getting Artemis globals");
 		if (globals === undefined) {
+			debug("Artemis globals not found, initializing...");
 			globals = await initializeArtemisGlobals();
+			debug("Artemis globals initialized");
 		}
 		debug(uri);
 		// Don't load modules if it's the sbs_utils folder?
@@ -1047,9 +1095,8 @@ export class MissionCache {
 			let totalMastLoaded = 0;
 			debug("Beginning to load modules");
 			const total = lib.length;
-			this.logLoadTiming('modules:scan', 0, `modules=${total}`);
-			// Process zip archives with controlled concurrency (max 3 concurrent reads)
-			// This prevents resource exhaustion from opening too many file handles at once
+			// this.logLoadTiming('modules:scan', 0, `modules=${total}`);
+			// Keep module loading sequential because directory walks and AdmZip parsing are synchronous.
 			await this.processConcurrent(
 				lib,
 				async (zip) => {
@@ -1134,7 +1181,7 @@ export class MissionCache {
 						`${zip} | source=${moduleSource}, py=${modulePyLoaded}, mast=${moduleMastLoaded}`
 					);
 				},
-				3  // max 3 concurrent zip file reads
+				1
 			);
 			if (libErrs.length > 0) {
 				this.logLoadTiming('modules:missing', 0, `count=${libErrs.length}`);
@@ -1156,25 +1203,17 @@ export class MissionCache {
 		}
 	}
 
-	private async getWorkspaceFolderPaths(): Promise<string[]> {
-		try {
-			const getWorkspaceFolders = connection?.workspace?.getWorkspaceFolders;
-			if (typeof getWorkspaceFolders !== 'function') {
+	private getWorkspaceFolderPaths(): string[] {
+		return knownWorkspaceFolderUris.flatMap((uri) => {
+			try {
+				const folderPath = URI.parse(uri).fsPath;
+				return folderPath ? [folderPath] : [];
+			} catch (e) {
+				debug(`Unable to parse workspace folder URI ${uri}`);
+				debug(e);
 				return [];
 			}
-
-			const folders = await getWorkspaceFolders();
-			if (!folders) {
-				return [];
-			}
-			return folders
-				.map((folder) => URI.parse(folder.uri).fsPath)
-				.filter((folderPath) => folderPath !== '' && fs.existsSync(folderPath));
-		} catch (e) {
-			debug('Unable to read workspace folders while resolving modules');
-			debug(e);
-			return [];
-		}
+		});
 	}
 
 	private async loadModuleFilesFromFolder(folderPath: string, seenModuleFiles: Set<string>): Promise<{ py: number; mast: number }> {
@@ -1183,16 +1222,26 @@ export class MissionCache {
 		if (folderPath.includes('test')) return { py, mast };
 		const files = getFilesInDir(folderPath, true);
 		for (const f of files) {
-			debug("Testing: " + f)
-			if (!(f.endsWith('.py') || f.endsWith('.mast') || f.endsWith('.pyc') || f.includes("test"))) {
-				debug("Skipping " + f);
+			// debug("Testing: " + f)
+			if (f.endsWith('.mast') || f.endsWith('.pyc') || f.includes("tests") || !f.endsWith('.py')) {
+				// debug("Skipping " + f);
 				continue;
 			}
 			const fileKey = fixFileName(f).toLowerCase();
 			if (seenModuleFiles.has(fileKey)) {
 				continue;
 			}
-			const data = await readFile(f);
+			// debug("Processing: " + f);
+			let data: string;
+			try {
+				// data = await readModuleFileWithTimeout(f);
+				data = await readFile(f);
+			} catch (e) {
+				debug(`Skipping unreadable module file: ${f}`);
+				debug(e);
+				continue;
+			}
+			// debug("Read file: " + f);
 			seenModuleFiles.add(fileKey);
 			debug('Loading: ' + path.basename(f));
 			this.handleZipData(data, f);
@@ -1507,14 +1556,15 @@ export class MissionCache {
 		}
 	}
 
-	private async loadMissionPackageLayout() {
+	private loadMissionPackageLayout(): void {
 		const layoutStart = Date.now();
 		if (!fs.existsSync(this.missionLibManifestPath)) {
 			this.applyDefaultMastlibLayoutForMissingManifest();
 			// Fire-and-forget: don't block load() while waiting for user dialog response.
 			// If the user creates __lib__.json, the file watcher will trigger a reload.
 			this.promptToCreateMissingMissionLibManifest().catch((e) => debug(e));
-			this.logLoadTiming('loadMissionPackageLayout:manifest', Date.now() - layoutStart, 'manifest missing; default mastlib layout');
+			debug('Default mastlib layout applied due to missing manifest');
+			// this.logLoadTiming('loadMissionPackageLayout:manifest', Date.now() - layoutStart, 'manifest missing; default mastlib layout');
 			return;
 		}
 
@@ -1538,12 +1588,14 @@ export class MissionCache {
 			debug('Unable to load __lib__.json');
 			debug(e);
 		} finally {
+			debug('Finished loading mission package layout with Finally block');
 			this.logLoadTiming(
 				'loadMissionPackageLayout:manifest',
 				Date.now() - layoutStart,
 				`sbslib=${this.missionPackageLayout.sbslib.size}, mastlib=${this.missionPackageLayout.mastlib.size}, zip=${this.missionPackageLayout.zip.size}`
 			);
 		}
+		debug('Exiting loadMissionPackageLayout');
 	}
 
 	private getMissionRelativePath(filePath: string): string | undefined {
@@ -2030,7 +2082,7 @@ export class MissionCache {
 			}
 		}
 		if (found) {
-			this.logLoadTiming('checkForCacheUpdates', Date.now() - updateStart, 'found existing files; no sync needed');
+			// this.logLoadTiming('checkForCacheUpdates', Date.now() - updateStart, 'found existing files; no sync needed');
 			return;
 		}
 
@@ -2760,12 +2812,16 @@ export class MissionCache {
 		return all;
 	}
 
+	isLoading(): boolean {
+		return this._isLoading;
+	}
+
 	async awaitLoaded() {
 		// Await the promise that is resolved when load() completes.
 		const waitStart = Date.now();
 		await this._loadedPromise;
 		const elapsed = Date.now() - waitStart;
-		if (elapsed > 50) {
+		if (elapsed > 50) {5
 			this.logLoadTiming('awaitLoaded', elapsed);
 		}
 	}
@@ -2790,7 +2846,7 @@ export function getCache(name:string, reloadCache:boolean = false): MissionCache
 	if (name === '') {
 		const fallback = caches.values().next().value as MissionCache | undefined;
 		if (fallback) {
-			if (reloadCache) fallback.load();
+			if (reloadCache) void fallback.load().catch((e) => debug(e));
 			fallback.lastAccessed = Date.now();
 			return fallback;
 		}
@@ -2805,7 +2861,7 @@ export function getCache(name:string, reloadCache:boolean = false): MissionCache
 	if (mf === '') {
 		const fallback = caches.values().next().value as MissionCache | undefined;
 		if (fallback) {
-			if (reloadCache) fallback.load();
+			if (reloadCache) void fallback.load().catch((e) => debug(e));
 			fallback.lastAccessed = Date.now();
 			return fallback;
 		}
@@ -2814,7 +2870,7 @@ export function getCache(name:string, reloadCache:boolean = false): MissionCache
 	// First try direct lookup by mission folder
 	const existing = caches.get(missionKey);
 	if (existing) {
-		if (reloadCache) existing.load();
+		if (reloadCache) void existing.load().catch((e) => debug(e));
 		existing.lastAccessed = Date.now();
 		return existing;
 	}
@@ -2822,7 +2878,7 @@ export function getCache(name:string, reloadCache:boolean = false): MissionCache
 	// Fall back: try match by mission name (legacy behavior)
 	for (const cache of caches.values()) {
 		if (cache.missionName === name) {
-			if (reloadCache) cache.load();
+			if (reloadCache) void cache.load().catch((e) => debug(e));
 			cache.lastAccessed = Date.now();
 			return cache;
 		}
@@ -2831,7 +2887,7 @@ export function getCache(name:string, reloadCache:boolean = false): MissionCache
 	// Create a new cache
 	const ret = new MissionCache(name);
 	caches.set(normalizeCacheKey(ret.missionURI), ret);
-	ret.load();
+	void ret.load().catch((e) => debug(e)).then(() => {debug("Cache loaded for " + ret.missionURI)});
 	ret.lastAccessed = Date.now();
 	return ret;
 }

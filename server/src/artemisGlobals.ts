@@ -5,7 +5,7 @@ import fs = require('fs');
 import os = require('os');
 import sharp = require('sharp');
 import { CompletionItem, CompletionItemLabelDetails, CompletionItemKind, MarkupContent } from 'vscode-languageserver';
-import { connection, sendToClient, showProgressBar } from './server';
+import { connection, sendToClient, setProgress } from './server';
 import { ShipData } from './shipData';
 import { sleep } from './python/python';
 import { getGridIcons, parseIconSet } from './resources/iconSets';
@@ -54,9 +54,11 @@ export class ArtemisGlobals {
 	 * 2: Loaded
 	 */
 	loadingState = 0;
+	private get progressOperationId(): string {
+		return `artemis:${this.artemisDir || 'unknown'}`;
+	}
 	
 	constructor() {
-		showProgressBar(true);
 		const thisDir = path.resolve("../");
 		const adir = getArtemisDirFromChild(thisDir);
 		debug("Artemis Directory: ");
@@ -73,6 +75,8 @@ export class ArtemisGlobals {
 
 	loadArtemisGlobals() {
 		this.loadingState = 1;
+		setProgress(this.progressOperationId, true, 'Loading Art');
+		try {
 		if (this.artemisDir ===  null) {
 			// Do something, throw an error, whatever it takes, artemis dir not found
 			this.skyboxes = [];
@@ -84,7 +88,7 @@ export class ArtemisGlobals {
 			this.libModuleCompletionItems = [];
 			this.shipData = new ShipData("");
 			debug("Artemis directory not found. Global information not loaded.");
-			artemisDirNotFoundError();
+			void artemisDirNotFoundError().catch((e) => debug(e));
 		} else {
 			this.skyboxes = this.findSkyboxes();
 			this.music = this.findMusic();
@@ -101,8 +105,9 @@ export class ArtemisGlobals {
 			debug("Done loading libs.")
 			this.libModuleCompletionItems = [];
 			debug("Getting ship data")
+			setProgress(`ship-data:${this.artemisDir}`, true, 'Loading Ship Data');
 			this.shipData = new ShipData(this.artemisDir);
-			this.shipData.load();
+			void this.shipData.load().catch((e) => debug(e));
 			debug("ship data gotten")
 			for (const lib of this.libModules) {
 				const ci: CompletionItem = {
@@ -125,7 +130,13 @@ export class ArtemisGlobals {
 			debug(this.faceArtFiles)
 			debug("art files gotten")
 		}
-		this.loadingState = 2;
+		} catch (e) {
+			debug('Unable to load Artemis globals');
+			debug(e);
+		} finally {
+			this.loadingState = 2;
+			setProgress(this.progressOperationId, false);
+		}
 		// showProgressBar(false);
 	}
 
@@ -148,6 +159,8 @@ export class ArtemisGlobals {
 				// Here we get all stylestrings by parsing the documentation file.
 				if (file.endsWith("widget_stylestring_documentation.txt")) {
 					readFile(file).then((text)=>{
+						debug(`Processing widget stylestring documentation (${text.length} chars)`);
+						const parseStart = Date.now();
 						const lines = text.split("\n");
 						let lineNum = 0;
 						for (const line of lines) {
@@ -164,14 +177,17 @@ export class ArtemisGlobals {
 							}
 							lineNum += 1;
 						}
+						debug(`Processed widget stylestring documentation in ${Date.now() - parseStart}ms`);
 						// debug(this.widget_stylestrings)
-					});
+					}).catch((e) => debug(`Unable to load widget stylestring documentation: ${e}`));
 				}
 
 				// Load widget list
 				if (file.endsWith("GUIWidgetList.txt")) {
 					debug("Loading GUIWidgetList.txt");
 					readFile(file).then((text)=>{
+						debug(`Processing GUIWidgetList.txt (${text.length} chars)`);
+						const parseStart = Date.now();
 						let widgets: Widget[] = [];
 						const lines = text.split("\n");
 						let lineNum = 0;
@@ -187,13 +203,16 @@ export class ArtemisGlobals {
 							widgets.push(w);
 						}
 						this.widgets = widgets;
-					})
+						debug(`Processed GUIWidgetList.txt in ${Date.now() - parseStart}ms`);
+					}).catch((e) => debug(`Unable to load GUI widget list: ${e}`));
 				}
 
 				// Now we get all the object_data options, used by blob.set() and blob.get()
 				if (file.endsWith("object_data_documentation.txt")) {
 					debug("Reading file");
 					readFile(file).then((text)=>{
+						debug(`Processing object data documentation (${text.length} chars)`);
+						const parseStart = Date.now();
 						const lines = text.split("\n");
 						let lineNum = 0;
 						for (const line of lines) {
@@ -229,9 +248,10 @@ export class ArtemisGlobals {
 							}
 							lineNum++;
 						}
+						debug(`Processed object data documentation in ${Date.now() - parseStart}ms`);
 						//debug(this.blob_items);
 						//console.log(this.blob_items)
-					});
+					}).catch((e) => debug(`Unable to load object data documentation: ${e}`));
 					debug("Done reading object data docs")
 				}
 			}

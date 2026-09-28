@@ -186,13 +186,13 @@ function loadImage(entry) {
 	if (cached) {
 		return Promise.resolve(cached);
 	}
-	return new Promise((resolve, reject) => {
+	return new Promise((resolve) => {
 		const img = new Image();
 		img.onload = () => {
 			imageCache.set(entry.imageUri, img);
 			resolve(img);
 		};
-		img.onerror = () => reject(new Error('Failed to load face sheet.'));
+		img.onerror = () => resolve(null);
 		img.src = entry.imageUri;
 	});
 }

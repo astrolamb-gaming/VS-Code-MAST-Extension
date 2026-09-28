@@ -41,6 +41,7 @@ export async function compileMastFile(textDocument: TextDocument): Promise<Diagn
 	// return [];
 	let ret: Diagnostic[] = [];
 	const cache = getCache(textDocument.uri); 
+	await cache.awaitLoaded();
 	const documentText = textDocument.getText();
 	const maxLine = Math.max(0, textDocument.lineCount - 1);
 	// const file = fixFileName(textDocument.uri);
@@ -177,21 +178,18 @@ export async function validateTextDocument(textDocument: TextDocument): Promise<
 	let diagnostics: Diagnostic[] = [];
 	let errorSources: ErrorInstance[] = [];
 
-	
+	const cache = getCache(textDocument.uri);
+	await cache.awaitLoaded();
+	const tokens = cache.getMastFile(textDocument.uri)?.tokens;
 	const functionSigs = checkFunctionSignatures(textDocument);
 	diagnostics = diagnostics.concat(functionSigs);
-
-
-	const cache = getCache(textDocument.uri);
-	const tokens = cache.getMastFile(textDocument.uri)?.tokens;
-	await cache.awaitLoaded();
 	const folder = path.dirname(URI.parse(textDocument.uri).fsPath);
 	if (!exclude.includes(folder)) {
-		cache.checkForInitFolder(folder).then((res)=>{
+		void cache.checkForInitFolder(folder).then((res)=>{
 			if (res) {
 				exclude.push(folder);
 			}
-		});
+		}).catch((e) => debug(e));
 	}
 	// In this simple example we get the settings for every validate run.
 	let maxNumberOfProblems = 100;

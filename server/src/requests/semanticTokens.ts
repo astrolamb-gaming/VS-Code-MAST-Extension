@@ -518,6 +518,7 @@ export class MastStateMachineLexer {
     private pos: number = 0;
     private line: number = 0;
     private char: number = 0;
+	private firstNonWhitespaceByLine: number[] = [];
 	private expectSignalReference: boolean = false;
 	private expectImportModuleReference: boolean = false;
 	private expectFromModuleReference: boolean = false;
@@ -611,6 +612,7 @@ export class MastStateMachineLexer {
 	constructor(document: TextDocument, knownLabelNames?: Set<string>) {
 		this.doc = document;
 		this.text = document.getText();
+		this.indexFirstNonWhitespaceByLine();
 		if (knownLabelNames) {
 			for (const name of knownLabelNames) {
 				this.addKnownLabelName(name);
@@ -618,6 +620,23 @@ export class MastStateMachineLexer {
 		}
 		this.hydrateKnownLabelsFromCache();
 		this.hydrateKnownLabelsFromDocumentText();
+	}
+
+	private indexFirstNonWhitespaceByLine(): void {
+		let line = 0;
+		let firstNonWhitespace = -1;
+
+		for (let offset = 0; offset < this.text.length; offset++) {
+			const ch = this.text[offset];
+			if (ch === '\n') {
+				this.firstNonWhitespaceByLine[line++] = firstNonWhitespace < 0 ? offset : firstNonWhitespace;
+				firstNonWhitespace = -1;
+			} else if (firstNonWhitespace < 0 && ch !== ' ' && ch !== '\t') {
+				firstNonWhitespace = offset;
+			}
+		}
+
+		this.firstNonWhitespaceByLine[line] = firstNonWhitespace < 0 ? this.text.length : firstNonWhitespace;
 	}
 
 
@@ -662,17 +681,12 @@ export class MastStateMachineLexer {
 	// Determines whether the current position is the first non-whitespace
 	// character on its line.
 	private isLineStart(): boolean {
-		if (this.pos === 0) {
-			return true;
-		}
-		let i = this.pos - 1;
-		while (i >= 0 && this.text[i] !== '\n') {
-			if (this.text[i] !== ' ' && this.text[i] !== '\t') {
-				return false;
-			}
-			i--;
-		}
-		return true;
+		return this.pos <= (this.firstNonWhitespaceByLine[this.line] ?? this.text.length);
+	}
+
+	private getCurrentLineEndOffset(): number {
+		const newline = this.text.indexOf('\n', this.pos);
+		return newline < 0 ? this.text.length : newline;
 	}
 
 	// Scan a single-line comment starting at current pos ('//' or '#').
@@ -2817,8 +2831,8 @@ export class MastStateMachineLexer {
 		while (this.pos < this.text.length) {
 			// YAML block detection: must start with three backticks, optionally
 			// preceded by a name and colon.  e.g. "metadata: ```" or "```".
-			if (!inYaml && this.isLineStart()) {
-				const rest = this.text.substring(this.pos);
+			if (!inYaml && this.char === 0) {
+				const rest = this.text.substring(this.pos, this.getCurrentLineEndOffset());
 				if (/^\s*(?:[A-Za-z_]\w*:\s*)?`{3}/.test(rest)) {
 					inYaml = true;
 					// consume rest of the opening line
@@ -2830,8 +2844,8 @@ export class MastStateMachineLexer {
 			}
 			if (inYaml) {
 				// look for closing ``` at line start
-				if (this.isLineStart()) {
-					const rest2 = this.text.substring(this.pos);
+				if (this.char === 0) {
+					const rest2 = this.text.substring(this.pos, this.getCurrentLineEndOffset());
 					if (/^\s*`{3}/.test(rest2)) {
 						inYaml = false;
 						while (this.pos < this.text.length && this.text[this.pos] !== '\n') {
@@ -2981,7 +2995,7 @@ export class MastStateMachineLexer {
 			// Style definition detection: lines matching ^[ \t]*=\$name ...
 			// Tokenize the keyword and name, but skip the description portion.
 			if (this.isLineStart() && current === '=') {
-				const rest = this.text.substring(this.pos);
+				const rest = this.text.substring(this.pos, this.getCurrentLineEndOffset());
 				const styleDefMatch = rest.match(/^(=)(\$)([A-Za-z_]\w*)\b/);
 				if (styleDefMatch) {
 					// Skip the '=' and '$' without emitting tokens

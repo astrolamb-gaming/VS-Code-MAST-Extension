@@ -48,7 +48,7 @@ import fs = require("fs");
 import { getArtemisGlobals, initializeArtemisGlobals } from './artemisGlobals';
 import { compileMastFile, getCurrentDiagnostics, validateTextDocument } from './requests/validate';
 import { onDefinition } from './requests/goToDefinition';
-import { getCache, getLoadedCaches } from './cache';
+import { getCache, getLoadedCaches, setWorkspaceFolderUris, updateWorkspaceFolderUris } from './cache';
 import { onReferences } from './requests/references';
 import { onPrepareRename, onRenameRequest } from './requests/renameSymbol';
 import { getWordRangeAtPosition } from './tokens/words';
@@ -411,6 +411,7 @@ connection.onInitialize((params: InitializeParams) => {
 	//pyTypings = pyTypings.concat(parseTyping(fs.readFileSync("sbs.pyi","utf-8")));
 	//debug(JSON.stringify(pyTypings));
 	const capabilities = params.capabilities;
+	setWorkspaceFolderUris((params.workspaceFolders || []).map((folder) => folder.uri));
 	
 	// Does the client support the `workspace/configuration` request?
 	// If not, we fall back using global settings.
@@ -511,14 +512,25 @@ connection.onInitialize((params: InitializeParams) => {
 connection.onInitialized(async () => {
 
 	debug("Initialized");
+	const runtimeInfo = {
+		pid: process.pid,
+		cwd: process.cwd(),
+		execArgv: process.execArgv
+	};
+	debug(`[diagnostic] language-server runtime ${JSON.stringify(runtimeInfo)}`);
+	sendToClient('serverRuntimeInfo', runtimeInfo);
 	
 	if (hasConfigurationCapability) {
 		// Register for all configuration changes.
 		connection.client.register(DidChangeConfigurationNotification.type, undefined);
 	}
 	if (hasWorkspaceFolderCapability) {
-		connection.workspace.onDidChangeWorkspaceFolders(_event => {
+		connection.workspace.onDidChangeWorkspaceFolders((event) => {
 			console.log('Workspace folder change event received.');
+			updateWorkspaceFolderUris(
+				event.added.map((folder) => folder.uri),
+				event.removed.map((folder) => folder.uri)
+			);
 		});
 
 	}
@@ -535,6 +547,7 @@ connection.onInitialized(async () => {
 	// })
 	
 });
+
 connection.onCodeAction((params) => {
 	const textDocument = documents.get(params.textDocument.uri);
 	if (textDocument === undefined) {
@@ -666,19 +679,35 @@ const pendingCompileDiagnosticsPublish = new Map<string, ReturnType<typeof setTi
 const publishedValidationDiagnostics = new Map<string, Diagnostic[]>();
 const publishedCompileDiagnostics = new Map<string, Diagnostic[]>();
 let activeCompilationCount = 0;
+const progressOperations = new Map<string, { text: string; priority: number; sequence: number }>();
+let progressSequence = 0;
 
-function updateCompileActivity(started: boolean): void {
-	const previousCount = activeCompilationCount;
-	activeCompilationCount = Math.max(0, activeCompilationCount + (started ? 1 : -1));
-	if (previousCount === 0 && activeCompilationCount > 0) {
-		sendToClient('compileStatus', { active: true });
-	} else if (previousCount > 0 && activeCompilationCount === 0) {
-		sendToClient('compileStatus', { active: false });
+function publishProgress(): void {
+	const current = [...progressOperations.values()].sort((a, b) => b.priority - a.priority || b.sequence - a.sequence)[0];
+	const text = current?.text || '';
+	sendToClient('progressNotif', { visible: text !== '', text });
+}
+
+export function setProgress(operationId: string, visible: boolean, text = '', priority: 'loading' | 'compile' = 'loading'): void {
+	if (visible) {
+		progressOperations.set(operationId, {
+			text: text || (priority === 'compile' ? 'Compiling MAST' : 'Loading MAST Data'),
+			priority: priority === 'compile' ? 2 : 1,
+			sequence: ++progressSequence
+		});
+	} else {
+		progressOperations.delete(operationId);
 	}
+	publishProgress();
+}
+
+function updateCompileActivity(started: boolean, text = 'Compiling MAST'): void {
+	activeCompilationCount = Math.max(0, activeCompilationCount + (started ? 1 : -1));
+	setProgress('compile', activeCompilationCount > 0, text, 'compile');
 }
 
 async function runCompileMastFileWithStatus(document: TextDocument): Promise<Diagnostic[]> {
-	updateCompileActivity(true);
+	updateCompileActivity(true, 'Compiling MAST');
 	try {
 		return await compileMastFile(document);
 	} finally {
@@ -931,7 +960,18 @@ documents.onDidChangeContent(change => {
 		}
 
 		const cache = getCache(doc.uri);
-		cache.updateFileInfo(doc);
+		if (cache.isLoading()) {
+			debug(`[perf] deferring document cache update until load completes | ${doc.uri}`);
+			void cache.awaitLoaded().then(() => {
+				const currentDocument = documents.get(doc.uri);
+				if (currentDocument) {
+					debug(`[perf] applying deferred document cache update | ${doc.uri}`);
+					cache.updateFileInfo(currentDocument);
+				}
+			}).catch((e) => debug(e));
+		} else {
+			cache.updateFileInfo(doc);
+		}
 		const updateElapsed = Date.now() - updateStart;
 		if (updateElapsed > 15) {
 			console.log(`[perf] onDidChangeContent ${updateElapsed}ms | ${doc.languageId} | ${doc.uri}`);
@@ -1306,18 +1346,25 @@ export function myDebug(str:any) {
 }
 
 
-export async function notifyClient(message:string) {
+export function notifyClient(message:string): void {
 	debug("Sending to client: " + message);
-	connection.sendNotification("custom/mastNotif", message);
+	sendToClient("mastNotif", message);
 }
 
-export async function sendWarning(message:string) {
+export function sendWarning(message:string): void {
 	debug("Sending to client: " + message);
-	connection.sendNotification("custom/warning", message);
+	sendToClient("warning", message);
 }
 
-export async function sendToClient(notifName: string, data: any) {
-	connection.sendNotification("custom/" + notifName, data);
+export function sendToClient(notifName: string, data: any): boolean {
+	try {
+		connection.sendNotification("custom/" + notifName, data);
+		return true;
+	} catch (e) {
+		debug(`Unable to send client notification ${notifName}`);
+		debug(e);
+		return false;
+	}
 }
 
 const pendingQuickPickRequests = new Map<string, (selection: string | undefined) => void>();
@@ -1331,12 +1378,16 @@ export async function requestClientQuickPick(title: string, options: string[], p
 	const requestId = `quickpick-${Date.now()}-${++quickPickRequestCounter}`;
 	return new Promise((resolve) => {
 		pendingQuickPickRequests.set(requestId, resolve);
-		sendToClient('openQuickPick', {
+		const sent = sendToClient('openQuickPick', {
 			requestId,
 			title,
 			placeHolder,
 			options
 		});
+		if (!sent) {
+			pendingQuickPickRequests.delete(requestId);
+			resolve(undefined);
+		}
 	});
 }
 
@@ -1554,7 +1605,9 @@ connection.onNotification('custom/compileMission', async (request: { sourceUri?:
 		debug('compileMission: received request for ' + uri);
 		sendToClient('compileMissionProgress', { reset: true, message: 'Starting mission compile...' });
 
-		const missionFolder = getCache(uri).missionURI;
+		const cache = getCache(uri);
+		await cache.awaitLoaded();
+		const missionFolder = cache.missionURI;
 		if (!missionFolder || !fs.existsSync(missionFolder)) {
 			sendToClient('compileMissionResult', { errors: [], files: [], message: 'Compile failed: Mission folder not found.' });
 			return;
@@ -1703,10 +1756,6 @@ connection.onPrepareRename((params: PrepareRenameParams): Range | undefined =>{
 	return onPrepareRename(doc, params.position);
 })
 
-
-export async function showProgressBar(visible: boolean) {
-	sendToClient("progressNotif",visible);
-}
 
 // connection.onDocumentSymbol((params:DocumentSymbolParams,token:CancellationToken,workDoneProgress:WorkDoneProgressReporter,resultProgress:ResultProgressReporter<SymbolInformation[]|DocumentSymbol[]>|undefined,): HandlerResult<SymbolInformation[] | DocumentSymbol[] | null | undefined, void>=>{
 // 	const uri = params.textDocument.uri;

@@ -3,7 +3,7 @@ import path = require('path');
 import { integer } from 'vscode-languageserver';
 import { getFileContents, getMissionFolder } from '../fileFunctions';
 import { getArtemisGlobals } from '../artemisGlobals';
-import { connection, notifyClient, sendToClient, showProgressBar } from '../server';
+import { connection, notifyClient, sendToClient, setProgress } from '../server';
 import fs = require('fs');
 
 interface StoryJsonContents {
@@ -67,7 +67,7 @@ export class StoryJson {
 			}
 		}
 		if (errors != -1) {
-			this.storyJsonError(errors);
+			void this.storyJsonError(errors).catch((e) => debug(e));
 		}
 	}
 
@@ -134,15 +134,24 @@ export class StoryJson {
 	/**
 	 * Must be called after instantiating the object.
 	 */
-	async readFile() {
+	readFile(): void {
+		const progressId = `story:${this.uri}`;
+		setProgress(progressId, true, 'Loading Mission Settings');
+		try {
+			this.readFileContents();
+		} finally {
+			setProgress(progressId, false);
+		}
+	}
+
+	private readFileContents(): void {
 		const readStart = Date.now();
-		showProgressBar(true);
 		// This prevents loading story.json from sbs_utils I think
 		if (path.dirname(this.uri).endsWith("sbs_utils")) return; // Why is this here? Not actually sure, but there must have been a reason...
 		if (!fs.existsSync(this.uri)) {
 			debug(`[load:storyJson] Missing story.json at ${this.uri}`);
-			let generated = await this.storyJsonNotFoundError();
-			if (!generated) return;
+			this.storyJsonNotFoundError().catch((e) => debug(e));
+			return;
 		}
 		try {
 			const ioStart = Date.now();

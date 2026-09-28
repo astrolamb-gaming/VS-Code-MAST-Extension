@@ -4,7 +4,7 @@ import fs = require('fs');
 import os = require('os');
 import { fileFromUri, readFile } from './fileFunctions';
 import { CompletionItem, CompletionItemKind, MarkupContent, Range } from 'vscode-languageserver';
-import { connection, sendToClient } from './server';
+import { connection, sendToClient, setProgress } from './server';
 import Hjson = require('hjson');
 import { getArtemisGlobals } from './artemisGlobals';
 import sharp = require('sharp');
@@ -31,49 +31,56 @@ export class ShipData {
 		// 	debug(e);
 		// }
 		fs.watch(artemisDir, (eventType, filename)=>{
-			this.load();
+			void this.load().catch((e) => debug(e));
 		})
 		
 	}
 
 	load(): Promise<void> {
-		return new Promise((resolve) => {
-			let file = path.join(this.artemisDir,"data","shipData.yaml");
+		return this.loadInternal();
+	}
+
+	private async loadInternal(): Promise<void> {
+		const progressId = `ship-data:${this.artemisDir}`;
+		setProgress(progressId, true, 'Loading Ship Data');
+		const yamlFile = path.join(this.artemisDir, "data", "shipData.yaml");
+		const jsonFile = path.join(this.artemisDir, "data", "shipData.json");
+		const file = fs.existsSync(yamlFile) ? yamlFile : jsonFile;
+		this.filePath = file;
+		this.fileExists = false;
+
+		try {
 			if (!fs.existsSync(file)) {
-				file = path.join(this.artemisDir,"data","shipData.json");
+				return;
 			}
-			this.filePath = file;
-			if (file !== null) {
-				readFile(file).then((contents)=>{
-					this.textDoc = TextDocument.create(this.filePath,path.extname(this.filePath),0,contents)
-					
-					// contents = contents.replace(/\/\/.*?(\n|$)/gm,"");
-					try {
-						this.data = Hjson.parse(contents)["#ship-list"];
-						
-						this.validJSON = true;
-						this.ships = this.parseShips();
-						// this.roles = this.parseRolesJSON();
-					} catch (e) {
-						const err = e as Error;
-						this.validJSON = false;
-						debug("shipData.json NOT parsed properly");
-						debug(err);
-						this.shipDataJsonError(err);
-						
-					}
-					this.roles = this.parseRolesText(this.textDoc);
-					// debug(this.data);
-					// debug(typeof this.data[0]);
-					this.fileExists = true;
-					resolve();
-				});
-			} else {
-			//throw new Error("shipData.json not found!");
-			this.fileExists = false;
-			resolve();
+
+			debug(`shipData: reading ${file}`);
+			const contents = await readFile(file);
+			debug(`shipData: read ${file}; parsing HJSON`);
+			this.textDoc = TextDocument.create(file, path.extname(file), 0, contents);
+			try {
+				this.data = Hjson.parse(contents)["#ship-list"];
+				this.validJSON = true;
+				debug(`shipData: parsed ${this.data?.length ?? 0} entries; building ships`);
+				this.ships = this.parseShips();
+				debug(`shipData: built ${this.ships.length} ships`);
+			} catch (e) {
+				const err = e as Error;
+				this.validJSON = false;
+				debug("shipData.json NOT parsed properly");
+				debug(err);
+				void this.shipDataJsonError(err).catch((error) => debug(error));
+			}
+
+			this.roles = this.parseRolesText(this.textDoc);
+			debug(`shipData: parsed roles from ${file}`);
+			this.fileExists = true;
+		} catch (e) {
+			debug(`Unable to load ship data from ${file}`);
+			debug(e);
+		} finally {
+			setProgress(progressId, false);
 		}
-		});
 	}
 
 	async shipDataJsonError(err: Error) {
@@ -85,7 +92,7 @@ export class ShipData {
 		);
 		if (ret === undefined) return;
 		if (ret.title === "Open file to fix") {
-			sendToClient("showFile",this.filePath);
+			await sendToClient("showFile",this.filePath);
 		} else if (ret.title === "Ignore") {}
 	}
 
