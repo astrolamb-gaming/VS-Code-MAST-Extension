@@ -269,26 +269,51 @@ export function fileFromUri(uri: string): string {
 }
 
 export function getArtemisDirFromChild(child: string): string | null {
-	if (child.endsWith(":\\")) {
+	let current = (child || '').trim();
+	if (current === '') return null;
+
+	try {
+		current = path.resolve(fixFileName(current));
+	} catch (e) {
+		debug(`Unable to resolve Artemis directory candidate: ${child}`);
+		debug(e);
 		return null;
 	}
-	child = fixFileName(child);
-	child = path.normalize(child);
-	let files = getFilesInDir(child, false);
-	if (files.includes("Artemis3-x64-release.exe")) {
-		return child;
-	} else if (getFolders(child).includes("PyAddons")) {
-		return child;
+
+	try {
+		if (!fs.statSync(current).isDirectory()) {
+			current = path.dirname(current);
+		}
+	} catch {
+		// A non-existent child can still be inside an existing Artemis directory.
+		current = path.dirname(current);
 	}
 
-	child = getParentFolder(child);
-	let aDir = getArtemisDirFromChild(child);
-	if (aDir === null) {
-		return null;
-	} else {
-		return aDir;
-	}
+	while (true) {
+		if (fs.existsSync(current)) {
+			try {
+				const entries = fs.readdirSync(current, { withFileTypes: true });
+				const hasReleaseExecutable = entries.some(
+					(entry) => entry.isFile() && entry.name.toLowerCase() === 'artemis3-x64-release.exe'
+				);
+				const hasPyAddons = entries.some(
+					(entry) => entry.isDirectory() && entry.name.toLowerCase() === 'pyaddons'
+				);
+				if (hasReleaseExecutable || hasPyAddons) {
+					return current;
+				}
+			} catch (e) {
+				debug(`Unable to inspect Artemis directory candidate: ${current}`);
+				debug(e);
+			}
+		}
 
+		const parent = path.dirname(current);
+		if (parent === current) {
+			return null;
+		}
+		current = parent;
+	}
 }
 
 export function isDirectory(targetPath: string): boolean {

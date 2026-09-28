@@ -7,7 +7,7 @@ import { parseLabelsInFile, LabelInfo, getMainLabelAtPos } from './tokens/labels
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
 import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } from './tokens/routeLabels';
-import { fileFromUri, fixFileName, getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readFileSync, readZipArchive } from './fileFunctions';
+import { fileFromUri, fixFileName, getArtemisDirFromChild, getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readFileSync, readZipArchive } from './fileFunctions';
 import { connection, getProfilingCollectionMode, isProfilingCollectionEnabled, requestClientQuickPick, setProgress } from './server';
 import { URI } from 'vscode-uri';
 import { getArtemisGlobals, initializeArtemisGlobals } from './artemisGlobals';
@@ -287,6 +287,14 @@ export class MissionCache {
 	}
 
 	private async loadInternal(): Promise<void> {
+		const artemisDir = getArtemisDirFromChild(this.missionURI);
+		const missionFiles = fs.existsSync(this.missionURI) ? getFilesInDir(this.missionURI, true) : [];
+		const hasMastFiles = missionFiles.some((file) => path.extname(file).toLowerCase() === '.mast');
+		if (!artemisDir && !hasMastFiles) {
+			debug(`[load:${this.missionName}] Skipping cache load: no Artemis directory or MAST files found at ${this.missionURI}`);
+			return;
+		}
+
 		this.endWatchers();
 		this.storyJsonLoaded = false;
 		this.pyInfoLoaded = false;
