@@ -4,7 +4,6 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { getCache } from '../cache';
 import { isInComment, isInString } from './comments';
 import { getCurrentLineFromTextDocument } from '../requests/hover';
-import { showProgressBar } from '../server';
 import { fileFromUri } from '../fileFunctions';
 
 export interface WordFileLocation {
