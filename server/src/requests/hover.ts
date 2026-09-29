@@ -241,7 +241,7 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 			// Inherited methods can appear once for every class exposing them.
 			const seenFunctionMarkup = new Set<string>();
 			for (const m of otherFunctions) {
-				let mc = m.buildMarkUpContent();
+				const mc = m.buildMarkUpContent();
 				if (seenFunctionMarkup.has(mc.value)) {
 					continue;
 				}

@@ -241,4 +241,28 @@ class Gui:
 			assert.equal(objDiags.length, expectedCount, `Unexpected diagnostics for:\n${text}\n${JSON.stringify(objDiags, null, 2)}`);
 		}
 	});
+
+	it('limits with-as aliases to their indented code block', () => {
+		const { cache, missionDir } = createRegisteredMissionCache('with-alias-variable-scope');
+		const cases = [
+			{
+				text: 'with prefab_list as prefab:\n    get_roles(prefab)\nto_id(prefab)\n',
+				name: 'prefab'
+			},
+			{
+				text: 'with gui_list(some_list) as gl:\n    s = gl.roles\nto_id(gl)\n',
+				name: 'gl'
+			}
+		];
+
+		for (const testCase of cases) {
+			const doc = createMastDocument(missionDir, testCase.text);
+			cache.updateFileInfo(doc);
+			const tokens = tokenizeMastFile(doc);
+			const diagnostics = checkForUndefinedVariablesInScope(doc, tokens);
+			const aliasDiags = diagnostics.filter((d) => d.message.includes(`\`${testCase.name}\``));
+			assert.equal(aliasDiags.length, 1, `Expected only the out-of-block reference to be reported for ${testCase.name}:\n${JSON.stringify(aliasDiags, null, 2)}`);
+			assert.equal(aliasDiags[0].range.start.line, 2);
+		}
+	});
 });

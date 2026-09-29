@@ -176,7 +176,8 @@ class Freighter(Agent):
 		assert.ok(hover, 'expected a hover for the inherited method');
 		const hoverContents = JSON.stringify(hover.contents) || '';
 		assert.equal(hoverContents.match(/Agent\.get_inventory_value/g)?.length, 1);
-		assert.equal(hoverContents.match(/Open Source/g)?.length, 1);
+		const hoverWithoutSourceLinks = hoverContents.replace(/\[Open Source\]\([^)]+\)/g, '');
+		assert.equal(hoverWithoutSourceLinks.match(/Open Source/g)?.length, 1);
 	});
 
 	it('writes profiler summaries to a log file', () => {

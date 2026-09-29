@@ -1180,6 +1180,118 @@ function getLambdaScopesByLine(doc: TextDocument): Map<number, LambdaScopeInfo[]
 	return scopesByLine;
 }
 
+function getWithAliasScopes(doc: TextDocument, fullText: string): Array<{
+	name: string;
+	declarationOffset: number;
+	bodyStart: number;
+	bodyEnd: number;
+}> {
+	const scopes: Array<{ name: string; declarationOffset: number; bodyStart: number; bodyEnd: number }> = [];
+
+	for (let line = 0; line < doc.lineCount; line++) {
+		const lineStart = doc.offsetAt({ line, character: 0 });
+		const nextLineStart = line + 1 < doc.lineCount
+			? doc.offsetAt({ line: line + 1, character: 0 })
+			: fullText.length;
+		const lineEnd = nextLineStart > lineStart && fullText[nextLineStart - 1] === '\n'
+			? nextLineStart - 1
+			: nextLineStart;
+		const lineText = fullText.substring(lineStart, lineEnd).replace(/\r$/, '');
+		const withMatch = /^[\t ]*(?:async[\t ]+)?with\b/.exec(lineText);
+		if (!withMatch) {
+			continue;
+		}
+
+		// Mask strings and comments while preserving offsets so `as` inside them
+		// cannot be mistaken for a context-manager alias.
+		const masked = lineText.split('');
+		let quote = '';
+		let escaped = false;
+		for (let i = withMatch[0].length; i < lineText.length; i++) {
+			const ch = lineText[i];
+			if (quote) {
+				masked[i] = ' ';
+				if (escaped) escaped = false;
+				else if (ch === '\\') escaped = true;
+				else if (ch === quote) quote = '';
+				continue;
+			}
+			if (ch === '"' || ch === "'") {
+				quote = ch;
+				masked[i] = ' ';
+				continue;
+			}
+			if (ch === '#') {
+				for (let j = i; j < lineText.length; j++) masked[j] = ' ';
+				break;
+			}
+		}
+		const code = masked.join('');
+		let parenDepth = 0;
+		let bracketDepth = 0;
+		let braceDepth = 0;
+		let colon = -1;
+		for (let i = withMatch[0].length; i < code.length; i++) {
+			if (code[i] === '(') parenDepth++;
+			else if (code[i] === ')' && parenDepth > 0) parenDepth--;
+			else if (code[i] === '[') bracketDepth++;
+			else if (code[i] === ']' && bracketDepth > 0) bracketDepth--;
+			else if (code[i] === '{') braceDepth++;
+			else if (code[i] === '}' && braceDepth > 0) braceDepth--;
+			else if (code[i] === ':' && parenDepth === 0 && bracketDepth === 0 && braceDepth === 0) {
+				colon = i;
+				break;
+			}
+		}
+		if (colon < 0) {
+			continue;
+		}
+
+		const aliases: Array<{ name: string; declarationOffset: number }> = [];
+		const aliasPattern = /\bas[\t ]+([A-Za-z_]\w*)/g;
+		let aliasMatch: RegExpExecArray | null;
+		while ((aliasMatch = aliasPattern.exec(code.substring(0, colon))) !== null) {
+			const nameOffset = aliasMatch.index + aliasMatch[0].lastIndexOf(aliasMatch[1]);
+			aliases.push({ name: aliasMatch[1], declarationOffset: lineStart + nameOffset });
+		}
+		if (aliases.length === 0) {
+			continue;
+		}
+
+		const indentLength = (lineText.match(/^[\t ]*/) || [''])[0].length;
+		const hasInlineSuite = code.substring(colon + 1).trim().length > 0;
+		let bodyStart = hasInlineSuite ? lineStart + colon + 1 : nextLineStart;
+		let bodyEnd = hasInlineSuite ? lineStart + lineText.length : fullText.length;
+
+		// A multiline suite ends at the first nonblank, noncomment line whose
+		// indentation is no deeper than the `with` statement.
+		if (!hasInlineSuite) {
+			for (let bodyLine = line + 1; bodyLine < doc.lineCount; bodyLine++) {
+				const bodyLineStart = doc.offsetAt({ line: bodyLine, character: 0 });
+				const bodyLineEnd = bodyLine + 1 < doc.lineCount
+					? doc.offsetAt({ line: bodyLine + 1, character: 0 })
+					: fullText.length;
+				const bodyLineText = fullText.substring(bodyLineStart, bodyLineEnd).replace(/[\r\n]+$/, '');
+				const trimmed = bodyLineText.trim();
+				if (!trimmed || trimmed.startsWith('#')) {
+					continue;
+				}
+				const bodyIndent = (bodyLineText.match(/^[\t ]*/) || [''])[0].length;
+				if (bodyIndent <= indentLength) {
+					bodyEnd = bodyLineStart;
+					break;
+				}
+			}
+		}
+
+		for (const alias of aliases) {
+			scopes.push({ ...alias, bodyStart, bodyEnd });
+		}
+	}
+
+	return scopes;
+}
+
 export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Token[]): Diagnostic[] {
 	const diagnostics: Diagnostic[] = [];
 	if (!tokens || tokens.length === 0) {
@@ -1188,6 +1300,8 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 	const cache = getCache(doc.uri);
 	const lambdaScopesByLine = getLambdaScopesByLine(doc);
 	const fullText = doc.getText();
+	const withAliasScopes = getWithAliasScopes(doc, fullText);
+	const withAliasDeclarationOffsets = new Set(withAliasScopes.map((scope) => scope.declarationOffset));
 
 	// Precompute metadata fenced-block ranges so metadata keys (e.g. `foo:`)
 	// are not treated as undefined variable references.
@@ -1372,6 +1486,14 @@ export function checkForUndefinedVariablesInScope(doc: TextDocument, tokens: Tok
 		}
 
 		const tokenStart = doc.offsetAt({ line: token.line, character: token.character });
+		if (withAliasDeclarationOffsets.has(tokenStart)) {
+			continue;
+		}
+		if (token.modifier === 'reference' && withAliasScopes.some((scope) =>
+		scope.name === token.text && tokenStart >= scope.bodyStart && tokenStart < scope.bodyEnd
+		)) {
+			continue;
+		}
 		const lineLambdaScopes = lambdaScopesByLine.get(token.line) || [];
 		const isLambdaParamDefinition = lineLambdaScopes.some((scope) => scope.paramStarts.has(tokenStart) && scope.params.has(token.text));
 		const isInLambdaBodyForParam = lineLambdaScopes.some((scope) => tokenStart >= scope.bodyStart && tokenStart < scope.bodyEnd && scope.params.has(token.text));
