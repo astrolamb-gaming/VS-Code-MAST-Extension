@@ -289,6 +289,10 @@
 				"title": "MAST: Open Grid Icon Viewer"
 			},
 			{
+				"command": "mast.listClassesAndFunctions",
+				"title": "MAST: List Classes and Functions in Scope"
+			},
+			{
 				"command": "mast.runSbsLib",
 				"title": "MAST: Build sbslib/mastlib"
 			},

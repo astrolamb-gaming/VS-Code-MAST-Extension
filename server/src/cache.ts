@@ -808,11 +808,11 @@ export class MissionCache {
 			globalNames.push(g);
 		}
 		let info: any[] = [];
-		if (globalNames.length > 0) {
-			debug(`[load:${this.missionName}] resolving ${globalNames.length} Python globals`);
-			info = await getSpecificGlobals(this, globalNames);
-			debug(`[load:${this.missionName}] Python global lookup returned ${info.length} entries`);
-		}
+		// Query even when the mission has no custom globals: the Python helper also
+		// contributes standard built-in type methods such as str.replace().
+		debug(`[load:${this.missionName}] resolving ${globalNames.length} Python globals and built-in types`);
+		info = await getSpecificGlobals(this, globalNames);
+		debug(`[load:${this.missionName}] Python global lookup returned ${info.length} entries`);
 		// debug(info);
 		let classes:ClassObject[] = [];
 		for (const g of info) {

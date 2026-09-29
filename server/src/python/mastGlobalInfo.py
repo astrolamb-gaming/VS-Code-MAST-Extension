@@ -5,6 +5,7 @@ import traceback
 import inspect
 import numbers
 import json
+import builtins
 
 
 
@@ -313,9 +314,12 @@ globalsList = json.loads(token)
 # print(globalsList)
 globals = MastGlobals.globals
 
-globals["dict"] = dict
-
 standardTypes = ["str",'int', 'float', 'list','set', 'frozenset', 'tuple', 'bool', 'bytes', 'complex', 'range','dict']
+# Include Python's standard types even when MastGlobals does not export them.
+# Their public members are emitted below as class methods (for example, str.replace).
+for type_name in standardTypes:
+	globals[type_name] = getattr(builtins, type_name)
+
 ret = []
 for g in globals:
 	# Turns out globalsList is not needed and could cause some issues here; i.e. if a mast global exists but isn't listed in globalsList (like `dict`)

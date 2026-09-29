@@ -75,6 +75,24 @@ interface IconViewerEntry {
 	imageUri: string;
 }
 
+interface ClassFunctionLocation {
+	uri: string;
+	line: number;
+	character: number;
+}
+
+interface ClassFunctionItem {
+	name: string;
+	parameters?: string[];
+	location?: ClassFunctionLocation;
+}
+
+export interface ClassFunctionListPayload {
+	title?: string;
+	classes: Array<ClassFunctionItem & { methods: ClassFunctionItem[] }>;
+	globals: ClassFunctionItem[];
+}
+
 const MODEL_EXTENSIONS = ['.obj'];
 const PREVIEW_SUFFIXES = ['.png', '256.png', '1024.png'];
 const TEXTURE_EXTENSIONS = ['.png', '.jpg', '.jpeg'];
@@ -772,6 +790,149 @@ export function generateIconWebview(context: vscode.ExtensionContext, payload: I
 	const entries = buildIconEntries(payload, iconPanel);
 	iconPanel.title = 'Grid Icon Viewer';
 	iconPanel.webview.html = buildIconViewerHtml(context, iconPanel.webview, entries, payload);
+}
+
+export function generateClassFunctionWebview(context: vscode.ExtensionContext, payload: ClassFunctionListPayload) {
+	const targetColumn = vscode.window.activeTextEditor?.viewColumn ?? vscode.ViewColumn.One;
+	const panel = vscode.window.createWebviewPanel(
+		'classFunctionList',
+		payload.title || 'MAST Classes and Functions',
+		targetColumn,
+		{ enableScripts: true, retainContextWhenHidden: true }
+	);
+	const nonce = getNonce();
+	const payloadJson = JSON.stringify(payload).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
+
+	panel.webview.html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}';">
+	<title>MAST Classes and Functions</title>
+	<style nonce="${nonce}">
+		:root { color-scheme: light dark; }
+		body { margin: 0; padding: 28px; color: var(--vscode-foreground); background: var(--vscode-editor-background); font-family: var(--vscode-font-family); }
+		main { max-width: 900px; margin: 0 auto; }
+		h1 { margin: 0 0 6px; font-size: 22px; font-weight: 600; }
+		.subtitle { margin: 0 0 24px; color: var(--vscode-descriptionForeground); }
+		.search { box-sizing: border-box; width: 100%; margin: 0 0 16px; padding: 9px 11px; border: 1px solid var(--vscode-input-border, var(--vscode-panel-border)); border-radius: 6px; outline: none; color: var(--vscode-input-foreground); background: var(--vscode-input-background); font: inherit; }
+		.search:focus { border-color: var(--vscode-focusBorder); }
+		.listing { padding: 22px 26px; border: 1px solid var(--vscode-panel-border); border-radius: 10px; background: var(--vscode-editorWidget-background); font-family: var(--vscode-editor-font-family); font-size: var(--vscode-editor-font-size); line-height: 1.8; overflow: auto; }
+		.class-block { margin: 0 0 14px; }
+		.class-line, .method-line, .global-line { white-space: pre; }
+		.method-line { padding-left: 4ch; }
+		.section-heading { margin-top: 12px; }
+		.entry-link { padding: 0; border: 0; color: var(--vscode-textLink-foreground); background: transparent; font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+		.entry-link:hover { color: var(--vscode-textLink-activeForeground); }
+		.entry-name { color: var(--vscode-foreground); }
+		.empty { color: var(--vscode-descriptionForeground); font-style: italic; }
+	</style>
+</head>
+<body>
+	<main>
+		<h1>Classes and Functions</h1>
+		<p class="subtitle">Click a class or function name to open its definition.</p>
+		<input id="search" class="search" type="search" placeholder="Filter classes and functions…" aria-label="Filter classes and functions" />
+		<section id="listing" class="listing" aria-label="Classes and functions"></section>
+	</main>
+	<script nonce="${nonce}">
+		const vscode = acquireVsCodeApi();
+		const data = ${payloadJson};
+		const listing = document.getElementById('listing');
+		const search = document.getElementById('search');
+		function addName(parent, item) {
+			if (!item.location) {
+				const label = document.createElement('span');
+				label.className = 'entry-name';
+				label.textContent = item.name;
+				parent.appendChild(label);
+				return;
+			}
+			const button = document.createElement('button');
+			button.type = 'button';
+			button.className = 'entry-link';
+			button.textContent = item.name;
+			button.addEventListener('click', () => vscode.postMessage({ command: 'openDefinition', location: item.location }));
+			parent.appendChild(button);
+		}
+		function addFunctionLine(parent, item, className) {
+			const line = document.createElement('div');
+			line.className = className;
+			line.appendChild(document.createTextNode('def '));
+			addName(line, item);
+			line.appendChild(document.createTextNode('(' + (item.parameters || []).join(',') + ')'));
+			parent.appendChild(line);
+		}
+		function renderListing() {
+			const query = search.value.trim().toLocaleLowerCase();
+			listing.replaceChildren();
+			let matchCount = 0;
+			for (const classItem of data.classes || []) {
+				const classMatches = classItem.name.toLocaleLowerCase().includes(query);
+				const methods = (classItem.methods || []).filter((method) => classMatches || method.name.toLocaleLowerCase().includes(query));
+				if (!classMatches && methods.length === 0) continue;
+				matchCount++;
+				const block = document.createElement('div');
+				block.className = 'class-block';
+				const heading = document.createElement('div');
+				heading.className = 'class-line';
+				heading.appendChild(document.createTextNode('class '));
+				addName(heading, classItem);
+				heading.appendChild(document.createTextNode(':'));
+				block.appendChild(heading);
+				for (const method of methods) addFunctionLine(block, method, 'method-line');
+				listing.appendChild(block);
+			}
+			const globals = (data.globals || []).filter((item) => item.name.toLocaleLowerCase().includes(query));
+			matchCount += globals.length;
+			const globalsHeading = document.createElement('div');
+			globalsHeading.className = 'section-heading';
+			globalsHeading.textContent = 'globals:';
+			listing.appendChild(globalsHeading);
+			if (globals.length === 0) {
+				const empty = document.createElement('div');
+				empty.className = 'global-line empty';
+				empty.textContent = query ? '    No matching global functions' : '    (none)';
+				listing.appendChild(empty);
+			} else {
+				for (const globalFunction of globals) addFunctionLine(listing, globalFunction, 'global-line');
+			}
+			if (query && matchCount === 0) {
+				const empty = document.createElement('div');
+				empty.className = 'empty';
+				empty.textContent = 'No matching classes or functions.';
+				listing.prepend(empty);
+			}
+		}
+		search.addEventListener('input', renderListing);
+		renderListing();
+	</script>
+</body>
+</html>`;
+
+	panel.webview.onDidReceiveMessage(async (message) => {
+		if (message?.command !== 'openDefinition' || typeof message.location?.uri !== 'string') {
+			return;
+		}
+		const line = Number.isInteger(message.location.line) ? Math.max(0, message.location.line) : 0;
+		const character = Number.isInteger(message.location.character) ? Math.max(0, message.location.character) : 0;
+		try {
+			const document = await vscode.workspace.openTextDocument(vscode.Uri.parse(message.location.uri));
+			const position = new vscode.Position(line, character);
+			const editor = await vscode.window.showTextDocument(document, {
+				viewColumn: targetColumn,
+				preserveFocus: false,
+				preview: false,
+				selection: new vscode.Range(position, position)
+			});
+			editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenter);
+		} catch (error) {
+			debug('Failed to open class/function definition: ' + String(error));
+			vscode.window.showWarningMessage('Could not open the selected definition.');
+		}
+	});
+	context.subscriptions.push(panel);
 }
 
 export function getWebviewContent(content: string): string {

@@ -65,6 +65,17 @@ function getTrailingIdentifierBeforeDot(context: string): string | undefined {
 	return ident || undefined;
 }
 
+function getQuotedLiteralClassForMemberAccess(context: string): 'str' | 'bytes' | undefined {
+	if (!context.endsWith("'.") && !context.endsWith('".')) {
+		return undefined;
+	}
+
+	// Bytes literals (including raw bytes and triple-quoted forms) have a b/br/rb
+	// prefix; route these to bytes methods rather than treating every quote as str.
+	const bytesLiteralPattern = /(?:^|[^A-Za-z0-9_])(?:br|rb|b)(?:"""[\s\S]*?"""|'''[\s\S]*?'''|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')\.$/i;
+	return bytesLiteralPattern.test(context) ? 'bytes' : 'str';
+}
+
 function buildGlobalModuleMemberCompletions(cache: MissionCache, receiver: string): CompletionItem[] {
 	const items: CompletionItem[] = [];
 	const seen = new Set<string>();
@@ -1190,10 +1201,11 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		// First we check if a class is being referenced.
 		const classes = cache.getClasses();
 
-		if (iStr.endsWith("'.") || iStr.endsWith('".')) {
-			// Is a string, show string methods
+		const quotedLiteralClass = getQuotedLiteralClassForMemberAccess(iStr);
+		if (quotedLiteralClass) {
+			// Choose the correct builtin receiver type for string and bytes literals.
 			for (const c of classes) {
-				if (c.name === "str") {
+				if (c.name === quotedLiteralClass) {
 					return c.getMethodCompletionItems();
 				}
 			}

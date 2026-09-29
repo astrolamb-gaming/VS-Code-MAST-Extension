@@ -37,17 +37,19 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 
 	let hoveredLine = getCurrentLineFromTextDocument(_pos.position, text);
 	const hoveredRange = getHoveredWordRange(hoveredLine, _pos.position.character);
+	let memberAccess = hoveredRange.start - 1;
+	while (memberAccess >= 0 && /[ \t]/.test(hoveredLine[memberAccess])) {
+		memberAccess--;
+	}
+	const isMemberAccess = memberAccess >= 0 && hoveredLine[memberAccess] === '.';
+	const literalClass = getQuotedLiteralClassForMemberAccess(hoveredLine.substring(0, hoveredRange.start));
 	// Only resolve callable fallback hovers when syntax indicates a call/member access.
 	// This prevents plain variable names (e.g. `ship` arg) from picking up method docs.
 	const shouldResolveCallableFallback = (() => {
 		if (tokenContext.token?.type === 'function' || tokenContext.token?.type === 'method') {
 			return true;
 		}
-		let prev = hoveredRange.start - 1;
-		while (prev >= 0 && /[ \t]/.test(hoveredLine[prev])) {
-			prev--;
-		}
-		if (prev >= 0 && hoveredLine[prev] === '.') {
+		if (isMemberAccess) {
 			return true;
 		}
 
@@ -191,13 +193,20 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 		// return undefined;
 	}
 	// debug(hoveredLine);
-	if (tokenContext.token?.type === "method") {
-		debug(tokenContext.token.text);
+	if (tokenContext.token?.type === "method" || (isMemberAccess && literalClass !== undefined)) {
+		debug(tokenContext.token?.text);
 	// if (isClassMethod(hoveredLine, _pos.position.character)) {
 		debug("class method")
 		const c = getClassOfMethod(hoveredLine,symbol);
 		// debug(c);
 		const classObj = cache.getClasses();
+		if (literalClass) {
+			const literalOwner = classObj.find((candidate) => candidate.name === literalClass);
+			const literalMethod = literalOwner?.getVisibleMethods(classObj).find((method) => method.name === symbol);
+			if (literalMethod) {
+				return { contents: literalMethod.buildMarkUpContent() };
+			}
+		}
 		const otherFunctions: Function[] = [];
 		let found = false;
 		for (const co of classObj) {
@@ -229,8 +238,14 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 				kind: 'markdown',
 				value: ''
 			}
+			// Inherited methods can appear once for every class exposing them.
+			const seenFunctionMarkup = new Set<string>();
 			for (const m of otherFunctions) {
 				let mc = m.buildMarkUpContent();
+				if (seenFunctionMarkup.has(mc.value)) {
+					continue;
+				}
+				seenFunctionMarkup.add(mc.value);
 				info.value = info.value + "\n" + mc.value;
 				// info = info + m.documentation + "\n"
 			}
@@ -385,6 +400,22 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 
 	_prof('total (no match)');
 	return undefined;
+}
+
+function getQuotedLiteralClassForMemberAccess(context: string): 'str' | 'bytes' | undefined {
+	const receiverContext = context.trimEnd();
+	if (!receiverContext.endsWith('.')) {
+		return undefined;
+	}
+
+	// Recognize a complete quoted literal immediately before the member dot. Bytes
+	// prefixes must be checked explicitly because str and bytes share method names.
+	const bytesLiteralPattern = /(?:^|[^A-Za-z0-9_])(?:br|rb|b)(?:"""[\s\S]*?"""|'''[\s\S]*?'''|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')\.$/i;
+	const stringLiteralPattern = /(?:^|[^A-Za-z0-9_])(?:r|u)?(?:"""[\s\S]*?"""|'''[\s\S]*?'''|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')\.$/i;
+	if (bytesLiteralPattern.test(receiverContext)) {
+		return 'bytes';
+	}
+	return stringLiteralPattern.test(receiverContext) ? 'str' : undefined;
 }
 
 export function getCurrentLineFromTextDocument(_pos: Position, text: TextDocument) : string {

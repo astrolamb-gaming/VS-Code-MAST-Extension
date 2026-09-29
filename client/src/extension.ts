@@ -20,7 +20,7 @@ import {
 	ServerOptions,
 	TransportKind
 } from 'vscode-languageclient/node';
-import { generateFaceWebview, generateIconWebview, generateShipWebview } from './webview';
+import { generateClassFunctionWebview, generateFaceWebview, generateIconWebview, generateShipWebview } from './webview';
 
 let mainProgress: Progress<{
     message?: string;
@@ -309,6 +309,10 @@ export function activate(context: ExtensionContext) {
 		generateIconWebview(context, payload);
 	});
 
+	const classFunctionList = client.onNotification('custom/classFunctionList', (payload)=>{
+		generateClassFunctionWebview(context, payload);
+	});
+
 	const openShipPicker = client.onNotification('custom/openShipPicker', async (payload)=>{
 		debug('Received ship picker request for arg: ' + payload?.argumentName);
 		const choice = await window.showInformationMessage(
@@ -371,6 +375,19 @@ export function activate(context: ExtensionContext) {
 		client.sendNotification('custom/openIconViewer', {
 			sourceUri: vscode.window.activeTextEditor?.document.uri.toString() || ''
 		});
+	}));
+
+	context.subscriptions.push(vscode.commands.registerCommand('mast.listClassesAndFunctions', () => {
+		const activeDoc = vscode.window.activeTextEditor?.document;
+		if (!activeDoc || !['mast', 'python', 'py'].includes(activeDoc.languageId)) {
+			window.showWarningMessage('Open a MAST or Python file to list the classes and functions in scope.');
+			return;
+		}
+		if (!client) {
+			window.showWarningMessage('MAST client is not ready yet.');
+			return;
+		}
+		client.sendNotification('custom/listClassesAndFunctions', { sourceUri: activeDoc.uri.toString() });
 	}));
 
 	context.subscriptions.push(vscode.commands.registerCommand('mast.runSbsLib', async () => {
@@ -551,6 +568,8 @@ export function activate(context: ExtensionContext) {
 	// );
 	context.subscriptions.push(ships);
 	context.subscriptions.push(faces);
+	context.subscriptions.push(icons);
+	context.subscriptions.push(classFunctionList);
 	context.subscriptions.push(openShipPicker);
 	context.subscriptions.push(openFacePicker);
 

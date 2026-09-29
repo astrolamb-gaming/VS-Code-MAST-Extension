@@ -113,7 +113,10 @@ export class ClassObject {
 				return;
 			}
 			visited.add(className);
-			const current = classIndex.get(className) || this;
+			// Keep this ClassObject as the root receiver. Builtin metadata classes
+			// can coexist with mock source classes of the same name; the name index
+			// should only resolve inherited parents, not replace the selected class.
+			const current = className === this.name ? this : classIndex.get(className) || this;
 			for (const parentName of current.parents) {
 				visit(parentName);
 			}
@@ -137,7 +140,10 @@ export class ClassObject {
 				return;
 			}
 			visited.add(className);
-			const current = classIndex.get(className) || this;
+			// Keep this ClassObject as the root receiver. Builtin metadata classes
+			// can coexist with mock source classes of the same name; the name index
+			// should only resolve inherited parents, not replace the selected class.
+			const current = className === this.name ? this : classIndex.get(className) || this;
 			for (const parentName of current.parents) {
 				visit(parentName);
 			}

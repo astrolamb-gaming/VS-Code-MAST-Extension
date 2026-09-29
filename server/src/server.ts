@@ -57,6 +57,7 @@ import { getSemanticTokensCache } from './requests/semanticTokensCache';
 import { getGridIcons, parseIconSet } from './resources/iconSets';
 import * as path from 'path';
 import { URI } from 'vscode-uri';
+import { fileFromUri } from './fileFunctions';
 import * as v8 from 'v8';
 import { MastFile } from './files/MastFile';
 import { PyFile } from './files/PyFile';
@@ -1509,6 +1510,75 @@ connection.onNotification('custom/openIconViewer', async (request: { mode?: stri
 	} catch (e) {
 		debug('Failed to open icon viewer: ' + e);
 		sendWarning('Failed to open Grid Icon Viewer. Check MAST output logs for details.');
+	}
+});
+
+connection.onNotification('custom/listClassesAndFunctions', async (request: { sourceUri?: string } | undefined) => {
+	const sourceUri = request?.sourceUri;
+	if (!sourceUri) {
+		sendWarning('MAST Class and Function List: Open a MAST or Python file first.');
+		return;
+	}
+
+	try {
+		const cache = getCache(sourceUri);
+		await cache.awaitLoaded();
+
+		const makeLocation = (location: { uri: string; range: { start: { line: number; character: number } } } | undefined) => {
+			if (!location?.uri) return undefined;
+			return {
+				uri: fileFromUri(location.uri),
+				line: Math.max(0, location.range.start.line),
+				character: Math.max(0, location.range.start.character)
+			};
+		};
+
+		const seenClasses = new Set<string>();
+		const classes = cache.getClasses()
+			.filter((classObject) => {
+				const key = `${classObject.name}:${classObject.location?.uri || classObject.sourceFile}:${classObject.location?.range.start.line ?? 0}`;
+				if (seenClasses.has(key)) return false;
+				seenClasses.add(key);
+				return true;
+			})
+			.map((classObject) => ({
+				name: classObject.name,
+				location: makeLocation(classObject.location),
+				methods: classObject.methods
+					.filter((method) => !!method.name)
+					.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+					.map((method) => ({
+						name: method.name,
+						parameters: method.parameters.map((parameter) => parameter.name),
+						location: makeLocation(method.location)
+					}))
+			}))
+			.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+
+		const seenGlobals = new Set<string>();
+		const globals = cache.getMethods()
+			.filter((method) => !!method.name && !method.className)
+			.filter((method) => {
+				const key = `${method.name}:${method.location?.uri || method.sourceFile}:${method.location?.range.start.line ?? 0}`;
+				if (seenGlobals.has(key)) return false;
+				seenGlobals.add(key);
+				return true;
+			})
+			.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+			.map((method) => ({
+				name: method.name,
+				parameters: method.parameters.map((parameter) => parameter.name),
+				location: makeLocation(method.location)
+			}));
+
+		sendToClient('classFunctionList', {
+			title: `Classes and Functions — ${cache.missionName}`,
+			classes,
+			globals
+		});
+	} catch (error) {
+		debug(`Failed to build class and function list: ${error}`);
+		sendWarning('MAST Class and Function List failed. Check the MAST Language Server output for details.');
 	}
 });
 

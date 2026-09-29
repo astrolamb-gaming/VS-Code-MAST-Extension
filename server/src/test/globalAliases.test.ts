@@ -9,6 +9,8 @@ import { checkFunctionSignatures } from '../errorChecking';
 import { PyFile } from '../files/PyFile';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
+import { onCompletion } from '../requests/autocompletion';
+import { onHover } from '../requests/hover';
 
 const tempRoots: string[] = [];
 
@@ -60,6 +62,123 @@ after(() => {
 });
 
 describe('global alias regression coverage', () => {
+	it('uses bytes methods for bytes-literal member completion', () => {
+		const { cache, missionDir } = createRegisteredMissionCache('bytes-literal-completion');
+		const builtinTypes = createPyFile('builtin-types.py', `
+class str:
+    def text_only(self):
+        pass
+
+class bytes:
+    def bytes_only(self):
+        pass
+`);
+		cache.addMissionPyFile(builtinTypes);
+
+		const mastPath = path.join(missionDir, 'main.mast');
+		const byteText = "b'hello'.";
+		fs.writeFileSync(mastPath, byteText, 'utf8');
+		const byteDocument = TextDocument.create(URI.file(mastPath).toString(), 'mast', 1, byteText);
+		const byteItems = onCompletion({
+			textDocument: { uri: byteDocument.uri },
+			position: { line: 0, character: byteText.length },
+		}, byteDocument);
+		const byteLabels = byteItems.map((item) => item.label);
+		assert.ok(byteLabels.includes('bytes_only()'));
+		assert.equal(byteLabels.includes('text_only()'), false);
+
+		const stringText = "'hello'.";
+		fs.writeFileSync(mastPath, stringText, 'utf8');
+		const stringDocument = TextDocument.create(URI.file(mastPath).toString(), 'mast', 1, stringText);
+		const stringItems = onCompletion({
+			textDocument: { uri: stringDocument.uri },
+			position: { line: 0, character: stringText.length },
+		}, stringDocument);
+		const stringLabels = stringItems.map((item) => item.label);
+		assert.ok(stringLabels.includes('text_only()'));
+		assert.equal(stringLabels.includes('bytes_only()'), false);
+	});
+
+	it('shows the matching builtin receiver type in literal method hover', () => {
+		const { cache, missionDir } = createRegisteredMissionCache('literal-method-hover');
+		cache.addMissionPyFile(createPyFile('builtin-metadata.py', `
+class str:
+	def capitalize(self):
+		"""String capitalization method."""
+        pass
+
+class bytes:
+	def capitalize(self):
+		"""Bytes capitalization method."""
+        pass
+`));
+		// Mock builtin class declarations share names with metadata classes and
+		// must not shadow the latter's native methods during hover resolution.
+		cache.addMissionPyFile(createPyFile('builtin-mocks.py', `
+class str:
+	def __init__(self, object=""):
+		pass
+
+class bytes:
+	def __init__(self, object=b""):
+		pass
+`));
+
+		const hoverFor = (text: string, character: number) => {
+			const mastPath = path.join(missionDir, 'main.mast');
+			fs.writeFileSync(mastPath, text, 'utf8');
+			const document = TextDocument.create(URI.file(mastPath).toString(), 'mast', 1, text);
+			return onHover({
+				textDocument: { uri: document.uri },
+				position: { line: 0, character },
+			}, document);
+		};
+
+		const stringText = 's = "".capitalize()';
+		const stringHover = hoverFor(stringText, stringText.indexOf('capitalize') + 2);
+		assert.ok(stringHover, 'expected a hover for str literal method access');
+		const stringHoverContents = JSON.stringify(stringHover.contents) || '';
+		assert.ok(stringHoverContents.includes('str.capitalize'));
+		assert.ok(stringHoverContents.includes('String capitalization method.'));
+
+		const bytesText = "b'hello'.capitalize()";
+		const bytesHover = hoverFor(bytesText, bytesText.indexOf('capitalize') + 2);
+		assert.ok(bytesHover, 'expected a hover for bytes literal method access');
+		const bytesHoverContents = JSON.stringify(bytesHover.contents) || '';
+		assert.ok(bytesHoverContents.includes('bytes.capitalize'));
+		assert.ok(bytesHoverContents.includes('Bytes capitalization method.'));
+	});
+
+	it('shows an inherited method only once in ambiguous method hovers', () => {
+		const { cache, missionDir } = createRegisteredMissionCache('deduplicated-method-hover');
+		cache.addMissionPyFile(createPyFile('agents.py', `
+class Agent:
+    def get_inventory_value(self, collection_name, default=None):
+        """Open Source"""
+        pass
+
+class Scout(Agent):
+    pass
+
+class Freighter(Agent):
+    pass
+`));
+
+		const text = 'ship.get_inventory_value("cargo")';
+		const mastPath = path.join(missionDir, 'main.mast');
+		fs.writeFileSync(mastPath, text, 'utf8');
+		const document = TextDocument.create(URI.file(mastPath).toString(), 'mast', 1, text);
+		const hover = onHover({
+			textDocument: { uri: document.uri },
+			position: { line: 0, character: text.indexOf('get_inventory_value') + 2 },
+		}, document);
+
+		assert.ok(hover, 'expected a hover for the inherited method');
+		const hoverContents = JSON.stringify(hover.contents) || '';
+		assert.equal(hoverContents.match(/Agent\.get_inventory_value/g)?.length, 1);
+		assert.equal(hoverContents.match(/Open Source/g)?.length, 1);
+	});
+
 	it('writes profiler summaries to a log file', () => {
 		const { cache, missionDir } = createMissionCache('profiling-log');
 		(cache as any)._profilingStageStats.set('load:start', { count: 1, totalMs: 120, maxMs: 120 });
