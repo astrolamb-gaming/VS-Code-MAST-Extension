@@ -243,12 +243,13 @@
 				"mastLanguageServer.allowMultipleCaches": {
 					"type": "boolean",
 					"default": true,
-					"description": "If true, will cache all applicable files for every mission that is opened during the session. If false, only the files for the currently active mission will be cached."
+					"description": "If true, will cache all applicable files for every mission that is opened during the session. If false, only the files for the currently active mission are kept loaded; switching focus to a different mission closes the previous one."
 				},
 				"mastLanguageServer.cacheTimout": {
 					"type": "number",
 					"default": 0,
-					"description": "If not zero, the cache will expire to clear memory after the specified number (in minutes)."
+					"description": "Deprecated and no longer used. Mission caches now close automatically when none of their files are open (or, with allowMultipleCaches disabled, when a different mission is focused).",
+					"deprecationMessage": "Deprecated and no longer used. Caches now close automatically when unused instead of expiring after a fixed time."
 				},
 				"mastLanguageServer.autoCompile": {
 					"scope": "resource",

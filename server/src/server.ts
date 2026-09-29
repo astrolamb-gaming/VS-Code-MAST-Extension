@@ -48,7 +48,7 @@ import fs = require("fs");
 import { getArtemisGlobals, initializeArtemisGlobals } from './artemisGlobals';
 import { compileMastFile, getCurrentDiagnostics, validateTextDocument } from './requests/validate';
 import { onDefinition } from './requests/goToDefinition';
-import { getCache, getLoadedCaches, setWorkspaceFolderUris, updateWorkspaceFolderUris } from './cache';
+import { evictUnusedCaches, focusMissionCache, getCache, getLoadedCaches, setWorkspaceFolderUris, updateWorkspaceFolderUris } from './cache';
 import { onReferences } from './requests/references';
 import { onPrepareRename, onRenameRequest } from './requests/renameSymbol';
 import { getWordRangeAtPosition } from './tokens/words';
@@ -136,7 +136,6 @@ let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = true;
 export let hasDiagnosticRelatedInformationCapability = false;
 let allowMultipleCaches = true;
-let cacheTimeout = 0;
 let enablePythonCompletions = true;
 const isDebugLanguageServer = process.execArgv.some((arg) => arg.includes('--inspect') || arg.includes('--debug'));
 let enableProfilingCollectionSetting = false;
@@ -152,13 +151,18 @@ export function getProfilingCollectionMode(): 'off' | 'debug' | 'setting' {
 	return 'off';
 }
 
+/** When false, only the currently focused mission's cache is kept loaded (see custom/activeEditorChanged). */
+export function isAllowMultipleCaches(): boolean {
+	return allowMultipleCaches;
+}
+
 async function refreshRuntimeSettings(): Promise<void> {
 	const mastLanguageServerConfig = await connection.workspace.getConfiguration("mastLanguageServer");
 	allowMultipleCaches = mastLanguageServerConfig?.allowMultipleCaches ?? true;
-	cacheTimeout = mastLanguageServerConfig?.cacheTimeout ?? 0;
 	enablePythonCompletions = mastLanguageServerConfig?.enablePythonCompletions ?? true;
 	enableProfilingCollectionSetting = mastLanguageServerConfig?.enableProfilingCollection ?? false;
 }
+
 
 function formatBytesToMiB(bytes: number): string {
 	return `${(bytes / (1024 * 1024)).toFixed(1)}MiB`;
@@ -652,7 +656,6 @@ connection.onCodeAction((params) => {
 interface MAST_Settings {
 	maxNumberOfProblems: number;
 	allowMultipleCaches: boolean;
-	cacheTimout: number;
 	autoCompile: boolean;
 	compileDiagnosticsDelayMs: number;
 	enableProfilingCollection: boolean;
@@ -664,7 +667,6 @@ interface MAST_Settings {
 const defaultSettings: MAST_Settings = { 
 	maxNumberOfProblems: 1000,
 	allowMultipleCaches: true,
-	cacheTimout: 0,
 	autoCompile: true,
 	compileDiagnosticsDelayMs: 250,
 	enableProfilingCollection: false
@@ -729,7 +731,6 @@ async function resolveDocumentSettings(resource?: string): Promise<MAST_Settings
 	return {
 		maxNumberOfProblems: mastLanguageServerConfig?.maxNumberOfProblems ?? defaultSettings.maxNumberOfProblems,
 		allowMultipleCaches: mastLanguageServerConfig?.allowMultipleCaches ?? defaultSettings.allowMultipleCaches,
-		cacheTimout: mastLanguageServerConfig?.cacheTimout ?? defaultSettings.cacheTimout,
 		autoCompile: mastLanguageServerConfig?.autoCompile ?? defaultSettings.autoCompile,
 		compileDiagnosticsDelayMs: mastLanguageServerConfig?.compileDiagnosticsDelayMs ?? defaultSettings.compileDiagnosticsDelayMs,
 		enableProfilingCollection: mastLanguageServerConfig?.enableProfilingCollection ?? defaultSettings.enableProfilingCollection
@@ -835,7 +836,6 @@ connection.onDidChangeConfiguration(async change => {
 		globalSettings = {
 			maxNumberOfProblems: mastLanguageServerConfig?.maxNumberOfProblems ?? defaultSettings.maxNumberOfProblems,
 			allowMultipleCaches: mastLanguageServerConfig?.allowMultipleCaches ?? defaultSettings.allowMultipleCaches,
-			cacheTimout: mastLanguageServerConfig?.cacheTimout ?? defaultSettings.cacheTimout,
 			autoCompile: mastLanguageServerConfig?.autoCompile ?? defaultSettings.autoCompile,
 			compileDiagnosticsDelayMs: mastLanguageServerConfig?.compileDiagnosticsDelayMs ?? defaultSettings.compileDiagnosticsDelayMs,
 			enableProfilingCollection: mastLanguageServerConfig?.enableProfilingCollection ?? defaultSettings.enableProfilingCollection
@@ -899,6 +899,12 @@ documents.onDidClose(e => {
 	}
 	// Invalidate semantic tokens cache for this document
 	getSemanticTokensCache().invalidate(e.document.uri);
+	// Release the mission cache if this was the last open file belonging to it
+	try {
+		evictUnusedCaches();
+	} catch (err) {
+		debug(err);
+	}
 });
 
 connection.languages.diagnostics.on(async (params) => {
@@ -1404,6 +1410,17 @@ connection.onNotification('custom/quickPickResponse', (payload: { requestId?: st
 
 	pendingQuickPickRequests.delete(payload.requestId);
 	resolver(payload.selection);
+});
+
+// Sent by the client whenever the active editor changes; keeps the focused mission's cache
+// loaded and, in single-cache mode (allowMultipleCaches=false), closes every other cache.
+connection.onNotification('custom/activeEditorChanged', (request: { sourceUri?: string } | undefined) => {
+	if (!request?.sourceUri) return;
+	try {
+		focusMissionCache(request.sourceUri);
+	} catch (e) {
+		debug(e);
+	}
 });
 
 

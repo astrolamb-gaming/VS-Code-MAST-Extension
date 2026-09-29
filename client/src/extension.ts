@@ -293,6 +293,15 @@ export function activate(context: ExtensionContext) {
 	});
 	context.subscriptions.push(serverRuntimeInfo);
 
+	// Lets the server know which file is focused, so it can keep only that mission's cache
+	// loaded when mastLanguageServer.allowMultipleCaches is disabled.
+	const notifyActiveEditor = (editor: vscode.TextEditor | undefined) => {
+		if (!client || !editor) return;
+		if (!['mast', 'python', 'py'].includes(editor.document.languageId)) return;
+		client.sendNotification('custom/activeEditorChanged', { sourceUri: editor.document.uri.toString() });
+	};
+	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(notifyActiveEditor));
+
 // #region <--------------------- Ship and Face Webview Region ------------------------>
 	const ships = client.onNotification('custom/ships', (payload)=>{
 		debug('Received ships notification payload; artemisDir: ' + payload?.artemisDir + ', ships: ' + (payload?.ships?.length || 0));
@@ -795,6 +804,7 @@ export function activate(context: ExtensionContext) {
 	// Start the client. This will also launch the server
 	void client.start().then(() => {
 		debug(`MAST language server started; CPU profile output=${cpuProfileDir}`);
+		notifyActiveEditor(vscode.window.activeTextEditor);
 	}).catch((error: unknown) => {
 		const message = error instanceof Error ? error.message : String(error);
 		outputChannel.appendLine(`Failed to start MAST language server: ${message}`);

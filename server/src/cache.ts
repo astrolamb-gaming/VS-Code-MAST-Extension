@@ -8,7 +8,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
 import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } from './tokens/routeLabels';
 import { fileFromUri, fixFileName, getArtemisDirFromChild, getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readFileSync, readZipArchive } from './fileFunctions';
-import { connection, getProfilingCollectionMode, isProfilingCollectionEnabled, requestClientQuickPick, setProgress } from './server';
+import { connection, documents, getProfilingCollectionMode, isAllowMultipleCaches, isProfilingCollectionEnabled, requestClientQuickPick, setProgress } from './server';
 import { URI } from 'vscode-uri';
 import { getArtemisGlobals, initializeArtemisGlobals } from './artemisGlobals';
 import * as os from 'os';
@@ -2906,21 +2906,69 @@ export function getLoadedCaches(): MissionCache[] {
 
 
 
+/** Mission folder keys (normalized) for every currently open document. */
+function getOpenMissionCacheKeys(): Set<string> {
+	const keys = new Set<string>();
+	for (const doc of documents.all()) {
+		try {
+			const mf = getMissionFolder(doc.uri);
+			if (mf) keys.add(normalizeCacheKey(mf));
+		} catch (e) {
+			debug(e);
+		}
+	}
+	return keys;
+}
+
+/** Mission key of the most recently focused (active editor) document, used in single-cache mode. */
+let lastFocusedMissionKey: string | undefined;
+
 /**
- * If the cache hasn't been accessed in awhile, garbage collect the cache.
- * TODO: Make this a user-customizable option.
+ * Called whenever the client reports the active editor has changed. Ensures the focused
+ * mission's cache is loaded, and, when mastLanguageServer.allowMultipleCaches is disabled,
+ * closes every other cache so only the focused mission is retained.
  */
-function cacheGC() {
-	const gcTimer = setInterval(()=>{
-		const now = Date.now();
+export function focusMissionCache(uri: string) {
+	const cache = getCache(uri);
+	lastFocusedMissionKey = normalizeCacheKey(cache.missionURI);
+	if (!isAllowMultipleCaches()) {
+		evictUnusedCaches();
+	}
+}
+
+/**
+ * Release caches that are no longer needed:
+ * - In single-cache mode (allowMultipleCaches=false), only the most recently focused mission's cache is kept.
+ * - Otherwise, a cache is kept as long as at least one of its files is open in the editor.
+ */
+export function evictUnusedCaches() {
+	if (!isAllowMultipleCaches()) {
 		for (const [key, c] of caches.entries()) {
-			if (now - c.lastAccessed > 1000 * 60 * 7) { // 7 minutes
-				// stop watchers and free resources
+			if (key !== lastFocusedMissionKey) {
 				try { c.endWatchers(); } catch (e) { debug(e); }
 				caches.delete(key);
 			}
 		}
-	}, 1000 * 60 * 5); // run every 5 minutes
+		return;
+	}
+
+	const openMissionKeys = getOpenMissionCacheKeys();
+	for (const [key, c] of caches.entries()) {
+		if (!openMissionKeys.has(key)) {
+			// stop watchers and free resources
+			try { c.endWatchers(); } catch (e) { debug(e); }
+			caches.delete(key);
+		}
+	}
+}
+
+/**
+ * Periodic safety-net sweep in case an eviction-triggering event (e.g. onDidClose) is missed.
+ * evictUnusedCaches() is also called directly whenever a document closes, so this mostly
+ * only matters for documents closed without a clean LSP close notification.
+ */
+function cacheGC() {
+	const gcTimer = setInterval(evictUnusedCaches, 1000 * 60 * 5); // run every 5 minutes
 
 	// Do not keep Node alive just for background cache cleanup.
 	if (typeof gcTimer.unref === 'function') {
