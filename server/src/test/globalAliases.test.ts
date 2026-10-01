@@ -62,6 +62,33 @@ after(() => {
 });
 
 describe('global alias regression coverage', () => {
+	it('shares parsed library data across mission caches without sharing alias mutations', () => {
+		const first = createMissionCache('shared-library-first').cache;
+		const second = createMissionCache('shared-library-second').cache;
+		const moduleRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'mast-shared-library-test-'));
+		tempRoots.push(moduleRoot);
+		const modulePath = path.join(moduleRoot, 'shared_module.py');
+		const contents = 'def ping(self):\n    pass\n';
+
+		first.handleZipData(contents, modulePath, modulePath);
+		second.handleZipData(contents, modulePath, modulePath);
+
+		const firstModule = first.missionPyModules[0];
+		const secondModule = second.missionPyModules[0];
+		assert.ok(firstModule);
+		assert.ok(secondModule);
+		assert.notStrictEqual(firstModule, secondModule);
+		assert.strictEqual(firstModule.defaultFunctions, secondModule.defaultFunctions);
+
+		first.tryApplyFileAsGlobal(firstModule, ['shared_module', 'api']);
+		assert.ok(firstModule.defaultFunctions.some((func) => func.name === 'api_ping'));
+		assert.ok(secondModule.defaultFunctions.some((func) => func.name === 'ping'));
+		assert.equal(secondModule.classes.some((classObject) => classObject.name === 'api'), false);
+
+		first.releaseSharedLibraryParses();
+		second.releaseSharedLibraryParses();
+	});
+
 	it('uses bytes methods for bytes-literal member completion', () => {
 		const { cache, missionDir } = createRegisteredMissionCache('bytes-literal-completion');
 		const builtinTypes = createPyFile('builtin-types.py', `

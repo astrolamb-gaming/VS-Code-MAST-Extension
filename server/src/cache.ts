@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { createHash } from 'crypto';
 import { CompletionItem, CompletionItemKind, integer, Location, SignatureInformation } from 'vscode-languageserver';
 import { MastFile } from './files/MastFile';
 import { PyFile } from './files/PyFile';
@@ -54,6 +55,94 @@ interface ProfilingStageStats {
 	count: number;
 	totalMs: number;
 	maxMs: number;
+}
+
+interface SharedLibraryParse {
+	pyFile?: PyFile;
+	mastFile?: MastFile;
+	routeLabels: IRouteLabel[];
+	styleDefinitions: string[];
+	owners: Set<string>;
+}
+
+const sharedLibraryParses = new Map<string, SharedLibraryParse>();
+let sharedLibraryOwnerSequence = 0;
+
+function normalizeLibrarySource(source: string): string {
+	const normalized = fixFileName(source).trim();
+	return process.platform === 'win32' ? normalized.toLowerCase() : normalized;
+}
+
+function getSharedLibraryParse(data: string, file: string, source: string): { key: string; parsed: SharedLibraryParse } {
+	const digest = createHash('sha256').update(data, 'utf8').digest('hex');
+	const key = `${normalizeLibrarySource(source)}\u0000${digest}`;
+	const existing = sharedLibraryParses.get(key);
+	if (existing) return { key, parsed: existing };
+
+	const parsed: SharedLibraryParse = {
+		routeLabels: path.extname(file) === '.py' ? loadRouteLabels(data) : [],
+		styleDefinitions: path.extname(file) === '.py' ? loadStyleDefs(file, data) : [],
+		owners: new Set<string>()
+	};
+	if (path.extname(file) === '.py') {
+		parsed.pyFile = new PyFile(file, data);
+	} else if (path.extname(file) === '.mast' && !file.includes('sbs_utils')) {
+		parsed.mastFile = new MastFile(file, data);
+		parsed.mastFile.inZip = true;
+	}
+
+	sharedLibraryParses.set(key, parsed);
+	return { key, parsed };
+}
+
+function releaseSharedLibraryParse(key: string, owner: string): void {
+	const parsed = sharedLibraryParses.get(key);
+	if (!parsed) return;
+	parsed.owners.delete(owner);
+	if (parsed.owners.size === 0) sharedLibraryParses.delete(key);
+}
+
+function createMissionPyFileView(source: PyFile): PyFile {
+	const overlay = new Map<PropertyKey, unknown>();
+	let globalAliasApplied = false;
+	const read = <T>(property: PropertyKey, fallback: T): T =>
+		overlay.has(property) ? overlay.get(property) as T : fallback;
+
+	return new Proxy(source, {
+		get(target, property, receiver) {
+			if (property === 'applyImportedGlobalAlias') {
+				return (createPrefixedFunctions: boolean = true) => {
+					const globalAlias = read('globalAlias', target.globalAlias);
+					if (globalAliasApplied || globalAlias === '') return;
+					const aliasClass = new ClassObject('', path.basename(target.uri));
+					aliasClass.name = globalAlias;
+					aliasClass.methods = read('defaultFunctions', target.defaultFunctions).map((func) => {
+						const copy = func.copy();
+						copy.className = aliasClass.name;
+						return copy;
+					});
+					overlay.set('classes', [...read('classes', target.classes), aliasClass]);
+					if (createPrefixedFunctions) {
+						overlay.set('defaultFunctions', read('defaultFunctions', target.defaultFunctions).map((func) => {
+							const copy = func.copy();
+							copy.name = `${globalAlias}_${copy.name}`;
+							return copy;
+						}));
+					}
+					globalAliasApplied = true;
+				};
+			}
+			if (overlay.has(property)) return overlay.get(property);
+			return Reflect.get(target, property, receiver);
+		},
+		set(_target, property, value) {
+			if (property === 'globalAliasApplied') {
+				globalAliasApplied = value as boolean;
+			}
+			overlay.set(property, value);
+			return true;
+		}
+	});
 }
 
 export class MissionCache {
@@ -158,6 +247,9 @@ export class MissionCache {
 	/** Aggregated profiling metrics for load/reload phases */
 	private _profilingStageStats: Map<string, ProfilingStageStats> = new Map();
 	private _profilingSampleCount = 0;
+	private _sharedLibraryParseKeys = new Set<string>();
+	private _nextSharedLibraryParseKeys: Set<string> | undefined;
+	private readonly _sharedLibraryOwnerId = ++sharedLibraryOwnerSequence;
 
 	constructor(workspaceUri: string) {
 		//debug(workspaceUri);
@@ -294,6 +386,7 @@ export class MissionCache {
 			debug(`[load:${this.missionName}] Skipping cache load: no Artemis directory or MAST files found at ${this.missionURI}`);
 			return;
 		}
+		this.beginSharedLibraryParseLoad();
 
 		this.endWatchers();
 		this.storyJsonLoaded = false;
@@ -314,6 +407,8 @@ export class MissionCache {
 		this.missionMastModules = [];
 		this.missionPyModules = [];
 		this.pyFileCache = [];
+		this.routeLabels = [];
+		this.styleDefinitions = [];
 		this.resourceLabels = [];
 		this.mediaLabels = [];
 		this.mastFileCache = [];
@@ -418,6 +513,7 @@ export class MissionCache {
 		//this.checkForInitFolder(this.missionURI);
 		debug("Number of py files: "+this.pyFileCache.length);
 		debug("Everything is loaded");
+		this.commitSharedLibraryParseLoad();
 		this.startWatchers();
 		if (!this._didRunInitialInitCheck) {
 			this._didRunInitialInitCheck = true;
@@ -607,6 +703,46 @@ export class MissionCache {
 		this._activePromptBatchExpiresAt = 0;
 	}
 
+	private get sharedLibraryOwnerKey(): string {
+		return `${normalizeCacheKey(this.missionURI)}#${this._sharedLibraryOwnerId}`;
+	}
+
+	private beginSharedLibraryParseLoad() {
+		if (this._nextSharedLibraryParseKeys) {
+			for (const key of this._nextSharedLibraryParseKeys) {
+				if (!this._sharedLibraryParseKeys.has(key)) {
+					releaseSharedLibraryParse(key, this.sharedLibraryOwnerKey);
+				}
+			}
+		}
+		this._nextSharedLibraryParseKeys = new Set<string>();
+	}
+
+	private retainSharedLibraryParse(key: string, parsed: SharedLibraryParse) {
+		parsed.owners.add(this.sharedLibraryOwnerKey);
+		(this._nextSharedLibraryParseKeys ?? this._sharedLibraryParseKeys).add(key);
+	}
+
+	private commitSharedLibraryParseLoad() {
+		if (!this._nextSharedLibraryParseKeys) return;
+		for (const key of this._sharedLibraryParseKeys) {
+			if (!this._nextSharedLibraryParseKeys.has(key)) {
+				releaseSharedLibraryParse(key, this.sharedLibraryOwnerKey);
+			}
+		}
+		this._sharedLibraryParseKeys = this._nextSharedLibraryParseKeys;
+		this._nextSharedLibraryParseKeys = undefined;
+	}
+
+	releaseSharedLibraryParses() {
+		const keys = new Set([...this._sharedLibraryParseKeys, ...(this._nextSharedLibraryParseKeys ?? [])]);
+		for (const key of keys) {
+			releaseSharedLibraryParse(key, this.sharedLibraryOwnerKey);
+		}
+		this._sharedLibraryParseKeys.clear();
+		this._nextSharedLibraryParseKeys = undefined;
+	}
+
 	/**
 	 * Start file system watchers
 	 * These enable cache reloading if story.json is changed, or if a mastlib/sbslib file is changed.
@@ -711,6 +847,23 @@ export class MissionCache {
 			}
 		});
 		this.watchers.push(w2);
+
+		let runtime = path.join(this.missionURI,"mast.runtime.log")
+		let compile = path.join(this.missionURI,"mast.compile.log")
+		let runWatch = fs.watch(runtime, {}, (eventType, filename) => {
+			if (eventType === "change") {
+				// debug("Runtime log changed: " + filename);
+				void this.showLog("runtime", filename).catch((e) => debug(e));
+			}
+		});
+		let compileWatch = fs.watch(compile, {}, (eventType, filename) => {
+			if (eventType === "change") {
+				// debug("Compile log changed: " + filename);
+				void this.showLog("compile", filename).catch((e) => debug(e));
+			}
+		});
+		this.watchers.push(runWatch);
+		this.watchers.push(compileWatch);
 	}
 	endWatchers() {
 		this.clearPendingInitPrompts();
@@ -721,6 +874,37 @@ export class MissionCache {
 		}
 		this.watchers = [];
 	}
+
+	async showLog(type: "runtime" | "compile", uri:string | null) {
+		if (!uri) {
+			uri = path.join(this.missionURI,"mast." + type + ".log")
+		}
+		fs.stat(uri, async (err, stats) => {
+			if (err) {
+				debug(err);
+				return;
+			}
+			if (stats.size === 0) {
+				debug("Log file is empty: " + uri);
+				return;
+			}
+			connection.sendNotification('custom/showFile', {file: uri, open:true});
+			// return;
+			// let view = "View";
+			// let ignore = "Ignore"
+			// let message = (type === "runtime" ? "Runtime" : "Compile") + " Error Detected for " + this.missionName;
+			// let ret = await connection.window.showErrorMessage(
+			// 	message,
+			// 	{title: view},
+			// 	{title: ignore}
+			// );
+			// if (ret === undefined) return false;
+			// if (ret.title === view) {
+			// 	connection.sendNotification('custom/showFile', {file: uri, open:true});
+			// }
+		});
+	}
+
 	/**
 	 * Load globals from the python shell and builtins.py (stuff like len() and list())
 	 * @param globals 
@@ -1169,7 +1353,7 @@ export class MissionCache {
 									}
 									processFile = saveZipTempFile(processFile,fileData);
 									seenModuleFiles.add(archiveKey);
-									this.handleZipData(fileData,processFile);
+									this.handleZipData(fileData, processFile, `${zipPath}!/${file}`);
 									if (file.endsWith('.py')) modulePyLoaded++;
 									if (file.endsWith('.mast')) moduleMastLoaded++;
 								}
@@ -1252,7 +1436,7 @@ export class MissionCache {
 			// debug("Read file: " + f);
 			seenModuleFiles.add(fileKey);
 			debug('Loading: ' + path.basename(f));
-			this.handleZipData(data, f);
+			this.handleZipData(data, f, f);
 			if (f.endsWith('.py')) py++;
 			if (f.endsWith('.mast')) mast++;
 		}
@@ -1266,56 +1450,32 @@ export class MissionCache {
 	 * @param file name of a file, as a {@link string string}
 	 * @returns 
 	 */
-	handleZipData(data:string, file:string = "") {
+	handleZipData(data: string, file: string = "", source: string = file) {
 		const parseStart = Date.now();
 		let handledAs = 'ignored';		// debug("Beginning to load zip data for: " + file);
-		if (file.endsWith("__init__.mast") || file.endsWith("__init__.py") || file.endsWith(".pyc") || file.includes("test")) {
+		if (file.endsWith("__init__.mast") || file.endsWith("__init__.py") || file.endsWith(".pyc") || /(^|[\\/])tests?([\\/]|$)/i.test(file)) {
 			// Do nothing
 			handledAs = 'init-skip';
-		} else if (file.endsWith(".py")) {
-			handledAs = 'python';
-			// debug(file)
-			this.routeLabels = this.routeLabels.concat(loadRouteLabels(data));
-			this.styleDefinitions = this.styleDefinitions.concat(loadStyleDefs(file,data))
-			// if (file.includes("sbs_utils\\mast")) return;
-			// if (file.includes("sbs_utils") && !file.includes("procedural")) {
-			// 	// Don't wanat anything not procedural included???
-			// 	let found = false;
-			// 	for (const special of includeNonProcedurals) {
-			// 		if (file.includes(special)) {
-			// 			found = true;
-			// 			//don't return
-			// 			debug("Adding " + special);
-			// 			// const p = new PyFile(file, data);
-			// 			// this.missionPyModules.push(p);
-			// 			// this.missionClasses = this.missionClasses.concat(p.classes);
-			// 			// this.missionDefaultFunctions = this.missionDefaultFunctions.concat(p.defaultFunctions);
-			// 			break;
-			// 		}
-			// 	}
-			// 	// TODO: Uncomment this to remove all the extra stuff like Gui that most mission writers probably don't need...
-			// 	// if (!found) return;
-			// }
-			const p = new PyFile(file, data);
-			if (file.includes("sbs_utils")) {
-				this.addSbsPyFile(p);
-				return;
+		} else if (file.endsWith(".py") || file.endsWith(".mast")) {
+			handledAs = file.endsWith('.py') ? 'python' : 'mast';
+			const { key, parsed } = getSharedLibraryParse(data, file, source);
+			this.retainSharedLibraryParse(key, parsed);
+			this.routeLabels.push(...parsed.routeLabels);
+			this.styleDefinitions.push(...parsed.styleDefinitions);
+			if (parsed.pyFile) {
+				const missionView = createMissionPyFileView(parsed.pyFile);
+				if (file.includes("sbs_utils")) {
+					this.addSbsPyFile(missionView);
+				} else {
+					this.addMissionPyFile(missionView);
+				}
+			} else if (parsed.mastFile) {
+				const normalizedMastUri = fixFileName(parsed.mastFile.uri);
+				if (!this.missionMastModules.some((existing) => fixFileName(existing.uri) === normalizedMastUri)) {
+					this.missionMastModules.push(parsed.mastFile);
+					this.syncMastExtractedItems(parsed.mastFile);
+				}
 			}
-			this.addMissionPyFile(p);
-			
-			// this.missionDefaultFunctions = this.missionDefaultFunctions.concat(p.defaultFunctions);
-		} else if (file.endsWith(".mast")) {
-			handledAs = 'mast';
-			//debug("Building file: " + file);
-			if (file.includes("sbs_utils")) return;
-			const normalizedMastUri = fixFileName(file);
-			if (this.missionMastModules.some((existing) => fixFileName(existing.uri) === normalizedMastUri)) {
-				return;
-			}
-			const m = new MastFile(file, data);
-			m.inZip = true;
-			this.missionMastModules.push(m);
-			this.syncMastExtractedItems(m);
 		}
 		const parseElapsed = Date.now() - parseStart;
 		if (parseElapsed > 20) {
@@ -2946,6 +3106,7 @@ export function evictUnusedCaches() {
 		for (const [key, c] of caches.entries()) {
 			if (key !== lastFocusedMissionKey) {
 				try { c.endWatchers(); } catch (e) { debug(e); }
+				c.releaseSharedLibraryParses();
 				caches.delete(key);
 			}
 		}
@@ -2957,6 +3118,7 @@ export function evictUnusedCaches() {
 		if (!openMissionKeys.has(key)) {
 			// stop watchers and free resources
 			try { c.endWatchers(); } catch (e) { debug(e); }
+			c.releaseSharedLibraryParses();
 			caches.delete(key);
 		}
 	}

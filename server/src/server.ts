@@ -842,6 +842,7 @@ connection.onDidChangeConfiguration(async change => {
 		};
 	}
 	await refreshRuntimeSettings();
+	evictUnusedCaches();
 	// Refresh the diagnostics since the `maxNumberOfProblems` could have changed.
 	// We could optimize things here and re-fetch the setting first can compare it
 	// to the existing setting, but this is out of scope for this example.
