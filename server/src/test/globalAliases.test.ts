@@ -3,7 +3,10 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { after, describe, it } from 'mocha';
+import AdmZip = require('adm-zip');
 import { getCache, MissionCache } from '../cache';
+import { PackageManager, PackageSnapshot } from '../packageManager';
+import { StoryJson } from '../data/storyJson';
 import { matchesClassName } from '../data';
 import { checkFunctionSignatures } from '../errorChecking';
 import { PyFile } from '../files/PyFile';
@@ -62,6 +65,234 @@ after(() => {
 });
 
 describe('global alias regression coverage', () => {
+	it('refreshes changed shared package entries once for every dependent cache', async () => {
+		const packageManager = new PackageManager();
+		const packageRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'mast-package-reload-test-'));
+		tempRoots.push(packageRoot);
+		const zipPath = path.join(packageRoot, 'shared.mastlib');
+		const zip = new AdmZip();
+		const unchangedContents = 'def stay(self):\n    pass\n';
+		const firstContents = 'def before(self):\n    pass\n';
+		zip.addFile('changed.py', Buffer.from(firstContents, 'utf8'));
+		zip.addFile('unchanged.py', Buffer.from(unchangedContents, 'utf8'));
+		zip.writeZip(zipPath);
+
+		let firstUpdate: Awaited<ReturnType<typeof packageManager.acquirePackage>> | undefined;
+		let secondUpdate: Awaited<ReturnType<typeof packageManager.acquirePackage>> | undefined;
+		const firstOwner = `reload-test-first-${Date.now()}`;
+		const secondOwner = `reload-test-second-${Date.now()}`;
+		const firstInitial = await packageManager.acquirePackage(zipPath, firstOwner, (_packagePath, snapshot) => { firstUpdate = snapshot; });
+		const secondInitial = await packageManager.acquirePackage(zipPath, secondOwner, (_packagePath, snapshot) => { secondUpdate = snapshot; });
+		assert.strictEqual(firstInitial.files.find((file) => file.file.endsWith('unchanged.py')),
+			secondInitial.files.find((file) => file.file.endsWith('unchanged.py')));
+		const firstUnchanged = firstInitial.files.find((file) => file.file.endsWith('unchanged.py'));
+		const secondUnchanged = secondInitial.files.find((file) => file.file.endsWith('unchanged.py'));
+
+		const updatedZip = new AdmZip();
+		updatedZip.addFile('changed.py', Buffer.from('def after(self):\n    pass\n', 'utf8'));
+		updatedZip.addFile('unchanged.py', Buffer.from(unchangedContents, 'utf8'));
+		updatedZip.writeZip(zipPath);
+		await packageManager.reloadPackage(zipPath);
+
+		assert.ok(firstUpdate);
+		assert.ok(secondUpdate);
+		for (const snapshot of [firstUpdate, secondUpdate]) {
+			const changedFunctions = snapshot?.files.find((file) => file.file.endsWith('changed.py'))?.pyFile?.defaultFunctions;
+			assert.ok(changedFunctions?.some((func) => func.name === 'after'));
+			assert.equal(changedFunctions?.some((func) => func.name === 'before'), false);
+		}
+		assert.strictEqual(firstUpdate?.files.find((file) => file.file.endsWith('unchanged.py')), firstUnchanged);
+		assert.strictEqual(secondUpdate?.files.find((file) => file.file.endsWith('unchanged.py')), secondUnchanged);
+
+		packageManager.releasePackage(zipPath, firstOwner);
+		packageManager.releasePackage(zipPath, secondOwner);
+	});
+
+	it('reconciles package references when the resolved source and story package set change', async () => {
+		const manager = new PackageManager();
+		const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mast-package-set-test-'));
+		tempRoots.push(root);
+		const libName = 'shared-lib.v1.0.0.sbslib';
+		const missionLibFolder = path.join(root, '__lib__');
+		const archivePath = path.join(missionLibFolder, libName);
+		const sourceFolder = path.join(root, 'shared-lib');
+		fs.mkdirSync(missionLibFolder, { recursive: true });
+		fs.mkdirSync(sourceFolder, { recursive: true });
+		const zip = new AdmZip();
+		zip.addFile('archive_module.py', Buffer.from('def from_archive(self):\n    pass\n', 'utf8'));
+		zip.writeZip(archivePath);
+
+		const owner = `package-set-test-${Date.now()}`;
+		const changed: string[] = [];
+		const listener = (packagePath: string) => { changed.push(packagePath); };
+		const request = (missions: Array<{ name: string; path: string }>) => ({
+			name: libName,
+			missionLibFolder,
+			artemisMissions: missions,
+			workspaceFolders: [],
+			getModuleBaseName: (name: string) => name.substring(0, name.indexOf('.v'))
+		});
+
+		const archiveResult = await manager.reconcilePackages([request([])], owner, listener);
+		assert.ok(archiveResult.get(libName)?.snapshot.files.some((file) => file.file.endsWith('archive_module.py')));
+		assert.equal(archiveResult.get(libName)?.identity, manager.normalizeSource(archivePath));
+
+		fs.rmSync(archivePath);
+		fs.writeFileSync(path.join(sourceFolder, 'folder_module.py'), 'def from_folder(self):\n    pass\n', 'utf8');
+		fs.writeFileSync(path.join(sourceFolder, 'folder_module.mast'), '== folder_only_label ==\n', 'utf8');
+		const folderResult = await manager.reconcilePackages([request([{ name: 'shared-lib', path: sourceFolder }])], owner, listener);
+		assert.ok(folderResult.get(libName)?.snapshot.files.some((file) => file.file.endsWith('folder_module.py')));
+		assert.ok(folderResult.get(libName)?.snapshot.mastFiles.some((file) => file.uri.endsWith('folder_module.mast')));
+		assert.equal(folderResult.get(libName)?.identity, manager.normalizeSource(sourceFolder));
+		assert.notEqual(archiveResult.get(libName)?.identity, folderResult.get(libName)?.identity);
+
+		await manager.reconcilePackages([], owner, listener);
+		await manager.reloadPackage(archivePath);
+		await manager.reloadPackage(sourceFolder);
+		assert.equal(changed.length, 0);
+	});
+
+	it('resolves workspace mission roots to the package-specific subfolder', async () => {
+		const manager = new PackageManager();
+		const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mast-workspace-package-test-'));
+		tempRoots.push(root);
+		const missionLibFolder = path.join(root, 'data', 'missions', '__lib__');
+		const workspaceMissionRoot = path.join(root, 'LegendaryMissions');
+		const packageName = 'artemis-sbs.LegendaryMissions.hangar.v1.4.0.mastlib';
+		const archivePath = path.join(missionLibFolder, packageName);
+		fs.mkdirSync(missionLibFolder, { recursive: true });
+		fs.mkdirSync(workspaceMissionRoot, { recursive: true });
+		fs.writeFileSync(path.join(workspaceMissionRoot, 'script.mast'), '== unrelated_root_label ==\n', 'utf8');
+		const archive = new AdmZip();
+		archive.addFile('archived.mast', Buffer.from('== archived_hangar_label ==\n', 'utf8'));
+		archive.writeZip(archivePath);
+		const owner = `workspace-package-test-${Date.now()}`;
+		const request = {
+			name: packageName,
+			missionLibFolder,
+			artemisMissions: [],
+			workspaceFolders: [workspaceMissionRoot],
+			getModuleBaseName: (name: string) => name.substring(0, name.indexOf('.v'))
+		};
+
+		const archiveResult = await manager.reconcilePackages([request], owner, () => {});
+		assert.equal(archiveResult.get(packageName)?.identity, manager.normalizeSource(archivePath));
+		assert.ok(archiveResult.get(packageName)?.snapshot.labels.some((label) => label.name === 'archived_hangar_label'));
+		assert.equal(archiveResult.get(packageName)?.snapshot.labels.some((label) => label.name === 'unrelated_root_label'), false);
+
+		const packageFolder = path.join(workspaceMissionRoot, 'hangar');
+		fs.mkdirSync(packageFolder, { recursive: true });
+		fs.writeFileSync(path.join(packageFolder, 'hangar.mast'), '== editable_hangar_label ==\n', 'utf8');
+		const workspaceResult = await manager.reconcilePackages([request], owner, () => {});
+		assert.equal(workspaceResult.get(packageName)?.identity, manager.normalizeSource(packageFolder));
+		assert.ok(workspaceResult.get(packageName)?.snapshot.labels.some((label) => label.name === 'editable_hangar_label'));
+
+		manager.releaseOwnerPackages(owner);
+	});
+
+	it('loads labels and emitted signals from a packaged MAST library file', async () => {
+		const { cache, missionDir } = createMissionCache('packaged-mast-library');
+		const manager = new PackageManager();
+		const packageRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'mast-packaged-mastlib-test-'));
+		tempRoots.push(packageRoot);
+		const packageName = 'standalone.v1.0.0.mastlib';
+		const packagePath = path.join(packageRoot, packageName);
+		const packagedMast = [
+			'== packaged_label ==',
+			'signal_emit("package_emit_signal")',
+			'//shared/signal/package_emit_signal',
+			''
+		].join('\n');
+		const zip = new AdmZip();
+		zip.addFile('packaged.mast', Buffer.from(packagedMast, 'utf8'));
+		zip.writeZip(packagePath);
+
+		const request = {
+			name: packageName,
+			missionLibFolder: packageRoot,
+			artemisMissions: [],
+			workspaceFolders: [],
+			getModuleBaseName: (name: string) => name.substring(0, name.indexOf('.v'))
+		};
+		const owner = `packaged-mast-test-${Date.now()}`;
+		const packages = await manager.reconcilePackages([request], owner, () => {});
+		const resolved = packages.get(packageName);
+		const mastEntry = resolved?.snapshot.files.find((entry) => entry.mastFile);
+		assert.ok(mastEntry?.mastFile, 'PackageManager should parse packaged .mast files');
+		assert.ok(resolved?.snapshot.labels.some((label) => label.name === 'packaged_label'));
+		assert.ok(resolved?.snapshot.signals.find((signal) => signal.name === 'package_emit_signal')?.emit.length);
+		assert.ok(resolved?.snapshot.signals.find((signal) => signal.name === 'package_emit_signal')?.triggered.length);
+
+		const attach = cache as unknown as {
+			attachSharedLibraryPackage: (packagePath: string, snapshot: PackageSnapshot) => void;
+		};
+		attach.attachSharedLibraryPackage(resolved!.identity, resolved!.snapshot);
+		const doc = TextDocument.create(URI.file(path.join(missionDir, 'main.mast')).toString(), 'mast', 1, '');
+		assert.ok(cache.getLabels(doc).some((label) => label.name === 'packaged_label'));
+		const signal = cache.getSignals().find((entry) => entry.name === 'package_emit_signal');
+		assert.ok(signal?.emit.length, 'packaged signal_emit() should be registered as an emit');
+		assert.ok(signal?.triggered.length, 'packaged shared signal route should be registered as a trigger');
+
+		cache.releaseSharedLibraryParses();
+		manager.releaseOwnerPackages(owner);
+	});
+
+	it('uses the editable mission subfolder for package label and signal locations', async () => {
+		const { cache, missionDir } = createMissionCache('package-source-subfolder');
+		const missionsRoot = path.dirname(missionDir);
+		const missionLibFolder = path.join(missionsRoot, '__lib__');
+		const missionSource = path.join(missionsRoot, 'LegendaryMissions');
+		const packageSource = path.join(missionSource, 'hangar');
+		const archiveName = 'artemis-sbs.LegendaryMissions.hangar.v1.4.0.mastlib';
+		const archivePath = path.join(missionLibFolder, archiveName);
+		fs.mkdirSync(packageSource, { recursive: true });
+		fs.mkdirSync(missionLibFolder, { recursive: true });
+
+		const sourceText = [
+			'== editable_hangar_label ==',
+			'signal_emit("editable_hangar_signal")',
+			'//shared/signal/editable_hangar_signal',
+			'role("editable_hangar_role")',
+			''
+		].join('\n');
+		const sourceFile = path.join(packageSource, 'hangar.mast');
+		fs.writeFileSync(sourceFile, sourceText, 'utf8');
+		const archive = new AdmZip();
+		archive.addFile('hangar.mast', Buffer.from('== archived_hangar_label ==\n', 'utf8'));
+		archive.writeZip(archivePath);
+
+		cache.storyJson.mastlib = [archiveName];
+		cache.storyJson.sbslib = [];
+		await (cache as unknown as { modulesLoaded: () => Promise<void> }).modulesLoaded();
+		const normalizedSourceFile = sourceFile.replace(/\\/g, '/');
+		assert.ok(cache.missionMastModules.some((file) => file.uri.replace(/\\/g, '/') === normalizedSourceFile));
+		const doc = TextDocument.create(URI.file(path.join(missionDir, 'main.mast')).toString(), 'mast', 1, '');
+		const normalizeWindowsPath = (value: string) => path.win32.normalize(value.replace(/\//g, '\\'));
+		assert.equal(normalizeWindowsPath(cache.getLabel('editable_hangar_label')?.srcFile || ''), normalizeWindowsPath(sourceFile));
+		assert.equal(cache.getLabel('archived_hangar_label'), undefined);
+		const signal = cache.getSignals().find((entry) => entry.name === 'editable_hangar_signal');
+		const sourceUri = URI.file(sourceFile).toString();
+		assert.ok(signal?.emit.some((location) => URI.parse(location.uri).toString() === sourceUri));
+		assert.ok(signal?.triggered.some((location) => URI.parse(location.uri).toString() === sourceUri));
+		const role = cache.getRoles(missionDir).find((entry) => entry.name === 'editable_hangar_role');
+		assert.ok(role?.locations.some((location) => URI.parse(location.uri).toString() === sourceUri));
+		assert.ok(cache.getLabels(doc).some((label) => label.name === 'editable_hangar_label'));
+
+		cache.releaseSharedLibraryParses();
+	});
+
+	it('clears omitted story.json package lists when reparsed', () => {
+		const story = new StoryJson('unused-story.json');
+		const parser = story as unknown as { parseFile: (text: string) => void };
+		parser.parseFile(JSON.stringify({ sbslib: ['shared.sbslib'], mastlib: ['mission.mastlib'] }));
+		assert.deepEqual(story.sbslib, ['shared.sbslib']);
+		assert.deepEqual(story.mastlib, ['mission.mastlib']);
+
+		parser.parseFile(JSON.stringify({ sbslib: [] }));
+		assert.deepEqual(story.sbslib, []);
+		assert.deepEqual(story.mastlib, []);
+	});
+
 	it('shares parsed library data across mission caches without sharing alias mutations', () => {
 		const first = createMissionCache('shared-library-first').cache;
 		const second = createMissionCache('shared-library-second').cache;

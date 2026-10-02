@@ -7,8 +7,8 @@ import { connection, notifyClient, sendToClient, setProgress } from '../server';
 import fs = require('fs');
 
 interface StoryJsonContents {
-	sbslib: string[],
-	mastlib: string[]
+	sbslib?: unknown;
+	mastlib?: unknown;
 }
 
 interface StoryJsonError {
@@ -209,8 +209,8 @@ export class StoryJson {
 	/** Only call this from readFile() */
 	private parseFile(text:string) {
 		const story: StoryJsonContents = JSON.parse(text);
-		if (story.sbslib) this.sbslib = story.sbslib;
-		if (story.mastlib) this.mastlib = story.mastlib;
+		this.sbslib = Array.isArray(story.sbslib) ? story.sbslib.filter((entry): entry is string => typeof entry === 'string') : [];
+		this.mastlib = Array.isArray(story.mastlib) ? story.mastlib.filter((entry): entry is string => typeof entry === 'string') : [];
 	}
 
 	/**

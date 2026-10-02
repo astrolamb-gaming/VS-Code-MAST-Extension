@@ -262,10 +262,10 @@ export function fixFileName(uri:string) {
 }
 
 export function fileFromUri(uri: string): string {
-	if (!uri.startsWith("file:///")) {
-		return "file:///" + uri;
+	if (uri.startsWith('file:')) {
+		return URI.parse(uri).toString();
 	}
-	return uri;
+	return URI.file(uri).toString();
 }
 
 export function getArtemisDirFromChild(child: string): string | null {
