@@ -560,13 +560,12 @@ export class MissionCache {
 		const normalized = fixFileName(filePath);
 		if (normalized.includes("/sbs_utils/")) return false;
 		if (this.isPackageTempPath(normalized)) return false;
-		if (path.extname(normalized).toLowerCase() === '.mast') {
-			const missionRoot = fixFileName(this.missionURI).replace(/\/+$/, '');
-			const fileFolder = fixFileName(path.dirname(normalized)).replace(/\/+$/, '');
-			const normalizedMissionRoot = process.platform === 'win32' ? missionRoot.toLowerCase() : missionRoot;
-			const normalizedFileFolder = process.platform === 'win32' ? fileFolder.toLowerCase() : fileFolder;
-			if (normalizedFileFolder === normalizedMissionRoot) return false;
-		}
+		const missionRoot = fixFileName(this.missionURI).replace(/\/+$/, '');
+		const fileFolder = fixFileName(path.dirname(normalized)).replace(/\/+$/, '');
+		const normalizedMissionRoot = process.platform === 'win32' ? missionRoot.toLowerCase() : missionRoot;
+		const normalizedFileFolder = process.platform === 'win32' ? fileFolder.toLowerCase() : fileFolder;
+		if (normalizedFileFolder === normalizedMissionRoot) return false;
+		if (this.getSharedPackageFileUris().has(normalized)) return false;
 		if (normalized.endsWith("/__init__.py") || normalized.endsWith("/__init__.mast")) return false;
 		return normalized.endsWith(".py") || normalized.endsWith(".mast");
 	}
@@ -651,6 +650,7 @@ export class MissionCache {
 	}
 
 	private async warnForUnreferencedFilesOnInitialLoad() {
+		if (!fs.existsSync(this.missionURI)) return;
 		const batchId = this.beginWarningBatch();
 		const files = getFilesInDir(this.missionURI, true);
 		for (const file of files) {
@@ -817,22 +817,20 @@ export class MissionCache {
 			}
 		});
 		this.watchers.push(w);
-		let runtime = path.join(this.missionURI,"mast.runtime.log")
-		let compile = path.join(this.missionURI,"mast.compile.log")
-		let runWatch = fs.watch(runtime, {}, (eventType, filename) => {
-			if (eventType === "change") {
-				// debug("Runtime log changed: " + filename);
-				void this.showLog("runtime", filename).catch((e) => debug(e));
-			}
-		});
-		let compileWatch = fs.watch(compile, {}, (eventType, filename) => {
-			if (eventType === "change") {
-				// debug("Compile log changed: " + filename);
-				void this.showLog("compile", filename).catch((e) => debug(e));
-			}
-		});
-		this.watchers.push(runWatch);
-		this.watchers.push(compileWatch);
+		const runtime = path.join(this.missionURI,"mast.runtime.log");
+		const compile = path.join(this.missionURI,"mast.compile.log");
+		if (fs.existsSync(runtime)) {
+			const runWatch = fs.watch(runtime, {}, (eventType, filename) => {
+				if (eventType === "change") void this.showLog("runtime", filename).catch((e) => debug(e));
+			});
+			this.watchers.push(runWatch);
+		}
+		if (fs.existsSync(compile)) {
+			const compileWatch = fs.watch(compile, {}, (eventType, filename) => {
+				if (eventType === "change") void this.showLog("compile", filename).catch((e) => debug(e));
+			});
+			this.watchers.push(compileWatch);
+		}
 	}
 	endWatchers() {
 		this.clearPendingInitPrompts();
@@ -2165,49 +2163,46 @@ export class MissionCache {
 		}
 
 		const nextBySource = new Map(nextFiles.files.map((entry) => [entry.source, entry]));
-		if (oldBySource.size !== nextBySource.size || [...oldBySource.keys()].some((source) => !nextBySource.has(source))) {
-			return false;
+		const changedSources = new Set<string>();
+		for (const [source, old] of oldBySource) {
+			if (nextBySource.get(source)?.key !== old.key) changedSources.add(source);
+		}
+		for (const [source, next] of nextBySource) {
+			if (oldBySource.get(source)?.key !== next.key) changedSources.add(source);
 		}
 
-		for (const [source, next] of nextBySource) {
-			const old = oldBySource.get(source);
-			if (!old || old.key === next.key) continue;
-			if (JSON.stringify(old.pyFile?.globalFiles ?? []) !== JSON.stringify(next.pyFile?.globalFiles ?? []) ||
-				JSON.stringify(old.pyFile?.globals ?? []) !== JSON.stringify(next.pyFile?.globals ?? [])) {
-				return false;
-			}
+		// Python exports can affect aliases and globals across multiple files in a mission.
+		for (const source of changedSources) {
+			if (oldBySource.get(source)?.pyFile || nextBySource.get(source)?.pyFile) return false;
 		}
-		if (![...nextBySource.entries()].some(([source, next]) => oldBySource.get(source)?.key !== next.key)) {
+
+		if (changedSources.size === 0) {
+			this._sharedPackageSnapshots.set(packageKey, nextFiles);
 			return true;
 		}
 
-		for (const [source, next] of nextBySource) {
+		for (const source of changedSources) {
 			const old = oldBySource.get(source);
-			if (!old || old.key === next.key) continue;
-
-			const oldUri = old.pyFile?.uri ?? old.mastFile?.uri;
-			if (oldUri) {
-				const normalizedUri = fixFileName(oldUri);
-				this.missionPyModules = this.missionPyModules.filter((file) => fixFileName(file.uri) !== normalizedUri);
-				this.pyFileCache = this.pyFileCache.filter((file) => fixFileName(file.uri) !== normalizedUri);
-				this.missionMastModules = this.missionMastModules.filter((file) => fixFileName(file.uri) !== normalizedUri);
-				this.removeExtractedItemsForUri(oldUri);
+			if (old) {
+				const oldUri = old.mastFile?.uri;
+				if (oldUri) {
+					const normalizedUri = fixFileName(oldUri);
+					this.missionMastModules = this.missionMastModules.filter((file) => fixFileName(file.uri) !== normalizedUri);
+					this.removeExtractedItemsForUri(oldUri);
+				}
+				this._sharedLibraryParseKeys.delete(old.key);
+				packageManager.releaseParsedFile(old.key, this.sharedLibraryOwnerKey);
+				this._sharedLibraryFilesByKey.delete(old.key);
+				this._routeLabelsBySharedSource.delete(old.key);
+				this._styleDefinitionsBySharedSource.delete(old.key);
 			}
-			this._sharedLibraryParseKeys.delete(old.key);
-			packageManager.releaseParsedFile(old.key, this.sharedLibraryOwnerKey);
-			this._sharedLibraryFilesByKey.delete(old.key);
-			this._routeLabelsBySharedSource.delete(old.key);
-			this._styleDefinitionsBySharedSource.delete(old.key);
-			this.attachSharedLibraryParse(next.key, next, next.file, packagePath, false);
+
+			const next = nextBySource.get(source);
+			if (next) this.attachSharedLibraryParse(next.key, next, next.file, packagePath, false);
 		}
 
 		this._sharedLibraryPackageSourceKeys.set(packageKey, new Set(nextFiles.files.map((entry) => entry.key)));
-			this._sharedPackageSnapshots.set(packageKey, nextFiles);
-		this.routeLabels = [...this._routeLabelsBySharedSource.values()].flat();
-		this.styleDefinitions = [...this._styleDefinitionsBySharedSource.values()].flat();
-		this.deprecatedFunctions = [...this.pyFileCache, ...this.missionPyModules]
-			.flatMap((file) => file.defaultFunctions.filter((func) => func.isDeprecated));
-		this.invalidateStructureCaches();
+		this._sharedPackageSnapshots.set(packageKey, nextFiles);
 		return true;
 	}
 
@@ -2219,6 +2214,10 @@ export class MissionCache {
 	checkForCacheUpdates() {
 		const updateStart = Date.now();
 		this.missionFilesLoaded = false;
+		if (!fs.existsSync(this.missionURI)) {
+			this.missionFilesLoaded = true;
+			return;
+		}
 		// First check for any files that have been deleted
 		const files = getFilesInDir(this.missionURI);
 		let found = false;
@@ -3051,7 +3050,9 @@ export function getCache(name:string, reloadCache:boolean = false): MissionCache
 	// Create a new cache
 	const ret = new MissionCache(name);
 	caches.set(normalizeCacheKey(ret.missionURI), ret);
-	void ret.load().catch((e) => debug(e)).then(() => {debug("Cache loaded for " + ret.missionURI)});
+	if (!isMochaProcess) {
+		void ret.load().catch((e) => debug(e)).then(() => {debug("Cache loaded for " + ret.missionURI)});
+	}
 	ret.lastAccessed = Date.now();
 	return ret;
 }

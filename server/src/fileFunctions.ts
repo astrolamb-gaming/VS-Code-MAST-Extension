@@ -140,16 +140,11 @@ export async function readZipArchive(filepath: string) {
 	const map: Map<string, string> = new Map();
 	//debug(filepath);
 	const zip = new AdmZip(filepath);
-	try {
-		
-		for (const zipEntry of zip.getEntries()) {
-			if (!zipEntry.isDirectory) {
-				let data = zipEntry.getData().toString('utf-8');
-				map.set(zipEntry.entryName,data);
-			}
+	for (const zipEntry of zip.getEntries()) {
+		if (!zipEntry.isDirectory) {
+			const data = zipEntry.getData().toString('utf-8');
+			map.set(zipEntry.entryName,data);
 		}
-	} catch (e) {
-		console.log(`Unzipping ${filepath} failed. \n${e}`);
 	}
 	return map;
 }
@@ -266,6 +261,24 @@ export function fileFromUri(uri: string): string {
 		return URI.parse(uri).toString();
 	}
 	return URI.file(uri).toString();
+}
+
+export function getDisplayFilePath(uri: string): string {
+	const normalized = fixFileName(uri);
+	const packageTempMarker = '/cosmosModules/';
+	const tempIndex = normalized.toLowerCase().lastIndexOf(packageTempMarker.toLowerCase());
+	if (tempIndex >= 0) {
+		const afterMarker = normalized.substring(tempIndex + packageTempMarker.length);
+		const packageIdEnd = afterMarker.indexOf('/');
+		if (packageIdEnd >= 0) {
+			return afterMarker.substring(packageIdEnd + 1).replace(/(^|\/)READONLY_/g, '$1');
+		}
+	}
+
+	const missionsMarker = '/missions/';
+	const missionIndex = normalized.toLowerCase().lastIndexOf(missionsMarker);
+	if (missionIndex >= 0) return normalized.substring(missionIndex + missionsMarker.length);
+	return path.basename(normalized);
 }
 
 export function getArtemisDirFromChild(child: string): string | null {

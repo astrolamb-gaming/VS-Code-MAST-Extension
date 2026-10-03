@@ -12,6 +12,8 @@ import type { LabelInfo } from './tokens/labels';
 import type { SignalInfo } from './tokens/signals';
 import type { Word } from './tokens/words';
 
+const isMochaProcess = process.argv.some((arg) => arg.toLowerCase().includes('mocha')) || !!process.env.MOCHA_WORKER_ID;
+
 export interface ParsedLibraryFile {
 	key: string;
 	source: string;
@@ -73,8 +75,11 @@ interface PackageRecord {
 	listeners: Map<string, PackageChangeListener>;
 	snapshot: PackageSnapshot;
 	loaded: boolean;
+	dirty: boolean;
 	loadPromise?: Promise<PackageSnapshot>;
+	reloadPromise?: Promise<void>;
 	watcher?: fs.FSWatcher;
+	parentWatcher?: fs.FSWatcher;
 	reloadTimer?: ReturnType<typeof setTimeout>;
 }
 
@@ -192,7 +197,8 @@ export class PackageManager {
 				initialFiles: resolved.kind === 'folder' ? resolved.files : undefined,
 				listeners: new Map(),
 				snapshot: emptyPackageSnapshot(),
-				loaded: false
+				loaded: false,
+				dirty: false
 			};
 			this.packages.set(key, record);
 		}
@@ -268,12 +274,13 @@ export class PackageManager {
 
 	releasePackage(packagePath: string, owner: string): void {
 		const key = this.normalizeSource(packagePath);
+		this.packageKeysByOwner.get(owner)?.delete(key);
 		const record = this.packages.get(key);
 		if (!record) return;
 		record.listeners.delete(owner);
-		this.packageKeysByOwner.get(owner)?.delete(key);
 		if (record.listeners.size > 0) return;
 		record.watcher?.close();
+		record.parentWatcher?.close();
 		if (record.reloadTimer) clearTimeout(record.reloadTimer);
 		this.packages.delete(key);
 		for (const parsedKey of this.parsedKeysByPackage.get(key) ?? []) {
@@ -293,17 +300,42 @@ export class PackageManager {
 	}
 
 	private startWatching(key: string, record: PackageRecord): void {
-		if (record.watcher) return;
+		if (isMochaProcess || record.watcher) return;
 		try {
-			const watchPath = record.kind === 'folder' ? record.path : path.dirname(record.path);
 			const packageFileName = path.basename(record.path).toLowerCase();
-			record.watcher = fs.watch(watchPath, { recursive: record.kind === 'folder' }, (_eventType, fileName) => {
-				if (record.kind === 'archive' && (!fileName || fileName.toString().toLowerCase() !== packageFileName)) return;
+			const scheduleReload = () => {
 				if (record.reloadTimer) clearTimeout(record.reloadTimer);
 				record.reloadTimer = setTimeout(() => {
 					record.reloadTimer = undefined;
-					void this.reloadPackage(key).catch((error) => debug(error));
+					void this.reloadPackage(record.path).catch((error) => debug(error));
 				}, 120);
+			};
+
+			if (record.kind === 'folder') {
+				if (fs.existsSync(record.path)) {
+					record.watcher = fs.watch(record.path, { recursive: true }, scheduleReload);
+					record.watcher.on('error', (error) => {
+						debug(`Package folder watcher failed for ${record.path}`);
+						debug(error);
+						record.watcher?.close();
+						record.watcher = undefined;
+						scheduleReload();
+					});
+				}
+				record.parentWatcher = fs.watch(path.dirname(record.path), (_eventType, fileName) => {
+					if (fileName?.toString().toLowerCase() !== packageFileName) return;
+					if (fs.existsSync(record.path) && !record.watcher) {
+						try { record.watcher = fs.watch(record.path, { recursive: true }, scheduleReload); }
+						catch (error) { debug(error); }
+					}
+					scheduleReload();
+				});
+				return;
+			}
+
+			record.watcher = fs.watch(path.dirname(record.path), (_eventType, fileName) => {
+				if (!fileName || fileName.toString().toLowerCase() !== packageFileName) return;
+				scheduleReload();
 			});
 		} catch (error) {
 			debug(`Unable to watch library package ${record.path}`);
@@ -313,38 +345,47 @@ export class PackageManager {
 
 	private async loadPackage(key: string, record: PackageRecord): Promise<PackageSnapshot> {
 		const nextFiles: ParsedLibraryFile[] = [];
-		if (record.kind === 'archive') {
-			const archive = await readZipArchive(record.path);
-			for (const [entryName, data] of archive.entries()) {
-				if ((!entryName.endsWith('.py') && !entryName.endsWith('.mast')) ||
-					entryName.endsWith('__init__.py') || entryName.endsWith('__init__.mast') ||
-					/(^|[\\/])tests?([\\/]|$)/i.test(entryName)) continue;
-				const file = this.getPackageTempPath(record.path, entryName);
-				this.writePackageTempFile(file, data);
-				const parsed = this.getParsedFile(data, file, `${record.path}!/${entryName}`);
-				this.retainParsedFile(parsed.key, `package:${key}`);
-				nextFiles.push(parsed);
+		let committed = false;
+		try {
+			if (!fs.existsSync(record.path)) {
+				if (!record.loaded) throw new Error(`Package source does not exist: ${record.path}`);
+			} else if (record.kind === 'archive') {
+				const archive = await readZipArchive(record.path);
+				for (const [entryName, data] of archive.entries()) {
+					if ((!entryName.endsWith('.py') && !entryName.endsWith('.mast')) ||
+						entryName.endsWith('__init__.py') || entryName.endsWith('__init__.mast') ||
+						/(^|[\\/])tests?([\\/]|$)/i.test(entryName)) continue;
+					const file = this.getPackageTempPath(record.path, entryName);
+					this.writePackageTempFile(file, data);
+					nextFiles.push(this.getParsedFile(data, file, `${record.path}!/${entryName}`));
+				}
+			} else {
+				const files = record.initialFiles ?? this.getLoadableLibraryFiles(record.path);
+				record.initialFiles = undefined;
+				for (const file of files) {
+					const data = await readFile(file).catch((error: unknown) => {
+						throw new Error(`Unable to read library source ${file}: ${String(error)}`);
+					});
+					nextFiles.push(this.getParsedFile(data, file, file));
+				}
 			}
-		} else {
-			const files = record.initialFiles ?? this.getLoadableLibraryFiles(record.path);
-			record.initialFiles = undefined;
-			for (const file of files) {
-				try {
-					const data = await readFile(file);
-					const parsed = this.getParsedFile(data, file, file);
-					this.retainParsedFile(parsed.key, `package:${key}`);
-					nextFiles.push(parsed);
-				} catch (error) {
-					debug(`Unable to read library source ${file}`);
-					debug(error);
+
+			if (this.packages.get(key) !== record || record.listeners.size === 0) return record.snapshot;
+			for (const parsed of nextFiles) this.retainParsedFile(parsed.key, `package:${key}`);
+			this.replacePackageKeys(key, nextFiles);
+			record.snapshot = this.aggregatePackage(nextFiles);
+			record.loaded = true;
+			committed = true;
+			debug(`[package] loaded ${record.path} (${record.kind}): files=${record.snapshot.files.length}, py=${record.snapshot.pyFiles.length}, mast=${record.snapshot.mastFiles.length}, labels=${record.snapshot.labels.length}[${record.snapshot.labels.slice(0, 5).map((label) => label.name).join(', ')}], signals=${record.snapshot.signals.length}[${record.snapshot.signals.slice(0, 5).map((signal) => signal.name).join(', ')}]`);
+			return record.snapshot;
+		} finally {
+			if (!committed) {
+				for (const parsed of nextFiles) {
+					const parsedRecord = this.parsedFiles.get(parsed.key);
+					if (parsedRecord) this.removeParsedFileIfUnused(parsed.key, parsedRecord);
 				}
 			}
 		}
-		this.replacePackageKeys(key, nextFiles);
-		record.snapshot = this.aggregatePackage(nextFiles);
-		record.loaded = true;
-		debug(`[package] loaded ${record.path} (${record.kind}): files=${record.snapshot.files.length}, py=${record.snapshot.pyFiles.length}, mast=${record.snapshot.mastFiles.length}, labels=${record.snapshot.labels.length}[${record.snapshot.labels.slice(0, 5).map((label) => label.name).join(', ')}], signals=${record.snapshot.signals.length}[${record.snapshot.signals.slice(0, 5).map((signal) => signal.name).join(', ')}]`);
-		return record.snapshot;
 	}
 
 	private aggregatePackage(files: ParsedLibraryFile[]): PackageSnapshot {
@@ -391,18 +432,41 @@ export class PackageManager {
 
 	async reloadPackage(packagePath: string): Promise<void> {
 		const key = this.normalizeSource(packagePath);
-		const existing = this.packageReloads.get(key);
-		if (existing) return existing;
 		const record = this.packages.get(key);
 		if (!record) return;
+		record.dirty = true;
+		const existing = record.reloadPromise ?? this.packageReloads.get(key);
+		if (existing) return existing;
 		const reload = (async () => {
-			if (record.loadPromise) await record.loadPromise;
-			const oldSnapshot = record.snapshot;
-			const next = await this.loadPackage(key, record);
-			if (next === oldSnapshot) return;
-			const callbacks = [...record.listeners.values()];
-			await Promise.all(callbacks.map((callback) => Promise.resolve(callback(record.path, next))));
-		})().finally(() => this.packageReloads.delete(key));
+			while (record.dirty && this.packages.get(key) === record && record.listeners.size > 0) {
+				record.dirty = false;
+				if (record.loadPromise) {
+					try { await record.loadPromise; } catch { /* The initial acquisition handles the failure. */ }
+				}
+				if (this.packages.get(key) !== record || record.listeners.size === 0) return;
+				const previous = record.snapshot;
+				try {
+					await this.loadPackage(key, record);
+				} catch (error) {
+					debug(`Unable to reload package ${record.path}; retaining its last successful snapshot`);
+					debug(error);
+					continue;
+				}
+				if (this.packages.get(key) !== record) return;
+				if (record.snapshot !== previous) {
+					const callbacks = [...record.listeners.entries()];
+					await Promise.all(callbacks.map(async ([owner, callback]) => {
+						if (record.listeners.get(owner) === callback && this.packages.get(key) === record) {
+							await callback(record.path, record.snapshot);
+						}
+					}));
+				}
+			}
+		})().finally(() => {
+			record.reloadPromise = undefined;
+			this.packageReloads.delete(key);
+		});
+		record.reloadPromise = reload;
 		this.packageReloads.set(key, reload);
 		return reload;
 	}
@@ -427,10 +491,17 @@ export class PackageManager {
 
 	private getPackageTempPath(packagePath: string, entryName: string): string {
 		const packageId = createHash('sha256').update(this.normalizeSource(packagePath), 'utf8').digest('hex').slice(0, 20);
+		const archiveName = path.basename(packagePath);
+		const extension = path.extname(archiveName);
+		const archiveStem = extension ? archiveName.slice(0, -extension.length) : archiveName;
+		const versionStart = archiveStem.search(/\.v\d+\.\d+\.\d+(?:_|$)/i);
+		const logicalPackageName = (versionStart >= 0 ? archiveStem.slice(0, versionStart) : archiveStem)
+			.replace(/^artemis-sbs\./i, '');
+		const logicalPackagePath = logicalPackageName.split('.').filter(Boolean);
 		const entryDirectory = path.dirname(entryName);
 		const entryFileName = path.basename(entryName);
 		const tempFileName = `READONLY_${entryFileName}`;
-		return fixFileName(path.join(os.tmpdir(), 'cosmosModules', packageId, entryDirectory, tempFileName));
+		return fixFileName(path.join(os.tmpdir(), 'cosmosModules', packageId, ...logicalPackagePath, entryDirectory, tempFileName));
 	}
 
 	private writePackageTempFile(file: string, contents: string): void {

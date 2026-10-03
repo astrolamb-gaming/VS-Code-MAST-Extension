@@ -6,7 +6,7 @@ import { debug } from 'console';
 import { getCache } from '../cache';
 import { URI } from 'vscode-uri';
 import path = require('path');
-import { fileFromUri, fixFileName, getFolders, getMissionFolder } from '../fileFunctions';
+import { fileFromUri, fixFileName, getDisplayFilePath, getFolders, getMissionFolder } from '../fileFunctions';
 import { getTokenTypeAtOffset, isInComment } from './comments';
 import { getDefaultVariableNamesInRange, variableModifiers } from './variables';
 import { start } from 'repl';
@@ -216,7 +216,7 @@ export function buildLabelDocs(label:LabelInfo): MarkupContent {
 	if (val === "") {
 		val = "No information specified for the '" + label.name + "' label.";
 	}
-	val = "`"+ label.name + "` is defined in `" + path.dirname(label.srcFile).replace(/.*?\/missions\//,"") + "/" + path.basename(label.srcFile) + "`  \n" + val;
+	val = "`"+ label.name + "` is defined in `" + getDisplayFilePath(label.srcFile) + "`  \n" + val;
 	let docs:MarkupContent = {
 		kind: "markdown",
 		value: val
