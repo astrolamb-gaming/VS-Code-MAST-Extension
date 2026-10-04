@@ -70,4 +70,22 @@ describe('signal regression coverage', () => {
 		const diagnostics = checkForUnusedSignals(doc).filter((diag) => diag.message.includes('some_signal'));
 		assert.equal(diagnostics.length, 0, JSON.stringify(diagnostics, null, 2));
 	});
+
+	it('extracts named role and roles arguments', () => {
+		const { missionDir } = createMission('named-role-arguments');
+		const text = 'set_timer(obj, role="Friendly")\nspawn_group(roles="Enemy, Neutral")\n';
+		const doc = createMastDocument(missionDir, 'main.mast', text);
+		const cache = getCache(doc.uri);
+		cache.updateFileInfo(doc);
+
+		const roles = cache.getRoles(missionDir).map((role) => role.name);
+		assert.ok(roles.includes('friendly'));
+		assert.ok(roles.includes('enemy'));
+		assert.ok(roles.includes('neutral'));
+
+		const mastFile = cache.getMastFile(doc.uri);
+		assert.ok(mastFile.roles.some((role) => role.name === 'friendly'));
+		assert.ok(mastFile.roles.some((role) => role.name === 'enemy'));
+		assert.ok(mastFile.roles.some((role) => role.name === 'neutral'));
+	});
 });

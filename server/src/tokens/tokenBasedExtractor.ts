@@ -73,11 +73,23 @@ export class TokenBasedExtractor {
 	 * Extract role strings by finding add_role/has_role function calls
 	 */
 	public extractRoles(): Word[] {
+		const namedRoleWords: Word[] = [];
+		for (let i = 0; i < this.tokens.length; i++) {
+			if (!this.isCallableToken(this.tokens[i])) continue;
+			for (const argName of ['role', 'roles']) {
+				const stringToken = this.findNamedStringArgumentInCall(i, argName);
+				if (!stringToken) continue;
+				const values = this.extractStringValue(stringToken.text).split(',').map((value) => value.trim()).filter(Boolean);
+				for (const value of values) this.addWord(namedRoleWords, value.toLowerCase(), stringToken);
+			}
+		}
+
 		return this.mergeWords([
 			...this.extractStringsByFunctionKeywords(['role'], {
 				normalizeCase: true,
 				allowCommaSeparated: true
 			}),
+			...namedRoleWords,
 			...this.extractDocumentedWords(['role'], {
 				normalizeCase: true,
 				allowCommaSeparated: true
