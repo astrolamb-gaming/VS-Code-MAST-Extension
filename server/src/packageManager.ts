@@ -8,6 +8,7 @@ import { PyFile } from './files/PyFile';
 import { fixFileName, getFilesInDir, getFolders, readFile, readZipArchive } from './fileFunctions';
 import { IRouteLabel, loadRouteLabels } from './tokens/routeLabels';
 import { loadStyleDefs } from './data/styles';
+import { getDescriptionName, isDevelopmentDescription, MissionDescription, readMissionDescription } from './data/missionDescription';
 import type { LabelInfo } from './tokens/labels';
 import type { SignalInfo } from './tokens/signals';
 import type { Word } from './tokens/words';
@@ -139,7 +140,9 @@ export class PackageManager {
 	private resolvePackage(
 		request: PackageRequest,
 		missionCandidates: Array<{ name: string; path: string }>,
-		loadableFilesByPath: Map<string, string[]>
+		loadableFilesByPath: Map<string, string[]>,
+		descriptionsByPath: Map<string, MissionDescription | undefined>,
+		sourceCandidateDirs: string[]
 	): ResolvedPackage {
 		const moduleParts = request.getModuleBaseName(request.name).split('.').filter(Boolean);
 		for (const mission of missionCandidates) {
@@ -149,6 +152,11 @@ export class PackageManager {
 			const sourcePath = path.join(mission.path, ...packageSubpath);
 			const { key: sourceKey, files } = this.getLoadableFilesForPath(sourcePath, loadableFilesByPath);
 			if (files.length > 0) {
+				const dev = this.findPreferredSource(mission.path, packageSubpath, sourceCandidateDirs, loadableFilesByPath, descriptionsByPath);
+				if (dev) {
+					debug(`[package] ${request.name} resolved to preferred source ${dev.sourcePath}`);
+					return { identity: dev.key, path: dev.sourcePath, kind: 'folder', files: dev.files };
+				}
 				debug(`[package] ${request.name} resolved to editable source ${sourcePath}`);
 				return { identity: sourceKey, path: sourcePath, kind: 'folder', files };
 			}
@@ -162,6 +170,11 @@ export class PackageManager {
 			const sourcePath = path.join(folderPath, ...packageSubpath);
 			const { key: sourceKey, files } = this.getLoadableFilesForPath(sourcePath, loadableFilesByPath);
 			if (files.length > 0) {
+				const dev = this.findPreferredSource(folderPath, packageSubpath, sourceCandidateDirs, loadableFilesByPath, descriptionsByPath);
+				if (dev) {
+					debug(`[package] ${request.name} resolved to preferred source ${dev.sourcePath}`);
+					return { identity: dev.key, path: dev.sourcePath, kind: 'folder', files: dev.files };
+				}
 				debug(`[package] ${request.name} resolved to workspace source ${sourcePath}`);
 				return { identity: sourceKey, path: sourcePath, kind: 'folder', files };
 			}
@@ -169,6 +182,50 @@ export class PackageManager {
 		const archivePath = path.join(request.missionLibFolder, request.name);
 		debug(`[package] ${request.name} resolved to archive ${archivePath}`);
 		return { identity: this.normalizeSource(archivePath), path: archivePath, kind: 'archive' };
+	}
+
+	private getMissionDescription(folderPath: string, descriptionsByPath: Map<string, MissionDescription | undefined>): MissionDescription | undefined {
+		const key = this.normalizeSource(folderPath);
+		if (!descriptionsByPath.has(key)) descriptionsByPath.set(key, readMissionDescription(folderPath));
+		return descriptionsByPath.get(key);
+	}
+
+	/**
+	 * Package source was found in `matchedDir`. Looks for other mission/workspace folders whose description
+	 * has the same display name and prefers, in order: a folder containing `.git`, then one marked
+	 * Dev/Development in its category or keywords. Returns undefined to keep `matchedDir`.
+	 */
+	private findPreferredSource(
+		matchedDir: string,
+		packageSubpath: string[],
+		candidateDirs: string[],
+		loadableFilesByPath: Map<string, string[]>,
+		descriptionsByPath: Map<string, MissionDescription | undefined>
+	): { key: string; sourcePath: string; files: string[] } | undefined {
+		const matchedDescription = this.getMissionDescription(matchedDir, descriptionsByPath);
+		const name = getDescriptionName(matchedDescription);
+		if (!name) return undefined;
+		const hasGit = (dir: string) => fs.existsSync(path.join(dir, '.git'));
+		if (hasGit(matchedDir)) return undefined;
+
+		const matchedKey = this.normalizeSource(matchedDir);
+		const alternatives: Array<{ dir: string; key: string; sourcePath: string; files: string[]; description: MissionDescription | undefined }> = [];
+		const seen = new Set<string>([matchedKey]);
+		for (const dir of candidateDirs) {
+			const dirKey = this.normalizeSource(dir);
+			if (seen.has(dirKey)) continue;
+			seen.add(dirKey);
+			const description = this.getMissionDescription(dir, descriptionsByPath);
+			if (getDescriptionName(description) !== name) continue;
+			const sourcePath = path.join(dir, ...packageSubpath);
+			const { key, files } = this.getLoadableFilesForPath(sourcePath, loadableFilesByPath);
+			if (files.length > 0) alternatives.push({ dir, key, sourcePath, files, description });
+		}
+
+		const gitSource = alternatives.find((alt) => hasGit(alt.dir));
+		if (gitSource) return gitSource;
+		if (isDevelopmentDescription(matchedDescription)) return undefined;
+		return alternatives.find((alt) => isDevelopmentDescription(alt.description));
 	}
 
 	private getLoadableFilesForPath(folderPath: string, filesByPath: Map<string, string[]>): { key: string; files: string[] } {
@@ -236,9 +293,11 @@ export class PackageManager {
 		}
 		for (const mission of requests[0]?.artemisMissions ?? []) addMissionCandidate(mission);
 		const loadableFilesByPath = new Map<string, string[]>();
+		const descriptionsByPath = new Map<string, MissionDescription | undefined>();
+		const sourceCandidateDirs = [...missionCandidates.map((mission) => mission.path), ...(requests[0]?.workspaceFolders ?? [])];
 		const resolvedByName = new Map<string, ResolvedPackage>();
 		for (const request of requests) {
-			resolvedByName.set(request.name, this.resolvePackage(request, missionCandidates, loadableFilesByPath));
+			resolvedByName.set(request.name, this.resolvePackage(request, missionCandidates, loadableFilesByPath, descriptionsByPath, sourceCandidateDirs));
 		}
 
 		const uniquePackages = new Map<string, ResolvedPackage>();

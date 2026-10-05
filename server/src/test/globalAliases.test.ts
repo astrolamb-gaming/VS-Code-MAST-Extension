@@ -279,6 +279,71 @@ describe('global alias regression coverage', () => {
 		manager.releaseOwnerPackages(owner);
 	});
 
+	it('prefers the Dev-categorized mission source when mission descriptions share a name', async () => {
+		const manager = new PackageManager();
+		const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mast-dev-package-test-'));
+		tempRoots.push(root);
+		const missionsRoot = path.join(root, 'data', 'missions');
+		const missionLibFolder = path.join(missionsRoot, '__lib__');
+		fs.mkdirSync(missionLibFolder, { recursive: true });
+		const writeMission = (folder: string, description: string, label: string) => {
+			const packageFolder = path.join(missionsRoot, folder, 'hangar');
+			fs.mkdirSync(packageFolder, { recursive: true });
+			fs.writeFileSync(path.join(missionsRoot, folder, 'description.yaml'), description, 'utf8');
+			fs.writeFileSync(path.join(packageFolder, 'hangar.mast'), `== ${label} ==\n`, 'utf8');
+			return packageFolder;
+		};
+		writeMission('LegendaryMissions', 'Category: Classic\nVisible Mission Name: Legendary Missions\nKeywords: classic, multiple\n', 'release_label');
+		const devFolder = writeMission('LegendaryMissionsDev', 'Category: Development\nVisible Mission Name: Legendary Missions\nKeywords: classic, multiple\n', 'dev_label');
+		const packageName = 'artemis-sbs.LegendaryMissions.hangar.v1.4.0.mastlib';
+		const owner = `dev-package-test-${Date.now()}`;
+
+		const result = await manager.reconcilePackages([{
+			name: packageName,
+			missionLibFolder,
+			artemisMissions: [],
+			workspaceFolders: [],
+			getModuleBaseName: (name: string) => name.substring(0, name.indexOf('.v'))
+		}], owner, () => {});
+
+		assert.equal(result.get(packageName)?.identity, manager.normalizeSource(devFolder));
+		assert.ok(result.get(packageName)?.snapshot.labels.some((label) => label.name === 'dev_label'));
+		manager.releaseOwnerPackages(owner);
+	});
+
+	it('prefers the mission folder containing .git over Dev-categorized folders with the same display name', async () => {
+		const manager = new PackageManager();
+		const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mast-git-package-test-'));
+		tempRoots.push(root);
+		const missionsRoot = path.join(root, 'data', 'missions');
+		const missionLibFolder = path.join(missionsRoot, '__lib__');
+		fs.mkdirSync(missionLibFolder, { recursive: true });
+		const writeMission = (folder: string, category: string, label: string, git: boolean) => {
+			const packageFolder = path.join(missionsRoot, folder, 'hangar');
+			fs.mkdirSync(packageFolder, { recursive: true });
+			fs.writeFileSync(path.join(missionsRoot, folder, 'description.yaml'), `Category: ${category}\nVisible Mission Name: Legendary Missions\n`, 'utf8');
+			fs.writeFileSync(path.join(packageFolder, 'hangar.mast'), `== ${label} ==\n`, 'utf8');
+			if (git) fs.mkdirSync(path.join(missionsRoot, folder, '.git'));
+			return packageFolder;
+		};
+		writeMission('legendarymissions', 'Classic', 'plain_label', false);
+		writeMission('LegendaryMissionsDev', 'Development', 'dev_label', false);
+		const gitFolder = writeMission('LegendaryMissionsGit', 'Classic', 'git_label', true);
+		const packageName = 'artemis-sbs.LegendaryMissions.hangar.v1.4.0.mastlib';
+		const owner = `git-package-test-${Date.now()}`;
+
+		const result = await manager.reconcilePackages([{
+			name: packageName,
+			missionLibFolder,
+			artemisMissions: [],
+			workspaceFolders: [],
+			getModuleBaseName: (name: string) => name.substring(0, name.indexOf('.v'))
+		}], owner, () => {});
+
+		assert.equal(result.get(packageName)?.identity, manager.normalizeSource(gitFolder));
+		manager.releaseOwnerPackages(owner);
+	});
+
 	it('loads labels and emitted signals from a packaged MAST library file', async () => {
 		const { cache, missionDir } = createMissionCache('packaged-mast-library');
 		const manager = new PackageManager();

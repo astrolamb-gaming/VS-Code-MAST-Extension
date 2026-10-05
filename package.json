@@ -348,6 +348,7 @@
 		"@stylistic/eslint-plugin": "^2.9.0",
 		"@types/adm-zip": "^0.5.7",
 		"@types/hjson": "^2.4.6",
+		"@types/js-yaml": "^4.0.9",
 		"@types/mocha": "^10.0.6",
 		"@types/node": "^20",
 		"eslint": "^9.22.0",
@@ -360,6 +361,7 @@
 	"dependencies": {
 		"adm-zip": "^0.5.16",
 		"hjson": "^3.2.2",
+		"js-yaml": "^4.1.0",
 		"python-shell": "^5.0.0",
 		"sharp": "^0.34.1",
 		"vscode-uri": "^3.1.0"

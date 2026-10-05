@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { MissionDescription, readMissionDescription } from './data/missionDescription';
 import { CompletionItem, CompletionItemKind, integer, Location, SignatureInformation } from 'vscode-languageserver';
 import { MastFile } from './files/MastFile';
 import { PyFile } from './files/PyFile';
@@ -118,6 +119,7 @@ export class MissionCache {
 
 	missionName: string = "";
 	missionURI: string = "";
+	missionDescription: MissionDescription | undefined = undefined;
 	storyJson: StoryJson;
 	missionLibManifestPath: string = "";
 	missionLibFolder: string = "";
@@ -352,6 +354,8 @@ export class MissionCache {
 	}
 
 	private async loadInternal(): Promise<void> {
+		this.missionDescription = readMissionDescription(this.missionURI);
+
 		const artemisDir = getArtemisDirFromChild(this.missionURI);
 		const missionFiles = fs.existsSync(this.missionURI) ? getFilesInDir(this.missionURI, true) : [];
 		const hasMastFiles = missionFiles.some((file) => path.extname(file).toLowerCase() === '.mast');
@@ -756,6 +760,10 @@ export class MissionCache {
 			// also generally emit 'rename'
 			// debug(filename);
 			if (filename === null || filename.includes(".git") || filename.includes("__pycache__") || filename.includes("__init__") || filename.endsWith(".pyc")) return;
+			if (filename === 'description.yaml') {
+				void this.reload().catch((e) => debug(e));
+				return;
+			}
 			// debug(this.missionURI)
 			// debug(filename)
 			if (eventType === "rename") {
@@ -3137,5 +3145,4 @@ function cacheGC() {
 
 // start GC loop
 cacheGC();
-
 
