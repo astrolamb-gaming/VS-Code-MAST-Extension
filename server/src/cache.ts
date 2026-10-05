@@ -1415,7 +1415,50 @@ export class MissionCache {
 		if (normalized.endsWith('/__init__')) {
 			normalized = normalized.substring(0, normalized.length - '/__init__'.length);
 		}
+		// Shared package files are materialized with this prefix so editors can
+		// distinguish them from writable files; it is not part of the Python module.
+		normalized = normalized.replace(/(^|\/)READONLY_([^/]*)$/, '$1$2');
 		return normalized;
+	}
+
+	private getSbsUtilsModuleName(filePath: string): string | undefined {
+		const normalized = fixFileName(filePath);
+		const packageMarker = '/sbs_utils/';
+		const markerIndex = normalized.toLowerCase().lastIndexOf(packageMarker);
+		if (markerIndex < 0 || !normalized.toLowerCase().endsWith('.py')) {
+			return undefined;
+		}
+		let modulePath = normalized.substring(markerIndex + packageMarker.length, normalized.length - 3);
+		modulePath = modulePath.replace(/(^|\/)READONLY_([^/]*)$/, '$1$2');
+		if (modulePath === '__init__') {
+			return 'sbs_utils';
+		}
+		if (modulePath.endsWith('/__init__')) {
+			modulePath = modulePath.substring(0, modulePath.length - '/__init__'.length);
+		}
+		return `sbs_utils.${modulePath.replace(/\//g, '.')}`;
+	}
+
+	private buildRelativePythonImportFromModules(importingModule: string, sourceModule: string): string | undefined {
+		const importerPackage = importingModule.split('.').slice(0, -1);
+		const sourceParts = sourceModule.split('.');
+		let commonParts = 0;
+		while (commonParts < importerPackage.length &&
+			commonParts < sourceParts.length &&
+			importerPackage[commonParts] === sourceParts[commonParts]) {
+			commonParts++;
+		}
+		if (commonParts === 0) {
+			return undefined;
+		}
+		const relativeLevel = importerPackage.length - commonParts + 1;
+		return '.'.repeat(relativeLevel) + sourceParts.slice(commonParts).join('.');
+	}
+
+	private getCosmosModuleRoot(filePath: string): string | undefined {
+		const normalized = fixFileName(filePath);
+		const match = /^(.*\/cosmosModules\/[^/]+)(?:\/|$)/i.exec(normalized);
+		return match?.[1];
 	}
 
 	private buildRelativePythonModulePath(importingFile: string, sourceFile: string): string | undefined {
@@ -1441,10 +1484,45 @@ export class MissionCache {
 	}
 
 	getPythonImportModuleNameForSource(sourceFile: string, importingFile: string): string | undefined {
-		if (!this.isSbslibFile(sourceFile)) {
+		// The archive-backed source may be under cosmosModules while the open file
+		// is the editable checkout. Compare their logical sbs_utils module names so
+		// siblings still produce imports like `from .inventory import ...`.
+		const sourceSbsModule = this.getSbsUtilsModuleName(sourceFile);
+		const importingSbsModule = this.getSbsUtilsModuleName(importingFile);
+		if (sourceSbsModule && importingSbsModule) {
+			return this.buildRelativePythonImportFromModules(importingSbsModule, sourceSbsModule);
+		}
+
+		// Package files loaded from an archive share a stable extracted root, not
+		// the mission's filesystem root. Within that package, use Python-relative
+		// imports (e.g. `.inventory`) just as the original package source does.
+		const sourcePackageRoot = this.getCosmosModuleRoot(sourceFile);
+		const importerPackageRoot = this.getCosmosModuleRoot(importingFile);
+		if (sourcePackageRoot && sourcePackageRoot === importerPackageRoot) {
+			return this.buildRelativePythonModulePath(importingFile, sourceFile);
+		}
+
+		const sourceIsMissionFile = this.getMissionRelativePath(sourceFile) !== undefined;
+		const importerIsMissionFile = this.getMissionRelativePath(importingFile) !== undefined;
+		const sourceIsSbslibFile = this.isSbslibFile(sourceFile);
+		if (sourceIsSbslibFile) {
+			// Keep relative imports inside the same shared-library package only. A
+			// mission file importing sbs_utils must use its normal absolute package
+			// path; computing a path from the mission root to the library source would
+			// produce an invalid dotted path containing the drive and directory names.
+			const sourcePackage = this.getTopLevelMissionFolder(sourceFile);
+			const importerPackage = this.getTopLevelMissionFolder(importingFile);
+			if (sourcePackage && sourcePackage === importerPackage) {
+				return this.buildRelativePythonModulePath(importingFile, sourceFile);
+			}
 			return undefined;
 		}
-		return this.buildRelativePythonModulePath(importingFile, sourceFile);
+		// Mission-local modules are imported relative to one another, matching the
+		// package style used by files such as `lifeform.py` (`from .links import ...`).
+		if (sourceIsMissionFile && importerIsMissionFile) {
+			return this.buildRelativePythonModulePath(importingFile, sourceFile);
+		}
+		return undefined;
 	}
 
 	private syncMastExtractedItems(file: MastFile) {
@@ -1806,12 +1884,23 @@ export class MissionCache {
 	}
 
 	tryApplyMastClassGlobal(f: PyFile, g: string[]) {
-		const baseName = path.basename(f.uri, '.py');
+		const baseName = path.basename(f.uri, '.py').replace(/^READONLY_/, '');
 		if (baseName === g[0]) {
 			f.isGlobal = true;
 			f.globalAlias = g[0];
 			f.applyImportedGlobalAlias(false);
 		}
+	}
+
+	private matchesImportedPythonModule(file: PyFile, importedModule: string): boolean {
+		const moduleFile = file.uri
+			.replace(/\\/g, '/')
+			.replace(/(^|\/)READONLY_/g, '$1')
+			.replace(/\.py$/i, '')
+			.replace(/\//g, '.');
+		const normalizedImport = importedModule.replace(/[\\/]/g, '.');
+		return file.uri.toLowerCase().endsWith('.py') &&
+			(moduleFile === normalizedImport || moduleFile.endsWith(`.${normalizedImport}`));
 	}
 
 	tryApplyFileAsGlobal(f:PyFile, g:string[]) {
@@ -1831,8 +1920,7 @@ export class MissionCache {
 			return;
 		}
 
-		const file = f.uri.replace(/\//g,".").replace(/\\/g,".");
-		if (file.includes(importedModule) && file.endsWith(".py")) {
+		if (this.matchesImportedPythonModule(f, importedModule)) {
 			f.isGlobal = true;
 			f.globalAlias = g[1] || "";
 			const moduleBase = importedModule.split('.').pop() || '';
@@ -2462,6 +2550,29 @@ export class MissionCache {
 	getCompletions(_class: string = "") {
 		//debug(this.missionDefaultCompletions.length);
 		let ci:CompletionItem[] = [];
+		const addPythonFileFunctions = (file: PyFile) => {
+			const addedNames = new Set<string>();
+			for (const func of file.defaultFunctions) {
+				ci.push(func.buildCompletionItem());
+				addedNames.add(func.name);
+			}
+			// MAST aliases are derived from import_python_module declarations. Build
+			// any missing prefixed entries from source declarations as a safeguard for
+			// shared-package views whose alias mutation has not been applied yet.
+			for (const [modulePath, declaredAlias] of this.sbsGlobals) {
+				if (!this.matchesImportedPythonModule(file, modulePath)) continue;
+				const prefix = declaredAlias || modulePath.split('.').pop() || '';
+				if (!prefix || prefix === 'names' || prefix === 'sbs') continue;
+				for (const sourceFunction of file.pythonFunctions) {
+					const aliasName = `${prefix}_${sourceFunction.name}`;
+					if (addedNames.has(aliasName)) continue;
+					const aliasFunction = sourceFunction.copy();
+					aliasFunction.name = aliasName;
+					ci.push(aliasFunction.buildCompletionItem());
+					addedNames.add(aliasName);
+				}
+			}
+		};
 		// Don't need to do this, but will be slightly faster than iterating over missionClasses and then returning the defaults
 		if (_class === "") {
 			//debug(ci.length);
@@ -2470,17 +2581,13 @@ export class MissionCache {
 			// 	ci.push(f.buildCompletionItem());
 			// }
 			for (const p of this.missionPyModules) {
-				for (const f of p.defaultFunctions) {
-					ci.push(f.buildCompletionItem());
-				}
+				addPythonFileFunctions(p);
 			}
 			for (const c of this.getClasses()) {
 				ci.push(c.buildCompletionItem());
 			}
 			for (const p of this.pyFileCache) {
-				for (const f of p.defaultFunctions) {
-					ci.push(f.buildCompletionItem());
-				}
+				addPythonFileFunctions(p);
 			}
 			return ci;
 		}
@@ -2493,6 +2600,29 @@ export class MissionCache {
 			}
 		}
 		return [];//this.missionDefaultCompletions;
+	}
+
+	/**
+	 * Get completions for Python code using declarations as they are named in their
+	 * source modules. MAST-facing aliases are intentionally kept out of this list.
+	 */
+	getPythonCompletions(): CompletionItem[] {
+		const items: CompletionItem[] = [];
+		for (const file of [...this.missionPyModules, ...this.pyFileCache]) {
+			for (const func of file.pythonFunctions) {
+				items.push(func.buildCompletionItem());
+			}
+			for (const classObject of file.pythonClasses) {
+				items.push(classObject.buildCompletionItem());
+			}
+		}
+		return items;
+	}
+
+	/** Return source-declared classes, excluding synthetic MAST module wrappers. */
+	getPythonClasses(): ClassObject[] {
+		return [...this.missionPyModules, ...this.pyFileCache]
+			.flatMap((file) => file.pythonClasses);
 	}
 
 	/**

@@ -61,6 +61,7 @@ import { fileFromUri } from './fileFunctions';
 import * as v8 from 'v8';
 import { MastFile } from './files/MastFile';
 import { PyFile } from './files/PyFile';
+import { addPythonAutoImport } from './pythonImport';
 
 function createNoopConnection(): any {
 	const noop = () => undefined;
@@ -1176,7 +1177,6 @@ connection.onCompletionResolve(async (completionItem: CompletionItem): Promise<C
 	}
 
 	const sourceFile = completionItem.data.sourceFile as string;
-	const functionName = (completionItem.data.functionName as string) || (completionItem.data.className as string);
 	const text = activeDoc.getText();
 	const cache = getCache(activeDoc.uri);
 
@@ -1187,59 +1187,7 @@ connection.onCompletionResolve(async (completionItem: CompletionItem): Promise<C
 	if (moduleNames.length === 0) {
 		return completionItem;
 	}
-	let moduleName = moduleNames[0];
-
-	// Check if already imported
-	for (const candidate of moduleNames) {
-		if (isAlreadyImported(text, candidate, functionName)) {
-			return completionItem;
-		}
-	}
-
-	// Check if imports from this module already exist (supports preferred and legacy module styles)
-	let existingImportMatch: { line: number; lineContent: string; imports: string[] } | undefined;
-	for (const candidate of moduleNames) {
-		const match = findExistingImportFromModule(text, candidate);
-		if (match) {
-			existingImportMatch = match;
-			moduleName = candidate;
-			break;
-		}
-	}
-	
-	if (existingImportMatch) {
-		// Append to existing import
-		const { line, lineContent, imports } = existingImportMatch;
-		
-		// Only add if not already in the list
-		if (!imports.some(imp => imp.split(/\s+as\s+/)[0].trim() === functionName)) {
-			const updatedImports = [...imports, functionName];
-			const updatedLine = `from ${moduleName} import ${updatedImports.join(', ')}`;
-			
-			completionItem.additionalTextEdits = [
-				{
-					range: {
-						start: { line, character: 0 },
-						end: { line, character: lineContent.length }
-					},
-					newText: updatedLine
-				}
-			];
-		}
-	} else {
-		// Add new import line at the top
-		completionItem.additionalTextEdits = [
-			{
-				range: {
-					start: { line: 0, character: 0 },
-					end: { line: 0, character: 0 }
-				},
-				newText: `from ${moduleName} import ${functionName}\n`
-			}
-		];
-	}
-
-	return completionItem;
+	return addPythonAutoImport(completionItem, text, moduleNames);
 });
 
 function extractModuleName(sourceFile: string): string | undefined {

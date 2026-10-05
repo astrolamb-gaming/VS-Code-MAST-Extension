@@ -1221,7 +1221,7 @@ if (!isPythonDocument) {
 		debug(iStr);
 		const receiverName = getTrailingIdentifierBeforeDot(iStr);
 		// First we check if a class is being referenced.
-		const classes = cache.getClasses();
+		const classes = isPythonDocument ? cache.getPythonClasses() : cache.getClasses();
 
 		const quotedLiteralClass = getQuotedLiteralClassForMemberAccess(iStr);
 		if (quotedLiteralClass) {
@@ -1635,7 +1635,7 @@ if (!isPythonDocument) {
 	// }
 
 	const completionsStart = Date.now();
-	ci = ci.concat(cache.getCompletions()); // TODO: What does this even do?
+	ci = ci.concat(isPythonDocument ? cache.getPythonCompletions() : cache.getCompletions());
 	const completionsElapsed = Date.now() - completionsStart;
 	if (completionsElapsed > 5) {
 		debug(`[perf] onCompletion cache.getCompletions took ${completionsElapsed}ms`);

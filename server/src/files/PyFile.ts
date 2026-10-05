@@ -19,6 +19,11 @@ import { Token } from '../tokens/tokenBasedExtractor';
 export class PyFile extends FileCache {
 	defaultFunctions: Function[] = [];
 	classes: ClassObject[] = [];
+	// Keep the declarations as written in Python separate from the MAST aliases below.
+	// MAST may rename free functions (for example, `arc` to `scatter_arc`) and add a
+	// synthetic module class; Python imports must continue to use the real declarations.
+	pythonFunctions: Function[] = [];
+	pythonClasses: ClassObject[] = [];
 	words: Word[] = [];
 	roles: Word[] = [];
 	lastText: string | undefined = undefined;
@@ -111,10 +116,16 @@ export class PyFile extends FileCache {
 					classObject.properties = fallbackProperties;
 				}
 			}
+			// Preserve the source-level API before asClasses and MAST global aliasing add
+			// synthetic module classes or prefix free functions for MAST scripts.
+			this.pythonFunctions = [...this.defaultFunctions];
+			this.pythonClasses = [...this.classes];
 			
 		} catch (e) {
 			// If PythonLexer fails, continue without class/function info
 			debug("PythonLexer error for " + this.uri + ": " + e);
+			this.pythonFunctions = [];
+			this.pythonClasses = [];
 		}
 
 		/**

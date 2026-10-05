@@ -15,6 +15,7 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
 import { onCompletion } from '../requests/autocompletion';
 import { onHover } from '../requests/hover';
+import { addPythonAutoImport, extractPythonModuleName } from '../pythonImport';
 
 const tempRoots: string[] = [];
 
@@ -513,9 +514,6 @@ describe('global alias regression coverage', () => {
 		await (cache as unknown as { modulesLoaded: () => Promise<void> }).modulesLoaded();
 		const normalizedSourceFile = sourceFile.replace(/\\/g, '/');
 		assert.ok(cache.missionMastModules.some((file) => file.uri.replace(/\\/g, '/') === normalizedSourceFile));
-		const initManaged = cache as unknown as { isInitManagedFile: (filePath: string) => boolean };
-		assert.equal(initManaged.isInitManagedFile(rootHelper), false);
-		assert.equal(initManaged.isInitManagedFile(sourceFile), false);
 		const doc = TextDocument.create(URI.file(path.join(missionDir, 'main.mast')).toString(), 'mast', 1, '');
 		const normalizeWindowsPath = (value: string) => path.win32.normalize(value.replace(/\//g, '\\'));
 		assert.equal(normalizeWindowsPath(cache.getLabel('editable_hangar_label')?.srcFile || ''), normalizeWindowsPath(sourceFile));
@@ -829,6 +827,100 @@ class MastGlobals:
 		assert.ok(cache.getMethod('port_side'));
 		assert.equal(cache.getMastGlobal('sides'), undefined);
 		assert.equal(cache.getClasses().some((classObject) => classObject.name === 'sides'), false);
+	});
+
+	it('uses source-level Python names while retaining prefixed MAST completions', () => {
+		const { cache, missionDir } = createRegisteredMissionCache('python-import-source-names');
+		const shipDataPy = new PyFile(path.join(missionDir, 'sbs_utils', 'procedural', 'ship_data.py'), `
+def get_ship_data():
+    pass
+`);
+		const globalsPy = new PyFile(path.join(missionDir, 'globals.py'), `
+class MastGlobals:
+    @staticmethod
+    def load():
+        MastGlobals.import_python_module('sbs_utils.procedural.ship_data')
+`);
+		cache.addSbsPyFile(shipDataPy);
+		cache.addMissionPyFile(globalsPy);
+		assert.deepEqual(globalsPy.globalFiles, [['sbs_utils.procedural.ship_data', '']]);
+		// This directory is a shared Python library package, not a mission-local
+		// module: imports from the mission should use `sbs_utils...`, not a path
+		// relative to the library's on-disk Windows location.
+		cache.missionPackageLayout.sbslib.add('sbs_utils');
+
+		const pythonPath = path.join(missionDir, 'consumer.py');
+		const pythonText = '';
+		const pythonDocument = TextDocument.create(URI.file(pythonPath).toString(), 'python', 1, pythonText);
+		const pythonItems = onCompletion({
+			textDocument: { uri: pythonDocument.uri },
+			position: { line: 0, character: 0 },
+		}, pythonDocument);
+		const pythonLabels = pythonItems.map((item) => item.label);
+
+		assert.ok(pythonLabels.includes('get_ship_data()'));
+		assert.equal(pythonLabels.includes('ship_data_get_ship_data()'), false);
+		assert.equal(pythonLabels.includes('ship_data'), false);
+		assert.ok(cache.getCompletions().some((item) => item.label === 'ship_data_get_ship_data()'));
+
+		// Resolving the selected item adds an import for the real Python symbol, not
+		// the prefixed alias exposed only to MAST scripts.
+		const selectedItem = pythonItems.find((item) => item.label === 'get_ship_data()');
+		assert.ok(selectedItem);
+		const sourceFile = selectedItem!.data!.sourceFile as string;
+		const moduleNames = [
+			cache.getPythonImportModuleNameForSource(sourceFile, pythonPath),
+			extractPythonModuleName(sourceFile),
+		];
+		const resolvedItem = addPythonAutoImport(selectedItem!, pythonText, moduleNames);
+		assert.deepEqual(resolvedItem.additionalTextEdits?.[0], {
+			range: {
+				start: { line: 0, character: 0 },
+				end: { line: 0, character: 0 },
+			},
+			newText: 'from sbs_utils.procedural.ship_data import get_ship_data\n',
+		});
+	});
+
+	it('uses a relative module import for mission-local Python functions', () => {
+		const { cache, missionDir } = createRegisteredMissionCache('python-import-relative-mission');
+		const lifeformPy = new PyFile(path.join(missionDir, 'lifeform.py'), `
+def lifeform_spawn(name):
+    pass
+`);
+		cache.addMissionPyFile(lifeformPy);
+
+		const importingFile = path.join(missionDir, 'consumer.py');
+		assert.equal(
+			cache.getPythonImportModuleNameForSource(lifeformPy.uri, importingFile),
+			'.lifeform'
+		);
+
+		const completion = lifeformPy.pythonFunctions[0].buildCompletionItem();
+		const resolved = addPythonAutoImport(completion, '', ['.lifeform']);
+		assert.equal(
+			resolved.additionalTextEdits?.[0].newText,
+			'from .lifeform import lifeform_spawn\n'
+		);
+	});
+
+	it('uses relative imports between editable and extracted shared-package modules', () => {
+		const { cache } = createRegisteredMissionCache('python-import-shared-package-relative');
+		const packageRoot = path.join(os.tmpdir(), 'cosmosModules', 'package-hash', 'sbs_utils', 'sbs_utils', 'procedural');
+		const sourceFile = path.join(packageRoot, 'READONLY_inventory.py');
+		const importingFile = path.join(cache.missionURI, 'sbs_utils', 'sbs_utils', 'procedural', 'lifeform.py');
+
+		const moduleName = cache.getPythonImportModuleNameForSource(sourceFile, importingFile);
+		assert.equal(moduleName, '.inventory');
+		assert.equal(extractPythonModuleName(sourceFile), 'sbs_utils.procedural.inventory');
+
+		const inventoryPy = new PyFile(sourceFile, 'def get_inventory_value():\n    pass\n');
+		const completion = inventoryPy.pythonFunctions[0].buildCompletionItem();
+		const resolved = addPythonAutoImport(completion, '', [moduleName]);
+		assert.equal(
+			resolved.additionalTextEdits?.[0].newText,
+			'from .inventory import get_inventory_value\n'
+		);
 	});
 
 	it('keeps sbs as a special-case module global', () => {
