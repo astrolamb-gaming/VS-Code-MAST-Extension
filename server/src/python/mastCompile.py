@@ -3,6 +3,7 @@ from inspect import *
 import traceback
 import sys
 import os
+import logging
 
 def debug(info=""):
 	print("Debug: " + info)
@@ -28,7 +29,8 @@ mastFile = sys.argv[4] # Very important
 mastFileFull = mastFile
 
 file = mastFile
-while not os.path.dirname(file).endswith("missions"):
+# Match the actual missions directory segment, not mission names ending in "missions".
+while os.path.basename(os.path.dirname(file)).lower() != "missions":
 	file = os.path.dirname(file)
 missionDir = os.path.dirname(file)
 debug("Mission Dir: " + file)
@@ -195,6 +197,16 @@ if not loaded:
 		# debug("Current Working Directory:"+ get_mission_dir()) # Returns vscode dir
 		debug("CWD: " + os.getcwd())
 		debug()
+		# Keep sbs_utils log files beside the mission source, where MissionCache watches them.
+		# Its default path nests logs under the source filename, which is already a file.
+		original_file_handler = logging.FileHandler
+		class MissionLogFileHandler(original_file_handler):
+			def __init__(self, filename, *args, **kwargs):
+				log_name = os.path.basename(os.fspath(filename)).lower()
+				if log_name in ("mast.compile.log", "mast.runtime.log"):
+					filename = os.path.join(file, log_name)
+				super().__init__(filename, *args, **kwargs)
+		logging.FileHandler = MissionLogFileHandler
 		mast = MyMast()
 		Mast.include_code = True
 		# print(mast.include_code)

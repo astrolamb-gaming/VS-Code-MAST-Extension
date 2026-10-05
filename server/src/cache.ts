@@ -627,18 +627,17 @@ export class MissionCache {
 		this.watchers.push(w);
 		const runtime = path.join(this.missionURI,"mast.runtime.log");
 		const compile = path.join(this.missionURI,"mast.compile.log");
-		if (fs.existsSync(runtime)) {
-			const runWatch = fs.watch(runtime, {}, (eventType, filename) => {
-				if (eventType === "change") void this.showLog("runtime", filename).catch((e) => debug(e));
-			});
-			this.watchers.push(runWatch);
-		}
-		if (fs.existsSync(compile)) {
-			const compileWatch = fs.watch(compile, {}, (eventType, filename) => {
-				if (eventType === "change") void this.showLog("compile", filename).catch((e) => debug(e));
-			});
-			this.watchers.push(compileWatch);
-		}
+		// Create absent logs without truncating existing files so both paths can be watched immediately.
+		fs.writeFileSync(runtime, '', { flag: 'a' });
+		fs.writeFileSync(compile, '', { flag: 'a' });
+		const runWatch = fs.watch(runtime, {}, (eventType, filename) => {
+			if (eventType === "change") void this.showLog("runtime", filename).catch((e) => debug(e));
+		});
+		this.watchers.push(runWatch);
+		const compileWatch = fs.watch(compile, {}, (eventType, filename) => {
+			if (eventType === "change") void this.showLog("compile", filename).catch((e) => debug(e));
+		});
+		this.watchers.push(compileWatch);
 	}
 	endWatchers() {
 		for (const w of this.watchers) {
