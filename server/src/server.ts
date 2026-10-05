@@ -873,8 +873,9 @@ documents.onDidOpen((e) => {
 		if (!doc.uri.endsWith('.mast') && !doc.uri.endsWith('.py')) {
 			return;
 		}
+		// Load the cache if it's not already open - maybe not necessary?
 		const cache = getCache(doc.uri);
-		cache.warnIfMissingFromInit(doc.uri).catch((err) => debug(err));
+		// cache.warnIfMissingFromInit(doc.uri).catch((err) => debug(err));
 	} catch (err) {
 		debug(err);
 	}

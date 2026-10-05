@@ -8,7 +8,7 @@ import { parseLabelsInFile, LabelInfo, getMainLabelAtPos } from './tokens/labels
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { debug } from 'console';
 import { IRouteLabel, loadMediaLabels, loadResourceLabels, loadRouteLabels } from './tokens/routeLabels';
-import { fileFromUri, fixFileName, getArtemisDirFromChild, getFilesInDir, getInitContents, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readFileSync } from './fileFunctions';
+import { fileFromUri, fixFileName, getArtemisDirFromChild, getFilesInDir, getInitFileInFolder, getMissionFolder, getParentFolder, readFile, readFileSync } from './fileFunctions';
 import { connection, documents, getProfilingCollectionMode, isAllowMultipleCaches, isProfilingCollectionEnabled, requestClientQuickPick, setProgress } from './server';
 import { URI } from 'vscode-uri';
 import { getArtemisGlobals, initializeArtemisGlobals } from './artemisGlobals';
@@ -197,24 +197,6 @@ export class MissionCache {
 	private sharedVariableKeysByFile: Map<string, Word[]> = new Map();
 	/** Debounce timers: uri -> NodeJS.Timeout for deferred full Python re-parse */
 	private _reparseTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
-	/** Buffered prompts for adding newly seen files to __init__.mast */
-	private _pendingInitPrompts: Map<string, ReturnType<typeof setTimeout>> = new Map();
-	/** Timestamp history for recent rename events used to detect bulk file operations */
-	private _recentRenameEvents: number[] = [];
-	/** While active, suppress add-to-__init__.mast warnings (used during git checkout-like bursts) */
-	private _suppressInitPromptUntil = 0;
-	/** Deduplicate missing __init__.mast warnings per file for the cache lifetime */
-	private _warnedMissingInitRefs: Set<string> = new Set();
-	/** Tracks whether the one-time initial unreferenced-file scan has already run */
-	private _didRunInitialInitCheck = false;
-	/** Incrementing identifier used to scope Ignore all to a single warning batch */
-	private _warningBatchCounter = 0;
-	/** Batches explicitly silenced via Ignore all */
-	private _ignoredWarningBatches: Set<number> = new Set();
-	/** Active prompt batch for clustered watcher events */
-	private _activePromptBatchId: number | undefined = undefined;
-	/** Expiration timestamp for the active watcher prompt batch */
-	private _activePromptBatchExpiresAt = 0;
 	/** Aggregated profiling metrics for load/reload phases */
 	private _profilingStageStats: Map<string, ProfilingStageStats> = new Map();
 	private _profilingSampleCount = 0;
@@ -496,10 +478,6 @@ export class MissionCache {
 		debug("Everything is loaded");
 		this.commitSharedLibraryParseLoad();
 		this.startWatchers();
-		if (!this._didRunInitialInitCheck) {
-			this._didRunInitialInitCheck = true;
-			this.warnForUnreferencedFilesOnInitialLoad().catch((e) => debug(e));
-		}
 		const loadElapsed = Date.now() - loadStart;
 		this.logLoadTiming('load:complete', loadElapsed, `loaded=${this.isLoaded()}`);
 	}
@@ -525,54 +503,6 @@ export class MissionCache {
 	}
 
 	watchers: fs.FSWatcher[] = [];
-	private trackRenameBurst() {
-		const now = Date.now();
-		this._recentRenameEvents.push(now);
-		const windowStart = now - 1500;
-		while (this._recentRenameEvents.length > 0 && this._recentRenameEvents[0] < windowStart) {
-			this._recentRenameEvents.shift();
-		}
-		if (this._recentRenameEvents.length >= 8) {
-			this._suppressInitPromptUntil = Math.max(this._suppressInitPromptUntil, now + 10000);
-		}
-	}
-
-	private shouldSuppressInitPrompt() {
-		return Date.now() < this._suppressInitPromptUntil;
-	}
-
-	private beginWarningBatch(): number {
-		this._warningBatchCounter += 1;
-		return this._warningBatchCounter;
-	}
-
-	private isWarningBatchIgnored(batchId: number | undefined): boolean {
-		if (batchId === undefined) return false;
-		return this._ignoredWarningBatches.has(batchId);
-	}
-
-	private getOrCreatePromptBatch(): number {
-		const now = Date.now();
-		if (this._activePromptBatchId === undefined || now > this._activePromptBatchExpiresAt) {
-			this._activePromptBatchId = this.beginWarningBatch();
-		}
-		this._activePromptBatchExpiresAt = now + 1500;
-		return this._activePromptBatchId;
-	}
-
-	private isInitManagedFile(filePath: string) {
-		const normalized = fixFileName(filePath);
-		if (normalized.includes("/sbs_utils/")) return false;
-		if (this.isPackageTempPath(normalized)) return false;
-		const missionRoot = fixFileName(this.missionURI).replace(/\/+$/, '');
-		const fileFolder = fixFileName(path.dirname(normalized)).replace(/\/+$/, '');
-		const normalizedMissionRoot = process.platform === 'win32' ? missionRoot.toLowerCase() : missionRoot;
-		const normalizedFileFolder = process.platform === 'win32' ? fileFolder.toLowerCase() : fileFolder;
-		if (normalizedFileFolder === normalizedMissionRoot) return false;
-		if (this.getSharedPackageFileUris().has(normalized)) return false;
-		if (normalized.endsWith("/__init__.py") || normalized.endsWith("/__init__.mast")) return false;
-		return normalized.endsWith(".py") || normalized.endsWith(".mast");
-	}
 
 	private isPackageTempPath(targetPath: string): boolean {
 		const normalizedPath = fixFileName(targetPath).replace(/\/+$/, '');
@@ -580,124 +510,6 @@ export class MissionCache {
 		const comparablePath = process.platform === 'win32' ? normalizedPath.toLowerCase() : normalizedPath;
 		const comparableRoot = process.platform === 'win32' ? packageTempRoot.toLowerCase() : packageTempRoot;
 		return comparablePath === comparableRoot || comparablePath.startsWith(`${comparableRoot}/`);
-	}
-
-	private getFileNameCandidates(filePath: string): Set<string> {
-		const base = path.basename(filePath).toLowerCase();
-		const withoutExt = base.replace(/\.(py|mast)$/i, '');
-		const candidates = new Set<string>([base, withoutExt]);
-		return candidates;
-	}
-
-	private getInitEntryCandidates(entry: string): Set<string> {
-		const ret = new Set<string>();
-		let token = (entry || '').split('#')[0].trim();
-		if (!token) return ret;
-
-		if (token.startsWith('from ') && token.includes(' import ')) {
-			const importSplit = token.split(' import ');
-			const fromPart = importSplit[0].replace(/^from\s+/, '').trim();
-			const importPart = importSplit[1].trim().split(/\s+/)[0] || '';
-			token = importPart || fromPart;
-		} else {
-			token = token.split(/\s+/)[0] || token;
-		}
-
-		token = token.replace(/,+$/, '').trim();
-		if (!token) return ret;
-
-		const normalizedPath = token.replace(/\\/g, '/');
-		const slashPart = normalizedPath.split('/').pop() || normalizedPath;
-		const dotPart = slashPart.includes('.') && !slashPart.endsWith('.py') && !slashPart.endsWith('.mast')
-			? slashPart.split('.').pop() || slashPart
-			: slashPart;
-		const lower = dotPart.toLowerCase();
-		ret.add(lower);
-		ret.add(lower.replace(/\.(py|mast)$/i, ''));
-		return ret;
-	}
-
-	private isReferencedInInit(filePath: string): boolean {
-		const normalized = fixFileName(filePath);
-		const folder = path.dirname(normalized);
-		const initPath = path.join(folder, '__init__.mast');
-		if (!fs.existsSync(initPath)) {
-			return false;
-		}
-
-		const fileCandidates = this.getFileNameCandidates(normalized);
-		const initEntries = getInitContents(normalized);
-		for (const entry of initEntries) {
-			const entryCandidates = this.getInitEntryCandidates(entry);
-			for (const candidate of entryCandidates) {
-				if (fileCandidates.has(candidate)) {
-					return true;
-				}
-			}
-		}
-
-		return false;
-	}
-
-	async warnIfMissingFromInit(filePath: string, warningBatchId?: number): Promise<void> {
-		const normalized = fixFileName(filePath);
-		if (this.isWarningBatchIgnored(warningBatchId)) return;
-		if (!this.isInitManagedFile(normalized)) return;
-		if (!fs.existsSync(normalized)) return;
-		if (this.isReferencedInInit(normalized)) return;
-		if (this._warnedMissingInitRefs.has(normalized)) return;
-
-		const result = await this.tryAddToInitFile(path.dirname(normalized), path.basename(normalized), warningBatchId);
-		if (result !== 'ignored-all') {
-			this._warnedMissingInitRefs.add(normalized);
-		}
-	}
-
-	private async warnForUnreferencedFilesOnInitialLoad() {
-		if (!fs.existsSync(this.missionURI)) return;
-		const batchId = this.beginWarningBatch();
-		const files = getFilesInDir(this.missionURI, true);
-		for (const file of files) {
-			if (this.isWarningBatchIgnored(batchId)) {
-				break;
-			}
-			await this.warnIfMissingFromInit(file, batchId);
-		}
-	}
-
-	private queueInitPrompt(folder: string, newFile: string) {
-		const key = path.join(folder, newFile);
-		const existing = this._pendingInitPrompts.get(key);
-		if (existing) {
-			clearTimeout(existing);
-		}
-
-		const timer = setTimeout(async () => {
-			this._pendingInitPrompts.delete(key);
-			if (this.shouldSuppressInitPrompt()) {
-				return;
-			}
-			const batchId = this.getOrCreatePromptBatch();
-			if (this.isWarningBatchIgnored(batchId)) {
-				return;
-			}
-			const filePath = path.join(folder, newFile);
-			if (!fs.existsSync(filePath)) {
-				return;
-			}
-			await this.warnIfMissingFromInit(filePath, batchId);
-		}, 1200);
-
-		this._pendingInitPrompts.set(key, timer);
-	}
-
-	private clearPendingInitPrompts() {
-		for (const timer of this._pendingInitPrompts.values()) {
-			clearTimeout(timer);
-		}
-		this._pendingInitPrompts.clear();
-		this._activePromptBatchId = undefined;
-		this._activePromptBatchExpiresAt = 0;
 	}
 
 	private get sharedLibraryOwnerKey(): string {
@@ -767,24 +579,12 @@ export class MissionCache {
 			// debug(this.missionURI)
 			// debug(filename)
 			if (eventType === "rename") {
-				this.trackRenameBurst();
 				const filePath = path.join(this.missionURI, filename);
 
 				// Check if the file was added
 				if (fs.existsSync(filePath)) {
 					if (!filename.endsWith(".py") && !filename.endsWith(".mast")) return;
 					console.log(`File added: ${filename}`);
-					const init = getInitContents(path.join(this.missionURI, filename));
-					let inInit = false;
-					for (const i of init) {
-						if (filename.endsWith(i)) {
-							inInit = true;
-							break;
-						}
-					}
-					if (!inInit) {
-						this.queueInitPrompt(path.dirname(path.join(this.missionURI, filename)), path.basename(filename));
-					}
 				} else {
 					if (filename?.endsWith(".py")) {
 						this.removePyFile(path.join(this.missionURI,filename));
@@ -841,9 +641,6 @@ export class MissionCache {
 		}
 	}
 	endWatchers() {
-		this.clearPendingInitPrompts();
-		this._recentRenameEvents = [];
-		this._suppressInitPromptUntil = 0;
 		for (const w of this.watchers) {
 			w.close();
 		}
@@ -1176,38 +973,6 @@ export class MissionCache {
 		}
 	}
 
-	// TODO: When a file is opened, check if it is in __init__.mast. If not, prompt the user to add it.
-	private async tryAddToInitFile(folder:string, newFile:string, warningBatchId?: number): Promise<'added' | 'ignored-all' | 'dismissed' | 'skipped'> {
-		if (!newFile.endsWith(".mast") && !newFile.endsWith(".py")) return 'skipped';
-
-		let ret = await connection.window.showWarningMessage(
-			"File not found in '__init__.mast': " + newFile,
-			{title: "Add " + newFile + " to __init__.mast"},
-			{title: "Don't add"},
-			{title: "Ignore all"}
-			//{title: hide} // TODO: Add this later!!!!!!
-		);
-		if (ret === undefined) return 'dismissed';
-		if (ret.title === "Ignore all") {
-			if (warningBatchId !== undefined) {
-				this._ignoredWarningBatches.add(warningBatchId);
-			}
-			this.clearPendingInitPrompts();
-			return 'ignored-all';
-		}
-		if (ret.title === "Add " + newFile + " to __init__.mast") {
-			try {
-				fs.writeFile(path.join(folder,"__init__.mast"), "\nimport " + newFile, {flag: "a+"}, ()=>{});
-				return 'added';
-			} catch (e) {
-				debug("Can't add " + newFile + " to __init__.mast");
-				debug(e);
-				return 'dismissed';
-			}
-		}
-		return 'dismissed';
-	}
-
 	/**
 	 * Loads the zip/mastlib/sbslib file modules
 	 * @returns Promise<void>
@@ -1466,131 +1231,55 @@ export class MissionCache {
 		return words;
 	}
 
-	private getSignalsWithPackageAggregates(): SignalInfo[] {
-		const packageUris = this.getSharedPackageFileUris();
-		const sourceSignals = [...this.signalsByFile.entries()]
-			.filter(([uri]) => !packageUris.has(uri))
-			.flatMap(([, signals]) => signals);
-		for (const snapshot of this._sharedPackageSnapshots.values()) sourceSignals.push(...snapshot.signals);
-
-		const merged = new Map<string, SignalInfo>();
-		for (const signal of sourceSignals) {
-			let target = merged.get(signal.name);
-			if (!target) {
-				target = { name: signal.name, description: signal.description, emit: [], triggered: [] };
-				merged.set(signal.name, target);
-			}
-			if (!target.description && signal.description) target.description = signal.description;
-			this.appendUniqueLocations(target.emit, signal.emit);
-			this.appendUniqueLocations(target.triggered, signal.triggered);
-		}
-		return [...merged.values()];
+	private resetMissionPackageLayout(): void {
+		this.missionPackageLayout = {
+			sbslib: new Set<string>(),
+			mastlib: new Set<string>(),
+			zip: new Set<string>()
+		};
 	}
 
-	private resetMissionPackageLayout() {
-		this.missionPackageLayout.sbslib.clear();
-		this.missionPackageLayout.mastlib.clear();
-		this.missionPackageLayout.zip.clear();
-	}
-
-	private normalizeMissionPackageEntry(entry: string): string {
-		const normalized = fixFileName(entry).trim().replace(/^\.\//, '').replace(/^\/+/, '').replace(/\/+$/, '');
-		if (normalized === '') return '';
-		return normalized.split('/')[0];
-	}
-
-	private parseManifestArray(entries: unknown): string[] {
-		if (!Array.isArray(entries)) return [];
-		return entries
-			.filter((entry) => typeof entry === 'string')
-			.map((entry) => this.normalizeMissionPackageEntry(entry))
-			.filter((entry) => entry.length > 0);
-	}
-
-	private parseMissionLibManifest(text: string): MissionLibManifest | undefined {
-		try {
-			return JSON.parse(text) as MissionLibManifest;
-		} catch {
-			try {
-				const withoutTrailingCommas = text.replace(/,\s*([}\]])/g, '$1');
-				return JSON.parse(withoutTrailingCommas) as MissionLibManifest;
-			} catch (e) {
-				debug('Unable to parse __lib__.json');
-				debug(e);
-				return undefined;
-			}
-		}
-	}
-
-	private getTopLevelMissionEntries(): string[] {
-		try {
-			const entries = fs.readdirSync(this.missionURI, { withFileTypes: true });
-			return entries
-				.filter((entry) => entry.isDirectory())
-				.map((entry) => entry.name)
-				.filter((name) => name !== '' && !name.startsWith('.') && name !== '__pycache__')
-				.sort((a, b) => a.localeCompare(b));
-		} catch (e) {
-			debug('Unable to enumerate mission folders for __lib__.json bootstrap');
-			debug(e);
-			return [];
-		}
-	}
-
-	private applyDefaultMastlibLayoutForMissingManifest() {
+	private applyDefaultMastlibLayoutForMissingManifest(): void {
+		this.resetMissionPackageLayout();
 		for (const entry of this.getTopLevelMissionEntries()) {
 			this.missionPackageLayout.mastlib.add(entry);
 		}
 	}
 
-	private getAvailableMissionLibVersions(): string[] {
-		const versions = new Set<string>();
-		const missionsRoot = getParentFolder(this.missionURI);
-
+	private getTopLevelMissionEntries(): string[] {
 		try {
-			const missionEntries = fs.readdirSync(missionsRoot, { withFileTypes: true });
-			for (const entry of missionEntries) {
-				if (!entry.isDirectory()) continue;
-				if (entry.name.startsWith('.')) continue;
-
-				const manifestPath = path.join(missionsRoot, entry.name, '__lib__.json');
-				if (!fs.existsSync(manifestPath)) continue;
-
-				try {
-					const text = fs.readFileSync(manifestPath, 'utf-8');
-					const manifest = this.parseMissionLibManifest(text);
-					if (manifest?.version && manifest.version.trim() !== '') {
-						versions.add(manifest.version.trim());
-					}
-				} catch (e) {
-					debug(`Unable to read mission lib manifest at ${manifestPath}`);
-					debug(e);
-				}
-			}
-		} catch (e) {
-			debug('Unable to enumerate mission folders for __lib__.json version discovery');
-			debug(e);
+			return fs.readdirSync(this.missionURI, { withFileTypes: true })
+				.filter((entry) => entry.isDirectory())
+				.map((entry) => entry.name);
+		} catch (error) {
+			debug(`Unable to list mission folders in ${this.missionURI}: ${error}`);
+			return [];
 		}
+	}
 
-		if (versions.size === 0) {
-			versions.add('v1.3.0');
+	private parseManifestArray(value: unknown): string[] {
+		if (!Array.isArray(value)) {
+			return [];
 		}
+		return value.filter((entry): entry is string => typeof entry === 'string').map((entry) => entry.trim()).filter(Boolean);
+	}
 
-		return [...versions].sort((a, b) => b.localeCompare(a, undefined, { numeric: true, sensitivity: 'base' }));
+	private parseMissionLibManifest(contents: string): MissionLibManifest | undefined {
+		const parsed: unknown = JSON.parse(contents);
+		if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+			return undefined;
+		}
+		return parsed as MissionLibManifest;
 	}
 
 	private async promptForMissionLibVersion(): Promise<string> {
-		const versions = this.getAvailableMissionLibVersions();
-		if (versions.length === 1) {
-			return versions[0];
-		}
-
+		const versions = ['v1.3.0'];
 		const selected = await requestClientQuickPick(
 			'Select a version for the new __lib__.json file.',
 			versions,
 			'Choose a version'
 		);
-		return selected || versions[0] || 'v1.3.0';
+		return selected || versions[0];
 	}
 
 	private buildDefaultMissionLibManifest(version: string): MissionLibManifest {
@@ -2581,6 +2270,37 @@ export class MissionCache {
 	 */
 	getSignals(): SignalInfo[] {
 		return this.getSignalsWithPackageAggregates();
+	}
+
+	private getSignalsWithPackageAggregates(): SignalInfo[] {
+		const signals = new Map<string, SignalInfo>();
+		const appendSignal = (signal: SignalInfo) => {
+			const existing = signals.get(signal.name);
+			if (!existing) {
+				signals.set(signal.name, {
+					...signal,
+					emit: [...signal.emit],
+					triggered: [...signal.triggered]
+				});
+				return;
+			}
+
+			if (!existing.description && signal.description) {
+				existing.description = signal.description;
+			}
+			this.appendUniqueLocations(existing.emit, signal.emit);
+			this.appendUniqueLocations(existing.triggered, signal.triggered);
+		};
+
+		for (const signal of this.signalsCache) {
+			appendSignal(signal);
+		}
+		for (const snapshot of this._sharedPackageSnapshots.values()) {
+			for (const signal of snapshot.signals) {
+				appendSignal(signal);
+			}
+		}
+		return [...signals.values()];
 	}
 
 	getBlobKeys(): Word[] {

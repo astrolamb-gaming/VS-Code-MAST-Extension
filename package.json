@@ -320,8 +320,27 @@
 			{
 				"command": "mast.profileAllCaches",
 				"title": "MAST: Profile All Loaded Caches"
+			},
+			{
+				"command": "mast.addFileToInit",
+				"title": "MAST: Add File to __init__.mast"
 			}
 		],
+		"menus": {
+			"explorer/context": [
+				{
+					"command": "mast.addFileToInit",
+					"when": "resourceScheme == file && !explorerResourceIsFolder && (resourceExtname == .mast || resourceExtname == .py) && resourceFilename != '__init__.mast' && resourceFilename != '__init__.py'",
+					"group": "1_modification"
+				}
+			],
+			"commandPalette": [
+				{
+					"command": "mast.addFileToInit",
+					"when": "false"
+				}
+			]
+		},
 		"keybindings": [
 			{
 				"command": "mast.smartEnter",

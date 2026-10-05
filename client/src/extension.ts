@@ -11,6 +11,7 @@ import { workspace, ExtensionContext , window, OutputChannel, LogOutputChannel, 
 import * as vscode from 'vscode';
 import fs = require("fs");
 import AdmZip = require('adm-zip');
+import { InitFileDecorationProvider } from './initFileDecorationProvider';
 
 import {
 	integer,
@@ -69,6 +70,37 @@ const MAST_STARTER_ZIP = 'https://codeload.github.com/artemis-sbs/mast_starter/z
 
 export function activate(context: ExtensionContext) {
 	debug("Activating extension.");
+	// Dim nested mission files that are not imported by their sibling __init__.mast.
+	const initFileDecorationProvider = new InitFileDecorationProvider();
+	context.subscriptions.push(
+		initFileDecorationProvider,
+		vscode.window.registerFileDecorationProvider(initFileDecorationProvider)
+	);
+	const initFileWatcher = workspace.createFileSystemWatcher('**/__init__.mast');
+	initFileWatcher.onDidChange(() => initFileDecorationProvider.refresh());
+	initFileWatcher.onDidCreate(() => initFileDecorationProvider.refresh());
+	initFileWatcher.onDidDelete(() => initFileDecorationProvider.refresh());
+	context.subscriptions.push(initFileWatcher);
+	context.subscriptions.push(workspace.onDidChangeWorkspaceFolders(() => initFileDecorationProvider.refresh()));
+	context.subscriptions.push(vscode.commands.registerCommand('mast.addFileToInit', async (uri?: vscode.Uri) => {
+		if (!uri) {
+			return;
+		}
+
+		try {
+			const result = await initFileDecorationProvider.addFileToInit(uri);
+			if (result === 'added') {
+				window.showInformationMessage(`Added ${path.basename(uri.fsPath)} to __init__.mast.`);
+			} else if (result === 'already-listed') {
+				window.showInformationMessage(`${path.basename(uri.fsPath)} is already listed in __init__.mast.`);
+			} else {
+				window.showWarningMessage('Select a nested .mast or .py file inside a mission folder.');
+			}
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			window.showErrorMessage(`Could not update __init__.mast: ${message}`);
+		}
+	}));
 	const compileDiagnostics = vscode.languages.createDiagnosticCollection('mast-compile');
 	context.subscriptions.push(compileDiagnostics);
 	// The server is implemented in node
