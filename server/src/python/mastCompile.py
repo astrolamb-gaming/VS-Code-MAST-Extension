@@ -106,7 +106,8 @@ if not loaded:
 
 		fs.exe_dir = artDir
 		# fs.script_dir = os.path.dirname(mastFileFull)
-		fs.script_dir = missionDir
+		# Imports resolve relative to the mission folder itself, not its parent "missions" folder
+		fs.script_dir = file
 		fs.script_dir = fs.script_dir.replace("/", "\\")
 
 		## This will throw an expection unless you use
@@ -178,7 +179,11 @@ if not loaded:
 				root.imported[f"{self.lib_name}::{file_name}"] = True
 			
 			errors = None
-				
+
+			# from_file normally sets basedir; python imports need it when compiling from text
+			if self.basedir is None and self.lib_name is None:
+				self.basedir = file
+
 			if content is not None:
 				content = content.replace('\r','')
 				# print(content)
