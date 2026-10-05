@@ -105,8 +105,6 @@ export class ArtemisGlobals {
 			debug("Done loading libs.")
 			this.libModuleCompletionItems = [];
 			debug("Getting ship data")
-			setProgress(`ship-data:${this.artemisDir}`, true, 'Loading Ship Data');
-			this.shipData = new ShipData(this.artemisDir);
 			void this.shipData.load().catch((e) => debug(e));
 			debug("ship data gotten")
 			for (const lib of this.libModules) {

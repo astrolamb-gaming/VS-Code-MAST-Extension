@@ -1,8 +1,8 @@
 {
 	"name": "mast",
 	"displayName": "MAST",
-	"description": "%description%",
-	"version": "0.18.2",
+	"description": "An extension for developing missions for [Artemis Cosmos](https://www.artemisspaceshipbridge.com/#/). It is intended to facilitate developing mission scripts using the [MAST language](https://artemis-sbs.github.io/sbs_utils/mast/).",
+	"version": "0.19.0",
 	"publisher": "astrolamb",
 	"license": "MIT",
 	"icon": "mast.png",

@@ -22,22 +22,49 @@ export class ShipData {
 	artemisDir: string;
 	ships: Ship[] = [];
 	textDoc:TextDocument|undefined;
+	private loadPromise: Promise<void> | undefined;
+	private reloadQueued = false;
+	private watcher: fs.FSWatcher | undefined;
+	private reloadTimer: ReturnType<typeof setTimeout> | undefined;
+
 	constructor(artemisDir: string) {
 		this.artemisDir = artemisDir;
-		if (artemisDir === "") return;
-		// try {
-		// 	this.load();
-		// } catch(e) {
-		// 	debug(e);
-		// }
-		fs.watch(artemisDir, (eventType, filename)=>{
-			void this.load().catch((e) => debug(e));
-		})
-		
 	}
 
+	/** Watches only the ship data files, so unrelated changes in the data folder don't trigger a reload. */
+	private startWatching() {
+		if (this.watcher || this.artemisDir === "") return;
+		const dataDir = path.join(this.artemisDir, "data");
+		if (!fs.existsSync(dataDir)) return;
+		this.watcher = fs.watch(dataDir, (eventType, filename) => {
+			if (filename !== "shipData.yaml" && filename !== "shipData.json") return;
+			clearTimeout(this.reloadTimer);
+			this.reloadTimer = setTimeout(() => void this.load().catch((e) => debug(e)), 200);
+		});
+	}
+
+	/**
+	 * Loads the ship data. Calls made while a load is in progress share that load,
+	 * and a single follow-up load is run if the data changed in the meantime.
+	 */
 	load(): Promise<void> {
-		return this.loadInternal();
+		if (this.artemisDir === "") return Promise.resolve();
+		this.startWatching();
+		if (this.loadPromise) {
+			this.reloadQueued = true;
+			return this.loadPromise;
+		}
+		this.loadPromise = (async () => {
+			try {
+				do {
+					this.reloadQueued = false;
+					await this.loadInternal();
+				} while (this.reloadQueued);
+			} finally {
+				this.loadPromise = undefined;
+			}
+		})();
+		return this.loadPromise;
 	}
 
 	private async loadInternal(): Promise<void> {

@@ -6,7 +6,7 @@ import { CRange, getTokenContextAtPosition, getTokenTypeAtOffset, getTokenTypeAt
 import { getCache } from '../cache';
 import { getArtemisGlobals } from '../artemisGlobals';
 import { getClassOfMethod } from '../tokens/tokens';
-import { getArgDocForLabel, variableModifiers } from '../tokens/variables';
+import { getArgDocForLabel, specialLabelVariables, variableModifiers } from '../tokens/variables';
 import { buildLabelDocs, getMainLabelAtPos } from '../tokens/labels';
 import { Function } from '../data/function';
 import { matchesClassName } from '../data';
@@ -104,6 +104,11 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 		return undefined;
 	}
 	for (const s of variableModifiers) {
+		if (s[0] === symbol) {
+			return {contents: s[1]};
+		}
+	}
+	for (const s of specialLabelVariables) {
 		if (s[0] === symbol) {
 			return {contents: s[1]};
 		}
@@ -328,6 +333,11 @@ export function onHover(_pos: TextDocumentPositionParams, text: TextDocument) : 
 			}
 		}
 		for (const key of variableModifiers) {
+			if (key[0] === symbol) {
+				return {contents: key[1]}
+			}
+		}
+		for (const key of specialLabelVariables) {
 			if (key[0] === symbol) {
 				return {contents: key[1]}
 			}

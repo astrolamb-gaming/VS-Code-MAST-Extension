@@ -8,7 +8,7 @@ import { SemanticTokens, SemanticTokensBuilder, integer } from 'vscode-languages
 import { CRange } from '../tokens/comments';
 import { Token } from '../tokens/tokens';
 import { getCache } from '../cache';
-import { variableModifiers } from '../tokens/variables';
+import { specialLabelVariables, variableModifiers } from '../tokens/variables';
 import { convertVariableTokensToLabelOrFunction } from './semanticTokensCache';
 
 /**
@@ -1375,6 +1375,9 @@ export class MastStateMachineLexer {
 		const text = this.text.substring(startPos, this.pos);
 		const keywords = ['def', 'async', 'await', 'import', 'from', 'as', 'if', 'elif', 'else', 'match', 'case', 'yield', 'return', 'break', 'continue', 'pass', 'raise', 'try', 'except', 'finally', 'with', 'class', 'while', 'for', 'in', 'is', 'and', 'or', 'not', 'lambda', 'on', 'change', 'signal'];
 		for (const kw of variableModifiers) {
+			keywords.push(kw[0]);
+		}
+		for (const kw of specialLabelVariables) {
 			keywords.push(kw[0]);
 		}
 		if (text === 'from') {

@@ -36,6 +36,7 @@ MAST references:
 	* Can update all to latest version, or manually update
 * In mission folders, checks for `__init__.mast` in the folder you're working in. If it doesn't exist, will promt with an option to auto-generate the file, with all .mast and .py files included automatically.
 * Autocompletion of filenames for `__init__.mast`
+* When loading packages, if an equivalent source folder exists, then the source folder will be loaded instead (to help with developing a mission and its dependencies at the same time when needed.) If multiple missions have the same name in `description.yaml`, then the one with a `.git` folder, or if the category or keywords incldue "Dev" or "Development, then that folder will be used.
 * Checks for root artemis directory existence - most functionality requires the opened folder to be in the artemis mission directory
 
 ### Fun special features:
@@ -72,6 +73,7 @@ Dependencies should be packaged with the extension. If you encounter an issue wi
 Included dependencies:
 * adm-zip
 * hjson
+* js-yaml
 * python-shell
 * vscode-uri
 
@@ -114,7 +116,7 @@ This extension contributes the following settings:
 	If enabled, the extension caches applicable files for every mission opened during the session. If disabled, it only caches files for the currently active mission.
 	Default: `true`
 
-* `mastLanguageServer.cacheTimout`:
+* `mastLanguageServer.cacheTimout` (Deprecated):
 	If not `0`, the cache expires after the specified number of minutes to clear memory.
 	Default: `0`
 

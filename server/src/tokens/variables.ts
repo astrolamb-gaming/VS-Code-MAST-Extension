@@ -15,6 +15,11 @@ export const variableModifiers: string[][] = [
 	["temp",""]
 ]
 
+export const specialLabelVariables: string[][] = [
+	["mast_task", "The current MastAsyncTask."],
+	["__ITEM__", "If this label was called using a button or `gui_message()`, then `__ITEM__` is a reference to the layout item."]
+]
+
 export interface Variable {
 	name: string,
 	range: Range,

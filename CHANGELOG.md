@@ -10,6 +10,32 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * ~~WIP: Get mast complier errors from the compiler itself, so the game doesn't have to be running to check for compiler errors.~~
 * ~~TODO: Add certain parts of the MAST file functionality to apply to Python files as well (completions, go to definition, etc.)~~ DONE!
 
+### 0.19.0
+
+* Package data is now separate from mission caches, so mission caches that use the same package share it instead of each loading their own copy.
+* Major cache updates for packages, including faster cache reloads and more targeted triggers for when a cache needs to reload.
+* Each mission's `description.yaml` is now read and kept with that mission's cache.
+* Package source loading now looks at the mission descriptions to find the best source for a package. If more than one mission has the same `Visible Mission Name` (e.g. `legendarymissions` and `LegendaryMissionsDev`), the extension will use:
+	* The mission folder that has a `.git` folder, otherwise
+	* The mission folder with "Dev" or "Development" in its `Category` or `Keywords`.
+* Add "Purge Paxmeshes" command.
+* Add grid icon viewer and command.
+* Add function-arg based signal emits (e.g. `set_timer(signal="some_signal")`). Arguments named `role` or `roles` are also used to parse roles.
+* Add popup route variables and `behav_planet` to autocomplete.
+* Add class imports to python autocompletion, and streamline autocompletion for class methods.
+* Add memory and multi-cache profiling commands.
+* Test folders are no longer parsed for package files.
+* Fix `with ... as ...` block variables.
+* Fix hover duplicates and built-in functions.
+* Fix `gui_button` showing as deprecated.
+* Fix methods not being checked properly, and an with `signal_emit`.
+* Fix `__init__.mast` warning spam.
+* Fix issue with versioning checks.
+* Fix debugger startup.
+* Better check for non-Artemis directories.
+* Fix multiple loads of non-mission artemis data
+* Add "mast_task" and "__ITEM__ variables to autocompletion, hover, etc. in labels, treated as a reference.
+
 ### 0.18.2
 
 * Add checks that variables are defined (and gives a warning if not). Accounts for `if x is None:` and `if to_object(x) is None:` etc.

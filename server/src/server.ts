@@ -685,9 +685,14 @@ let activeCompilationCount = 0;
 const progressOperations = new Map<string, { text: string; priority: number; sequence: number }>();
 let progressSequence = 0;
 
+let lastPublishedProgressText: string | undefined;
+
 function publishProgress(): void {
 	const current = [...progressOperations.values()].sort((a, b) => b.priority - a.priority || b.sequence - a.sequence)[0];
 	const text = current?.text || '';
+	// Operations starting/finishing underneath the top one shouldn't re-announce the same status text.
+	if (text === lastPublishedProgressText) return;
+	lastPublishedProgressText = text;
 	sendToClient('progressNotif', { visible: text !== '', text });
 }
 

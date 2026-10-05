@@ -2,7 +2,7 @@ import { debug } from 'console';
 import { CompletionItem, CompletionItemKind, integer, MarkupContent, ParameterInformation, SignatureHelpParams, SignatureInformation, TextDocumentPositionParams } from 'vscode-languageserver';
 import { buildLabelDocs, getLabelMetadataKeys, getLabelsAsCompletionItems, getMainLabelAtPos } from './../tokens/labels';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { asClasses, replaceNames } from './../data';
+import { asClasses, getPreferredClassName, replaceNames } from './../data';
 import { getRouteLabelVars } from './../tokens/routeLabels';
 import { CRange, getTokenContextAtPosition, getTokenTypeAtPosition, isTextInBracket, replaceRegexMatchWithUnderscore } from './../tokens/comments';
 import { getCache, MissionCache } from './../cache';
@@ -11,7 +11,7 @@ import { fixFileName, getFilesInDir } from './../fileFunctions';
 import { getArtemisGlobals } from '../artemisGlobals';
 import { onSignatureHelp, getCallContextFromTokens, getFirstUnusedParameterIndex, splitTopLevelArgs } from './signatureHelp';
 import { getWordsAsCompletionItems } from './../tokens/roles';
-import { getArgDocForLabel, variableModifiers } from './../tokens/variables';
+import { getArgDocForLabel, specialLabelVariables, variableModifiers } from './../tokens/variables';
 import { isClassMethod } from './../tokens/tokens';
 import { Function } from './../data/function';
 import { getCurrentLineFromTextDocument, getHoveredSymbol } from './hover';
@@ -543,6 +543,28 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 		// debug("NOT an init file");
 	}
 //#endregion
+
+if (!isPythonDocument) {
+	if (iStr.trim().startsWith("mast_task")) {
+		// TODO: None of this block is working except for `.data`
+		const mat = cache.getClasses().find((o)=>{o.name==="MastAsyncTask"})?.getMethodCompletionItems() || [];
+		const agent = cache.getClasses().find((o)=>{o.name==="Agent"})?.getMethodCompletionItems() || [];
+		return mat.concat(agent)
+	}
+	if (iStr.trim().startsWith("__ITEM__")) {
+		const button = cache.getClasses().find((o)=>{o.name==="Button"})?.getMethodCompletionItems() || [];
+		const column = cache.getClasses().find((o)=>{o.name==="Column"})?.getMethodCompletionItems() || [];
+		const dat: CompletionItem = {
+			label: "data",
+			kind: CompletionItemKind.Property,
+			documentation: "The data associated with the item.",
+			sortText: "__data"
+		}
+		const ret = button.concat(column)
+		ret.push(dat)
+		return ret;
+	}
+}
 
 
 //#region YIELD Completions
@@ -1470,49 +1492,7 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	//debug(ci.length);
 	
 
-//#region Keywords and Variables
-	debug("Keywords and Variables")
-	//#region Line Start Keywords
-	if (trimmed.match(/[\t ]*\w*/)) {
-		let line_start_keywords : string[] = [
-			// "def", // Pretty sure we can't define functions in a mast file
-			"async",
-			"on change",
-			"on signal",
-			"await",
-			"import",
-			"if",
-			"else",
-			"match",
-			"case",
-			"yield",
-			"pass",
-			"with"
-		]
-		// Add keywords to completions
-		for (const key of line_start_keywords) {
-			let i: CompletionItem = {
-				label: key,
-				kind: CompletionItemKind.Keyword
-			}
-			ci.push(i);
-		}
-		for (const key of variableModifiers) {
-			let i: CompletionItem = {
-				label: key[0],
-				kind: CompletionItemKind.Keyword,
-				detail: key[1]
-			}
-			ci.push(i);
-		}
-		const metadata:CompletionItem = {
-			label: "metadata",
-			kind: CompletionItemKind.Variable,
-			insertText: "metadata: ```\n\n```"
-		}
-		ci.push(metadata);
-	}
-	//#endregion
+
 
 
 	let values = [
@@ -1530,6 +1510,59 @@ export function onCompletion(_textDocumentPosition: TextDocumentPositionParams, 
 	}
 
 	if (!isPythonDocument) {
+
+		//#region Keywords and Variables
+		debug("Keywords and Variables")
+		//#region Line Start Keywords
+		if (trimmed.match(/[\t ]*\w*/)) {
+			let line_start_keywords : string[] = [
+				// "def", // Pretty sure we can't define functions in a mast file
+				"async",
+				"on change",
+				"on signal",
+				"await",
+				"import",
+				"if",
+				"else",
+				"match",
+				"case",
+				"yield",
+				"pass",
+				"with"
+			]
+			// Add keywords to completions
+			for (const key of line_start_keywords) {
+				let i: CompletionItem = {
+					label: key,
+					kind: CompletionItemKind.Keyword
+				}
+				ci.push(i);
+			}
+			for (const key of variableModifiers) {
+				let i: CompletionItem = {
+					label: key[0],
+					kind: CompletionItemKind.Keyword,
+					detail: key[1]
+				}
+				ci.push(i);
+			}
+			for (const key of specialLabelVariables) {
+				let i: CompletionItem = {
+					label: key[0],
+					kind: CompletionItemKind.Reference,
+					detail: key[1]
+				}
+				ci.push(i);
+			}
+			const metadata:CompletionItem = {
+				label: "metadata",
+				kind: CompletionItemKind.Variable,
+				insertText: "metadata: ```\n\n```"
+			}
+			ci.push(metadata);
+		}
+		//#endregion
+
 		// Add Route-specific variables, e.g. COLLISION_ID or SCIENCE_TARGET
 		const lbl = getMainLabelAtPos(pos,cache.getMastFile(text.uri).labelNames);
 		// debug("Main label at pos: ");

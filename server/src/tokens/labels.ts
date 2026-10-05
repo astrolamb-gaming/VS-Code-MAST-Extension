@@ -8,7 +8,7 @@ import { URI } from 'vscode-uri';
 import path = require('path');
 import { fileFromUri, fixFileName, getDisplayFilePath, getFolders, getMissionFolder } from '../fileFunctions';
 import { getTokenTypeAtOffset, isInComment } from './comments';
-import { getDefaultVariableNamesInRange, variableModifiers } from './variables';
+import { getDefaultVariableNamesInRange, specialLabelVariables, variableModifiers } from './variables';
 import { start } from 'repl';
 import { getCurrentLineFromTextDocument } from '../requests/hover';
 import { documents } from '../server';
@@ -1698,6 +1698,9 @@ function getUndefinedVariableReferenceNamesInLabel(doc: TextDocument, label: Lab
 			continue;
 		}
 		if (LABEL_SCOPE_KEYWORDS.has(name) || variableModifiers.some(v => v[0] === name)) {
+			continue;
+		}
+		if (LABEL_SCOPE_KEYWORDS.has(name) || specialLabelVariables.some(v => v[0] === name)) {
 			continue;
 		}
 
