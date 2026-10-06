@@ -334,6 +334,26 @@ export function activate(context: ExtensionContext) {
 	};
 	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(notifyActiveEditor));
 
+	// Reports every open tab (any file type) so the server keeps a mission cache loaded
+	// while any file in its folder is open, not just mast/python documents.
+	const notifyOpenTabs = () => {
+		if (!client) return;
+		const uris: string[] = [];
+		for (const group of vscode.window.tabGroups.all) {
+			for (const tab of group.tabs) {
+				const input = tab.input;
+				if (input instanceof vscode.TabInputText || input instanceof vscode.TabInputCustom || input instanceof vscode.TabInputNotebook) {
+					uris.push(input.uri.toString());
+				} else if (input instanceof vscode.TabInputTextDiff) {
+					uris.push(input.modified.toString());
+				}
+			}
+		}
+		client.sendNotification('custom/openTabsChanged', { uris });
+	};
+	context.subscriptions.push(vscode.window.tabGroups.onDidChangeTabs(notifyOpenTabs));
+	notifyOpenTabs();
+
 // #region <--------------------- Ship and Face Webview Region ------------------------>
 	const ships = client.onNotification('custom/ships', (payload)=>{
 		debug('Received ships notification payload; artemisDir: ' + payload?.artemisDir + ', ships: ' + (payload?.ships?.length || 0));

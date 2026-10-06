@@ -48,7 +48,7 @@ import fs = require("fs");
 import { getArtemisGlobals, initializeArtemisGlobals } from './artemisGlobals';
 import { compileMastFile, getCurrentDiagnostics, validateTextDocument } from './requests/validate';
 import { onDefinition } from './requests/goToDefinition';
-import { evictUnusedCaches, focusMissionCache, getCache, getLoadedCaches, setWorkspaceFolderUris, updateWorkspaceFolderUris } from './cache';
+import { evictUnusedCaches, focusMissionCache, setOpenTabUris, getCache, getLoadedCaches, setWorkspaceFolderUris, updateWorkspaceFolderUris } from './cache';
 import { onReferences } from './requests/references';
 import { onPrepareRename, onRenameRequest } from './requests/renameSymbol';
 import { getWordRangeAtPosition } from './tokens/words';
@@ -1379,6 +1379,16 @@ connection.onNotification('custom/activeEditorChanged', (request: { sourceUri?: 
 });
 
 
+
+// Sent by the client when tabs open/close; lets caches stay loaded for non-mast/python files.
+connection.onNotification('custom/openTabsChanged', (request: { uris?: string[] } | undefined) => {
+	try {
+		setOpenTabUris(request?.uris ?? []);
+		evictUnusedCaches();
+	} catch (e) {
+		debug(e);
+	}
+});
 
 connection.onNotification("custom/storyJsonResponse",(response)=>{
 	debug("Download command recieved: " + response);

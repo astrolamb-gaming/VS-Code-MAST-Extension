@@ -2920,9 +2920,24 @@ export function getLoadedCaches(): MissionCache[] {
 
 
 
-/** Mission folder keys (normalized) for every currently open document. */
+/** URIs of every open editor tab reported by the client (includes non-mast/python files). */
+let openTabUris: string[] = [];
+
+export function setOpenTabUris(uris: string[]) {
+	openTabUris = uris;
+}
+
+/** Mission folder keys (normalized) for every currently open document or tab. */
 function getOpenMissionCacheKeys(): Set<string> {
 	const keys = new Set<string>();
+	for (const uri of openTabUris) {
+		try {
+			const mf = getMissionFolder(uri);
+			if (mf) keys.add(normalizeCacheKey(mf));
+		} catch (e) {
+			debug(e);
+		}
+	}
 	for (const doc of documents.all()) {
 		try {
 			const mf = getMissionFolder(doc.uri);
