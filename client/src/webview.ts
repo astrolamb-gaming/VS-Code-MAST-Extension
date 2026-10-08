@@ -155,6 +155,24 @@ function findTextureForAnyBase(basePathNoExtList: string[], suffixes: string[]):
 	return undefined;
 }
 
+// Fallback lookup: case-insensitive match of <art>.obj, or any .obj whose name starts with the art root.
+function findModelByScan(shipsDir: string, art: string, objFiles: string[]): { path: string; suffix: string } | undefined {
+	const normalized = art.replace(/\\/g, '/').toLowerCase();
+	const exact = objFiles.find((f) => f.toLowerCase() === normalized + '.obj');
+	const hit = exact ?? objFiles.find((f) => f.toLowerCase().startsWith(normalized));
+	return hit ? { path: path.join(shipsDir, hit), suffix: '.obj' } : undefined;
+}
+
+function listObjFiles(shipsDir: string): string[] {
+	try {
+		const files = fs.readdirSync(shipsDir, { recursive: true }) as string[];
+		return files.map((f) => String(f).replace(/\\/g, '/')).filter((f) => f.toLowerCase().endsWith('.obj'));
+	} catch (err) {
+		debug('Could not list ships dir: ' + shipsDir + ' (' + String(err) + ')');
+		return [];
+	}
+}
+
 function findMtlFromObjPath(objPath: string): string | undefined {
 	if (!fs.existsSync(objPath)) {
 		return undefined;
@@ -195,9 +213,10 @@ function findMtlFromObjPath(objPath: string): string | undefined {
 function buildShipEntries(payload: ShipViewerPayload, panel: WebviewPanel): ShipViewerEntry[] {
 	debug('buildShipEntries called, artemisDir: ' + payload.artemisDir);
 	debug('Number of ships in payload: ' + (payload.ships?.length || 0));
-	const shipsDir = path.join(payload.artemisDir, 'data', 'graphics', 'ships');
+	const shipsDir = path.join(payload.artemisDir, 'data', 'graphics');
 	const cosmosImagesDir = getUserCosmosImagesDir();
 	const entries: ShipViewerEntry[] = [];
+	const objFiles = listObjFiles(shipsDir);
 
 	for (const ship of payload.ships || []) {
 		const art = (ship.artFileRoot || '').trim();
@@ -212,7 +231,11 @@ function buildShipEntries(payload: ShipViewerPayload, panel: WebviewPanel): Ship
 		if (art.length > 0) {
 			const artBasePath = path.join(shipsDir, art);
 			let textureBasePaths: string[] = [artBasePath];
-			const modelHit = findFirstExisting(path.join(shipsDir, art), MODEL_EXTENSIONS);
+			const modelHit = findFirstExisting(path.join(shipsDir, art), MODEL_EXTENSIONS)
+				?? findModelByScan(shipsDir, art, objFiles);
+			if (!modelHit) {
+				debug('No model for art root "' + art + '" in ' + shipsDir);
+			}
 			if (modelHit) {
 				entry.modelFormat = modelHit.suffix.replace('.', '').toLowerCase();
 				entry.modelUri = panel.webview.asWebviewUri(vscode.Uri.file(modelHit.path)).toString();
